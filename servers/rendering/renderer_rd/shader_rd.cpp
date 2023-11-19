@@ -517,6 +517,17 @@ void ShaderRD::_compile_version(Version *p_version, int p_group) {
 	compile_data.version = p_version;
 	compile_data.group = p_group;
 
+#if DEV_ENABLED
+	char *disabled = getenv("GODOT_SHADER_DISABLE_WORKER");
+	if (disabled && strcmp(disabled, "1") == 0) {
+		for (uint32_t i = 0; i < group_to_variant_map[p_group].size(); i++) {
+			_compile_variant(i, &compile_data);
+		}
+	} else {
+		WorkerThreadPool::GroupID group_task = WorkerThreadPool::get_singleton()->add_template_group_task(this, &ShaderRD::_compile_variant, &compile_data, group_to_variant_map[p_group].size(), -1, true, SNAME("ShaderCompilation"));
+		WorkerThreadPool::get_singleton()->wait_for_group_task_completion(group_task);
+	}
+#else
 #if 1
 	WorkerThreadPool::GroupID group_task = WorkerThreadPool::get_singleton()->add_template_group_task(this, &ShaderRD::_compile_variant, &compile_data, group_to_variant_map[p_group].size(), -1, true, SNAME("ShaderCompilation"));
 	WorkerThreadPool::get_singleton()->wait_for_group_task_completion(group_task);
@@ -525,6 +536,7 @@ void ShaderRD::_compile_version(Version *p_version, int p_group) {
 	for (uint32_t i = 0; i < group_to_variant_map[p_group].size(); i++) {
 		_compile_variant(i, &compile_data);
 	}
+#endif
 #endif
 
 	bool all_valid = true;

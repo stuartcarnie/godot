@@ -1,0 +1,98 @@
+add_subdirectory(export)
+
+godot_add_library(platform-macos)
+# [[[cog
+#   import cog
+#   from cmake_builders import list_files
+#   cog.outl('target_sources(platform-macos PRIVATE')
+#   for file in list_files(cog, '.'):
+#       cog.outl(f'        {file}')
+#   cog.outl(')')
+# ]]]
+target_sources(platform-macos PRIVATE
+        crash_handler_macos.h
+        crash_handler_macos.mm
+        dir_access_macos.h
+        dir_access_macos.mm
+        display_server_macos.h
+        display_server_macos.mm
+        gl_manager_macos_angle.h
+        gl_manager_macos_angle.mm
+        gl_manager_macos_legacy.h
+        gl_manager_macos_legacy.mm
+        godot_application.h
+        godot_application.mm
+        godot_application_delegate.h
+        godot_application_delegate.mm
+        godot_button_view.h
+        godot_button_view.mm
+        godot_content_view.h
+        godot_content_view.mm
+        godot_main_macos.mm
+        godot_menu_delegate.h
+        godot_menu_delegate.mm
+        godot_menu_item.h
+        godot_menu_item.mm
+        godot_window.h
+        godot_window.mm
+        godot_window_delegate.h
+        godot_window_delegate.mm
+        joypad_macos.cpp
+        joypad_macos.h
+        key_mapping_macos.h
+        key_mapping_macos.mm
+        macos_terminal_logger.h
+        macos_terminal_logger.mm
+        metal_context_macos.h
+        metal_context_macos.mm
+        os_macos.h
+        os_macos.mm
+        platform_config.h
+        platform_gl.h
+        tts_macos.h
+        tts_macos.mm
+        vulkan_context_macos.h
+        vulkan_context_macos.mm
+)
+# [[[end]]]
+
+if(${WANT_OPENGL} AND ${OPENGL_FOUND})
+    target_link_libraries(platform-macos PUBLIC OpenGL::GL)
+    target_link_libraries(platform-macos PUBLIC driver-gles3 glad)
+    target_link_libraries(platform-macos PRIVATE angle)
+    target_compile_definitions(platform-macos PRIVATE GLES3_ENABLED=1)
+endif()
+
+if(${WANT_VULKAN} AND ${VULKAN_FOUND})
+    target_link_libraries(platform-macos PUBLIC driver-vulkan vulkan MoltenVK)
+    target_compile_definitions(platform-macos PRIVATE VULKAN_ENABLED=1)
+endif()
+
+target_link_libraries(platform-macos
+        PUBLIC
+        $<$<BOOL:${ENABLE_METAL}>:driver-metal>
+)
+target_compile_definitions(platform-macos
+        PUBLIC
+        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED=1>
+        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
+        $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
+)
+
+target_link_libraries(platform-macos PUBLIC
+        "$<LINK_LIBRARY:FRAMEWORK,Cocoa>"
+        "$<LINK_LIBRARY:FRAMEWORK,Carbon>"
+        "$<LINK_LIBRARY:FRAMEWORK,AudioUnit>"
+        "$<LINK_LIBRARY:FRAMEWORK,CoreAudio>"
+        "$<LINK_LIBRARY:FRAMEWORK,CoreMIDI>"
+        "$<LINK_LIBRARY:FRAMEWORK,IOKit>"
+        "$<LINK_LIBRARY:FRAMEWORK,ForceFeedback>"
+        "$<LINK_LIBRARY:FRAMEWORK,CoreVideo>"
+        "$<LINK_LIBRARY:FRAMEWORK,AVFoundation>"
+        "$<LINK_LIBRARY:FRAMEWORK,CoreMedia>"
+        "$<LINK_LIBRARY:FRAMEWORK,QuartzCore>"
+        "$<LINK_LIBRARY:FRAMEWORK,Security>"
+        "$<LINK_LIBRARY:FRAMEWORK,Metal>"
+        "$<LINK_LIBRARY:FRAMEWORK,MetalKit>"
+        "$<LINK_LIBRARY:FRAMEWORK,IOSurface>"
+)

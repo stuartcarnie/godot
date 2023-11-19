@@ -28,6 +28,8 @@
 	<string>Camera access is required to capture video.</string>
 	<key>NSRequiresAquaSystemAppearance</key>
 	<false/>
+	<key>NSCameraUseContinuityCameraDeviceType</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2007-present Juan Linietsky, Ariel Manzur &amp; Godot Engine contributors</string>
 	<key>CFBundleSupportedPlatforms</key>
@@ -74,6 +76,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleDisplayName</key>
+	<string></string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

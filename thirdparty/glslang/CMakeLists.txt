@@ -1,0 +1,47 @@
+godot_add_library(godot-glslang FOLDER thirdparty STATIC)
+target_sources(godot-glslang PRIVATE
+        glslang/GenericCodeGen/CodeGen.cpp
+        glslang/GenericCodeGen/Link.cpp
+        glslang/MachineIndependent/Constant.cpp
+        glslang/MachineIndependent/InfoSink.cpp
+        glslang/MachineIndependent/Initialize.cpp
+        glslang/MachineIndependent/IntermTraverse.cpp
+        glslang/MachineIndependent/Intermediate.cpp
+        glslang/MachineIndependent/ParseContextBase.cpp
+        glslang/MachineIndependent/ParseHelper.cpp
+        glslang/MachineIndependent/PoolAlloc.cpp
+        glslang/MachineIndependent/RemoveTree.cpp
+        glslang/MachineIndependent/Scan.cpp
+        glslang/MachineIndependent/ShaderLang.cpp
+        glslang/MachineIndependent/SpirvIntrinsics.cpp
+        glslang/MachineIndependent/SymbolTable.cpp
+        glslang/MachineIndependent/Versions.cpp
+        glslang/MachineIndependent/attribute.cpp
+        glslang/MachineIndependent/glslang_tab.cpp
+        glslang/MachineIndependent/intermOut.cpp
+        glslang/MachineIndependent/iomapper.cpp
+        glslang/MachineIndependent/limits.cpp
+        glslang/MachineIndependent/linkValidate.cpp
+        glslang/MachineIndependent/parseConst.cpp
+        glslang/MachineIndependent/preprocessor/Pp.cpp
+        glslang/MachineIndependent/preprocessor/PpAtom.cpp
+        glslang/MachineIndependent/preprocessor/PpContext.cpp
+        glslang/MachineIndependent/preprocessor/PpScanner.cpp
+        glslang/MachineIndependent/preprocessor/PpTokens.cpp
+        glslang/MachineIndependent/propagateNoContraction.cpp
+        glslang/MachineIndependent/reflection.cpp
+        glslang/ResourceLimits/ResourceLimits.cpp
+        OGLCompilersDLL/InitializeDll.cpp
+        SPIRV/disassemble.cpp
+        SPIRV/doc.cpp
+        SPIRV/GlslangToSpv.cpp
+        SPIRV/InReadableOrder.cpp
+        SPIRV/Logger.cpp
+        SPIRV/SpvBuilder.cpp
+        SPIRV/SpvPostProcess.cpp
+        SPIRV/SPVRemapper.cpp
+        SPIRV/SpvTools.cpp
+
+        $<IF:$<PLATFORM_ID:Windows>,glslang/OSDependent/Windows/ossource.cpp,glslang/OSDependent/Unix/ossource.cpp>
+)
+target_include_directories(godot-glslang PUBLIC . ..)

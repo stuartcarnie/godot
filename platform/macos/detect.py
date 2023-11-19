@@ -221,6 +221,10 @@ def configure(env: "SConsEnvironment"):
             "QuartzCore",
             "-framework",
             "Security",
+            "-framework",
+            "Metal",
+            "-framework",
+            "MetalKit",
         ]
     )
     env.Append(LIBS=["pthread", "z"])

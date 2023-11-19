@@ -45,6 +45,9 @@
 #if defined(VULKAN_ENABLED)
 #include "rendering_context_driver_vulkan_macos.h"
 #endif // VULKAN_ENABLED
+#if defined(METAL_ENABLED)
+#include "metal_context_macos.h"
+#endif
 #endif // RD_ENABLED
 
 #define BitMap _QDBitMap // Suppress deprecated QuickDraw definition.

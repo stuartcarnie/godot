@@ -110,7 +110,7 @@ platform/web/node_modules/
 .cache/
 
 # CLion
-cmake-build-debug
+cmake-build-*/
 
 # Code::Blocks
 *.cbp

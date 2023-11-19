@@ -213,12 +213,12 @@ def get_version_info(module_version_string="", silent=False):
     return version_info
 
 
-def generate_version_header(module_version_string=""):
+def generate_version_header(module_version_string="", optional_version_outpath=None, optional_version_hash_output=None):
     version_info = get_version_info(module_version_string)
 
     # NOTE: It is safe to generate these files here, since this is still executed serially.
 
-    f = open("core/version_generated.gen.h", "w")
+    f = open("core/version_generated.gen.h" if optional_version_outpath is None else optional_version_outpath, "w")
     f.write(
         """/* THIS FILE IS GENERATED DO NOT EDIT */
 #ifndef VERSION_GENERATED_GEN_H
@@ -241,7 +241,7 @@ def generate_version_header(module_version_string=""):
     )
     f.close()
 
-    fhash = open("core/version_hash.gen.cpp", "w")
+    fhash = open("core/version_hash.gen.cpp" if optional_version_hash_output is None else optional_version_hash_output, "w")
     fhash.write(
         """/* THIS FILE IS GENERATED DO NOT EDIT */
 #include "core/version.h"
@@ -370,8 +370,8 @@ def is_module(path):
     return True
 
 
-def write_disabled_classes(class_list):
-    f = open("core/disabled_classes.gen.h", "w")
+def write_disabled_classes(class_list, output_filepath=None):
+    f = open("core/disabled_classes.gen.h" if output_filepath is None else output_filepath, "w")
     f.write("/* THIS FILE IS GENERATED DO NOT EDIT */\n")
     f.write("#ifndef DISABLED_CLASSES_GEN_H\n")
     f.write("#define DISABLED_CLASSES_GEN_H\n\n")
@@ -382,7 +382,7 @@ def write_disabled_classes(class_list):
     f.write("\n#endif\n")
 
 
-def write_modules(modules):
+def write_modules(modules, cpp_path=None):
     includes_cpp = ""
     initialize_cpp = ""
     uninitialize_cpp = ""
@@ -422,7 +422,7 @@ void uninitialize_modules(ModuleInitializationLevel p_level) {
     )
 
     # NOTE: It is safe to generate this file here, since this is still executed serially
-    with open("modules/register_module_types.gen.cpp", "w") as f:
+    with open("modules/register_module_types.gen.cpp" if cpp_path is None else cpp_path, "w") as f:
         f.write(modules_cpp)
 
 

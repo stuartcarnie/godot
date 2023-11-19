@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+Import("env")
+
+spirv_cross = "#thirdparty/spirv-cross"
+
+# Use bundled Vulkan headers
+env.Prepend(CPPPATH=[spirv_cross, spirv_cross + "/include"])
+
+# Driver source files
+env.add_source_files(env.drivers_sources, "*.cpp")
+env.add_source_files(env.drivers_sources, "*.mm")
+
+# lib_env = env.Clone()
+#
+# lib_env.metal_sources = []
+# lib_env.Prepend(CPPPATH=[spirv_cross, spirv_cross + "/include"])
+#
+# # Driver source files
+# lib_env.add_source_files(lib_env.metal_sources, "*.cpp")
+# lib_env.add_source_files(lib_env.metal_sources, "*.mm")
+# lib = lib_env.add_shared_library("metal_driver", lib_env.metal_sources)
+# env.Prepend(LIBS=[lib])
