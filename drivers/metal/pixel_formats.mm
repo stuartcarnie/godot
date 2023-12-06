@@ -147,6 +147,17 @@ size_t PixelFormats::getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerR
 	return mvkCeilingDivide(texelRowsPerLayer, getDataFormatDesc(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
+MVKMTLFmtCaps PixelFormats::getCapabilities(MTLPixelFormat mtlFormat, bool isExtended) {
+	MVKMTLFormatDesc& mtlDesc = getMTLPixelFormatDesc(mtlFormat);
+	MVKMTLFmtCaps caps = mtlDesc.mtlFmtCaps;
+	if (!isExtended || mtlDesc.mtlViewClass == MVKMTLViewClass::None) { return caps; }
+	// Now get caps of all formats in the view class.
+	for (auto& otherDesc : _mtlPixelFormatDescriptions) {
+		if (otherDesc.mtlViewClass == mtlDesc.mtlViewClass) { caps |= otherDesc.mtlFmtCaps; }
+	}
+	return caps;
+}
+
 MTLVertexFormat PixelFormats::getMTLVertexFormat(DataFormat dataFormat) {
 	auto &vkDesc = getDataFormatDesc(dataFormat);
 	MTLVertexFormat mtlVtxFmt = vkDesc.mtlVertexFormat;

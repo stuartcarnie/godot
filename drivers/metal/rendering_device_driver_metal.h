@@ -257,22 +257,6 @@ public:
 
 	// ----- COMMANDS -----
 
-private:
-	static void populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<AttachmentClearRect> p_rects);
-	static uint32_t populate_vertices(simd::float4 *p_vertices, uint32_t p_index, AttachmentClearRect const &p_rect, Size2i p_fb_size);
-
-	MDResourceFactory *resource_factory;
-	HashMap<ClearAttKey, id<MTLRenderPipelineState>, HashableHasher<ClearAttKey>> clear_states;
-	id<MTLRenderPipelineState> get_clear_render_pipeline_state(ClearAttKey &p_key, NSError **p_error);
-
-	struct {
-		id<MTLDepthStencilState> all;
-		id<MTLDepthStencilState> depth_only;
-		id<MTLDepthStencilState> stencil_only;
-		id<MTLDepthStencilState> none;
-	} clear_depth_stencil_state;
-	id<MTLDepthStencilState> get_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
-
 public:
 	virtual void command_begin_render_pass(CommandBufferID p_cmd_buffer, RenderPassID p_render_pass, FramebufferID p_framebuffer, CommandBufferType p_cmd_buffer_type, const Rect2i &p_rect, VectorView<RenderPassClearValue> p_clear_values) override final;
 	virtual void command_end_render_pass(CommandBufferID p_cmd_buffer) override final;

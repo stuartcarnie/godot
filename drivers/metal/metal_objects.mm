@@ -33,63 +33,63 @@
 #import "pixel_formats.h"
 
 void MDCommandBuffer::begin() {
-	DEV_ASSERT(_commandBuffer == nil);
-	_commandBuffer = _queue.commandBuffer;
+	DEV_ASSERT(commandBuffer == nil);
+	commandBuffer = queue.commandBuffer;
 }
 
 void MDCommandBuffer::end() {
 	switch (type) {
 		case MDCommandBufferStateType::None:
-			break;
+			return;
 		case MDCommandBufferStateType::Render:
-			render_end_pass();
-			break;
+			return render_end_pass();
 		case MDCommandBufferStateType::Compute:
-			endComputeDispatch();
-			break;
+			return end_compute_dispatch();
 		case MDCommandBufferStateType::Blit:
-			endBlit();
-			break;
+			return end_blit();
 	}
 }
 
 void MDCommandBuffer::commit() {
 	end();
-	[_commandBuffer commit];
-	_commandBuffer = nil;
+	[commandBuffer commit];
+	commandBuffer = nil;
 }
 
-void MDCommandBuffer::bindPipeline(RDD::PipelineID pipeline) {
+void MDCommandBuffer::bind_pipeline(RDD::PipelineID pipeline) {
 	MDPipeline *p = (MDPipeline *)(pipeline.id);
 
 	// end current encoder if it is a compute encoder or blit encoder,
-	// as they do not have a defined end boundary like render
+	// as they do not have a defined end boundary in the RDD like render
 	if (type == MDCommandBufferStateType::Compute) {
-		endComputeDispatch();
+		end_compute_dispatch();
 	} else if (type == MDCommandBufferStateType::Blit) {
-		endBlit();
+		end_blit();
 	}
 
 	if (p->type == MDPipelineType::Render) {
 		DEV_ASSERT(type == MDCommandBufferStateType::Render);
-		render.pipeline = (MDRenderPipeline *)p;
-		[render.encoder setRenderPipelineState:render.pipeline->state];
-		if (render.pipeline->depth_stencil != nil) {
-			[render.encoder setDepthStencilState:render.pipeline->depth_stencil];
+		if (render.pipeline != p || render.dirty.has_flag(RenderState::DIRTY_PIPELINE)) {
+			render.dirty.clear_flag(RenderState::DIRTY_PIPELINE);
+			render.dirty.set_flag(RenderState::DIRTY_UNIFORMS);
+			render.pipeline = (MDRenderPipeline *)p;
+			[render.encoder setRenderPipelineState:render.pipeline->state];
+			if (render.pipeline->depth_stencil != nil) {
+				[render.encoder setDepthStencilState:render.pipeline->depth_stencil];
+			}
+			render.pipeline->raster_state.apply(render.encoder);
 		}
-		render.pipeline->raster_state.apply(render.encoder);
-		render.is_dirty = false;
 	} else if (p->type == MDPipelineType::Compute) {
 		DEV_ASSERT(type == MDCommandBufferStateType::None);
 		type = MDCommandBufferStateType::Compute;
 
 		compute.pipeline = (MDComputePipeline *)p;
-		compute.encoder = _commandBuffer.computeCommandEncoder;
+		compute.encoder = commandBuffer.computeCommandEncoder;
 		[compute.encoder setComputePipelineState:compute.pipeline->state];
 	}
 }
 
-id<MTLBlitCommandEncoder> MDCommandBuffer::blitCommandEncoder() {
+id<MTLBlitCommandEncoder> MDCommandBuffer::blit_command_encoder() {
 	switch (type) {
 		case MDCommandBufferStateType::None:
 			break;
@@ -97,14 +97,14 @@ id<MTLBlitCommandEncoder> MDCommandBuffer::blitCommandEncoder() {
 			render_end_pass();
 			break;
 		case MDCommandBufferStateType::Compute:
-			endComputeDispatch();
+			end_compute_dispatch();
 			break;
 		case MDCommandBufferStateType::Blit:
 			return blit.encoder;
 	}
 
 	type = MDCommandBufferStateType::Blit;
-	blit.encoder = _commandBuffer.blitCommandEncoder;
+	blit.encoder = commandBuffer.blitCommandEncoder;
 	return blit.encoder;
 }
 
@@ -116,14 +116,14 @@ void MDCommandBuffer::encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDesc
 			render_end_pass();
 			break;
 		case MDCommandBufferStateType::Compute:
-			endComputeDispatch();
+			end_compute_dispatch();
 			break;
 		case MDCommandBufferStateType::Blit:
-			endBlit();
+			end_blit();
 			break;
 	}
 
-	id<MTLRenderCommandEncoder> enc = [_commandBuffer renderCommandEncoderWithDescriptor:desc];
+	id<MTLRenderCommandEncoder> enc = [commandBuffer renderCommandEncoderWithDescriptor:desc];
 	if (label != nil) {
 		[enc pushDebugGroup:label];
 		[enc popDebugGroup];
@@ -133,8 +133,211 @@ void MDCommandBuffer::encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDesc
 
 #pragma mark - Render Commands
 
+void MDCommandBuffer::render_bind_uniform_set(RDD::UniformSetID p_uniform_set, RDD::ShaderID p_shader, uint32_t p_set_index) {
+	DEV_ASSERT(type == MDCommandBufferStateType::Render);
+
+	MDUniformSet *set = (MDUniformSet *)(p_uniform_set.id);
+	if (render.uniform_sets.size() <= set->index) {
+		render.uniform_sets.resize(set->index + 1);
+	}
+	if (render.uniform_sets[set->index] != nullptr && render.uniform_sets[set->index] != set) {
+		render.dirty.set_flag(RenderState::DIRTY_UNIFORMS);
+	}
+	render.uniform_sets.write[set->index] = set;
+}
+
+void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<RDD::AttachmentClearRect> p_rects) {
+	DEV_ASSERT(type == MDCommandBufferStateType::Render);
+
+	// vertex count
+	uint32_t vertex_count = 0;
+	for (int i = 0; i < p_rects.size(); i++) {
+		vertex_count += p_rects[i].layer_count * 6;
+	}
+
+	simd::float4 vertices[vertex_count];
+	simd::float4 clear_colors[ClearAttKey::ATTACHMENT_COUNT];
+
+	Size2i size = render.frameBuffer->size;
+	populate_vertices(vertices, size, p_rects);
+
+	ClearAttKey key;
+	PixelFormats &pixFmts = context->get_pixel_formats();
+	key.sample_count = render.pass->get_sample_count();
+
+	float depth_value = 0;
+	uint32_t stencil_value = 0;
+
+	for (int i = 0; i < p_attachment_clears.size(); i++) {
+		RDD::AttachmentClear const &attClear = p_attachment_clears[i];
+		MDAttachment const &mda = render.pass->attachments[attClear.color_attachment];
+		if (attClear.aspect.has_flag(RDD::TEXTURE_ASPECT_COLOR_BIT)) {
+			key.set_color_format(attClear.color_attachment, mda.format);
+			clear_colors[attClear.color_attachment] = {
+				attClear.value.color.r,
+				attClear.value.color.g,
+				attClear.value.color.b,
+				attClear.value.color.a
+			};
+		}
+
+		if (attClear.aspect.has_flag(RDD::TEXTURE_ASPECT_DEPTH_BIT)) {
+			key.set_depth_format(mda.format);
+			depth_value = attClear.value.depth;
+		}
+
+		if (attClear.aspect.has_flag(RDD::TEXTURE_ASPECT_STENCIL_BIT)) {
+			key.set_stencil_format(mda.format);
+			stencil_value = attClear.value.stencil;
+		}
+	}
+	clear_colors[ClearAttKey::DEPTH_INDEX] = {
+		depth_value,
+		depth_value,
+		depth_value,
+		depth_value
+	};
+
+	id<MTLRenderCommandEncoder> enc = render.encoder;
+
+	MDResourceCache &cache = context->get_resource_cache();
+
+	[enc pushDebugGroup:@"ClearAttachments"];
+	[enc setRenderPipelineState:cache.get_clear_render_pipeline_state(key, nil)];
+	[enc setDepthStencilState:cache.get_depth_stencil_state(
+									  key.is_depth_enabled(),
+									  key.is_stencil_enabled())];
+	[enc setStencilReferenceValue:stencil_value];
+	[enc setCullMode:MTLCullModeNone];
+	[enc setTriangleFillMode:MTLTriangleFillModeFill];
+	[enc setDepthBias:0 slopeScale:0 clamp:0];
+	[enc setViewport:{ 0, 0, (double)size.width, (double)size.height, 0.0, 1.0 }];
+	[enc setScissorRect:{ 0, 0, (NSUInteger)size.width, (NSUInteger)size.height }];
+
+	[enc setVertexBytes:clear_colors length:sizeof(clear_colors) atIndex:0];
+	[enc setFragmentBytes:clear_colors length:sizeof(clear_colors) atIndex:0];
+	[enc setVertexBytes:vertices length:vertex_count * sizeof(vertices[0]) atIndex:context->get_metal_buffer_index_for_vertex_attribute_binding(VERT_CONTENT_BUFFER_INDEX)];
+
+	[enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertex_count];
+	[enc popDebugGroup];
+
+	render.mark_dirty();
+}
+
+void MDCommandBuffer::render_bind_uniform_sets() {
+	DEV_ASSERT(type == MDCommandBufferStateType::Render);
+	if (!render.dirty.has_flag(RenderState::DIRTY_UNIFORMS)) {
+		return;
+	}
+
+	render.dirty.clear_flag(RenderState::DIRTY_UNIFORMS);
+
+	id<MTLRenderCommandEncoder> enc = render.encoder;
+
+	MDRenderShader *shader = render.pipeline->shader;
+
+	id<MTLDevice> device = enc.device;
+
+	for (MDUniformSet *set : render.uniform_sets) {
+		if (set == nullptr || set->index >= shader->sets.size())
+			continue;
+		UniformSet set_info = shader->sets.get(set->index);
+
+		BoundUniformSet &bus = set->boundUniformSetForShader(shader, device);
+
+		for (auto &keyval : bus.bound_resources) {
+			MTLResourceUsage usage = resource_usage_for_stage(keyval.value, RDD::ShaderStage::SHADER_STAGE_VERTEX);
+			if (usage != 0) {
+				[enc useResource:keyval.key usage:usage stages:MTLRenderStageVertex];
+			}
+			usage = resource_usage_for_stage(keyval.value, RDD::ShaderStage::SHADER_STAGE_FRAGMENT);
+			if (usage != 0) {
+				[enc useResource:keyval.key usage:usage stages:MTLRenderStageFragment];
+			}
+		}
+
+		// vertex
+		{
+			uint32_t *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_VERTEX);
+			if (offset) {
+				[enc setVertexBuffer:bus.buffer offset:*offset atIndex:set->index];
+			}
+		}
+		// fragment
+		{
+			uint32_t *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_FRAGMENT);
+			if (offset) {
+				[enc setFragmentBuffer:bus.buffer offset:*offset atIndex:set->index];
+			}
+		}
+	}
+}
+
+void MDCommandBuffer::populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<RDD::AttachmentClearRect> p_rects) {
+	uint32_t idx = 0;
+	for (int i = 0; i < p_rects.size(); i++) {
+		RDD::AttachmentClearRect const &rect = p_rects[i];
+		idx = populate_vertices(p_vertices, idx, rect, p_fb_size);
+	}
+}
+
+uint32_t MDCommandBuffer::populate_vertices(simd::float4 *p_vertices, uint32_t p_start_vertex, RDD::AttachmentClearRect const &p_rect, Size2i p_fb_size) {
+	// Determine the positions of the four edges of the
+	// clear rectangle as a fraction of the attachment size.
+	float leftPos = (float)(p_rect.rect.position.x) / (float)p_fb_size.width;
+	float rightPos = (float)(p_rect.rect.size.width) / (float)p_fb_size.width + leftPos;
+	float bottomPos = (float)(p_rect.rect.position.y) / (float)p_fb_size.height;
+	float topPos = (float)(p_rect.rect.size.height) / (float)p_fb_size.height + bottomPos;
+
+	// Transform to clip-space coordinates, which are bounded by (-1.0 < p < 1.0) in clip-space.
+	leftPos = (leftPos * 2.0f) - 1.0f;
+	rightPos = (rightPos * 2.0f) - 1.0f;
+	bottomPos = (bottomPos * 2.0f) - 1.0f;
+	topPos = (topPos * 2.0f) - 1.0f;
+
+	simd::float4 vtx;
+
+	uint32_t idx = p_start_vertex;
+	uint32_t startLayer = p_rect.base_layer;
+	uint32_t endLayer = startLayer + p_rect.layer_count;
+	for (uint32_t layer = startLayer; layer < endLayer; layer++) {
+		vtx.z = 0.0;
+		vtx.w = (float)layer;
+
+		// Top left vertex	- First triangle
+		vtx.y = topPos;
+		vtx.x = leftPos;
+		p_vertices[idx++] = vtx;
+
+		// Bottom left vertex
+		vtx.y = bottomPos;
+		vtx.x = leftPos;
+		p_vertices[idx++] = vtx;
+
+		// Bottom right vertex
+		vtx.y = bottomPos;
+		vtx.x = rightPos;
+		p_vertices[idx++] = vtx;
+
+		// Bottom right vertex	- Second triangle
+		p_vertices[idx++] = vtx;
+
+		// Top right vertex
+		vtx.y = topPos;
+		vtx.x = rightPos;
+		p_vertices[idx++] = vtx;
+
+		// Top left vertex
+		vtx.y = topPos;
+		vtx.x = leftPos;
+		p_vertices[idx++] = vtx;
+	}
+
+	return idx;
+}
+
 void MDCommandBuffer::render_begin_pass(RDD::RenderPassID p_render_pass, RDD::FramebufferID p_frameBuffer, RDD::CommandBufferType p_cmd_buffer_type, const Rect2i &p_rect, VectorView<RDD::RenderPassClearValue> p_clear_values) {
-	DEV_ASSERT(_commandBuffer != nil);
+	DEV_ASSERT(commandBuffer != nil);
 	end();
 
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
@@ -146,15 +349,22 @@ void MDCommandBuffer::render_begin_pass(RDD::RenderPassID p_render_pass, RDD::Fr
 
 	type = MDCommandBufferStateType::Render;
 	render.pass = pass;
+	render.current_subpass = UINT32_MAX;
+	render.render_area = p_rect;
+	render.is_rendering_entire_area = (p_rect.position == Point2i(0, 0)) && p_rect.size == fb->size;
+	if (!render.is_rendering_entire_area) {
+		CRASH_NOW_MSG("Unimplemented!");
+	}
 	render.frameBuffer = fb;
-	render.encoder = [_commandBuffer renderCommandEncoderWithDescriptor:desc];
+	render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:desc];
 }
 
 void MDCommandBuffer::render_draw(uint32_t p_vertex_count,
 		uint32_t p_instance_count,
 		uint32_t p_base_vertex,
-		uint32_t p_first_instance) const {
+		uint32_t p_first_instance) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
+	render_bind_uniform_sets();
 
 	id<MTLRenderCommandEncoder> enc = render.encoder;
 
@@ -176,8 +386,9 @@ void MDCommandBuffer::render_draw_indexed(uint32_t p_index_count,
 		uint32_t p_instance_count,
 		uint32_t p_first_index,
 		int32_t p_vertex_offset,
-		uint32_t p_first_instance) const {
+		uint32_t p_first_instance) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
+	render_bind_uniform_sets();
 
 	id<MTLRenderCommandEncoder> enc = render.encoder;
 
@@ -195,23 +406,50 @@ void MDCommandBuffer::render_end_pass() {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
 
 	[render.encoder endEncoding];
-	render = {};
+	render.reset();
 	type = MDCommandBufferStateType::None;
 }
 
-void MDCommandBuffer::endComputeDispatch() {
+#pragma mark - Compute
+
+void MDCommandBuffer::compute_bind_uniform_set(RDD::UniformSetID p_uniform_set, RDD::ShaderID p_shader, uint32_t p_set_index) {
+	DEV_ASSERT(type == MDCommandBufferStateType::Compute);
+
+	id<MTLComputeCommandEncoder> enc = compute.encoder;
+	id<MTLDevice> device = enc.device;
+
+	MDShader *shader = (MDShader *)(p_shader.id);
+	UniformSet set_info = shader->sets.get(p_set_index);
+
+	MDUniformSet *set = (MDUniformSet *)(p_uniform_set.id);
+	BoundUniformSet &bus = set->boundUniformSetForShader(shader, device);
+
+	for (auto &keyval : bus.bound_resources) {
+		MTLResourceUsage usage = resource_usage_for_stage(keyval.value, RDD::ShaderStage::SHADER_STAGE_COMPUTE);
+		if (usage != 0) {
+			[enc useResource:keyval.key usage:usage];
+		}
+	}
+
+	uint32_t *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_COMPUTE);
+	if (offset) {
+		[enc setBuffer:bus.buffer offset:*offset atIndex:p_set_index];
+	}
+}
+
+void MDCommandBuffer::end_compute_dispatch() {
 	DEV_ASSERT(type == MDCommandBufferStateType::Compute);
 
 	[compute.encoder endEncoding];
-	compute = {};
+	compute.reset();
 	type = MDCommandBufferStateType::None;
 }
 
-void MDCommandBuffer::endBlit() {
+void MDCommandBuffer::end_blit() {
 	DEV_ASSERT(type == MDCommandBufferStateType::Blit);
 
 	[blit.encoder endEncoding];
-	blit = {};
+	blit.reset();
 	type = MDCommandBufferStateType::None;
 }
 
@@ -219,8 +457,11 @@ MDComputeShader::MDComputeShader(String p_name, Vector<UniformSet> p_sets, id<MT
 		MDShader(p_name, p_sets), kernel(p_kernel) {
 }
 
-void MDComputeShader::encodePushConstantData(VectorView<uint32_t> data, MDCommandBuffer *cb) {
+void MDComputeShader::encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) {
 	DEV_ASSERT(cb->type == MDCommandBufferStateType::Compute);
+	if (push_constants.binding == -1)
+		return;
+
 	id<MTLComputeCommandEncoder> enc = cb->compute.encoder;
 
 	void const *ptr = data.ptr();
@@ -233,7 +474,7 @@ MDRenderShader::MDRenderShader(String p_name, Vector<UniformSet> p_sets, id<MTLL
 		MDShader(p_name, p_sets), vert(p_vert), frag(p_frag) {
 }
 
-void MDRenderShader::encodePushConstantData(VectorView<uint32_t> data, MDCommandBuffer *cb) {
+void MDRenderShader::encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) {
 	DEV_ASSERT(cb->type == MDCommandBufferStateType::Render);
 	id<MTLRenderCommandEncoder> enc = cb->render.encoder;
 
@@ -249,14 +490,13 @@ void MDRenderShader::encodePushConstantData(VectorView<uint32_t> data, MDCommand
 	}
 }
 
-BoundUniformSet &MDUniformSet::boundUniformSetForShader(RDD::ShaderID p_shader, id<MTLDevice> device) {
+BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<MTLDevice> device) {
 	BoundUniformSet *sus = bound_uniforms.getptr(p_shader);
 	if (sus != nullptr) {
 		return *sus;
 	}
 
-	MDShader *shader = (MDShader *)(p_shader.id);
-	UniformSet const &set = shader->sets[index];
+	UniformSet const &set = p_shader->sets[index];
 
 	HashMap<id<MTLResource>, StageResourceUsage> bound_resources;
 	auto add_usage = [&bound_resources](id<MTLResource> __unsafe_unretained res, RDD::ShaderStage stage, MTLResourceUsage usage) {
@@ -388,12 +628,12 @@ BoundUniformSet &MDUniformSet::boundUniformSetForShader(RDD::ShaderID p_shader, 
 
 MTLRenderPassDescriptor *MDFrameBuffer::newRenderPassDescriptorWithRenderPass(MDRenderPass *pass, VectorView<RDD::RenderPassClearValue> colors) const {
 	MTLRenderPassDescriptor *desc = MTLRenderPassDescriptor.renderPassDescriptor;
-	if (pass->_attachments.is_empty()) {
+	if (pass->attachments.is_empty()) {
 		desc.defaultRasterSampleCount = 4;
 		return desc;
 	}
-	for (int i = 0; i < pass->_attachments.size(); i++) {
-		MDAttachment const &attachment = pass->_attachments[i];
+	for (int i = 0; i < pass->attachments.size(); i++) {
+		MDAttachment const &attachment = pass->attachments[i];
 		id<MTLTexture> tex = textures[i];
 		if ((attachment.type & MDAttachmentType::Color)) {
 			MTLRenderPassColorAttachmentDescriptor *ca = desc.colorAttachments[i];
@@ -421,7 +661,7 @@ MTLRenderPassDescriptor *MDFrameBuffer::newRenderPassDescriptorWithRenderPass(MD
 	return desc;
 }
 
-std::shared_ptr<MDQueryPool> MDQueryPool::newQueryPool(id<MTLDevice> device, NSError **error) {
+std::shared_ptr<MDQueryPool> MDQueryPool::new_query_pool(id<MTLDevice> device, NSError **error) {
 	std::shared_ptr<MDQueryPool> pool(new MDQueryPool());
 
 	// Set the sample count to 4, to make room for the:
@@ -464,7 +704,7 @@ std::shared_ptr<MDQueryPool> MDQueryPool::newQueryPool(id<MTLDevice> device, NSE
 	return pool;
 }
 
-void MDQueryPool::resetWithCommandBuffer(RDD::CommandBufferID p_cmd_buffer) {
+void MDQueryPool::reset_with_command_buffer(RDD::CommandBufferID p_cmd_buffer) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
 
 	MTLTimestamp cpuStartTimestamp, gpuStartTimestamp;
@@ -485,14 +725,14 @@ void MDQueryPool::resetWithCommandBuffer(RDD::CommandBufferID p_cmd_buffer) {
 	}];
 }
 
-void MDQueryPool::getResults(uint64_t *_Nonnull p_results, NSUInteger count) {
+void MDQueryPool::get_results(uint64_t *_Nonnull p_results, NSUInteger count) {
 	DEV_ASSERT(count <= results.size());
 	for (int i = 0; i < count; i++) {
 		p_results[i] = (uint64_t)results[i];
 	}
 }
 
-void MDQueryPool::writeCommandBuffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger index) {
+void MDQueryPool::write_command_buffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger index) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
 
 	switch (cb->type) {
@@ -565,9 +805,9 @@ id<MTLFunction> MDResourceFactory::new_func(NSString *p_source, NSString *p_name
 		id<MTLFunction> mtlFunc = nil;
 		NSError *err = nil;
 		MTLCompileOptions *options = [MTLCompileOptions new];
-		id<MTLLibrary> mtlLib = [context->get_device() newLibraryWithSource:p_source
-																	options:options
-																	  error:&err]; // temp retain
+		id<MTLLibrary> mtlLib = [device newLibraryWithSource:p_source
+													 options:options
+													   error:&err]; // temp retain
 		if (err) {
 			if (p_error != nil) {
 				*p_error = err;
@@ -753,4 +993,34 @@ id<MTLRenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttK
 	id<MTLRenderPipelineState> rps = [device newRenderPipelineStateWithDescriptor:plDesc error:p_error];
 
 	return rps;
+}
+
+id<MTLRenderPipelineState> MDResourceCache::get_clear_render_pipeline_state(ClearAttKey &p_key, NSError **p_error) {
+	auto it = clear_states.find(p_key);
+	if (it != clear_states.end()) {
+		return it->value;
+	}
+
+	id<MTLRenderPipelineState> state = resource_factory->new_clear_pipeline_state(p_key, p_error);
+	clear_states[p_key] = state;
+	return state;
+}
+
+id<MTLDepthStencilState> MDResourceCache::get_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
+	id<MTLDepthStencilState> __strong *val;
+	if (p_use_depth && p_use_stencil) {
+		val = &clear_depth_stencil_state.all;
+	} else if (p_use_depth) {
+		val = &clear_depth_stencil_state.depth_only;
+	} else if (p_use_stencil) {
+		val = &clear_depth_stencil_state.stencil_only;
+	} else {
+		val = &clear_depth_stencil_state.none;
+	}
+	DEV_ASSERT(val != nullptr);
+
+	if (*val == nil) {
+		*val = resource_factory->new_depth_stencil_state(p_use_depth, p_use_stencil);
+	}
+	return *val;
 }

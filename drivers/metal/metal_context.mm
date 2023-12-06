@@ -48,6 +48,8 @@ Error MetalContext::_create_device() {
 
 	device_name = device.name.UTF8String;
 
+	resource_cache = std::make_unique<MDResourceCache>(device, this);
+
 	return OK;
 }
 
@@ -156,7 +158,7 @@ Error MetalContext::_update_swap_chain(Window *window) {
 
 	format = window->layer.pixelFormat;
 
-	Vector<MDAttachment> attachments;
+	TightLocalVector<MDAttachment> attachments;
 	{
 		MDAttachment color;
 		color.type = MDAttachmentType::Color;
@@ -165,7 +167,20 @@ Error MetalContext::_update_swap_chain(Window *window) {
 		color.storeAction = MTLStoreActionStore;
 		attachments.push_back(color);
 	}
-	window->pass = std::make_shared<MDRenderPass>(attachments);
+	TightLocalVector<RDD::Subpass> subpasses;
+	{
+		RDD::Subpass subpass;
+		{
+			RDD::AttachmentReference color_ref;
+			{
+				color_ref.attachment = 0;
+				color_ref.aspect.set_flag(RDD::TEXTURE_ASPECT_COLOR_BIT);
+			}
+			subpass.color_references.push_back(color_ref);
+		}
+		subpasses.push_back(subpass);
+	}
+	window->pass = std::make_shared<MDRenderPass>(std::move(attachments), std::move(subpasses));
 
 	return OK;
 }

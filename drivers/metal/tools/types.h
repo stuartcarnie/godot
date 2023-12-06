@@ -5,9 +5,9 @@
 #ifndef GODOT_TYPES_H
 #define GODOT_TYPES_H
 
-#import <Metal/Metal.h>
 #include "../../../thirdparty/spirv-cross/spirv.hpp"
 #include "../cista.h"
+#import <Metal/Metal.h>
 
 namespace data = cista::offset;
 
@@ -26,6 +26,14 @@ enum UniformType {
 	UNIFORM_TYPE_MAX
 };
 
+enum PipelineSpecializationConstantType {
+	PIPELINE_SPECIALIZATION_CONSTANT_TYPE_BOOL,
+	PIPELINE_SPECIALIZATION_CONSTANT_TYPE_INT,
+	PIPELINE_SPECIALIZATION_CONSTANT_TYPE_FLOAT,
+};
+} //namespace RD
+
+namespace RD {
 enum ShaderStage {
 	SHADER_STAGE_VERTEX,
 	SHADER_STAGE_FRAGMENT,
@@ -40,22 +48,23 @@ enum ShaderStage {
 	SHADER_STAGE_COMPUTE_BIT = (1 << SHADER_STAGE_COMPUTE),
 };
 
-enum PipelineSpecializationConstantType {
-	PIPELINE_SPECIALIZATION_CONSTANT_TYPE_BOOL,
-	PIPELINE_SPECIALIZATION_CONSTANT_TYPE_INT,
-	PIPELINE_SPECIALIZATION_CONSTANT_TYPE_FLOAT,
-};
-} //namespace RD
+}
 
 namespace RDM {
-using namespace RD;
+enum LengthType {
+	Bytes,
+	Array
+};
+
+} //namespace RDM
+
 enum ShaderStageUsage : uint8_t {
 	None = 0,
-	Vertex = SHADER_STAGE_VERTEX_BIT,
-	Fragment = SHADER_STAGE_FRAGMENT_BIT,
-	TesselationControl = SHADER_STAGE_TESSELATION_CONTROL_BIT,
-	TesselationEvaluation = SHADER_STAGE_TESSELATION_EVALUATION_BIT,
-	Compute = SHADER_STAGE_COMPUTE_BIT,
+	Vertex = RD::SHADER_STAGE_VERTEX_BIT,
+	Fragment = RD::SHADER_STAGE_FRAGMENT_BIT,
+	TesselationControl = RD::SHADER_STAGE_TESSELATION_CONTROL_BIT,
+	TesselationEvaluation = RD::SHADER_STAGE_TESSELATION_EVALUATION_BIT,
+	Compute = RD::SHADER_STAGE_COMPUTE_BIT,
 };
 
 inline ShaderStageUsage &operator|=(ShaderStageUsage &a, int b) {
@@ -63,21 +72,17 @@ inline ShaderStageUsage &operator|=(ShaderStageUsage &a, int b) {
 	return a;
 }
 
-enum LengthType {
-	Bytes,
-	Array
-};
-
 struct BindingInfo {
-	MTLDataType dataType;
-	uint32_t index;
-	MTLBindingAccess access;
+	MTLDataType dataType = MTLDataTypeNone;
+	uint32_t index = 0;
+	MTLBindingAccess access = MTLBindingAccessReadOnly;
+	MTLResourceUsage usage = 0;
 	MTLTextureType textureType = MTLTextureType2D;
 	spv::ImageFormat imageFormat = spv::ImageFormatUnknown;
-	uint32_t arrayLength;
+	uint32_t arrayLength = 0;
 	bool isMultisampled = false;
 
-	inline auto newArgumentDescriptor() -> MTLArgumentDescriptor * {
+	[[nodiscard]] inline auto new_argument_descriptor() const -> MTLArgumentDescriptor * {
 		MTLArgumentDescriptor *desc = MTLArgumentDescriptor.argumentDescriptor;
 		desc.dataType = dataType;
 		desc.index = index;
@@ -87,8 +92,6 @@ struct BindingInfo {
 		return desc;
 	}
 };
-
-} //namespace RDM
 
 struct ComputeSize {
 	uint32_t x;
@@ -106,21 +109,24 @@ struct ShaderStageData {
 struct SpecializationConstantData {
 	uint32_t constant_id;
 	RD::PipelineSpecializationConstantType type;
+	ShaderStageUsage stages;
 	// used_stages specifies the stages the constant is used by Metal
-	RDM::ShaderStageUsage used_stages;
+	ShaderStageUsage used_stages;
 	uint32_t int_value;
 };
 
 struct UniformData {
 	RD::UniformType type;
 	uint32_t binding;
+	bool writable;
 	RDM::LengthType length_type;
 	uint32_t length;
-	RDM::ShaderStageUsage stages;
-	// used_stages specifies the stages the uniform data is used by Metal
-	RDM::ShaderStageUsage active_stages;
-	data::hash_map<RD::ShaderStage, RDM::BindingInfo> bindings;
-	data::hash_map<RD::ShaderStage, RDM::BindingInfo> bindings_secondary;
+	ShaderStageUsage stages;
+	// active_stages specifies the stages the uniform data is
+	// used by the Metal shader
+	ShaderStageUsage active_stages;
+	data::hash_map<RD::ShaderStage, BindingInfo> bindings;
+	data::hash_map<RD::ShaderStage, BindingInfo> bindings_secondary;
 };
 
 struct UniformSetData {
@@ -130,8 +136,8 @@ struct UniformSetData {
 
 struct PushConstantData {
 	uint32_t size;
-	RDM::ShaderStageUsage stages;
-	RDM::ShaderStageUsage used_stages;
+	ShaderStageUsage stages;
+	ShaderStageUsage used_stages;
 	data::hash_map<RD::ShaderStage, uint32_t> msl_binding;
 };
 

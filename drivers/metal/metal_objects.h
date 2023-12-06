@@ -90,46 +90,158 @@ class MDComputePipeline;
 class MDFrameBuffer;
 class MDQueryPool;
 class MetalContext;
+class MDUniformSet;
+class MDShader;
+
+#pragma mark - Resource Factory
+
+struct ClearAttKey {
+	const static uint32_t COLOR_COUNT = MAX_COLOR_ATTACHMENT_COUNT;
+	const static uint32_t DEPTH_INDEX = COLOR_COUNT;
+	const static uint32_t STENCIL_INDEX = DEPTH_INDEX + 1;
+	const static uint32_t ATTACHMENT_COUNT = STENCIL_INDEX + 1;
+
+	uint16_t sample_count = 0;
+	uint16_t pixel_formats[ATTACHMENT_COUNT] = { 0 };
+
+	_FORCE_INLINE_ void set_color_format(uint32_t idx, MTLPixelFormat fmt) { pixel_formats[idx] = fmt; }
+	_FORCE_INLINE_ void set_depth_format(MTLPixelFormat fmt) { pixel_formats[DEPTH_INDEX] = fmt; }
+	_FORCE_INLINE_ void set_stencil_format(MTLPixelFormat fmt) { pixel_formats[STENCIL_INDEX] = fmt; }
+	_FORCE_INLINE_ MTLPixelFormat depth_format() const { return (MTLPixelFormat)pixel_formats[DEPTH_INDEX]; }
+	_FORCE_INLINE_ MTLPixelFormat stencil_format() const { return (MTLPixelFormat)pixel_formats[STENCIL_INDEX]; }
+
+	_FORCE_INLINE_ bool is_enabled(uint32_t idx) const { return pixel_formats[idx] != 0; }
+	_FORCE_INLINE_ bool is_depth_enabled() const { return pixel_formats[DEPTH_INDEX] != 0; }
+	_FORCE_INLINE_ bool is_stencil_enabled() const { return pixel_formats[STENCIL_INDEX] != 0; }
+
+	_FORCE_INLINE_ bool operator==(const ClearAttKey &rhs) const { return mvkAreEqual(this, &rhs); }
+
+	[[nodiscard]] uint32_t hash() const {
+		uint32_t h = hash_murmur3_one_32(sample_count);
+		h = hash_murmur3_buffer(pixel_formats, ATTACHMENT_COUNT * sizeof(pixel_formats[0]), h);
+		return h;
+	}
+};
+
+class MDResourceFactory {
+private:
+	id<MTLDevice> device;
+	MetalContext *context;
+
+	id<MTLFunction> new_func(NSString *p_source, NSString *p_name, NSError **p_error);
+	id<MTLFunction> new_clear_vert_func(ClearAttKey &p_key);
+	id<MTLFunction> new_clear_frag_func(ClearAttKey &p_key);
+	NSString *get_format_type_string(MTLPixelFormat p_fmt);
+
+public:
+	id<MTLRenderPipelineState> new_clear_pipeline_state(ClearAttKey &p_key, NSError **p_error);
+	id<MTLDepthStencilState> new_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
+
+	MDResourceFactory(id<MTLDevice> p_device, MetalContext *p_context) :
+			device(p_device), context(p_context) {}
+	~MDResourceFactory() = default;
+};
+
+class MDResourceCache {
+private:
+	std::unique_ptr<MDResourceFactory> resource_factory;
+	HashMap<ClearAttKey, id<MTLRenderPipelineState>, HashableHasher<ClearAttKey>> clear_states;
+
+	struct {
+		id<MTLDepthStencilState> all;
+		id<MTLDepthStencilState> depth_only;
+		id<MTLDepthStencilState> stencil_only;
+		id<MTLDepthStencilState> none;
+	} clear_depth_stencil_state;
+
+public:
+	id<MTLRenderPipelineState> get_clear_render_pipeline_state(ClearAttKey &p_key, NSError **p_error);
+	id<MTLDepthStencilState> get_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
+
+	explicit MDResourceCache(id<MTLDevice> p_device, MetalContext *p_context) :
+			resource_factory(new MDResourceFactory(p_device, p_context)) {}
+	~MDResourceCache() = default;
+};
 
 class MDCommandBuffer {
 private:
-	id<MTLCommandQueue> _queue = nil;
-	id<MTLCommandBuffer> _commandBuffer = nil;
+	MetalContext *context = nullptr;
+	id<MTLCommandQueue> queue = nil;
+	id<MTLCommandBuffer> commandBuffer = nil;
 
-	void endComputeDispatch();
-	void endBlit();
+	void end_compute_dispatch();
+	void end_blit();
+
+#pragma mark - Render
+
+	void render_bind_uniform_sets();
+
+	static void populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<RDD::AttachmentClearRect> p_rects);
+	static uint32_t populate_vertices(simd::float4 *p_vertices, uint32_t p_index, RDD::AttachmentClearRect const &p_rect, Size2i p_fb_size);
 
 public:
 	MDCommandBufferStateType type = MDCommandBufferStateType::None;
 
 	// state
-	struct {
+	struct RenderState {
 		MDRenderPass *pass = nullptr;
 		MDFrameBuffer *frameBuffer = nullptr;
 		MDRenderPipeline *pipeline = nullptr;
+		uint32_t current_subpass = UINT32_MAX;
+		Rect2i render_area = {};
+		bool is_rendering_entire_area = false;
 		id<MTLRenderCommandEncoder> encoder = nil;
 		id<MTLBuffer> index_buffer = nil;
 		MTLIndexType index_type = MTLIndexTypeUInt16;
-		/// is_dirty is set to true if the encoder state is changed after the pipeline has been bound
-		bool is_dirty = false;
+		// clang-format off
+		enum DirtyFlag: uint8_t {
+			DIRTY_NONE     = 0b0000,
+			DIRTY_PIPELINE = 0b0001,
+			DIRTY_UNIFORMS = 0b0010,
+			DIRTY_DEPTH    = 0b0100,
+		};
+		// clang-format on
+		BitField<DirtyFlag> dirty = DIRTY_NONE;
+
+		Vector<MDUniformSet *> uniform_sets;
 
 		void mark_dirty() {
 			if (pipeline)
-				is_dirty = true;
+				dirty.set_flag(DIRTY_PIPELINE);
+		}
+		_FORCE_INLINE_ void reset() {
+			pass = nil;
+			frameBuffer = nil;
+			pipeline = nil;
+			current_subpass = UINT32_MAX;
+			render_area = {};
+			is_rendering_entire_area = false;
+			encoder = nil;
+			index_buffer = nil;
+			index_type = MTLIndexTypeUInt16;
+			dirty = DIRTY_NONE;
+			uniform_sets.clear();
 		}
 	} render;
 
 	struct {
 		MDComputePipeline *pipeline = nullptr;
 		id<MTLComputeCommandEncoder> encoder = nil;
+		_FORCE_INLINE_ void reset() {
+			pipeline = nil;
+			encoder = nil;
+		}
 	} compute;
 
 	struct {
 		id<MTLBlitCommandEncoder> encoder = nil;
+		_FORCE_INLINE_ void reset() {
+			encoder = nil;
+		}
 	} blit;
 
 	_FORCE_INLINE_ id<MTLCommandBuffer> get_command_buffer() const {
-		return _commandBuffer;
+		return commandBuffer;
 	}
 
 	id<MTLCommandEncoder> get_encoder() const {
@@ -149,12 +261,15 @@ public:
 	void commit();
 	void end();
 
-	id<MTLBlitCommandEncoder> blitCommandEncoder();
+	id<MTLBlitCommandEncoder> blit_command_encoder();
 	void encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDescriptor *desc, NSString *label);
 
-	void bindPipeline(RDD::PipelineID pipeline);
+	void bind_pipeline(RDD::PipelineID pipeline);
 
 #pragma mark - Render Commands
+
+	void render_bind_uniform_set(RDD::UniformSetID p_uniform_set, RDD::ShaderID p_shader, uint32_t p_set_index);
+	void render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<RDD::AttachmentClearRect> p_rects);
 
 	void render_begin_pass(RDD::RenderPassID p_render_pass,
 			RDD::FramebufferID p_frameBuffer,
@@ -164,17 +279,21 @@ public:
 	void render_draw(uint32_t p_vertex_count,
 			uint32_t p_instance_count,
 			uint32_t p_base_vertex,
-			uint32_t p_first_instance) const;
+			uint32_t p_first_instance);
 	void render_bind_index_buffer(RDD::BufferID p_buffer, RDD::IndexBufferFormat p_format, uint64_t p_offset);
 	void render_draw_indexed(uint32_t p_index_count,
 			uint32_t p_instance_count,
 			uint32_t p_first_index,
 			int32_t p_vertex_offset,
-			uint32_t p_first_instance) const;
+			uint32_t p_first_instance);
 	void render_end_pass();
 
-	explicit MDCommandBuffer(id<MTLCommandQueue> queue) :
-			_queue(queue) {
+#pragma mark - Compute Commands
+
+	void compute_bind_uniform_set(RDD::UniformSetID p_uniform_set, RDD::ShaderID p_shader, uint32_t p_set_index);
+
+	MDCommandBuffer(id<MTLCommandQueue> p_queue, MetalContext *p_context) :
+			queue(p_queue), context(p_context) {
 		type = MDCommandBufferStateType::None;
 	}
 
@@ -191,7 +310,7 @@ struct BindingInfo {
 	uint32_t arrayLength = 0;
 	bool isMultisampled = false;
 
-	[[nodiscard]] inline auto newArgumentDescriptor() const -> MTLArgumentDescriptor * {
+	[[nodiscard]] inline auto new_argument_descriptor() const -> MTLArgumentDescriptor * {
 		MTLArgumentDescriptor *desc = MTLArgumentDescriptor.argumentDescriptor;
 		desc.dataType = dataType;
 		desc.index = index;
@@ -225,7 +344,7 @@ protected:
 public:
 	Vector<UniformSet> sets;
 
-	virtual void encodePushConstantData(VectorView<uint32_t> data, MDCommandBuffer *cb) = 0;
+	virtual void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) = 0;
 
 	MDShader(String p_name, Vector<UniformSet> p_sets) :
 			name(p_name), sets(p_sets) {}
@@ -245,7 +364,7 @@ public:
 	NSString *kernel_source = nil;
 #endif
 
-	void encodePushConstantData(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
+	void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
 
 	MDComputeShader(String p_name, Vector<UniformSet> p_sets, id<MTLLibrary> p_kernel);
 	~MDComputeShader() override = default;
@@ -271,7 +390,7 @@ public:
 	NSString *frag_source = nil;
 #endif
 
-	void encodePushConstantData(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
+	void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
 
 	MDRenderShader(String p_name, Vector<UniformSet> p_sets, id<MTLLibrary> p_vert, id<MTLLibrary> p_frag);
 	~MDRenderShader() override = default;
@@ -319,9 +438,9 @@ class MDUniformSet {
 public:
 	NSUInteger index;
 	Vector<RDD::BoundUniform> p_uniforms;
-	HashMap<RDD::ShaderID, BoundUniformSet> bound_uniforms;
+	HashMap<MDShader *, BoundUniformSet> bound_uniforms;
 
-	BoundUniformSet &boundUniformSetForShader(RDD::ShaderID p_shader, id<MTLDevice> device);
+	BoundUniformSet &boundUniformSetForShader(MDShader *p_shader, id<MTLDevice> device);
 };
 enum class MDAttachmentType : uint8_t {
 	None = 0,
@@ -352,24 +471,26 @@ class MDRenderPass {
 	NSInteger _stencilIndex;
 
 public:
-	Vector<MDAttachment> _attachments;
+	TightLocalVector<MDAttachment> attachments;
+	TightLocalVector<RDD::Subpass> subpasses;
 
 	[[nodiscard]] MDAttachment const *depth() const {
-		return _depthIndex == NSNotFound ? nullptr : &_attachments[_depthIndex];
+		return _depthIndex == NSNotFound ? nullptr : &attachments[_depthIndex];
 	}
 
 	[[nodiscard]] MDAttachment const *stencil() const {
-		return _stencilIndex == NSNotFound ? nullptr : &_attachments[_stencilIndex];
+		return _stencilIndex == NSNotFound ? nullptr : &attachments[_stencilIndex];
 	}
 
 	uint32_t get_sample_count() const {
-		return _attachments.is_empty() ? 1 : _attachments[0].samples;
+		return attachments.is_empty() ? 1 : attachments[0].samples;
 	};
 
-	MDRenderPass(Vector<MDAttachment> &p_attachments, NSInteger p_depthIndex, NSInteger p_stencilIndex) :
-			_attachments(p_attachments), _depthIndex(p_depthIndex), _stencilIndex(p_stencilIndex) {}
-	explicit MDRenderPass(Vector<MDAttachment> &p_attachments) :
-			MDRenderPass(p_attachments, NSNotFound, NSNotFound) {}
+	MDRenderPass(TightLocalVector<MDAttachment> &&p_attachments, TightLocalVector<RDD::Subpass> &&p_subpasses, NSInteger p_depthIndex, NSInteger p_stencilIndex) :
+			attachments(p_attachments), subpasses(p_subpasses), _depthIndex(p_depthIndex), _stencilIndex(p_stencilIndex) {}
+
+	explicit MDRenderPass(TightLocalVector<MDAttachment> &&p_attachments, TightLocalVector<RDD::Subpass> &&p_subpasses) :
+			MDRenderPass(std::move(p_attachments), std::move(p_subpasses), NSNotFound, NSNotFound) {}
 };
 
 class MDPipeline {
@@ -509,65 +630,16 @@ class MDQueryPool {
 public:
 	[[nodiscard]] id<MTLCounterSampleBuffer> get_counter_sample_buffer() const { return _counterSampleBuffer; }
 
-	void resetWithCommandBuffer(RDD::CommandBufferID p_cmd_buffer);
-	void getResults(uint64_t *p_results, NSUInteger count);
-	void writeCommandBuffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger index);
+	void reset_with_command_buffer(RDD::CommandBufferID p_cmd_buffer);
+	void get_results(uint64_t *p_results, NSUInteger count);
+	void write_command_buffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger index);
 
-	static std::shared_ptr<MDQueryPool> newQueryPool(id<MTLDevice> device, NSError **error);
+	static std::shared_ptr<MDQueryPool> new_query_pool(id<MTLDevice> device, NSError **error);
 
 	~MDQueryPool() = default;
 
 private:
 	MDQueryPool() = default;
-};
-
-#pragma mark - Resource Factory
-
-struct ClearAttKey {
-	const static uint32_t COLOR_COUNT = MAX_COLOR_ATTACHMENT_COUNT;
-	const static uint32_t DEPTH_INDEX = COLOR_COUNT;
-	const static uint32_t STENCIL_INDEX = DEPTH_INDEX + 1;
-	const static uint32_t ATTACHMENT_COUNT = STENCIL_INDEX + 1;
-
-	uint16_t sample_count = 0;
-	uint16_t pixel_formats[ATTACHMENT_COUNT] = { 0 };
-
-	_FORCE_INLINE_ void set_color_format(uint32_t idx, MTLPixelFormat fmt) { pixel_formats[idx] = fmt; }
-	_FORCE_INLINE_ void set_depth_format(MTLPixelFormat fmt) { pixel_formats[DEPTH_INDEX] = fmt; }
-	_FORCE_INLINE_ void set_stencil_format(MTLPixelFormat fmt) { pixel_formats[STENCIL_INDEX] = fmt; }
-	_FORCE_INLINE_ MTLPixelFormat depth_format() const { return (MTLPixelFormat)pixel_formats[DEPTH_INDEX]; }
-	_FORCE_INLINE_ MTLPixelFormat stencil_format() const { return (MTLPixelFormat)pixel_formats[STENCIL_INDEX]; }
-
-	_FORCE_INLINE_ bool is_enabled(uint32_t idx) const { return pixel_formats[idx] != 0; }
-	_FORCE_INLINE_ bool is_depth_enabled() const { return pixel_formats[DEPTH_INDEX] != 0; }
-	_FORCE_INLINE_ bool is_stencil_enabled() const { return pixel_formats[STENCIL_INDEX] != 0; }
-
-	_FORCE_INLINE_ bool operator==(const ClearAttKey &rhs) const { return mvkAreEqual(this, &rhs); }
-
-	[[nodiscard]] uint32_t hash() const {
-		uint32_t h = hash_murmur3_one_32(sample_count);
-		h = hash_murmur3_buffer(pixel_formats, ATTACHMENT_COUNT * sizeof(pixel_formats[0]), h);
-		return h;
-	}
-};
-
-class MDResourceFactory {
-private:
-	id<MTLDevice> device;
-	MetalContext *context;
-
-	id<MTLFunction> new_func(NSString *p_source, NSString *p_name, NSError **p_error);
-	id<MTLFunction> new_clear_vert_func(ClearAttKey &p_key);
-	id<MTLFunction> new_clear_frag_func(ClearAttKey &p_key);
-	NSString *get_format_type_string(MTLPixelFormat p_fmt);
-
-public:
-	id<MTLRenderPipelineState> new_clear_pipeline_state(ClearAttKey &p_key, NSError **p_error);
-	id<MTLDepthStencilState> new_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
-
-	MDResourceFactory(id<MTLDevice> p_device, MetalContext *p_context) :
-			device(p_device), context(p_context) {}
-	~MDResourceFactory() = default;
 };
 
 namespace rid2 {

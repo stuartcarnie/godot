@@ -128,6 +128,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 
 	PixelFormats &formats = context->get_pixel_formats();
 	desc.pixelFormat = formats.getMTLPixelFormat(p_format.format);
+	MVKMTLFmtCaps format_caps = formats.getCapabilities(desc.pixelFormat);
 
 	desc.width = p_format.width;
 	desc.height = p_format.height;
@@ -169,6 +170,35 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 		}
 	}
 
+	static const MTLTextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
+		static_cast<MTLTextureSwizzle>(255), // IDENTITY
+		MTLTextureSwizzleZero,
+		MTLTextureSwizzleOne,
+		MTLTextureSwizzleRed,
+		MTLTextureSwizzleGreen,
+		MTLTextureSwizzleBlue,
+		MTLTextureSwizzleAlpha,
+	};
+
+	MTLTextureSwizzleChannels swizzle = MTLTextureSwizzleChannelsMake(
+			p_view.swizzle_r != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_r] : MTLTextureSwizzleRed,
+			p_view.swizzle_g != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_g] : MTLTextureSwizzleGreen,
+			p_view.swizzle_b != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_b] : MTLTextureSwizzleBlue,
+			p_view.swizzle_a != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_a] : MTLTextureSwizzleAlpha);
+
+	static MTLTextureSwizzleChannels IDENTITY_SWIZZLE = {
+		.red = MTLTextureSwizzleRed,
+		.green = MTLTextureSwizzleGreen,
+		.blue = MTLTextureSwizzleBlue,
+		.alpha = MTLTextureSwizzleAlpha,
+	};
+
+	bool no_swizzle = memcmp(&IDENTITY_SWIZZLE, &swizzle, sizeof(MTLTextureSwizzleChannels)) == 0;
+
+	if (!no_swizzle) {
+		desc.swizzle = swizzle;
+	}
+
 	// Usage.
 	MTLResourceOptions options = MTLResourceCPUCacheModeDefaultCache | MTLResourceHazardTrackingModeTracked;
 	if (p_format.usage_bits & TEXTURE_USAGE_CPU_READ_BIT) {
@@ -186,9 +216,10 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 		desc.usage |= MTLTextureUsageShaderWrite;
 	}
 
-	if (
-			(p_format.usage_bits & TEXTURE_USAGE_COLOR_ATTACHMENT_BIT) ||
-			(p_format.usage_bits & TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+	bool can_be_attachment = mvkIsAnyFlagEnabled(format_caps, (kMVKMTLFmtCapsColorAtt | kMVKMTLFmtCapsDSAtt));
+
+	if (mvkIsAnyFlagEnabled(p_format.usage_bits, TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
+			can_be_attachment) {
 		desc.usage |= MTLTextureUsageRenderTarget;
 	}
 
@@ -201,36 +232,17 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 		ERR_FAIL_V_MSG(RDD::TextureID(), "unsupported: TEXTURE_USAGE_VRS_ATTACHMENT_BIT");
 	}
 
-	if (p_format.usage_bits & TEXTURE_USAGE_CAN_UPDATE_BIT) {
-		// covered by blits
+	if (mvkIsAnyFlagEnabled(p_format.usage_bits, TEXTURE_USAGE_CAN_UPDATE_BIT | TEXTURE_USAGE_CAN_COPY_TO_BIT) &&
+			can_be_attachment && no_swizzle) {
+		// per MoltenVK, can be cleared as a render attachment
+		desc.usage |= MTLTextureUsageRenderTarget;
 	}
 	if (p_format.usage_bits & TEXTURE_USAGE_CAN_COPY_FROM_BIT) {
-		// covered by blits
-	}
-	if (p_format.usage_bits & TEXTURE_USAGE_CAN_COPY_TO_BIT) {
 		// covered by blits
 	}
 
 	// create texture views with a different component layout
 	desc.usage |= MTLTextureUsagePixelFormatView;
-
-	// View validation
-
-	static const MTLTextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
-		static_cast<MTLTextureSwizzle>(255), // IDENTITY
-		MTLTextureSwizzleZero,
-		MTLTextureSwizzleOne,
-		MTLTextureSwizzleRed,
-		MTLTextureSwizzleGreen,
-		MTLTextureSwizzleBlue,
-		MTLTextureSwizzleAlpha,
-	};
-
-	desc.swizzle = MTLTextureSwizzleChannelsMake(
-			p_view.swizzle_r != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_r] : MTLTextureSwizzleRed,
-			p_view.swizzle_g != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_g] : MTLTextureSwizzleGreen,
-			p_view.swizzle_b != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_b] : MTLTextureSwizzleBlue,
-			p_view.swizzle_a != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_a] : MTLTextureSwizzleAlpha);
 
 	// Allocate memory.
 
@@ -567,9 +579,9 @@ void RenderingDeviceDriverMetal::command_pool_free(CommandPoolID p_cmd_pool) {
 
 RDD::CommandBufferID RenderingDeviceDriverMetal::command_buffer_create(CommandBufferType p_cmd_buffer_type, CommandPoolID p_cmd_pool) {
 	id<MTLCommandQueue> queue = rid::get(p_cmd_pool);
-	MDCommandBuffer *obj2 = new MDCommandBuffer(queue);
-	command_buffers.push_back(obj2);
-	return CommandBufferID(obj2);
+	MDCommandBuffer *obj = new MDCommandBuffer(queue, context);
+	command_buffers.push_back(obj);
+	return CommandBufferID(obj);
 }
 
 bool RenderingDeviceDriverMetal::command_buffer_begin(CommandBufferID p_cmd_buffer) {
@@ -602,7 +614,7 @@ RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p
 	textures.resize(p_attachments.size());
 
 	for (int i = 0; i < p_attachments.size(); i += 1) {
-		MDAttachment const &a = pass->_attachments[i];
+		MDAttachment const &a = pass->attachments[i];
 		id<MTLTexture> tex = rid::get(p_attachments[i]);
 		if (tex == nil) {
 			WARN_PRINT("Invalid texture for attachment " + itos(i));
@@ -1081,6 +1093,9 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 
 	spirv_cross::CompilerGLSL::Options options{};
 	options.vertex.flip_vert_y = true;
+#if DEV_ENABLED
+	options.emit_line_directives = true;
+#endif
 
 	for (int i = 0; i < p_spirv.size(); i++) {
 		ShaderStageSPIRVData v = p_spirv[i];
@@ -1363,6 +1378,22 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		ERR_FAIL_COND_V_MSG(!resources.acceleration_structures.empty(), Result(), "Acceleration structures not supported");
 		ERR_FAIL_COND_V_MSG(!resources.shader_record_buffers.empty(), Result(), "Shader record buffers not supported");
 
+		if (!resources.stage_inputs.empty()) {
+			for (auto &res : resources.stage_inputs) {
+				auto a_base_type = compiler.get_type(res.base_type_id);
+				auto basetype = a_base_type.basetype;
+				if (basetype == BT::Struct) {
+					auto struct_size = compiler.get_declared_struct_size(a_base_type);
+					print_line("struct_size: " + itos(struct_size));
+				}
+				auto name = compiler.get_name(res.id);
+				auto binding = compiler.get_automatic_msl_resource_binding(res.id);
+				if (binding != -1) {
+					bin_data.vertex_input_mask |= 1 << binding;
+				}
+			}
+		}
+
 		ShaderStageData stage_data;
 		stage_data.stage = v.shader_stage;
 		stage_data.source_size = source.size();
@@ -1481,10 +1512,10 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 				if (binding_info == nullptr)
 					continue;
 
-				[descriptors addObject:binding_info->newArgumentDescriptor()];
+				[descriptors addObject:binding_info->new_argument_descriptor()];
 				BindingInfo const *secondary_binding_info = uniform.bindings_secondary.getptr(stage);
 				if (secondary_binding_info != nullptr) {
-					[descriptors addObject:secondary_binding_info->newArgumentDescriptor()];
+					[descriptors addObject:secondary_binding_info->new_argument_descriptor()];
 				}
 			}
 
@@ -1604,7 +1635,7 @@ void RenderingDeviceDriverMetal::command_clear_buffer(CommandBufferID p_cmd_buff
 	MDCommandBuffer *cmd = (MDCommandBuffer *)(p_cmd_buffer.id);
 	id<MTLBuffer> buffer = rid::get(p_buffer);
 
-	id<MTLBlitCommandEncoder> blit = cmd->blitCommandEncoder();
+	id<MTLBlitCommandEncoder> blit = cmd->blit_command_encoder();
 	[blit fillBuffer:buffer
 			   range:NSMakeRange(p_offset, p_size)
 			   value:0];
@@ -1615,7 +1646,7 @@ void RenderingDeviceDriverMetal::command_copy_buffer(CommandBufferID p_cmd_buffe
 	id<MTLBuffer> src = rid::get(p_src_buffer);
 	id<MTLBuffer> dst = rid::get(p_dst_buffer);
 
-	id<MTLBlitCommandEncoder> blit = cmd->blitCommandEncoder();
+	id<MTLBlitCommandEncoder> blit = cmd->blit_command_encoder();
 
 	for (uint32_t i = 0; i < p_regions.size(); i++) {
 		BufferCopyRegion region = p_regions[i];
@@ -1670,7 +1701,6 @@ void RenderingDeviceDriverMetal::command_resolve_texture(CommandBufferID p_cmd_b
 
 	ResolveSlice resolveSlices[layerCnt];
 	uint32_t sliceCnt = 0;
-	id<MTLBlitCommandEncoder> enc = cb->blitCommandEncoder();
 	for (uint32_t i = 0; i < p_regions.size(); i++) {
 		TextureCopyRegion region = p_regions[i];
 
@@ -1808,7 +1838,7 @@ void RenderingDeviceDriverMetal::command_copy_buffer_to_texture(CommandBufferID 
 	id<MTLBuffer> buffer = rid::get(p_src_buffer);
 	id<MTLTexture> texture = rid::get(p_dst_texture);
 
-	id<MTLBlitCommandEncoder> enc = cmd->blitCommandEncoder();
+	id<MTLBlitCommandEncoder> enc = cmd->blit_command_encoder();
 
 	PixelFormats &pf = context->get_pixel_formats();
 	MTLPixelFormat mtlPixFmt = texture.pixelFormat;
@@ -1855,7 +1885,7 @@ void RenderingDeviceDriverMetal::command_copy_texture_to_buffer(CommandBufferID 
 	id<MTLTexture> texture = rid::get(p_src_texture);
 	id<MTLBuffer> buffer = rid::get(p_dst_buffer);
 
-	id<MTLBlitCommandEncoder> enc = cmd->blitCommandEncoder();
+	id<MTLBlitCommandEncoder> enc = cmd->blit_command_encoder();
 
 	PixelFormats &pf = context->get_pixel_formats();
 	MTLPixelFormat mtlPixFmt = texture.pixelFormat;
@@ -1911,7 +1941,7 @@ void RenderingDeviceDriverMetal::pipeline_free(PipelineID p_pipeline_id) {
 void RenderingDeviceDriverMetal::command_bind_push_constants(CommandBufferID p_cmd_buffer, ShaderID p_shader, uint32_t p_dst_first_index, VectorView<uint32_t> p_data) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
 	MDShader *shader = (MDShader *)(p_shader.id);
-	shader->encodePushConstantData(p_data, cb);
+	shader->encode_push_constant_data(p_data, cb);
 }
 
 // ----- CACHE -----
@@ -1943,7 +1973,11 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 	size_t subpass_count = p_subpasses.size();
 	CRASH_COND_MSG(subpass_count > 1, "not implemented: multiple subpasses");
 
-	Subpass const &subpass = p_subpasses[0];
+	TightLocalVector<Subpass> subpasses;
+	subpasses.resize(subpass_count);
+	for (uint32_t i = 0; i < p_subpasses.size(); i++) {
+		subpasses[i] = p_subpasses[i];
+	}
 
 	static const MTLLoadAction loadActions[] = {
 		[ATTACHMENT_LOAD_OP_LOAD] = MTLLoadActionLoad,
@@ -1956,14 +1990,14 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 		[ATTACHMENT_STORE_OP_DONT_CARE] = MTLStoreActionDontCare,
 	};
 
-	Vector<MDAttachment> attachments;
+	TightLocalVector<MDAttachment> attachments;
 	attachments.resize(p_attachments.size());
 	NSInteger depth = NSNotFound;
 	NSInteger stencil = NSNotFound;
 
 	for (uint32_t i = 0; i < p_attachments.size(); i++) {
 		Attachment const &a = p_attachments[i];
-		MDAttachment *mda = &attachments.write[i];
+		MDAttachment *mda = &attachments[i];
 		MTLPixelFormat format = pf.getMTLPixelFormat(a.format);
 		mda->format = format;
 		if (a.samples > TEXTURE_SAMPLES_1) {
@@ -1985,7 +2019,7 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 			mda->type |= MDAttachmentType::Color;
 		}
 	}
-	MDRenderPass *obj = new MDRenderPass(attachments, depth, stencil);
+	MDRenderPass *obj = new MDRenderPass(std::move(attachments), std::move(subpasses), depth, stencil);
 	return RenderPassID(obj);
 }
 
@@ -2044,220 +2078,19 @@ void RenderingDeviceDriverMetal::command_render_set_scissor(CommandBufferID p_cm
 	[enc setScissorRects:scissors count:p_scissors.size()];
 }
 
-#pragma mark - Clear Attachments
-
-id<MTLRenderPipelineState> RenderingDeviceDriverMetal::get_clear_render_pipeline_state(ClearAttKey &p_key, NSError **p_error) {
-	auto it = clear_states.find(p_key);
-	if (it != clear_states.end()) {
-		return it->value;
-	}
-
-	id<MTLRenderPipelineState> state = resource_factory->new_clear_pipeline_state(p_key, p_error);
-	clear_states[p_key] = state;
-	return state;
-}
-
-id<MTLDepthStencilState> RenderingDeviceDriverMetal::get_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
-	id<MTLDepthStencilState> __strong *val;
-	if (p_use_depth && p_use_stencil) {
-		val = &clear_depth_stencil_state.all;
-	} else if (p_use_depth) {
-		val = &clear_depth_stencil_state.depth_only;
-	} else if (p_use_stencil) {
-		val = &clear_depth_stencil_state.stencil_only;
-	} else {
-		val = &clear_depth_stencil_state.none;
-	}
-	DEV_ASSERT(val != nullptr);
-
-	if (*val == nil) {
-		*val = resource_factory->new_depth_stencil_state(p_use_depth, p_use_stencil);
-	}
-	return *val;
-}
-
-void RenderingDeviceDriverMetal::populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<AttachmentClearRect> p_rects) {
-	uint32_t idx = 0;
-	for (int i = 0; i < p_rects.size(); i++) {
-		RDD::AttachmentClearRect const &rect = p_rects[i];
-		idx = populate_vertices(p_vertices, idx, rect, p_fb_size);
-	}
-}
-
-uint32_t RenderingDeviceDriverMetal::populate_vertices(simd::float4 *p_vertices, uint32_t p_start_vertex, AttachmentClearRect const &p_rect, Size2i p_fb_size) {
-	// Determine the positions of the four edges of the
-	// clear rectangle as a fraction of the attachment size.
-	float leftPos = (float)(p_rect.rect.position.x) / (float)p_fb_size.width;
-	float rightPos = (float)(p_rect.rect.size.width) / (float)p_fb_size.width + leftPos;
-	float bottomPos = (float)(p_rect.rect.position.y) / (float)p_fb_size.height;
-	float topPos = (float)(p_rect.rect.size.height) / (float)p_fb_size.height + bottomPos;
-
-	// Transform to clip-space coordinates, which are bounded by (-1.0 < p < 1.0) in clip-space.
-	leftPos = (leftPos * 2.0f) - 1.0f;
-	rightPos = (rightPos * 2.0f) - 1.0f;
-	bottomPos = (bottomPos * 2.0f) - 1.0f;
-	topPos = (topPos * 2.0f) - 1.0f;
-
-	simd::float4 vtx;
-
-	uint32_t idx = p_start_vertex;
-	uint32_t startLayer = p_rect.base_layer;
-	uint32_t endLayer = startLayer + p_rect.layer_count;
-	for (uint32_t layer = startLayer; layer < endLayer; layer++) {
-		vtx.z = 0.0;
-		vtx.w = (float)layer;
-
-		// Top left vertex	- First triangle
-		vtx.y = topPos;
-		vtx.x = leftPos;
-		p_vertices[idx++] = vtx;
-
-		// Bottom left vertex
-		vtx.y = bottomPos;
-		vtx.x = leftPos;
-		p_vertices[idx++] = vtx;
-
-		// Bottom right vertex
-		vtx.y = bottomPos;
-		vtx.x = rightPos;
-		p_vertices[idx++] = vtx;
-
-		// Bottom right vertex	- Second triangle
-		p_vertices[idx++] = vtx;
-
-		// Top right vertex
-		vtx.y = topPos;
-		vtx.x = rightPos;
-		p_vertices[idx++] = vtx;
-
-		// Top left vertex
-		vtx.y = topPos;
-		vtx.x = leftPos;
-		p_vertices[idx++] = vtx;
-	}
-
-	return idx;
-}
-
 void RenderingDeviceDriverMetal::command_render_clear_attachments(CommandBufferID p_cmd_buffer, VectorView<AttachmentClear> p_attachment_clears, VectorView<AttachmentClearRect> p_rects) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	DEV_ASSERT(cb->type == MDCommandBufferStateType::Render);
-
-	// vertex count
-	uint32_t vertex_count = 0;
-	for (int i = 0; i < p_rects.size(); i++) {
-		vertex_count += p_rects[i].layer_count * 6;
-	}
-
-	simd::float4 vertices[vertex_count];
-	simd::float4 clear_colors[ClearAttKey::ATTACHMENT_COUNT];
-
-	Size2i size = cb->render.frameBuffer->size;
-	populate_vertices(vertices, size, p_rects);
-
-	ClearAttKey key;
-	PixelFormats &pixFmts = context->get_pixel_formats();
-	key.sample_count = cb->render.pass->get_sample_count();
-
-	float depth_value = 0;
-	uint32_t stencil_value = 0;
-
-	for (int i = 0; i < p_attachment_clears.size(); i++) {
-		AttachmentClear const &attClear = p_attachment_clears[i];
-		MDAttachment const &mda = cb->render.pass->_attachments[attClear.color_attachment];
-		if (attClear.aspect.has_flag(TEXTURE_ASPECT_COLOR_BIT)) {
-			key.set_color_format(attClear.color_attachment, mda.format);
-			clear_colors[attClear.color_attachment] = {
-				attClear.value.color.r,
-				attClear.value.color.g,
-				attClear.value.color.b,
-				attClear.value.color.a
-			};
-		}
-
-		if (attClear.aspect.has_flag(TEXTURE_ASPECT_DEPTH_BIT)) {
-			key.set_depth_format(mda.format);
-			depth_value = attClear.value.depth;
-		}
-
-		if (attClear.aspect.has_flag(TEXTURE_ASPECT_STENCIL_BIT)) {
-			key.set_stencil_format(mda.format);
-			stencil_value = attClear.value.stencil;
-		}
-	}
-	clear_colors[ClearAttKey::DEPTH_INDEX] = {
-		depth_value,
-		depth_value,
-		depth_value,
-		depth_value
-	};
-
-	id<MTLRenderCommandEncoder> enc = cb->render.encoder;
-
-	[enc pushDebugGroup:@"ClearAttachments"];
-	[enc setRenderPipelineState:get_clear_render_pipeline_state(key, nil)];
-	[enc setDepthStencilState:get_depth_stencil_state(
-									  key.is_depth_enabled(),
-									  key.is_stencil_enabled())];
-	[enc setStencilReferenceValue:stencil_value];
-	[enc setCullMode:MTLCullModeNone];
-	[enc setTriangleFillMode:MTLTriangleFillModeFill];
-	[enc setDepthBias:0 slopeScale:0 clamp:0];
-	[enc setViewport:{ 0, 0, (double)size.width, (double)size.height, 0.0, 1.0 }];
-	[enc setScissorRect:{ 0, 0, (NSUInteger)size.width, (NSUInteger)size.height }];
-
-	[enc setVertexBytes:clear_colors length:sizeof(clear_colors) atIndex:0];
-	[enc setFragmentBytes:clear_colors length:sizeof(clear_colors) atIndex:0];
-	[enc setVertexBytes:vertices length:vertex_count * sizeof(vertices[0]) atIndex:context->get_metal_buffer_index_for_vertex_attribute_binding(VERT_CONTENT_BUFFER_INDEX)];
-
-	[enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertex_count];
-	[enc popDebugGroup];
-
-	cb->render.mark_dirty();
+	cb->render_clear_attachments(p_attachment_clears, p_rects);
 }
 
 void RenderingDeviceDriverMetal::command_bind_render_pipeline(CommandBufferID p_cmd_buffer, PipelineID p_pipeline) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	cb->bindPipeline(p_pipeline);
+	cb->bind_pipeline(p_pipeline);
 }
 
 void RenderingDeviceDriverMetal::command_bind_render_uniform_set(CommandBufferID p_cmd_buffer, UniformSetID p_uniform_set, ShaderID p_shader, uint32_t p_set_index) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	DEV_ASSERT(cb->type == MDCommandBufferStateType::Render);
-
-	id<MTLRenderCommandEncoder> enc = cb->render.encoder;
-
-	MDRenderShader *shader = (MDRenderShader *)(p_shader.id);
-	UniformSet set_info = shader->sets.get(p_set_index);
-
-	MDUniformSet *set = (MDUniformSet *)(p_uniform_set.id);
-	BoundUniformSet &bus = set->boundUniformSetForShader(p_shader, device);
-
-	for (auto &keyval : bus.bound_resources) {
-		MTLResourceUsage usage = resource_usage_for_stage(keyval.value, RDD::ShaderStage::SHADER_STAGE_VERTEX);
-		if (usage != 0) {
-			[enc useResource:keyval.key usage:usage stages:MTLRenderStageVertex];
-		}
-		usage = resource_usage_for_stage(keyval.value, RDD::ShaderStage::SHADER_STAGE_FRAGMENT);
-		if (usage != 0) {
-			[enc useResource:keyval.key usage:usage stages:MTLRenderStageFragment];
-		}
-	}
-
-	// vertex
-	{
-		uint32_t *offset = set_info.offsets.getptr(SHADER_STAGE_VERTEX);
-		if (offset) {
-			[enc setVertexBuffer:bus.buffer offset:*offset atIndex:p_set_index];
-		}
-	}
-	// fragment
-	{
-		uint32_t *offset = set_info.offsets.getptr(SHADER_STAGE_FRAGMENT);
-		if (offset) {
-			[enc setFragmentBuffer:bus.buffer offset:*offset atIndex:p_set_index];
-		}
-	}
+	cb->render_bind_uniform_set(p_uniform_set, p_shader, p_set_index);
 }
 
 void RenderingDeviceDriverMetal::command_render_draw(CommandBufferID p_cmd_buffer, uint32_t p_vertex_count, uint32_t p_instance_count, uint32_t p_base_vertex, uint32_t p_first_instance) {
@@ -2407,7 +2240,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 		for (int i = 0; i < p_color_attachments.size(); i++) {
 			int32_t attachment = p_color_attachments[i];
 			if (attachment != ATTACHMENT_UNUSED) {
-				MDAttachment const &a = pass->_attachments[attachment];
+				MDAttachment const &a = pass->attachments[attachment];
 				desc.colorAttachments[attachment].pixelFormat = a.format;
 			}
 		}
@@ -2668,32 +2501,12 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 
 void RenderingDeviceDriverMetal::command_bind_compute_pipeline(CommandBufferID p_cmd_buffer, PipelineID p_pipeline) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	cb->bindPipeline(p_pipeline);
+	cb->bind_pipeline(p_pipeline);
 }
 
 void RenderingDeviceDriverMetal::command_bind_compute_uniform_set(CommandBufferID p_cmd_buffer, UniformSetID p_uniform_set, ShaderID p_shader, uint32_t p_set_index) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	DEV_ASSERT(cb->type == MDCommandBufferStateType::Compute);
-
-	id<MTLComputeCommandEncoder> enc = cb->compute.encoder;
-
-	MDShader *shader = (MDShader *)(p_shader.id);
-	UniformSet set_info = shader->sets.get(p_set_index);
-
-	MDUniformSet *set = (MDUniformSet *)(p_uniform_set.id);
-	BoundUniformSet &bus = set->boundUniformSetForShader(p_shader, device);
-
-	for (auto &keyval : bus.bound_resources) {
-		MTLResourceUsage usage = resource_usage_for_stage(keyval.value, RDD::ShaderStage::SHADER_STAGE_COMPUTE);
-		if (usage != 0) {
-			[enc useResource:keyval.key usage:usage];
-		}
-	}
-
-	uint32_t *offset = set_info.offsets.getptr(SHADER_STAGE_COMPUTE);
-	if (offset) {
-		[enc setBuffer:bus.buffer offset:*offset atIndex:p_set_index];
-	}
+	cb->compute_bind_uniform_set(p_uniform_set, p_shader, p_set_index);
 }
 
 void RenderingDeviceDriverMetal::command_compute_dispatch(CommandBufferID p_cmd_buffer, uint32_t p_x_groups, uint32_t p_y_groups, uint32_t p_z_groups) {
@@ -2707,7 +2520,13 @@ void RenderingDeviceDriverMetal::command_compute_dispatch(CommandBufferID p_cmd_
 }
 
 void RenderingDeviceDriverMetal::command_compute_dispatch_indirect(CommandBufferID p_cmd_buffer, BufferID p_indirect_buffer, uint64_t p_offset) {
-	ERR_FAIL_MSG("not implemented");
+	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
+	DEV_ASSERT(cb->type == MDCommandBufferStateType::Compute);
+
+	id<MTLBuffer> indirectBuffer = rid::get(p_indirect_buffer);
+
+	id<MTLComputeCommandEncoder> enc = cb->compute.encoder;
+	[enc dispatchThreadgroupsWithIndirectBuffer:indirectBuffer indirectBufferOffset:p_offset threadsPerThreadgroup:cb->compute.pipeline->compute_state.local];
 }
 
 // ----- PIPELINE -----
@@ -2742,7 +2561,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 
 RDD::QueryPoolID RenderingDeviceDriverMetal::timestamp_query_pool_create(uint32_t p_query_count) {
 	NSError *error = nil;
-	std::shared_ptr<MDQueryPool> pool = MDQueryPool::newQueryPool(device, &error);
+	std::shared_ptr<MDQueryPool> pool = MDQueryPool::new_query_pool(device, &error);
 	ERR_FAIL_COND_V_MSG(error != nil, RDD::QueryPoolID(), ([NSString stringWithFormat:@"error creating query pool: %@", error.localizedDescription].UTF8String));
 	return rid2::to_id<QueryPoolID>(pool);
 }
@@ -2753,7 +2572,7 @@ void RenderingDeviceDriverMetal::timestamp_query_pool_free(QueryPoolID p_pool_id
 
 void RenderingDeviceDriverMetal::timestamp_query_pool_get_results(QueryPoolID p_pool_id, uint32_t p_query_count, uint64_t *r_results) {
 	auto pool = rid2::get<MDQueryPool>(p_pool_id);
-	pool->getResults(r_results, p_query_count);
+	pool->get_results(r_results, p_query_count);
 }
 
 uint64_t RenderingDeviceDriverMetal::timestamp_query_result_to_time(uint64_t p_result) {
@@ -2762,12 +2581,12 @@ uint64_t RenderingDeviceDriverMetal::timestamp_query_result_to_time(uint64_t p_r
 
 void RenderingDeviceDriverMetal::command_timestamp_query_pool_reset(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_query_count) {
 	auto pool = rid2::get<MDQueryPool>(p_pool_id);
-	pool->resetWithCommandBuffer(p_cmd_buffer);
+	pool->reset_with_command_buffer(p_cmd_buffer);
 }
 
 void RenderingDeviceDriverMetal::command_timestamp_write(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_index) {
 	auto pool = rid2::get<MDQueryPool>(p_pool_id);
-	pool->writeCommandBuffer(p_cmd_buffer, p_index);
+	pool->write_command_buffer(p_cmd_buffer, p_index);
 }
 
 /****************/
@@ -2785,16 +2604,36 @@ RDD::DataFormat RenderingDeviceDriverMetal::screen_get_format() {
 void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_id, const String &p_name) {
 	switch (p_type) {
 		case OBJECT_TYPE_TEXTURE: {
+			id<MTLTexture> tex = rid::get(p_driver_id);
+			tex.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
 		} break;
 		case OBJECT_TYPE_SAMPLER: {
+			id<MTLSamplerState> sampler = rid::get(p_driver_id);
+			// can't set label after creation
 		} break;
 		case OBJECT_TYPE_BUFFER: {
+			id<MTLBuffer> buffer = rid::get(p_driver_id);
+			buffer.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
 		} break;
 		case OBJECT_TYPE_SHADER: {
+			MDShader *shader = (MDShader *)(p_driver_id.id);
+			if (MDRenderShader *rs = dynamic_cast<MDRenderShader *>(shader); rs != nullptr) {
+				rs->vert.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
+				rs->frag.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
+			} else if (MDComputeShader *cs = dynamic_cast<MDComputeShader *>(shader); cs != nullptr) {
+				cs->kernel.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
+			} else {
+				DEV_ASSERT(false);
+			}
 		} break;
 		case OBJECT_TYPE_UNIFORM_SET: {
+			MDUniformSet *set = (MDUniformSet *)(p_driver_id.id);
+			std::for_each(set->bound_uniforms.begin(), set->bound_uniforms.end(), [&](auto &keyval) {
+				keyval.value.buffer.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
+			});
 		} break;
 		case OBJECT_TYPE_PIPELINE: {
+			// can't set label after creation
 		} break;
 		default: {
 			DEV_ASSERT(false);
@@ -2805,22 +2644,22 @@ void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_
 uint64_t RenderingDeviceDriverMetal::get_resource_native_handle(DriverResource p_type, ID p_driver_id) {
 	switch (p_type) {
 		case DRIVER_RESOURCE_LOGICAL_DEVICE: {
-			return (uint64_t)0;
+			return 0;
 		}
 		case DRIVER_RESOURCE_PHYSICAL_DEVICE: {
-			return (uint64_t)0;
+			return 0;
 		}
 		case DRIVER_RESOURCE_TOPMOST_OBJECT: {
-			return (uint64_t)0;
+			return 0;
 		}
 		case DRIVER_RESOURCE_COMMAND_QUEUE: {
-			return (uint64_t)0;
+			return 0;
 		}
 		case DRIVER_RESOURCE_QUEUE_FAMILY: {
 			return 0;
 		}
 		case DRIVER_RESOURCE_TEXTURE: {
-			return 0;
+			return p_driver_id.id;
 		}
 		case DRIVER_RESOURCE_TEXTURE_VIEW: {
 			return p_driver_id.id;
@@ -2828,13 +2667,18 @@ uint64_t RenderingDeviceDriverMetal::get_resource_native_handle(DriverResource p
 		case DRIVER_RESOURCE_TEXTURE_DATA_FORMAT: {
 			return 0;
 		}
-		case DRIVER_RESOURCE_SAMPLER:
-		case DRIVER_RESOURCE_UNIFORM_SET:
-		case DRIVER_RESOURCE_BUFFER:
-		case DRIVER_RESOURCE_COMPUTE_PIPELINE:
-		case DRIVER_RESOURCE_RENDER_PIPELINE: {
+		case DRIVER_RESOURCE_SAMPLER: {
 			return p_driver_id.id;
 		}
+		case DRIVER_RESOURCE_UNIFORM_SET:
+			return 0;
+		case DRIVER_RESOURCE_BUFFER: {
+			return p_driver_id.id;
+		}
+		case DRIVER_RESOURCE_COMPUTE_PIPELINE:
+			return 0;
+		case DRIVER_RESOURCE_RENDER_PIPELINE:
+			return 0;
 		default: {
 			return 0;
 		}
@@ -2967,9 +2811,8 @@ const RDD::MultiviewCapabilities &RenderingDeviceDriverMetal::get_multiview_capa
 /******************/
 
 RenderingDeviceDriverMetal::RenderingDeviceDriverMetal(MetalContext *p_context, id<MTLDevice> p_device) :
-		context(p_context), device(p_device), resource_factory(new MDResourceFactory(p_device, p_context)) {}
+		context(p_context), device(p_device) {}
 RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
-	delete resource_factory;
 	for (MDCommandBuffer *cb : command_buffers) {
 		delete cb;
 	}

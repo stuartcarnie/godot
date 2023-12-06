@@ -298,6 +298,9 @@ public:
 	 */
 	size_t getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 
+	/** Returns the Metal format capabilities supported by the specified Metal format. */
+	MVKMTLFmtCaps getCapabilities(MTLPixelFormat mtlFormat, bool isExtended = false);
+
 	/**
 	 * Returns the Metal MTLVertexFormat corresponding to the specified
 	 * DataFormat as used as a vertex attribute format.

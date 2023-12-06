@@ -46,6 +46,7 @@
 @class CAMetalLayer;
 @protocol CAMetalDrawable;
 class PixelFormats;
+class MDResourceCache;
 
 class MetalContext : public ApiContextRD {
 private:
@@ -54,6 +55,7 @@ private:
 	uint32_t version_minor = 0;
 	MetalDeviceProperties *metal_device_properties = nullptr;
 	PixelFormats *pixel_formats = nullptr;
+	std::unique_ptr<MDResourceCache> resource_cache;
 
 	RDD::MultiviewCapabilities multiview_capabilities;
 
@@ -108,6 +110,7 @@ public:
 	uint32_t get_version_major() const { return version_major; };
 	uint32_t get_version_minor() const { return version_minor; };
 	PixelFormats &get_pixel_formats() const { return *pixel_formats; }
+	MDResourceCache &get_resource_cache() const { return *resource_cache; }
 
 	char const *get_api_name() const final { return "Metal"; };
 	RenderingDevice::Capabilities get_device_capabilities() const final;

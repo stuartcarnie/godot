@@ -181,7 +181,7 @@ def check_output(func):
         output_dir = pathlib.Path(output_path).parent
 
         if not output_dir.exists():
-            log.info(f'Creating directory: {output_dir.as_posix()}')
+            log.debug(f'Creating directory: {output_dir.as_posix()}')
             try:
                 output_dir.mkdir(parents=True, exist_ok=True)
             except:
@@ -466,7 +466,7 @@ def cmd_make_editor_platform_exporters(source: str, target: str) -> int:
 @check_output
 def cmd_make_modules_enabled_and_types(args: argparse.Namespace) -> int:
     input_file = args.input
-    log.info('Detect all the Godot Modules to generate the module data')
+    log.debug('Detect all the Godot Modules to generate the module data')
     base_godot_engine_dir = str(pathlib.Path(input_file).parent) + "/"
     unordered_modules = detect_modules_within_searchpath(input_file, env)
     # Strip paths based on the output
@@ -508,7 +508,7 @@ def cmd_make_data_class_path(source: str, target: str) -> int:
     os.chdir(base_godot_engine_dir)
 
     def generate_docs_from_path(base_directory, relative_base_path):
-        log.info("base_directory: %s   %s " % (base_directory, relative_base_path))
+        log.debug("base_directory: %s   %s " % (base_directory, relative_base_path))
         found_docs = {}
         search_string = base_directory + "*.xml"
         found_xml_doc_files = Glob.glob(search_string, recursive=True)
@@ -672,7 +672,7 @@ def _main() -> int:
     parsed = parser.parse_args()
 
     for arg in [var for var in vars(parsed) if var != 'func']:
-        log.info(f'{arg} : {getattr(parsed, arg)}')
+        log.debug(f'{arg} : {getattr(parsed, arg)}')
 
     if hasattr(parsed, 'func'):
         return parsed.func(parsed)

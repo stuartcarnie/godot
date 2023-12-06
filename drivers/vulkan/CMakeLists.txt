@@ -11,7 +11,6 @@ if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     target_sources(driver-vulkan PRIVATE
             rendering_device_driver_vulkan.cpp
             rendering_device_driver_vulkan.h
-            rendering_device_vulkan.cpp
             vulkan_context.cpp
             vulkan_context.h
             vulkan_hooks.h
