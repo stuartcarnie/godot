@@ -34,46 +34,6 @@
 
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/sysctl.h>
-#include <sys/time.h>
-
-// Function to check if a debugger is attached to the current process
-bool is_debugger_attached() {
-	int mib[4];
-	struct kinfo_proc info{};
-	size_t size = sizeof(info);
-
-	// Initialize the flags so that, if sysctl fails, info.kp_proc.p_flag will be 0.
-	info.kp_proc.p_flag = 0;
-
-	// Initialize mib, which tells sysctl the info we want, in this case we're looking for information
-	// about a specific process ID.
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_PROC;
-	mib[2] = KERN_PROC_PID;
-	mib[3] = getpid();
-
-	if (sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, nullptr, 0) != 0) {
-		perror("sysctl");
-		return false;
-	}
-
-	return (info.kp_proc.p_flag & P_TRACED) != 0;
-}
-
-// Function to wait for a debugger to attach until a specified time has elapsed
-bool wait_for_debugger(CFTimeInterval wait_time) {
-	CFAbsoluteTime start = CFAbsoluteTimeGetCurrent();
-	while (!is_debugger_attached()) {
-		if (CFAbsoluteTimeGetCurrent() > start + wait_time) {
-			return false;
-		}
-		// Sleep for 100ms
-		[NSThread sleepForTimeInterval:0.100];
-	}
-	return true;
-}
 
 #if defined(SANITIZERS_ENABLED)
 #include <sys/resource.h>

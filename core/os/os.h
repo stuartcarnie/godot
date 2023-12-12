@@ -308,6 +308,10 @@ public:
 	virtual Vector<String> get_granted_permissions() const { return Vector<String>(); }
 	virtual void revoke_granted_permissions() {}
 
+#if DEV_ENABLED
+	virtual void wait_for_debugger(uint32_t p_msec) {}
+#endif
+
 	// For recording / measuring benchmark data. Only enabled with tools
 	void set_use_benchmark(bool p_use_benchmark);
 	bool is_use_benchmark_set();

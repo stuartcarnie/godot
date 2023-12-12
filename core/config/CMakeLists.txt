@@ -49,5 +49,5 @@ endif()
 
 target_compile_definitions(godot-config
         PRIVATE
-        $<$<BOOL:${METAL_ENABLED}>:METAL_ENABLED=1>
+        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED=1>
 )

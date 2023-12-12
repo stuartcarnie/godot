@@ -1675,6 +1675,14 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 				goto error;
 			}
 #endif // TOOLS_ENABLED && MODULE_GDSCRIPT_ENABLED && !GDSCRIPT_NO_LSP
+#ifdef DEV_ENABLED
+		} else if (I->get() == "--os-debug") {
+			int msec = 1000; // wait 5 seconds by default
+			if (I->next()) {
+				msec = I->next()->get().to_int();
+			}
+			OS::get_singleton()->wait_for_debugger(msec);
+#endif
 		} else if (I->get() == "--" || I->get() == "++") {
 			adding_user_args = true;
 		} else {
@@ -1880,7 +1888,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 			driver_hints_with_d3d12 = String(",").join(driver_hints_arr);
 
 #ifdef METAL_ENABLED
-			driver_hints_arr.push_back("metal");
+			// make metal the preferred and default driver
+			driver_hints_arr.insert(0, "metal");
 #endif
 			driver_hints_with_metal = String(",").join(driver_hints_arr);
 		}

@@ -117,6 +117,10 @@ public:
 	virtual Vector<String> get_granted_permissions() const override;
 	virtual void revoke_granted_permissions() override;
 
+#ifdef DEV_ENABLED
+	virtual void wait_for_debugger(uint32_t p_msec) override;
+#endif
+
 	virtual bool _check_internal_feature_support(const String &p_feature) override;
 
 	virtual void disable_crash_handler() override;

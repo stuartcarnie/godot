@@ -65,6 +65,8 @@ endif ()
 if (ENABLE_DEBUG_FEATURES)
     message(STATUS "Enabling debug features")
     set(WANT_DEBUG_FEATURES 1)
+else ()
+    set(WANT_DEBUG_FEATURES 0)
 endif ()
 
 add_compile_definitions($<${WANT_DOUBLE_PRECISION}:REAL_T_IS_DOUBLE>)

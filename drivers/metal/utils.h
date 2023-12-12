@@ -60,3 +60,43 @@ constexpr typename std::common_type<T, U>::type mvkCeilingDivide(T numerator, U 
 	// Short circuit very common usecase of dividing by one.
 	return (denominator == 1) ? numerator : (R(numerator) + denominator - 1) / denominator;
 }
+
+#pragma mark - Alignment and Offsets
+
+/** Returns whether the specified positive value is a power-of-two. */
+template<typename T>
+static constexpr bool mvkIsPowerOfTwo(T value) {
+	return value && ((value & (value - 1)) == 0);
+}
+
+/**
+ * Aligns the byte reference to the specified alignment, and returns the aligned value,
+ * which will be greater than or equal to the reference if alignDown is false, or less
+ * than or equal to the reference if alignDown is true.
+ *
+ * This is a low level utility method. Usually you will use the convenience functions
+ * mvkAlignAddress() and mvkAlignByteCount() to align addresses and offsets respectively.
+ */
+static constexpr uintptr_t mvkAlignByteRef(uintptr_t byteRef, uintptr_t byteAlignment, bool alignDown = false) {
+	if (byteAlignment == 0) { return byteRef; }
+
+	assert(mvkIsPowerOfTwo(byteAlignment));
+
+	uintptr_t mask = byteAlignment - 1;
+	uintptr_t alignedRef = (byteRef + mask) & ~mask;
+
+	if (alignDown && (alignedRef > byteRef)) {
+		alignedRef -= byteAlignment;
+	}
+
+	return alignedRef;
+}
+
+/**
+ * Aligns the byte offset to the specified byte alignment, and returns the aligned offset,
+ * which will be greater than or equal to the original offset if alignDown is false, or less
+ * than or equal to the original offset if alignDown is true.
+ */
+static constexpr uint64_t mvkAlignByteCount(uint64_t byteCount, uint64_t byteAlignment, bool alignDown = false) {
+	return mvkAlignByteRef(byteCount, byteAlignment, alignDown);
+}

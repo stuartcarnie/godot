@@ -89,6 +89,9 @@ public:
 	/*****************/
 	/**** TEXTURE ****/
 	/*****************/
+private:
+	uint32_t _compute_plane_slice(DataFormat p_format, BitField<TextureAspectBits> p_aspect_bits);
+	uint32_t _compute_plane_slice(DataFormat p_format, TextureAspect p_aspect);
 
 public:
 	virtual TextureID texture_create(const TextureFormat &p_format, const TextureView &p_view) override final;
@@ -97,8 +100,8 @@ public:
 	virtual TextureID texture_create_shared_from_slice(TextureID p_original_texture, const TextureView &p_view, TextureSliceType p_slice_type, uint32_t p_layer, uint32_t p_layers, uint32_t p_mipmap, uint32_t p_mipmaps) override final;
 	virtual void texture_free(TextureID p_texture) override final;
 	virtual uint64_t texture_get_allocation_size(TextureID p_texture) override final;
-	virtual void texture_get_subresource_layout(TextureID p_texture, const TextureSubresource &p_subresource, TextureSubresourceLayout *r_layout) override final;
-	virtual uint8_t *texture_map(TextureID p_texture) override final;
+	virtual void texture_get_copyable_layout(TextureID p_texture, const TextureSubresource &p_subresource, TextureCopyableLayout *r_layout) override final;
+	virtual uint8_t *texture_map(TextureID p_texture, const TextureSubresource &p_subresource) override final;
 	virtual void texture_unmap(TextureID p_texture) override final;
 	virtual BitField<TextureUsageBits> texture_get_usages_supported_by_format(DataFormat p_format, bool p_cpu_readable) override final;
 
@@ -136,7 +139,7 @@ public:
 
 	// ----- POOL -----
 
-	virtual CommandPoolID command_pool_create() override final;
+	virtual CommandPoolID command_pool_create(CommandBufferType p_cmd_buffer_type) override final;
 	virtual void command_pool_free(CommandPoolID p_cmd_pool) override final;
 
 	// ----- BUFFER -----
@@ -212,15 +215,19 @@ public:
 	virtual UniformSetID uniform_set_create(VectorView<BoundUniform> p_uniforms, ShaderID p_shader, uint32_t p_set_index) override final;
 	virtual void uniform_set_free(UniformSetID p_uniform_set) override final;
 
+	// ----- COMMANDS -----
+
+	virtual void command_uniform_set_prepare_for_use(CommandBufferID p_cmd_buffer, UniformSetID p_uniform_set, ShaderID p_shader, uint32_t p_set_index) override final;
+
 	/******************/
 	/**** TRANSFER ****/
 	/******************/
 
 	virtual void command_clear_buffer(CommandBufferID p_cmd_buffer, BufferID p_buffer, uint64_t p_offset, uint64_t p_size) override final;
 	virtual void command_copy_buffer(CommandBufferID p_cmd_buffer, BufferID p_src_buffer, BufferID p_dst_buffer, VectorView<BufferCopyRegion> p_regions) override final;
-	virtual void command_copy_texture(CommandBufferID p_cmd_buffer, TextureID p_src_texture, TextureLayout p_src_texture_layout, TextureID p_dst_texture, TextureLayout p_dst_texture_layout, VectorView<TextureCopyRegion> p_regions) override final;
-	virtual void command_resolve_texture(CommandBufferID p_cmd_buffer, TextureID p_src_texture, TextureLayout p_src_texture_layout, TextureID p_dst_texture, TextureLayout p_dst_texture_layout, VectorView<TextureCopyRegion> p_regions) override final;
 
+	virtual void command_copy_texture(CommandBufferID p_cmd_buffer, TextureID p_src_texture, TextureLayout p_src_texture_layout, TextureID p_dst_texture, TextureLayout p_dst_texture_layout, VectorView<TextureCopyRegion> p_regions) override final;
+	virtual void command_resolve_texture(CommandBufferID p_cmd_buffer, TextureID p_src_texture, TextureLayout p_src_texture_layout, uint32_t p_src_layer, uint32_t p_src_mipmap, TextureID p_dst_texture, TextureLayout p_dst_texture_layout, uint32_t p_dst_layer, uint32_t p_dst_mipmap) override final;
 	virtual void command_clear_color_texture(CommandBufferID p_cmd_buffer, TextureID p_texture, TextureLayout p_texture_layout, const Color &p_color, const TextureSubresourceRange &p_subresources) override final;
 
 	virtual void command_copy_buffer_to_texture(CommandBufferID p_cmd_buffer, BufferID p_src_buffer, TextureID p_dst_texture, TextureLayout p_dst_texture_layout, VectorView<BufferTextureCopyRegion> p_regions) override final;
@@ -263,7 +270,7 @@ public:
 	virtual void command_next_render_subpass(CommandBufferID p_cmd_buffer, CommandBufferType p_cmd_buffer_type) override final;
 	virtual void command_render_set_viewport(CommandBufferID p_cmd_buffer, VectorView<Rect2i> p_viewports) override final;
 	virtual void command_render_set_scissor(CommandBufferID p_cmd_buffer, VectorView<Rect2i> p_scissors) override final;
-	virtual void command_render_clear_attachments(CommandBufferID p_cmd_buffer, VectorView<AttachmentClear> p_attachment_clears, VectorView<AttachmentClearRect> p_rects) override final;
+	virtual void command_render_clear_attachments(CommandBufferID p_cmd_buffer, VectorView<AttachmentClear> p_attachment_clears, VectorView<Rect2i> p_rects) override final;
 
 	// Binding.
 	virtual void command_bind_render_pipeline(CommandBufferID p_cmd_buffer, PipelineID p_pipeline) override final;
@@ -341,6 +348,13 @@ public:
 
 	virtual DataFormat screen_get_format() override final;
 
+	/********************/
+	/**** SUBMISSION ****/
+	/********************/
+
+	virtual void begin_segment(CommandBufferID p_cmd_buffer, uint32_t p_frame_index, uint32_t p_frames_drawn) override final;
+	virtual void end_segment() override final;
+
 	/**************/
 	/**** MISC ****/
 	/**************/
@@ -349,6 +363,7 @@ public:
 	virtual uint64_t get_resource_native_handle(DriverResource p_type, ID p_driver_id) override final;
 	virtual uint64_t get_total_memory_used() override final;
 	virtual uint64_t limit_get(Limit p_limit) override final;
+	virtual uint64_t api_trait_get(ApiTrait p_trait) override final;
 	virtual bool has_feature(Features p_feature) override final;
 	virtual const MultiviewCapabilities &get_multiview_capabilities() override final;
 

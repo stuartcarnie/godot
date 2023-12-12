@@ -157,6 +157,8 @@ target_sources(godot-editor PRIVATE
         filesystem_dock.h
         find_in_files.cpp
         find_in_files.h
+        group_settings_editor.cpp
+        group_settings_editor.h
         groups_editor.cpp
         groups_editor.h
         history_dock.cpp

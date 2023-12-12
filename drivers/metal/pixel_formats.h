@@ -34,7 +34,6 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
-#include "metal_context.h"
 #include "servers/rendering/rendering_device.h"
 
 #import <Metal/Metal.h>
@@ -51,14 +50,19 @@ static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 typedef enum : uint16_t {
 
 	kMVKMTLFmtCapsNone = 0,
+	/*! The format can be used in a shader read operation. */
 	kMVKMTLFmtCapsRead = (1 << 0),
 	kMVKMTLFmtCapsFilter = (1 << 1),
+	/*! The format can be used in a shader write operation. */
 	kMVKMTLFmtCapsWrite = (1 << 2),
 	kMVKMTLFmtCapsAtomic = (1 << 3),
+	/*! The format can be used as a color attachment. */
 	kMVKMTLFmtCapsColorAtt = (1 << 4),
+	/*! The format can be used as a depth-stencil attachment. */
 	kMVKMTLFmtCapsDSAtt = (1 << 5),
 	kMVKMTLFmtCapsBlend = (1 << 6),
 	kMVKMTLFmtCapsMSAA = (1 << 7),
+	/*! The format can be used as a resolve attachment. */
 	kMVKMTLFmtCapsResolve = (1 << 8),
 	kMVKMTLFmtCapsVertex = (1 << 9),
 
@@ -219,10 +223,35 @@ public:
 	bool isSupportedOrSubstitutable(DataFormat dataFormat);
 
 	/** Returns whether the specified Metal MTLPixelFormat can be used as a depth format. */
-	bool isDepthFormat(MTLPixelFormat mtlFormat);
+	_FORCE_INLINE_ bool isDepthFormat(MTLPixelFormat mtlFormat) {
+		switch (mtlFormat) {
+			case MTLPixelFormatDepth32Float:
+			case MTLPixelFormatDepth16Unorm:
+			case MTLPixelFormatDepth32Float_Stencil8:
+#if TARGET_OS_OSX
+			case MTLPixelFormatDepth24Unorm_Stencil8:
+#endif
+				return true;
+			default:
+				return false;
+		}
+	}
 
 	/** Returns whether the specified Metal MTLPixelFormat can be used as a stencil format. */
-	bool isStencilFormat(MTLPixelFormat mtlFormat);
+	_FORCE_INLINE_ bool isStencilFormat(MTLPixelFormat mtlFormat) {
+		switch (mtlFormat) {
+			case MTLPixelFormatStencil8:
+#if TARGET_OS_OSX
+			case MTLPixelFormatDepth24Unorm_Stencil8:
+			case MTLPixelFormatX24_Stencil8:
+#endif
+			case MTLPixelFormatDepth32Float_Stencil8:
+			case MTLPixelFormatX32_Stencil8:
+				return true;
+			default:
+				return false;
+		}
+	}
 
 	/** Returns whether the specified Metal MTLPixelFormat is a PVRTC format. */
 	bool isPVRTCFormat(MTLPixelFormat mtlFormat);
@@ -308,10 +337,10 @@ public:
 	MTLVertexFormat getMTLVertexFormat(DataFormat dataFormat);
 #pragma mark Construction
 
-	explicit PixelFormats(MetalContext *context = nullptr);
+	explicit PixelFormats(id<MTLDevice> p_device);
 
 protected:
-	MetalContext *_context;
+	id<MTLDevice> device;
 
 	MVKDataFormatDesc &getDataFormatDesc(DataFormat dataFormat);
 	MVKDataFormatDesc &getDataFormatDesc(MTLPixelFormat mtlFormat);

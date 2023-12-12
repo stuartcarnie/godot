@@ -43,35 +43,6 @@ bool PixelFormats::isSupportedOrSubstitutable(DataFormat dataFormat) {
 	return getDataFormatDesc(dataFormat).isSupportedOrSubstitutable();
 }
 
-bool PixelFormats::isDepthFormat(MTLPixelFormat mtlFormat) {
-	switch (mtlFormat) {
-		case MTLPixelFormatDepth32Float:
-		case MTLPixelFormatDepth16Unorm:
-		case MTLPixelFormatDepth32Float_Stencil8:
-#if TARGET_OS_OSX
-		case MTLPixelFormatDepth24Unorm_Stencil8:
-#endif
-			return true;
-		default:
-			return false;
-	}
-}
-
-bool PixelFormats::isStencilFormat(MTLPixelFormat mtlFormat) {
-	switch (mtlFormat) {
-		case MTLPixelFormatStencil8:
-#if TARGET_OS_OSX
-		case MTLPixelFormatDepth24Unorm_Stencil8:
-		case MTLPixelFormatX24_Stencil8:
-#endif
-		case MTLPixelFormatDepth32Float_Stencil8:
-		case MTLPixelFormatX32_Stencil8:
-			return true;
-		default:
-			return false;
-	}
-}
-
 bool PixelFormats::isPVRTCFormat(MTLPixelFormat mtlFormat) {
 	switch (mtlFormat) {
 		case MTLPixelFormatPVRTC_RGBA_2BPP:
@@ -211,8 +182,8 @@ MVKMTLFormatDesc &PixelFormats::getMTLVertexFormatDesc(MTLVertexFormat mtlFormat
 	return _mtlVertexFormatDescriptions[fmtIdx];
 }
 
-PixelFormats::PixelFormats(MetalContext *context) :
-		_context(context) {
+PixelFormats::PixelFormats(id<MTLDevice> p_device) :
+		device(p_device) {
 	initMTLPixelFormatCapabilities();
 	initMTLVertexFormatCapabilities();
 	buildMTLFormatMaps();
@@ -868,7 +839,7 @@ void PixelFormats::addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 }
 
 void PixelFormats::modifyMTLFormatCapabilities() {
-	modifyMTLFormatCapabilities(_context->get_device());
+	modifyMTLFormatCapabilities(device);
 }
 
 #define addFeatSetMTLPixFmtCaps(FEAT_SET, MTL_FMT, CAPS) \
@@ -1294,10 +1265,7 @@ void PixelFormats::setFormatProperties(MVKDataFormatDesc &vkDesc) {
 	enableFormatFeatures(ColorAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 
-	// We would really want to use the device's Metal features instead of duplicating
-	// the logic from MVKPhysicalDevice, but those may not have been initialized yet.
-	id<MTLDevice> mtlDev = _context->get_device();
-	bool supportsStencilFeedback = [mtlDev supportsFamily:MTLGPUFamilyApple5];
+	bool supportsStencilFeedback = [device supportsFamily:MTLGPUFamilyApple5];
 
 	// Linear tiling is not available to depth/stencil or compressed formats.
 	// GBGR and BGRG formats also do not support linear tiling in Metal.

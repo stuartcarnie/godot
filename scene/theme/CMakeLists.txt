@@ -33,6 +33,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/hslider_tick.svg
         icons/hsplitter.svg
         icons/indeterminate.svg
+        icons/indeterminate_disabled.svg
         icons/line_edit_clear.svg
         icons/mini_checkerboard.svg
         icons/option_button_arrow.svg

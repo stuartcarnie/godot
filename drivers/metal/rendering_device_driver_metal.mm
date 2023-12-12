@@ -58,6 +58,30 @@ static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_ALWAYS, MTLCompareFunctionAlway
 
 // static_assert(ARRAYS_COMPATIBLE_FIELDWISE(Rect2i, VkRect2D));
 
+_FORCE_INLINE_ MTLSize mipmapLevelSizeFromTexture(id<MTLTexture> tex, NSUInteger level) {
+	MTLSize lvlSize;
+	lvlSize.width = std::max(tex.width >> level, 1UL);
+	lvlSize.height = std::max(tex.height >> level, 1UL);
+	lvlSize.depth = std::max(tex.depth >> level, 1UL);
+	return lvlSize;
+}
+
+_FORCE_INLINE_ MTLSize mipmapLevelSizeFromSize(MTLSize size, NSUInteger level) {
+	MTLSize lvlSize;
+	lvlSize.width = std::max(size.width >> level, 1UL);
+	lvlSize.height = std::max(size.height >> level, 1UL);
+	lvlSize.depth = std::max(size.depth >> level, 1UL);
+	return lvlSize;
+}
+
+_FORCE_INLINE_ static bool operator==(MTLSize a, MTLSize b) {
+	return a.width == b.width && a.height == b.height && a.depth == b.depth;
+}
+
+_FORCE_INLINE_ static bool operator!=(MTLSize a, MTLSize b) {
+	return !(a == b);
+}
+
 /****************/
 /**** MEMORY ****/
 /****************/
@@ -216,6 +240,9 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 		desc.usage |= MTLTextureUsageShaderWrite;
 	}
 
+	if (p_format.usage_bits & TEXTURE_USAGE_STORAGE_ATOMIC_BIT) {
+	}
+
 	bool can_be_attachment = mvkIsAnyFlagEnabled(format_caps, (kMVKMTLFmtCapsColorAtt | kMVKMTLFmtCapsDSAtt));
 
 	if (mvkIsAnyFlagEnabled(p_format.usage_bits, TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
@@ -249,12 +276,32 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 	uint32_t width, height;
 	uint32_t image_size = get_image_format_required_size(p_format.format, p_format.width, p_format.height, p_format.depth, p_format.mipmaps, &width, &height);
 
+	// check if it is a linear format for atomics
+	bool needs_buffer = ((p_format.usage_bits & TEXTURE_USAGE_CPU_READ_BIT) == TEXTURE_USAGE_CPU_READ_BIT) ||
+			(p_format.array_layers == 1 && p_format.mipmaps == 1 && p_format.texture_type == TEXTURE_TYPE_2D && p_format.usage_bits & TEXTURE_USAGE_STORAGE_BIT &&
+					(p_format.format == DATA_FORMAT_R32_UINT || p_format.format == DATA_FORMAT_R32_SINT));
+
 	id<MTLTexture> obj = nil;
-	if (p_format.usage_bits & TEXTURE_USAGE_CPU_READ_BIT) {
-		// must create texture from buffer, so it can be accessed directly by CPU via pointer
-		id<MTLBuffer> buf = [device newBufferWithLength:image_size options:options];
-		// TODO(sgc): I'm not sure bytesPerRow will work with 0, but we'll need to test
-		obj = [buf newTextureWithDescriptor:desc offset:0 bytesPerRow:0];
+	if (needs_buffer) {
+		// this logic was extracted from MoltenVK
+
+		size_t row_alignment = context->get_texel_buffer_alignment_for_format(p_format.format);
+		size_t byte_count = 0;
+		MTLSize size = MTLSizeMake(p_format.width, p_format.height, p_format.depth);
+		MTLPixelFormat pixel_format = desc.pixelFormat;
+		for (uint32_t mipLvl = 0; mipLvl < p_format.mipmaps; mipLvl++) {
+			MTLSize mipExtent = mipmapLevelSizeFromSize(size, mipLvl);
+			size_t bytes_per_row = formats.getBytesPerRow(pixel_format, mipExtent.width);
+			bytes_per_row = mvkAlignByteCount(bytes_per_row, row_alignment);
+			size_t bytes_per_layer = formats.getBytesPerLayer(pixel_format, bytes_per_row, mipExtent.height);
+			byte_count += bytes_per_layer * mipExtent.depth * p_format.array_layers;
+		}
+
+		size_t bytes_per_row = formats.getBytesPerRow(pixel_format, size.width);
+		bytes_per_row = mvkAlignByteCount(bytes_per_row, row_alignment);
+
+		id<MTLBuffer> buf = [device newBufferWithLength:byte_count options:options];
+		obj = [buf newTextureWithDescriptor:desc offset:0 bytesPerRow:bytes_per_row];
 	} else {
 		obj = [device newTextureWithDescriptor:desc];
 	}
@@ -373,13 +420,86 @@ uint64_t RenderingDeviceDriverMetal::texture_get_allocation_size(TextureID p_tex
 	return obj.allocatedSize;
 }
 
-void RenderingDeviceDriverMetal::texture_get_subresource_layout(TextureID p_texture, const TextureSubresource &p_subresource, TextureSubresourceLayout *r_layout) {
-	ERR_FAIL_MSG("not implemented");
+void RenderingDeviceDriverMetal::texture_get_copyable_layout(TextureID p_texture, const TextureSubresource &p_subresource, TextureCopyableLayout *r_layout) {
+	id<MTLTexture> obj = rid::get(p_texture);
+	*r_layout = {};
+
+	// Tight.
+	uint32_t w = obj.width;
+	uint32_t h = obj.height;
+	uint32_t d = obj.depth;
+
+	PixelFormats &pf = context->get_pixel_formats();
+	DataFormat format = pf.getDataFormat(obj.pixelFormat);
+	if (p_subresource.mipmap > 0) {
+		r_layout->offset = get_image_format_required_size(format, w, h, d, p_subresource.mipmap - 1);
+	} else {
+		r_layout->offset = 0;
+	}
+
+	for (uint32_t i = 0; i < p_subresource.mipmap; i++) {
+		w = MAX(1u, w >> 1);
+		h = MAX(1u, h >> 1);
+		d = MAX(1u, d >> 1);
+	}
+
+	r_layout->size = get_image_format_required_size(format, w, h, d, 1);
+	r_layout->row_pitch = r_layout->size / (h * d);
+	r_layout->depth_pitch = r_layout->size / d;
+	r_layout->layer_pitch = r_layout->size / obj.arrayLength;
 }
 
-uint8_t *RenderingDeviceDriverMetal::texture_map(TextureID p_texture) {
+uint32_t RenderingDeviceDriverMetal::_compute_plane_slice(DataFormat p_format, BitField<TextureAspectBits> p_aspect_bits) {
+	TextureAspect aspect = TEXTURE_ASPECT_MAX;
+
+	if (p_aspect_bits.has_flag(TEXTURE_ASPECT_COLOR_BIT)) {
+		DEV_ASSERT(aspect == TEXTURE_ASPECT_MAX);
+		aspect = TEXTURE_ASPECT_COLOR;
+	}
+	if (p_aspect_bits.has_flag(TEXTURE_ASPECT_DEPTH_BIT)) {
+		DEV_ASSERT(aspect == TEXTURE_ASPECT_MAX);
+		aspect = TEXTURE_ASPECT_DEPTH;
+	}
+	if (p_aspect_bits.has_flag(TEXTURE_ASPECT_STENCIL_BIT)) {
+		DEV_ASSERT(aspect == TEXTURE_ASPECT_MAX);
+		aspect = TEXTURE_ASPECT_STENCIL;
+	}
+
+	DEV_ASSERT(aspect != TEXTURE_ASPECT_MAX);
+
+	return _compute_plane_slice(p_format, aspect);
+}
+
+uint32_t RenderingDeviceDriverMetal::_compute_plane_slice(DataFormat p_format, TextureAspect p_aspect) {
+	switch (p_aspect) {
+		case TEXTURE_ASPECT_COLOR:
+			// The plane must be 0 for the color aspect (assuming the format is a regular color one, which must be the case).
+			return 0;
+		case TEXTURE_ASPECT_DEPTH:
+			// The plane must be 0 for the color or depth aspect
+			return 0;
+		case TEXTURE_ASPECT_STENCIL:
+			// The plane may be 0 for the stencil aspect (if the format is stencil-only), or 1 (if the format is depth-stencil; other cases are ill).
+			return format_get_plane_count(p_format) == 2 ? 1 : 0;
+		default:
+			DEV_ASSERT(false);
+			return 0;
+	}
+}
+
+uint8_t *RenderingDeviceDriverMetal::texture_map(TextureID p_texture, const TextureSubresource &p_subresource) {
 	id<MTLTexture> obj = rid::get(p_texture);
 	ERR_FAIL_NULL_V_MSG(obj.buffer, nullptr, "texture is not created from a buffer");
+
+	PixelFormats &pf = context->get_pixel_formats();
+	DataFormat format = pf.getDataFormat(obj.pixelFormat);
+	uint32_t plane = _compute_plane_slice(format, p_subresource.aspect);
+
+	// TODO(sgc): calculate offset into buffer for the requested subresource
+	if (p_subresource.layer > 1 || p_subresource.mipmap > 0) {
+		CRASH_NOW_MSG("implement subresource mapping");
+	}
+
 	return (uint8_t *)obj.buffer.contents;
 }
 
@@ -388,10 +508,12 @@ void RenderingDeviceDriverMetal::texture_unmap(TextureID p_texture) {
 }
 
 BitField<RDD::TextureUsageBits> RenderingDeviceDriverMetal::texture_get_usages_supported_by_format(DataFormat p_format, bool p_cpu_readable) {
-	// Everything supported by default makes an all-or-nothing check easier for the caller.
-	BitField<RDD::TextureUsageBits> supported = INT64_MAX;
+	PixelFormats &pf = context->get_pixel_formats();
+	MTLPixelFormat format = pf.getMTLPixelFormat(p_format);
+
+	// Everything supported by default if the format is valid.
 	// TODO(sgc): implement correct supported flags
-	return supported;
+	return format == MTLPixelFormatInvalid ? 0 : INT64_MAX;
 }
 
 /*****************/
@@ -492,7 +614,7 @@ RDD::SamplerID RenderingDeviceDriverMetal::sampler_create(const SamplerState &p_
 	desc.normalizedCoordinates = !p_state.unnormalized_uvw;
 
 	if (p_state.lod_bias != 0.0) {
-		WARN_PRINT("unsupported lod_bias value");
+		WARN_PRINT_ONCE("Metal does not support LOD bias for samplers.");
 	}
 
 	id<MTLSamplerState> obj = [device newSamplerStateWithDescriptor:desc];
@@ -566,7 +688,8 @@ void RenderingDeviceDriverMetal::command_pipeline_barrier(
 
 // ----- POOL -----
 
-RDD::CommandPoolID RenderingDeviceDriverMetal::command_pool_create() {
+RDD::CommandPoolID RenderingDeviceDriverMetal::command_pool_create(CommandBufferType p_cmd_buffer_type) {
+	DEV_ASSERT(p_cmd_buffer_type == COMMAND_BUFFER_TYPE_PRIMARY);
 	id<MTLCommandQueue> queue = context->get_graphics_queue();
 	return rid::make(queue);
 }
@@ -610,7 +733,7 @@ void RenderingDeviceDriverMetal::command_buffer_execute_secondary(CommandBufferI
 RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p_render_pass, VectorView<TextureID> p_attachments, uint32_t p_width, uint32_t p_height) {
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
 
-	Vector<MTL::Texture> textures;
+	LocalVector<MTL::Texture> textures;
 	textures.resize(p_attachments.size());
 
 	for (int i = 0; i < p_attachments.size(); i += 1) {
@@ -624,7 +747,7 @@ RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p
 				WARN_PRINT("Mismatched sample count for attachment " + itos(i) + "; expected " + itos(a.samples) + ", got " + itos(tex.sampleCount));
 			}
 		}
-		textures.write[i] = tex;
+		textures[i] = tex;
 	}
 
 	MDFrameBuffer *fb = new MDFrameBuffer(textures, Size2i(p_width, p_height));
@@ -657,95 +780,12 @@ struct ComputeSize {
 	uint32_t z;
 };
 
-// Write a function to convert a ComputeSize to NSString
-static NSString *NSStringFromComputeSize(ComputeSize size) {
-	return [NSString stringWithFormat:@"{%u, %u, %u}", size.x, size.y, size.z];
-}
-
-// Write a function to convert a NSString to ComputeSize
-static ComputeSize ComputeSizeFromNSString(NSString *str) {
-	if (str == nil || str.UTF8String == nil) {
-		return {};
-	}
-
-	ComputeSize size{};
-	if (sscanf(str.UTF8String, "{%u, %u, %u}", &size.x, &size.y, &size.z) != 3) {
-		return {};
-	}
-	return size;
-}
-
 struct ShaderStageData {
 	RD::ShaderStage stage;
 	data::string entry_point_name;
 	data::vector<uint8_t> source_data;
 	uint32_t source_size;
 };
-
-@interface ShaderStageData2 : NSObject <NSSecureCoding>
-@property(nonatomic) NSString *entryPointName;
-@property(nonatomic) NSString *source;
-@end
-@implementation ShaderStageData2
-+ (BOOL)supportsSecureCoding {
-	return YES;
-}
-
-- (void)encodeWithCoder:(NSCoder *)coder {
-	[coder encodeObject:_entryPointName forKey:@"entryPointName"];
-	char const *ptr = _source.UTF8String;
-	size_t inputLen = strlen(ptr);
-	NSData *compressedSource = [[NSData dataWithBytesNoCopy:(void *)ptr length:inputLen freeWhenDone:NO] compressedDataUsingAlgorithm:NSDataCompressionAlgorithmLZFSE error:nil];
-	[coder encodeObject:compressedSource forKey:@"sourceCompressed"];
-}
-
-- (instancetype)initWithCoder:(NSCoder *)coder {
-	if (self = [super init]) {
-		self.entryPointName = [coder decodeObjectOfClass:[NSString class] forKey:@"entryPointName"];
-		NSData *compressedSource = [coder decodeObjectOfClass:[NSData class] forKey:@"sourceCompressed"];
-		NSData *uncompressed = [compressedSource decompressedDataUsingAlgorithm:NSDataCompressionAlgorithmLZFSE error:nil];
-		_source = [[NSString alloc] initWithData:uncompressed encoding:NSUTF8StringEncoding];
-	}
-	return self;
-}
-
-@end
-
-@interface BindingInfo2 : NSObject <NSSecureCoding>
-@property(nonatomic) MTLDataType dataType;
-@property(nonatomic) uint32_t index;
-@property(nonatomic) MTLBindingAccess access;
-@property(nonatomic) MTLTextureType textureType;
-@property(nonatomic) spv::ImageFormat imageFormat;
-@property(nonatomic) uint32_t arrayLength;
-@property(nonatomic) BOOL isMultisampled;
-@end
-@implementation BindingInfo2
-+ (BOOL)supportsSecureCoding {
-	return YES;
-}
-- (instancetype)initWithCoder:(NSCoder *)coder {
-	if (self = [super init]) {
-		_dataType = (MTLDataType)[coder decodeIntegerForKey:@"dataType"];
-		_index = (uint32_t)[coder decodeIntegerForKey:@"index"];
-		_access = (MTLBindingAccess)[coder decodeIntegerForKey:@"access"];
-		_textureType = (MTLTextureType)[coder decodeIntegerForKey:@"textureType"];
-		_imageFormat = (spv::ImageFormat)[coder decodeIntegerForKey:@"imageFormat"];
-		_arrayLength = (uint32_t)[coder decodeIntegerForKey:@"arrayLength"];
-		_isMultisampled = [coder decodeBoolForKey:@"isMultisampled"];
-	}
-	return self;
-}
-- (void)encodeWithCoder:(NSCoder *)coder {
-	[coder encodeInteger:(NSInteger)_dataType forKey:@"dataType"];
-	[coder encodeInteger:(NSInteger)_index forKey:@"index"];
-	[coder encodeInteger:(NSInteger)_access forKey:@"access"];
-	[coder encodeInteger:(NSInteger)_textureType forKey:@"textureType"];
-	[coder encodeInteger:(NSInteger)_imageFormat forKey:@"imageFormat"];
-	[coder encodeInteger:(NSInteger)_arrayLength forKey:@"arrayLength"];
-	[coder encodeBool:_isMultisampled forKey:@"isMultisampled"];
-}
-@end
 
 struct SpecializationConstantData {
 	uint32_t constant_id;
@@ -755,33 +795,6 @@ struct SpecializationConstantData {
 	ShaderStageUsage used_stages;
 	uint32_t int_value;
 };
-
-@interface SpecializationConstantData2 : NSObject <NSSecureCoding>
-@property(nonatomic) uint32_t constantId;
-@property(nonatomic) RD::PipelineSpecializationConstantType type;
-@property(nonatomic) ShaderStageUsage usedStages;
-@property(nonatomic) uint32_t intValue;
-@end
-@implementation SpecializationConstantData2
-+ (BOOL)supportsSecureCoding {
-	return YES;
-}
-- (instancetype)initWithCoder:(NSCoder *)coder {
-	if (self = [super init]) {
-		_constantId = (uint32_t)[coder decodeIntegerForKey:@"constantId"];
-		_type = (RD::PipelineSpecializationConstantType)[coder decodeIntegerForKey:@"type"];
-		_usedStages = (ShaderStageUsage)[coder decodeIntegerForKey:@"usedStages"];
-		_intValue = (uint32_t)[coder decodeIntegerForKey:@"intValue"];
-	}
-	return self;
-}
-- (void)encodeWithCoder:(NSCoder *)coder {
-	[coder encodeInteger:(NSInteger)_constantId forKey:@"constantId"];
-	[coder encodeInteger:(NSInteger)_type forKey:@"type"];
-	[coder encodeInteger:(NSInteger)_usedStages forKey:@"usedStages"];
-	[coder encodeInteger:(NSInteger)_intValue forKey:@"intValue"];
-}
-@end
 
 struct UniformData {
 	RD::UniformType type;
@@ -797,70 +810,10 @@ struct UniformData {
 	data::hash_map<RD::ShaderStage, BindingInfo> bindings_secondary;
 };
 
-@interface UniformData2 : NSObject <NSSecureCoding>
-@property(nonatomic) RD::UniformType type;
-@property(nonatomic) uint32_t binding;
-@property(nonatomic) BOOL writable;
-@property(nonatomic) uint32_t length;
-@property(nonatomic) ShaderStageUsage stages;
-@property(nonatomic) ShaderStageUsage activeStages;
-@property(nonatomic) NSDictionary<NSNumber *, BindingInfo2 *> *bindings;
-@property(nonatomic) NSDictionary<NSNumber *, BindingInfo2 *> *bindingsSecondary;
-@end
-@implementation UniformData2
-+ (BOOL)supportsSecureCoding {
-	return YES;
-}
-- (instancetype)initWithCoder:(NSCoder *)coder {
-	if (self = [super init]) {
-		_type = (RD::UniformType)[coder decodeIntegerForKey:@"type"];
-		_binding = (uint32_t)[coder decodeIntegerForKey:@"binding"];
-		_writable = [coder decodeBoolForKey:@"writable"];
-		_length = (uint32_t)[coder decodeIntegerForKey:@"length"];
-		_stages = (ShaderStageUsage)[coder decodeIntegerForKey:@"stages"];
-		_activeStages = (ShaderStageUsage)[coder decodeIntegerForKey:@"activeStages"];
-		_bindings = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"bindings"];
-		_bindingsSecondary = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"bindingsSecondary"];
-	}
-	return self;
-}
-- (void)encodeWithCoder:(NSCoder *)coder {
-	[coder encodeInteger:(NSInteger)_type forKey:@"type"];
-	[coder encodeInteger:(NSInteger)_binding forKey:@"binding"];
-	[coder encodeBool:_writable forKey:@"writable"];
-	[coder encodeInteger:(NSInteger)_length forKey:@"length"];
-	[coder encodeInteger:(NSInteger)_stages forKey:@"stages"];
-	[coder encodeInteger:(NSInteger)_activeStages forKey:@"activeStages"];
-	[coder encodeObject:_bindings forKey:@"bindings"];
-	[coder encodeObject:_bindingsSecondary forKey:@"bindingsSecondary"];
-}
-@end
-
 struct UniformSetData {
 	uint32_t index;
 	data::vector<UniformData> uniforms;
 };
-
-@interface UniformSetData2 : NSObject <NSSecureCoding>
-@property(nonatomic) uint32_t index;
-@property(nonatomic) NSArray<UniformData2 *> *uniforms;
-@end
-@implementation UniformSetData2
-+ (BOOL)supportsSecureCoding {
-	return YES;
-}
-- (instancetype)initWithCoder:(NSCoder *)coder {
-	if (self = [super init]) {
-		_index = (uint32_t)[coder decodeIntegerForKey:@"index"];
-		_uniforms = [coder decodeObjectOfClass:[NSArray class] forKey:@"uniforms"];
-	}
-	return self;
-}
-- (void)encodeWithCoder:(NSCoder *)coder {
-	[coder encodeInteger:(NSInteger)_index forKey:@"index"];
-	[coder encodeObject:_uniforms forKey:@"uniforms"];
-}
-@end
 
 struct PushConstantData {
 	uint32_t size;
@@ -868,33 +821,6 @@ struct PushConstantData {
 	ShaderStageUsage used_stages;
 	data::hash_map<RD::ShaderStage, uint32_t> msl_binding;
 };
-
-@interface PushConstantData2 : NSObject <NSSecureCoding>
-@property(nonatomic) uint32_t size;
-@property(nonatomic) ShaderStageUsage stages;
-@property(nonatomic) ShaderStageUsage usedStages;
-@property(nonatomic) NSDictionary<NSNumber *, NSNumber *> *mslBinding;
-@end
-@implementation PushConstantData2
-+ (BOOL)supportsSecureCoding {
-	return YES;
-}
-- (instancetype)initWithCoder:(NSCoder *)coder {
-	if (self = [super init]) {
-		_size = (uint32_t)[coder decodeIntegerForKey:@"size"];
-		_stages = (ShaderStageUsage)[coder decodeIntegerForKey:@"stages"];
-		_usedStages = (ShaderStageUsage)[coder decodeIntegerForKey:@"usedStages"];
-		_mslBinding = [coder decodeObjectOfClass:[NSDictionary class] forKey:@"mslBinding"];
-	}
-	return self;
-}
-- (void)encodeWithCoder:(NSCoder *)coder {
-	[coder encodeInteger:(NSInteger)_size forKey:@"size"];
-	[coder encodeInteger:(NSInteger)_stages forKey:@"stages"];
-	[coder encodeInteger:(NSInteger)_usedStages forKey:@"usedStages"];
-	[coder encodeObject:_mslBinding forKey:@"mslBinding"];
-}
-@end
 
 struct ShaderBinaryData {
 	data::string shader_name;
@@ -909,76 +835,6 @@ struct ShaderBinaryData {
 	data::vector<UniformSetData> uniforms;
 };
 
-@interface ShaderData : NSObject <NSSecureCoding>
-@property(nonatomic) NSString *name;
-@property(nonatomic) PushConstantData2 *pushConstant;
-@property(nonatomic) NSArray<ShaderStageData2 *> *stages;
-@property(nonatomic) NSArray<SpecializationConstantData2 *> *constants;
-@property(nonatomic) NSArray<UniformSetData2 *> *uniforms;
-@end
-
-@implementation ShaderData
-+ (BOOL)supportsSecureCoding {
-	return YES;
-}
-
-- (nullable instancetype)initWithCoder:(nonnull NSCoder *)coder {
-	if (self = [super init]) {
-		_name = [coder decodeObjectOfClass:[NSString class] forKey:@"name"];
-		_pushConstant = [coder decodeObjectOfClass:[PushConstantData2 class] forKey:@"pushConstant"];
-		_stages = [coder decodeObjectOfClass:[NSArray class] forKey:@"stages"];
-		_constants = [coder decodeObjectOfClass:[NSArray class] forKey:@"constants"];
-		_uniforms = [coder decodeObjectOfClass:[NSArray class] forKey:@"uniforms"];
-	}
-	return self;
-}
-
-- (void)encodeWithCoder:(nonnull NSCoder *)coder {
-	[coder encodeObject:_name forKey:@"name"];
-	[coder encodeObject:_pushConstant forKey:@"pushConstant"];
-	[coder encodeObject:_stages forKey:@"stages"];
-	[coder encodeObject:_constants forKey:@"constants"];
-	[coder encodeObject:_uniforms forKey:@"uniforms"];
-}
-@end
-
-@interface RenderShaderData : ShaderData
-@property(nonatomic) NSUInteger vertexInputMask;
-@property(nonatomic) NSUInteger fragmentOutputMask;
-@end
-
-@implementation RenderShaderData
-- (nullable instancetype)initWithCoder:(nonnull NSCoder *)coder {
-	self = [super initWithCoder:coder];
-	_vertexInputMask = (NSUInteger)[coder decodeIntegerForKey:@"vertexInputMask"];
-	_fragmentOutputMask = (NSUInteger)[coder decodeIntegerForKey:@"fragmentOutputMask"];
-	return self;
-}
-
-- (void)encodeWithCoder:(nonnull NSCoder *)coder {
-	[super encodeWithCoder:coder];
-	[coder encodeInteger:(NSInteger)_vertexInputMask forKey:@"vertexInputMask"];
-	[coder encodeInteger:(NSInteger)_fragmentOutputMask forKey:@"fragmentOutputMask"];
-}
-@end
-
-@interface ComputeShaderData : ShaderData
-@property(nonatomic) ComputeSize computeLocalSize;
-@end
-
-@implementation ComputeShaderData
-- (nullable instancetype)initWithCoder:(nonnull NSCoder *)coder {
-	self = [super initWithCoder:coder];
-	_computeLocalSize = ComputeSizeFromNSString([coder decodeObjectOfClass:NSString.class forKey:@"computeLocalSize"]);
-	return self;
-}
-
-- (void)encodeWithCoder:(nonnull NSCoder *)coder {
-	[super encodeWithCoder:coder];
-	[coder encodeObject:NSStringFromComputeSize(_computeLocalSize) forKey:@"computeLocalSize"];
-}
-@end
-
 constexpr auto const MODE = cista::mode::WITH_VERSION;
 
 const char *shader_stage_names[RenderingDevice::SHADER_STAGE_MAX] = {
@@ -989,6 +845,8 @@ const char *shader_stage_names[RenderingDevice::SHADER_STAGE_MAX] = {
 	"Compute",
 };
 
+const uint32_t R32UI_ALIGNMENT_CONSTANT_ID = 65535;
+
 Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(VectorView<ShaderStageSPIRVData> p_spirv, const String &p_shader_name) {
 	using Result = Vector<uint8_t>;
 
@@ -997,49 +855,13 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		return {};
 	}
 
-	ShaderData *base = nil;
-	if (spirv_data.is_compute) {
-		ComputeShaderData *s = [ComputeShaderData new];
-		s.computeLocalSize = ComputeSize{
-			.x = spirv_data.compute_local_size[0],
-			.y = spirv_data.compute_local_size[1],
-			.z = spirv_data.compute_local_size[2],
-		};
-		base = s;
-	} else {
-		RenderShaderData *s = [RenderShaderData new];
-		s.vertexInputMask = spirv_data.vertex_input_mask;
-		s.fragmentOutputMask = spirv_data.fragment_output_mask;
-		base = s;
-	}
-	base.name = [NSString stringWithUTF8String:p_shader_name.utf8().ptr()];
-	if (spirv_data.push_constant_size > 0) {
-		base.pushConstant = [PushConstantData2 new];
-		base.pushConstant.size = spirv_data.push_constant_size;
-		base.pushConstant.stages = (ShaderStageUsage)(uint8_t)spirv_data.push_constant_stages;
-	}
-
-	NSMutableArray<UniformSetData2 *> *uniform_sets = [NSMutableArray new];
-	for (uint32_t i = 0; i < spirv_data.uniform_sets.size(); i++) {
-		const Vector<ShaderUniform> &spirv_set = spirv_data.uniform_sets[i];
-		UniformSetData2 *set = [UniformSetData2 new];
-		set.index = i;
-		NSMutableArray<UniformData2 *> *uniforms = [NSMutableArray new];
-		for (const ShaderUniform &spirv_uniform : spirv_set) {
-			UniformData2 *binding = [UniformData2 new];
-			binding.type = spirv_uniform.type;
-			binding.binding = spirv_uniform.binding;
-			binding.writable = spirv_uniform.writable;
-			binding.stages = (ShaderStageUsage)(uint8_t)spirv_uniform.stages;
-			binding.length = spirv_uniform.length;
-			[uniforms addObject:binding];
-		}
-		set.uniforms = uniforms;
-		[uniform_sets addObject:set];
-	}
-
 	ShaderBinaryData bin_data{};
-	bin_data.shader_name = data::string(p_shader_name.utf8().ptr());
+	if (!p_shader_name.is_empty()) {
+		bin_data.shader_name = data::string(p_shader_name.utf8().ptr());
+	} else {
+		bin_data.shader_name = data::string("unnamed");
+	}
+
 	bin_data.vertex_input_mask = spirv_data.vertex_input_mask;
 	bin_data.fragment_output_mask = spirv_data.fragment_output_mask;
 	bin_data.compute_local_size = ComputeSize{
@@ -1090,6 +912,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 	msl_options.texture_buffer_native = true; // texture_buffer support
 	msl_options.use_framebuffer_fetch_subpasses = true;
 	msl_options.pad_fragment_output_components = true;
+	msl_options.r32ui_alignment_constant_id = R32UI_ALIGNMENT_CONSTANT_ID;
 
 	spirv_cross::CompilerGLSL::Options options{};
 	options.vertex.flip_vert_y = true;
@@ -1155,6 +978,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 			for (auto &res : resources) {
 				auto dset = get_decoration(res.id, spv::DecorationDescriptorSet);
 				auto dbin = get_decoration(res.id, spv::DecorationBinding);
+				auto name = compiler.get_name(res.id);
 				UniformData *found = nullptr;
 				if (dset.has_value() && dbin.has_value() && dset.value() < uniform_sets.size()) {
 					auto &set = uniform_sets[dset.value()];
@@ -1331,6 +1155,17 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 						};
 					}
 				}
+
+				if (basetype == BT::Image) {
+					uint32_t binding = compiler.get_automatic_msl_resource_binding_secondary(res.id);
+					if (binding != -1) {
+						found->bindings_secondary[stage] = BindingInfo{
+							.dataType = MTLDataTypePointer,
+							.index = binding,
+							.access = MTLBindingAccessReadWrite,
+						};
+					}
+				}
 			}
 			return Error::OK;
 		};
@@ -1454,23 +1289,30 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 		library_sources[shader_data.stage] = source;
 #endif
 
+		if ([source containsString:@"void ComputeAutoExposure("]) {
+			// TODO: remove this hack once we determine how to fix the
+			//  code generation.
+			source = [source stringByReplacingOccurrencesOfString:@", device atomic_uint* rw_spd_global_atomic_atomic"
+													   withString:@", volatile device atomic_uint* rw_spd_global_atomic_atomic"];
+		}
+
 		NSError *error = nil;
 		auto library = [device newLibraryWithSource:source options:options error:&error];
 		if (error != nil) {
-			print_verbose(error.description.UTF8String);
+			print_verbose(error.localizedDescription.UTF8String);
 			ERR_FAIL_V_MSG(ShaderID(), "failed to compile Metal source");
 		}
 		libraries[shader_data.stage] = library;
 	}
 
-	Vector<UniformSet> uniform_sets;
+	LocalVector<UniformSet> uniform_sets;
 	uniform_sets.resize(binary_data->uniforms.size());
 
 	r_shader_desc.uniform_sets.resize(binary_data->uniforms.size());
 
 	// create sets
 	for (auto &uniform_set : binary_data->uniforms) {
-		UniformSet &set = uniform_sets.write[uniform_set.index];
+		UniformSet &set = uniform_sets[uniform_set.index];
 		set.uniforms.resize(uniform_set.uniforms.size());
 
 		Vector<ShaderUniform> &uset = r_shader_desc.uniform_sets.write[uniform_set.index];
@@ -1496,11 +1338,11 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 			for (auto &kv : uniform.bindings_secondary) {
 				ui.bindings_secondary.insert(kv.first, kv.second);
 			}
-			set.uniforms.write[i] = ui;
+			set.uniforms[i] = ui;
 		}
 	}
 	for (auto &uniform_set : binary_data->uniforms) {
-		UniformSet &set = uniform_sets.write[uniform_set.index];
+		UniformSet &set = uniform_sets[uniform_set.index];
 
 		// make encoders
 		for (ShaderStageData const &stage_data : binary_data->stages) {
@@ -1627,6 +1469,9 @@ void RenderingDeviceDriverMetal::uniform_set_free(UniformSetID p_uniform_set) {
 	delete obj;
 }
 
+void RenderingDeviceDriverMetal::command_uniform_set_prepare_for_use(CommandBufferID p_cmd_buffer, UniformSetID p_uniform_set, ShaderID p_shader, uint32_t p_set_index) {
+}
+
 /******************/
 /**** TRANSFER ****/
 /******************/
@@ -1662,104 +1507,33 @@ void RenderingDeviceDriverMetal::command_copy_texture(CommandBufferID p_cmd_buff
 	ERR_FAIL_MSG("not implemented");
 }
 
-_FORCE_INLINE_ MTLSize mipmapLevelSizeFromTexture(id<MTLTexture> tex, NSUInteger level) {
-	MTLSize lvlSize;
-	lvlSize.width = std::max(tex.width >> level, 1UL);
-	lvlSize.height = std::max(tex.height >> level, 1UL);
-	lvlSize.depth = std::max(tex.depth >> level, 1UL);
-	return lvlSize;
-}
-
-_FORCE_INLINE_ static bool operator==(MTLSize a, MTLSize b) {
-	return a.width == b.width && a.height == b.height && a.depth == b.depth;
-}
-
-_FORCE_INLINE_ static bool operator!=(MTLSize a, MTLSize b) {
-	return !(a == b);
-}
-
-void RenderingDeviceDriverMetal::command_resolve_texture(CommandBufferID p_cmd_buffer, TextureID p_src_texture, TextureLayout p_src_texture_layout, TextureID p_dst_texture, TextureLayout p_dst_texture_layout, VectorView<TextureCopyRegion> p_regions) {
+void RenderingDeviceDriverMetal::command_resolve_texture(CommandBufferID p_cmd_buffer, TextureID p_src_texture, TextureLayout p_src_texture_layout, uint32_t p_src_layer, uint32_t p_src_mipmap, TextureID p_dst_texture, TextureLayout p_dst_texture_layout, uint32_t p_dst_layer, uint32_t p_dst_mipmap) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
 	id<MTLTexture> src_tex = rid::get(p_src_texture);
 	id<MTLTexture> dst_tex = rid::get(p_dst_texture);
-
-	// If we can do layered rendering to a multisample texture, I can resolve all the layers at once.
-	bool multisample_layered = context->get_device_properties().features.multisampleLayeredRendering;
-	uint32_t layerCnt = 0;
-	if (multisample_layered) {
-		layerCnt = (uint32_t)p_regions.size();
-	} else {
-		for (int i = 0; i < p_regions.size(); i++) {
-			layerCnt += p_regions[i].dst_subresources.layer_count;
-		}
-	}
-
-	struct ResolveSlice {
-		TextureSubresourceLayers srcSubresource;
-		TextureSubresourceLayers dstSubresource;
-	};
-
-	ResolveSlice resolveSlices[layerCnt];
-	uint32_t sliceCnt = 0;
-	for (uint32_t i = 0; i < p_regions.size(); i++) {
-		TextureCopyRegion region = p_regions[i];
-
-		MTLSize src_size = mipmapLevelSizeFromTexture(src_tex, region.src_subresources.mipmap);
-		MTLSize dst_size = mipmapLevelSizeFromTexture(src_tex, region.dst_subresources.mipmap);
-
-		// are the images being resolved completely
-		MTLRegion src_region = MTLRegionMake3D(region.src_offset.x, region.src_offset.y, region.src_offset.z, region.size.x, region.size.y, region.size.z);
-		MTLRegion dst_region = MTLRegionMake3D(region.dst_offset.x, region.dst_offset.y, region.dst_offset.z, region.size.x, region.size.y, region.size.z);
-
-		if (src_size != src_region.size || dst_size != src_region.size) {
-			CRASH_NOW_MSG("not implemented: subregion resolve");
-		}
-
-		resolveSlices[sliceCnt].dstSubresource = region.dst_subresources;
-		resolveSlices[sliceCnt].srcSubresource = region.src_subresources;
-		if (multisample_layered) {
-			sliceCnt++;
-		} else {
-			uint32_t layCnt = region.dst_subresources.layer_count;
-			resolveSlices[sliceCnt].dstSubresource.layer_count = 1;
-			resolveSlices[sliceCnt].srcSubresource.layer_count = 1;
-			sliceCnt++;
-			for (uint32_t layIdx = 1; layIdx < layCnt; layIdx++) {
-				ResolveSlice &rslvSlice = resolveSlices[sliceCnt];
-				rslvSlice = resolveSlices[sliceCnt - 1];
-				rslvSlice.dstSubresource.base_layer++;
-				rslvSlice.srcSubresource.base_layer++;
-				sliceCnt++;
-			}
-		}
-	}
 
 	MTLRenderPassDescriptor *mtlRPD = [MTLRenderPassDescriptor renderPassDescriptor];
 	MTLRenderPassColorAttachmentDescriptor *mtlColorAttDesc = mtlRPD.colorAttachments[0];
 	mtlColorAttDesc.loadAction = MTLLoadActionLoad;
 	mtlColorAttDesc.storeAction = MTLStoreActionMultisampleResolve;
 
-	// For each resolve slice, update the render pass descriptor for
-	// the texture level and slice and create a render encoder.
-	for (uint32_t sIdx = 0; sIdx < sliceCnt; sIdx++) {
-		ResolveSlice &rslvSlice = resolveSlices[sIdx];
-
-		mtlColorAttDesc.texture = src_tex;
-		mtlColorAttDesc.resolveTexture = dst_tex;
-		mtlColorAttDesc.level = rslvSlice.srcSubresource.mipmap;
-		mtlColorAttDesc.slice = rslvSlice.srcSubresource.base_layer;
-		mtlColorAttDesc.resolveLevel = rslvSlice.dstSubresource.mipmap;
-		mtlColorAttDesc.resolveSlice = rslvSlice.dstSubresource.base_layer;
-		if (rslvSlice.dstSubresource.layer_count > 1) {
-			mtlRPD.renderTargetArrayLength = rslvSlice.dstSubresource.layer_count;
-		}
-		cb->encodeRenderCommandEncoderWithDescriptor(mtlRPD, @"Resolve Image");
-	}
+	mtlColorAttDesc.texture = src_tex;
+	mtlColorAttDesc.resolveTexture = dst_tex;
+	mtlColorAttDesc.level = p_src_mipmap;
+	mtlColorAttDesc.slice = p_src_layer;
+	mtlColorAttDesc.resolveLevel = p_dst_mipmap;
+	mtlColorAttDesc.resolveSlice = p_dst_layer;
+	cb->encodeRenderCommandEncoderWithDescriptor(mtlRPD, @"Resolve Image");
 }
 
 void RenderingDeviceDriverMetal::command_clear_color_texture(CommandBufferID p_cmd_buffer, TextureID p_texture, TextureLayout p_texture_layout, const Color &p_color, const TextureSubresourceRange &p_subresources) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
 	id<MTLTexture> src_tex = rid::get(p_texture);
+
+	if (src_tex.parentTexture) {
+		// clear via the parent texture rather than the view
+		src_tex = src_tex.parentTexture;
+	}
 
 	PixelFormats &pf = context->get_pixel_formats();
 
@@ -1799,7 +1573,7 @@ void RenderingDeviceDriverMetal::command_clear_color_texture(CommandBufferID p_c
 
 			// If a 3D image, we need to get the depth for each level.
 			if (is3D) {
-				layerCnt = src_tex.depth;
+				layerCnt = mipmapLevelSizeFromTexture(src_tex, mipLvl).depth;
 				layerEnd = layerStart + layerCnt;
 			}
 
@@ -1851,15 +1625,8 @@ void RenderingDeviceDriverMetal::command_copy_buffer_to_texture(CommandBufferID 
 	for (uint32_t i = 0; i < p_regions.size(); i++) {
 		BufferTextureCopyRegion region = p_regions[i];
 
-		uint32_t buffImgWd = region.buffer_row_length;
-		if (buffImgWd == 0) {
-			buffImgWd = region.texture_region_size.x;
-		}
-
-		uint32_t buffImgHt = region.buffer_texture_height;
-		if (buffImgHt == 0) {
-			buffImgHt = region.texture_region_size.y;
-		}
+		uint32_t buffImgWd = region.texture_region_size.x;
+		uint32_t buffImgHt = region.texture_region_size.y;
 
 		NSUInteger bytesPerRow = pf.getBytesPerRow(mtlPixFmt, buffImgWd);
 		NSUInteger bytesPerImg = 0;
@@ -1898,15 +1665,8 @@ void RenderingDeviceDriverMetal::command_copy_texture_to_buffer(CommandBufferID 
 	for (uint32_t i = 0; i < p_regions.size(); i++) {
 		BufferTextureCopyRegion region = p_regions[i];
 
-		uint32_t buffImgWd = region.buffer_row_length;
-		if (buffImgWd == 0) {
-			buffImgWd = region.texture_region_size.x;
-		}
-
-		uint32_t buffImgHt = region.buffer_texture_height;
-		if (buffImgHt == 0) {
-			buffImgHt = region.texture_region_size.y;
-		}
+		uint32_t buffImgWd = region.texture_region_size.x;
+		uint32_t buffImgHt = region.texture_region_size.y;
 
 		NSUInteger bytesPerRow = pf.getBytesPerRow(mtlPixFmt, buffImgWd);
 		NSUInteger bytesPerImg = 0;
@@ -1971,12 +1731,15 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 	PixelFormats &pf = context->get_pixel_formats();
 
 	size_t subpass_count = p_subpasses.size();
-	CRASH_COND_MSG(subpass_count > 1, "not implemented: multiple subpasses");
 
-	TightLocalVector<Subpass> subpasses;
+	TightLocalVector<MDSubpass> subpasses;
 	subpasses.resize(subpass_count);
-	for (uint32_t i = 0; i < p_subpasses.size(); i++) {
-		subpasses[i] = p_subpasses[i];
+	for (uint32_t i = 0; i < subpass_count; i++) {
+		subpasses[i].subpass_index = i;
+		subpasses[i].input_references = p_subpasses[i].input_references;
+		subpasses[i].color_references = p_subpasses[i].color_references;
+		subpasses[i].depth_stencil_reference = p_subpasses[i].depth_stencil_reference;
+		subpasses[i].resolve_references = p_subpasses[i].resolve_references;
 	}
 
 	static const MTLLoadAction loadActions[] = {
@@ -1992,8 +1755,6 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 
 	TightLocalVector<MDAttachment> attachments;
 	attachments.resize(p_attachments.size());
-	NSInteger depth = NSNotFound;
-	NSInteger stencil = NSNotFound;
 
 	for (uint32_t i = 0; i < p_attachments.size(); i++) {
 		Attachment const &a = p_attachments[i];
@@ -2007,19 +1768,17 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 		mda->storeAction = storeActions[a.store_op];
 		bool is_depth = pf.isDepthFormat(format);
 		if (is_depth) {
-			depth = i;
 			mda->type |= MDAttachmentType::Depth;
 		}
 		bool is_stencil = pf.isStencilFormat(format);
 		if (is_stencil) {
-			stencil = i;
 			mda->type |= MDAttachmentType::Stencil;
 		}
 		if (!is_depth && !is_stencil) {
 			mda->type |= MDAttachmentType::Color;
 		}
 	}
-	MDRenderPass *obj = new MDRenderPass(std::move(attachments), std::move(subpasses), depth, stencil);
+	MDRenderPass *obj = new MDRenderPass(std::move(attachments), std::move(subpasses));
 	return RenderPassID(obj);
 }
 
@@ -2041,44 +1800,21 @@ void RenderingDeviceDriverMetal::command_end_render_pass(CommandBufferID p_cmd_b
 }
 
 void RenderingDeviceDriverMetal::command_next_render_subpass(CommandBufferID p_cmd_buffer, CommandBufferType p_cmd_buffer_type) {
-	ERR_FAIL_MSG("not implemented");
+	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
+	cb->render_next_subpass();
 }
 
 void RenderingDeviceDriverMetal::command_render_set_viewport(CommandBufferID p_cmd_buffer, VectorView<Rect2i> p_viewports) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	id<MTLRenderCommandEncoder> enc = cb->render.encoder;
-	MTLViewport *viewports = ALLOCA_ARRAY(MTLViewport, p_viewports.size());
-	for (int i = 0; i < p_viewports.size(); i += 1) {
-		Rect2i const &vp = p_viewports[i];
-		viewports[i] = {
-			.originX = static_cast<double>(vp.position.x),
-			.originY = static_cast<double>(vp.position.y),
-			.width = static_cast<double>(vp.size.width),
-			.height = static_cast<double>(vp.size.height),
-			.znear = 0.0,
-			.zfar = 1.0,
-		};
-	}
-	[enc setViewports:viewports count:p_viewports.size()];
+	cb->render_set_viewport(p_viewports);
 }
 
 void RenderingDeviceDriverMetal::command_render_set_scissor(CommandBufferID p_cmd_buffer, VectorView<Rect2i> p_scissors) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	id<MTLRenderCommandEncoder> enc = cb->render.encoder;
-	MTLScissorRect *scissors = ALLOCA_ARRAY(MTLScissorRect, p_scissors.size());
-	for (int i = 0; i < p_scissors.size(); i += 1) {
-		Rect2i const &vp = p_scissors[i];
-		scissors[i] = {
-			.x = static_cast<NSUInteger>(vp.position.x),
-			.y = static_cast<NSUInteger>(vp.position.y),
-			.width = static_cast<NSUInteger>(vp.size.width),
-			.height = static_cast<NSUInteger>(vp.size.height),
-		};
-	}
-	[enc setScissorRects:scissors count:p_scissors.size()];
+	cb->render_set_scissor(p_scissors);
 }
 
-void RenderingDeviceDriverMetal::command_render_clear_attachments(CommandBufferID p_cmd_buffer, VectorView<AttachmentClear> p_attachment_clears, VectorView<AttachmentClearRect> p_rects) {
+void RenderingDeviceDriverMetal::command_render_clear_attachments(CommandBufferID p_cmd_buffer, VectorView<AttachmentClear> p_attachment_clears, VectorView<Rect2i> p_rects) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
 	cb->render_clear_attachments(p_attachment_clears, p_rects);
 }
@@ -2121,20 +1857,7 @@ void RenderingDeviceDriverMetal::command_render_draw_indirect_count(CommandBuffe
 
 void RenderingDeviceDriverMetal::command_render_bind_vertex_buffers(CommandBufferID p_cmd_buffer, uint32_t p_binding_count, const BufferID *p_buffers, const uint64_t *p_offsets) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	DEV_ASSERT(cb->type == MDCommandBufferStateType::Render);
-
-	id<MTLBuffer> __unsafe_unretained *buffers = ALLOCA_ARRAY(id<MTLBuffer> __unsafe_unretained, p_binding_count);
-	NSUInteger *offsets = ALLOCA_ARRAY(NSUInteger, p_binding_count);
-
-	// reverse the buffers, as their bindings are assigned in descending order
-	for (int i = 0; i < p_binding_count; i += 1) {
-		buffers[i] = rid::get(p_buffers[p_binding_count - i - 1]);
-		offsets[i] = p_offsets[p_binding_count - i - 1];
-	}
-
-	id<MTLRenderCommandEncoder> enc = cb->render.encoder;
-	uint32_t first = context->get_metal_buffer_index_for_vertex_attribute_binding(p_binding_count - 1);
-	[enc setVertexBuffers:buffers offsets:offsets withRange:NSMakeRange(first, p_binding_count)];
+	cb->render_bind_vertex_buffers(p_binding_count, p_buffers, p_offsets);
 }
 
 void RenderingDeviceDriverMetal::command_render_bind_index_buffer(CommandBufferID p_cmd_buffer, BufferID p_buffer, IndexBufferFormat p_format, uint64_t p_offset) {
@@ -2154,42 +1877,83 @@ void RenderingDeviceDriverMetal::command_render_set_line_width(CommandBufferID p
 
 RDM::Result<id<MTLFunction>> RenderingDeviceDriverMetal::_create_function(id<MTLLibrary> p_library, NSString *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants) {
 	id<MTLFunction> function = [p_library newFunctionWithName:@"main0"];
-	if (p_specialization_constants.size() == 0) {
+
+	if (function.functionConstantsDictionary.count == 0) {
 		function = [p_library newFunctionWithName:@"main0"];
 		ERR_FAIL_NULL_V_MSG(function, ERR_CANT_CREATE, "No function named main0");
-	} else {
-		NSArray<MTLFunctionConstant *> *constants = function.functionConstantsDictionary.allValues;
-		if (constants.count > 0) {
-			MTLFunctionConstantValues *constantValues = [MTLFunctionConstantValues new];
-			for (int i = 0; i < p_specialization_constants.size(); i++) {
-				const PipelineSpecializationConstant &sc = p_specialization_constants[i];
-				int index = 0;
-				for (MTLFunctionConstant *curr in constants) {
-					if (curr.index == sc.constant_id) {
-						switch (curr.type) {
-							case MTLDataTypeBool:
-							case MTLDataTypeFloat:
-							case MTLDataTypeInt:
-							case MTLDataTypeUInt: {
-								[constantValues setConstantValue:&sc.int_value
-															type:curr.type
-														 atIndex:sc.constant_id];
-							} break;
-							default:
-								ERR_FAIL_V_MSG(function, "Invalid specialization constant type");
-						}
-						break;
-					}
-					index += 1;
-				}
-			}
-			NSError *err = nil;
-			function = [p_library newFunctionWithName:@"main0"
-									   constantValues:constantValues
-												error:&err];
-			ERR_FAIL_NULL_V_EDMSG(function, ERR_CANT_CREATE, String("specialized function failed: ") + err.localizedDescription.UTF8String);
+		return function;
+	}
+
+	NSArray<MTLFunctionConstant *> *constants = function.functionConstantsDictionary.allValues;
+	bool is_sorted = true;
+	for (int i = 1; i < constants.count; i++) {
+		if (constants[i - 1].index < constants[i].index) {
+			is_sorted = false;
+			break;
 		}
 	}
+
+	if (!is_sorted) {
+		constants = [constants sortedArrayUsingComparator:^NSComparisonResult(MTLFunctionConstant *a, MTLFunctionConstant *b) {
+		  if (a.index < b.index) {
+			  return NSOrderedAscending;
+		  } else if (a.index > b.index) {
+			  return NSOrderedDescending;
+		  } else {
+			  return NSOrderedSame;
+		  }
+		}];
+	}
+
+	MTLFunctionConstantValues *constantValues = [MTLFunctionConstantValues new];
+	int i = 0;
+	int j = 0;
+	while (i < constants.count && j < p_specialization_constants.size()) {
+		MTLFunctionConstant *curr = constants[i];
+		PipelineSpecializationConstant const &sc = p_specialization_constants[j];
+		if (curr.index == sc.constant_id) {
+			switch (curr.type) {
+				case MTLDataTypeBool:
+				case MTLDataTypeFloat:
+				case MTLDataTypeInt:
+				case MTLDataTypeUInt: {
+					[constantValues setConstantValue:&sc.int_value
+												type:curr.type
+											 atIndex:sc.constant_id];
+				} break;
+				default:
+					ERR_FAIL_V_MSG(function, "Invalid specialization constant type");
+			}
+			i++;
+			j++;
+		} else if (curr.index < sc.constant_id) {
+			i++;
+		} else {
+			j++;
+		}
+	}
+
+	if (i != constants.count) {
+		MTLFunctionConstant *curr = constants[i];
+		if (curr.index == R32UI_ALIGNMENT_CONSTANT_ID) {
+			uint32_t alignment = 16; // TODO(sgc): is this correct?
+			[constantValues setConstantValue:&alignment
+										type:curr.type
+									 atIndex:curr.index];
+			i++;
+		}
+	}
+
+	if (i != constants.count) {
+		ERR_FAIL_V_MSG(function, "Not all specialization constants set for function");
+	}
+
+	NSError *err = nil;
+	function = [p_library newFunctionWithName:@"main0"
+							   constantValues:constantValues
+										error:&err];
+	ERR_FAIL_NULL_V_EDMSG(function, ERR_CANT_CREATE, String("specialized function failed: ") + err.localizedDescription.UTF8String);
+
 	return function;
 }
 
@@ -2235,22 +1999,27 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	PixelFormats &pf = context->get_pixel_formats();
 	MTLRenderPipelineDescriptor *desc = [MTLRenderPipelineDescriptor new];
 
-	// Attachment formats.
 	{
-		for (int i = 0; i < p_color_attachments.size(); i++) {
-			int32_t attachment = p_color_attachments[i];
+		MDSubpass const &subpass = pass->subpasses[p_render_subpass];
+		for (int i = 0; i < subpass.color_references.size(); i++) {
+			int32_t attachment = subpass.color_references[i].attachment;
 			if (attachment != ATTACHMENT_UNUSED) {
 				MDAttachment const &a = pass->attachments[attachment];
-				desc.colorAttachments[attachment].pixelFormat = a.format;
+				desc.colorAttachments[i].pixelFormat = a.format;
 			}
 		}
 
-		if (pass->depth()) {
-			desc.depthAttachmentPixelFormat = pass->depth()->format;
-		}
+		if (subpass.depth_stencil_reference.attachment != ATTACHMENT_UNUSED) {
+			int32_t attachment = subpass.depth_stencil_reference.attachment;
+			MDAttachment const &a = pass->attachments[attachment];
 
-		if (pass->stencil()) {
-			desc.stencilAttachmentPixelFormat = pass->stencil()->format;
+			if (a.type & MDAttachmentType::Depth) {
+				desc.depthAttachmentPixelFormat = a.format;
+			}
+
+			if (a.type & MDAttachmentType::Stencil) {
+				desc.stencilAttachmentPixelFormat = a.format;
+			}
 		}
 	}
 
@@ -2356,14 +2125,14 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	}
 
 	if (p_multisample_state.sample_count > TEXTURE_SAMPLES_1) {
-		SampleCount supported = context->get_device_properties().find_nearest_supported_sample_count(p_multisample_state.sample_count);
-		desc.rasterSampleCount = static_cast<NSUInteger>(supported);
+		pipeline->sample_count = context->get_device_properties().find_nearest_supported_sample_count(p_multisample_state.sample_count);
 	}
+	desc.rasterSampleCount = static_cast<NSUInteger>(pipeline->sample_count);
 	desc.alphaToCoverageEnabled = p_multisample_state.enable_alpha_to_coverage;
 	desc.alphaToOneEnabled = p_multisample_state.enable_alpha_to_one;
 
 	// Depth stencil.
-	if (p_depth_stencil_state.enable_depth_test && pass->depth() != nil) {
+	if (p_depth_stencil_state.enable_depth_test && desc.depthAttachmentPixelFormat != MTLPixelFormatInvalid) {
 		pipeline->raster_state.depth_test.enabled = true;
 		MTLDepthStencilDescriptor *ds_desc = [MTLDepthStencilDescriptor new];
 		ds_desc.depthWriteEnabled = p_depth_stencil_state.enable_depth_write;
@@ -2485,9 +2254,12 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	NSError *error = nil;
 	pipeline->state = [device newRenderPipelineStateWithDescriptor:desc
 															 error:&error];
-#if DEV_ENABLED
 	pipeline->shader = shader;
-#endif
+
+	if (error != nil) {
+		auto _debug = true;
+	}
+
 	ERR_FAIL_COND_V_MSG(error != nil, PipelineID(), ([NSString stringWithFormat:@"error creating pipeline: %@", error.localizedDescription].UTF8String));
 
 	return PipelineID(pipeline);
@@ -2511,22 +2283,12 @@ void RenderingDeviceDriverMetal::command_bind_compute_uniform_set(CommandBufferI
 
 void RenderingDeviceDriverMetal::command_compute_dispatch(CommandBufferID p_cmd_buffer, uint32_t p_x_groups, uint32_t p_y_groups, uint32_t p_z_groups) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	DEV_ASSERT(cb->type == MDCommandBufferStateType::Compute);
-
-	MTLRegion region = MTLRegionMake3D(0, 0, 0, p_x_groups, p_y_groups, p_z_groups);
-
-	id<MTLComputeCommandEncoder> enc = cb->compute.encoder;
-	[enc dispatchThreadgroups:region.size threadsPerThreadgroup:cb->compute.pipeline->compute_state.local];
+	cb->compute_dispatch(p_x_groups, p_y_groups, p_z_groups);
 }
 
 void RenderingDeviceDriverMetal::command_compute_dispatch_indirect(CommandBufferID p_cmd_buffer, BufferID p_indirect_buffer, uint64_t p_offset) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	DEV_ASSERT(cb->type == MDCommandBufferStateType::Compute);
-
-	id<MTLBuffer> indirectBuffer = rid::get(p_indirect_buffer);
-
-	id<MTLComputeCommandEncoder> enc = cb->compute.encoder;
-	[enc dispatchThreadgroupsWithIndirectBuffer:indirectBuffer indirectBufferOffset:p_offset threadsPerThreadgroup:cb->compute.pipeline->compute_state.local];
+	cb->compute_dispatch_indirect(p_indirect_buffer, p_offset);
 }
 
 // ----- PIPELINE -----
@@ -2546,9 +2308,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 
 	MDComputePipeline *pipeline = new MDComputePipeline(state);
 	pipeline->compute_state.local = shader->local;
-#if DEV_ENABLED
 	pipeline->shader = shader;
-#endif
 
 	return PipelineID(pipeline);
 }
@@ -2595,6 +2355,16 @@ void RenderingDeviceDriverMetal::command_timestamp_write(CommandBufferID p_cmd_b
 
 RDD::DataFormat RenderingDeviceDriverMetal::screen_get_format() {
 	return context->get_pixel_formats().getDataFormat(context->get_screen_format());
+}
+
+/********************/
+/**** SUBMISSION ****/
+/********************/
+
+void RenderingDeviceDriverMetal::begin_segment(CommandBufferID p_cmd_buffer, uint32_t p_frame_index, uint32_t p_frames_drawn) {
+}
+
+void RenderingDeviceDriverMetal::end_segment() {
 }
 
 /**************/
@@ -2782,6 +2552,15 @@ uint64_t RenderingDeviceDriverMetal::limit_get(Limit p_limit) {
 	}
 	// clang-format on
 	return 0;
+}
+
+uint64_t RenderingDeviceDriverMetal::api_trait_get(ApiTrait p_trait) {
+	switch (p_trait) {
+		case API_TRAIT_HONORS_PIPELINE_BARRIERS:
+			return 0;
+		default:
+			return RenderingDeviceDriver::api_trait_get(p_trait);
+	}
 }
 
 bool RenderingDeviceDriverMetal::has_feature(Features p_feature) {

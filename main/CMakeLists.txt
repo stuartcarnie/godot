@@ -42,7 +42,7 @@ target_compile_definitions(GodotEditor
         PUBLIC
         NO_EDITOR_SPLASH=1
         PRIVATE
-        $<$<BOOL:${METAL_ENABLED}>:METAL_ENABLED=1>
+        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED=1>
 )
 
 target_include_directories(GodotEditor PUBLIC

@@ -15,6 +15,7 @@ target_sources(meshoptimizer PRIVATE
         meshoptimizer.h
         overdrawanalyzer.cpp
         overdrawoptimizer.cpp
+        quantization.cpp
         simplifier.cpp
         spatialorder.cpp
         stripifier.cpp

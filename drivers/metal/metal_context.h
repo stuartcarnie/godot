@@ -76,6 +76,7 @@ private:
 		id<MTLDevice> device = nil;
 		id<MTLCommandQueue> queue = nil;
 		RenderingDeviceDriverMetal *driver = nullptr;
+		id<MTLCommandBuffer> command_buffer = nil;
 	};
 
 	RID_Owner<LocalDevice, true> local_device_owner;
@@ -135,15 +136,19 @@ public:
 
 	MTLPixelFormat get_screen_format() const;
 	MetalDeviceProperties const &get_device_properties() const { return *metal_device_properties; }
-	uint32_t get_metal_buffer_index_for_vertex_attribute_binding(uint32_t binding) {
+
+	_FORCE_INLINE_ uint32_t get_metal_buffer_index_for_vertex_attribute_binding(uint32_t binding) {
 		return (metal_device_properties->limits.maxPerStageBufferCount - 1) - binding;
 	}
+
+	size_t get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const;
 
 	void set_setup_buffer(RDD::CommandBufferID p_command_buffer) final;
 	void append_command_buffer(RDD::CommandBufferID p_command_buffer) final;
 	void resize_notify();
 	void flush(bool p_flush_setup, bool p_flush_pending) final;
-	Error prepare_buffers() final;
+	Error prepare_buffers(RDD::CommandBufferID p_command_buffer) final;
+	void postpare_buffers(RDD::CommandBufferID p_command_buffer) final;
 	Error swap_buffers() final;
 	Error initialize() final;
 

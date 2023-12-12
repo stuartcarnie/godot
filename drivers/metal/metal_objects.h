@@ -32,6 +32,7 @@
 #define GODOT_METAL_OBJECTS_H
 
 #import "metal_device_properties.h"
+#import "pixel_formats.h"
 #import "servers/rendering/rendering_device_driver.h"
 #import "utils.h"
 
@@ -176,8 +177,9 @@ private:
 
 	void render_bind_uniform_sets();
 
-	static void populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<RDD::AttachmentClearRect> p_rects);
-	static uint32_t populate_vertices(simd::float4 *p_vertices, uint32_t p_index, RDD::AttachmentClearRect const &p_rect, Size2i p_fb_size);
+	static void populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<Rect2i> p_rects);
+	static uint32_t populate_vertices(simd::float4 *p_vertices, uint32_t p_index, Rect2i const &p_rect, Size2i p_fb_size);
+	void _end_render_pass();
 
 public:
 	MDCommandBufferStateType type = MDCommandBufferStateType::None;
@@ -187,18 +189,27 @@ public:
 		MDRenderPass *pass = nullptr;
 		MDFrameBuffer *frameBuffer = nullptr;
 		MDRenderPipeline *pipeline = nullptr;
+		LocalVector<RDD::RenderPassClearValue> clear_values;
+		LocalVector<MTLViewport> viewports;
+		LocalVector<MTLScissorRect > scissors;
 		uint32_t current_subpass = UINT32_MAX;
 		Rect2i render_area = {};
 		bool is_rendering_entire_area = false;
+		MTLRenderPassDescriptor *desc = nil;
 		id<MTLRenderCommandEncoder> encoder = nil;
 		id<MTLBuffer> index_buffer = nil;
 		MTLIndexType index_type = MTLIndexTypeUInt16;
+		LocalVector<id<MTLBuffer> __unsafe_unretained> vertex_buffers;
+		LocalVector<NSUInteger> vertex_offsets;
 		// clang-format off
 		enum DirtyFlag: uint8_t {
-			DIRTY_NONE     = 0b0000,
-			DIRTY_PIPELINE = 0b0001,
-			DIRTY_UNIFORMS = 0b0010,
-			DIRTY_DEPTH    = 0b0100,
+			DIRTY_NONE     = 0b0000'0000,
+			DIRTY_PIPELINE = 0b0000'0001,
+			DIRTY_UNIFORMS = 0b0000'0010,
+			DIRTY_DEPTH    = 0b0000'0100,
+			DIRTY_VERTEX   = 0b0000'1000,
+			DIRTY_VIEWPORT = 0b0001'0000,
+			DIRTY_SCISSORS = 0b0010'0000,
 		};
 		// clang-format on
 		BitField<DirtyFlag> dirty = DIRTY_NONE;
@@ -209,6 +220,7 @@ public:
 			if (pipeline)
 				dirty.set_flag(DIRTY_PIPELINE);
 		}
+
 		_FORCE_INLINE_ void reset() {
 			pass = nil;
 			frameBuffer = nil;
@@ -216,11 +228,17 @@ public:
 			current_subpass = UINT32_MAX;
 			render_area = {};
 			is_rendering_entire_area = false;
+			desc = nil;
 			encoder = nil;
 			index_buffer = nil;
 			index_type = MTLIndexTypeUInt16;
 			dirty = DIRTY_NONE;
 			uniform_sets.clear();
+			clear_values.clear();
+			viewports.clear();
+			scissors.clear();
+			vertex_buffers.clear();
+			vertex_offsets.clear();
 		}
 	} render;
 
@@ -269,18 +287,22 @@ public:
 #pragma mark - Render Commands
 
 	void render_bind_uniform_set(RDD::UniformSetID p_uniform_set, RDD::ShaderID p_shader, uint32_t p_set_index);
-	void render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<RDD::AttachmentClearRect> p_rects);
-
+	void render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<Rect2i> p_rects);
+	void render_set_viewport(VectorView<Rect2i> p_viewports);
+	void render_set_scissor(VectorView<Rect2i> p_scissors);
 	void render_begin_pass(RDD::RenderPassID p_render_pass,
 			RDD::FramebufferID p_frameBuffer,
 			RDD::CommandBufferType p_cmd_buffer_type,
 			const Rect2i &p_rect,
 			VectorView<RDD::RenderPassClearValue> p_clear_values);
+	void render_next_subpass();
 	void render_draw(uint32_t p_vertex_count,
 			uint32_t p_instance_count,
 			uint32_t p_base_vertex,
 			uint32_t p_first_instance);
+	void render_bind_vertex_buffers(uint32_t p_binding_count, const RDD::BufferID *p_buffers, const uint64_t *p_offsets);
 	void render_bind_index_buffer(RDD::BufferID p_buffer, RDD::IndexBufferFormat p_format, uint64_t p_offset);
+
 	void render_draw_indexed(uint32_t p_index_count,
 			uint32_t p_instance_count,
 			uint32_t p_first_index,
@@ -291,6 +313,8 @@ public:
 #pragma mark - Compute Commands
 
 	void compute_bind_uniform_set(RDD::UniformSetID p_uniform_set, RDD::ShaderID p_shader, uint32_t p_set_index);
+	void compute_dispatch(uint32_t p_x_groups, uint32_t p_y_groups, uint32_t p_z_groups);
+	void compute_dispatch_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset);
 
 	MDCommandBuffer(id<MTLCommandQueue> p_queue, MetalContext *p_context) :
 			queue(p_queue), context(p_context) {
@@ -331,7 +355,7 @@ struct UniformInfo {
 };
 
 struct UniformSet {
-	Vector<UniformInfo> uniforms;
+	LocalVector<UniformInfo> uniforms;
 	uint32_t buffer_size;
 	HashMap<RDC::ShaderStage, uint32_t> offsets;
 	HashMap<RDC::ShaderStage, id<MTLArgumentEncoder>> encoders;
@@ -342,11 +366,11 @@ protected:
 	String name;
 
 public:
-	Vector<UniformSet> sets;
+	LocalVector<UniformSet> sets;
 
 	virtual void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) = 0;
 
-	MDShader(String p_name, Vector<UniformSet> p_sets) :
+	MDShader(String p_name, LocalVector<UniformSet> p_sets) :
 			name(p_name), sets(p_sets) {}
 	virtual ~MDShader() = default;
 };
@@ -366,7 +390,7 @@ public:
 
 	void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
 
-	MDComputeShader(String p_name, Vector<UniformSet> p_sets, id<MTLLibrary> p_kernel);
+	MDComputeShader(String p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_kernel);
 	~MDComputeShader() override = default;
 };
 
@@ -392,7 +416,7 @@ public:
 
 	void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
 
-	MDRenderShader(String p_name, Vector<UniformSet> p_sets, id<MTLLibrary> p_vert, id<MTLLibrary> p_frag);
+	MDRenderShader(String p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_vert, id<MTLLibrary> p_frag);
 	~MDRenderShader() override = default;
 };
 
@@ -437,7 +461,7 @@ struct BoundUniformSet {
 class MDUniformSet {
 public:
 	NSUInteger index;
-	Vector<RDD::BoundUniform> p_uniforms;
+	LocalVector<RDD::BoundUniform> p_uniforms;
 	HashMap<MDShader *, BoundUniformSet> bound_uniforms;
 
 	BoundUniformSet &boundUniformSetForShader(MDShader *p_shader, id<MTLDevice> device);
@@ -458,39 +482,72 @@ _FORCE_INLINE_ bool operator&(MDAttachmentType a, MDAttachmentType b) {
 	return uint8_t(a) & uint8_t(b);
 }
 
+struct MDSubpass {
+	uint32_t subpass_index = 0;
+	LocalVector<RDD::AttachmentReference> input_references;
+	LocalVector<RDD::AttachmentReference> color_references;
+	RDD::AttachmentReference depth_stencil_reference;
+	LocalVector<RDD::AttachmentReference> resolve_references;
+
+	MVKMTLFmtCaps getRequiredFmtCapsForAttachmentAt(uint32_t p_index) const;
+};
+
 struct MDAttachment {
+private:
+	uint32_t index = 0;
+	uint32_t firstUseSubpassIndex = 0;
+	uint32_t lastUseSubpassIndex = 0;
+
+public:
 	MTLPixelFormat format = MTLPixelFormatInvalid;
 	MDAttachmentType type = MDAttachmentType::None;
 	MTLLoadAction loadAction = MTLLoadActionDontCare;
 	MTLStoreAction storeAction = MTLStoreActionDontCare;
 	uint32_t samples = 1;
+
+	/*!
+	 * @brief Returns true if this attachment is first used in the given subpass.
+	 * @param subpass
+	 * @return
+	 */
+	[[nodiscard]] _FORCE_INLINE_ bool isFirstUseOf(MDSubpass const &subpass) const {
+		return subpass.subpass_index == firstUseSubpassIndex;
+	}
+
+	/*!
+	 * @brief Returns true if this attachment is last used in the given subpass.
+	 * @param subpass
+	 * @return
+	 */
+	[[nodiscard]] _FORCE_INLINE_ bool isLastUseOf(MDSubpass const &subpass) const {
+		return subpass.subpass_index == lastUseSubpassIndex;
+	}
+
+	void linkToSubpass(MDRenderPass const &pass);
+
+	MTLStoreAction getMTLStoreAction(MDSubpass const &p_subpass,
+			bool p_is_rendering_entire_area,
+			bool p_has_resolve,
+			bool p_can_resolve) const;
+	bool configureDescriptor(MTLRenderPassAttachmentDescriptor *p_desc,
+			PixelFormats &p_pf,
+			MDSubpass const &p_subpass,
+			id<MTLTexture> p_attachment,
+			bool p_is_rendering_entire_area,
+			bool p_has_resolve,
+			bool p_can_resolve) const;
 };
 
 class MDRenderPass {
-	NSInteger _depthIndex;
-	NSInteger _stencilIndex;
-
 public:
 	TightLocalVector<MDAttachment> attachments;
-	TightLocalVector<RDD::Subpass> subpasses;
-
-	[[nodiscard]] MDAttachment const *depth() const {
-		return _depthIndex == NSNotFound ? nullptr : &attachments[_depthIndex];
-	}
-
-	[[nodiscard]] MDAttachment const *stencil() const {
-		return _stencilIndex == NSNotFound ? nullptr : &attachments[_stencilIndex];
-	}
+	TightLocalVector<MDSubpass> subpasses;
 
 	uint32_t get_sample_count() const {
 		return attachments.is_empty() ? 1 : attachments[0].samples;
 	};
 
-	MDRenderPass(TightLocalVector<MDAttachment> &&p_attachments, TightLocalVector<RDD::Subpass> &&p_subpasses, NSInteger p_depthIndex, NSInteger p_stencilIndex) :
-			attachments(p_attachments), subpasses(p_subpasses), _depthIndex(p_depthIndex), _stencilIndex(p_stencilIndex) {}
-
-	explicit MDRenderPass(TightLocalVector<MDAttachment> &&p_attachments, TightLocalVector<RDD::Subpass> &&p_subpasses) :
-			MDRenderPass(std::move(p_attachments), std::move(p_subpasses), NSNotFound, NSNotFound) {}
+	MDRenderPass(TightLocalVector<MDAttachment> &&p_attachments, TightLocalVector<MDSubpass> &&p_subpasses);
 };
 
 class MDPipeline {
@@ -508,6 +565,7 @@ public:
 	id<MTLDepthStencilState> depth_stencil = nil;
 	uint32_t push_constant_size = 0;
 	uint32_t push_constant_stages_mask = 0;
+	SampleCount sample_count = SampleCount1;
 
 	struct {
 		MTLCullMode cull_mode = MTLCullModeNone;
@@ -568,9 +626,8 @@ public:
 		};
 
 	} raster_state;
-#if DEV_ENABLED
+
 	MDRenderShader *shader = nil;
-#endif
 
 	MDRenderPipeline() :
 			MDPipeline(MDPipelineType::Render) {}
@@ -583,9 +640,8 @@ public:
 	struct {
 		MTLSize local = { 0 };
 	} compute_state;
-#if DEV_ENABLED
+
 	MDComputeShader *shader = nil;
-#endif
 
 	explicit MDComputePipeline(id<MTLComputePipelineState> p_state) :
 			MDPipeline(MDPipelineType::Compute), state(p_state) {}
@@ -594,9 +650,9 @@ public:
 
 class MDFrameBuffer {
 public:
-	Vector<MTL::Texture> textures;
+	LocalVector<MTL::Texture> textures;
 	Size2i size;
-	MDFrameBuffer(Vector<MTL::Texture> p_textures, Size2i p_size) :
+	MDFrameBuffer(LocalVector<MTL::Texture> p_textures, Size2i p_size) :
 			textures(p_textures), size(p_size) {}
 
 	MTLRenderPassDescriptor *newRenderPassDescriptorWithRenderPass(MDRenderPass *pass, VectorView<RDD::RenderPassClearValue> colors) const;
@@ -607,7 +663,7 @@ class MDScreenFrameBuffer final : public MDFrameBuffer {
 public:
 	id<CAMetalDrawable> drawable;
 	explicit MDScreenFrameBuffer(id<CAMetalDrawable> p_drawable, Size2i p_size) :
-			MDFrameBuffer(Vector<MTL::Texture>({ p_drawable.texture }), p_size), drawable(p_drawable) {}
+			MDFrameBuffer(LocalVector<MTL::Texture>({ p_drawable.texture }), p_size), drawable(p_drawable) {}
 	~MDScreenFrameBuffer() final = default;
 };
 

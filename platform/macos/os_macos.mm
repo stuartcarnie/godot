@@ -106,6 +106,59 @@ void OS_MacOS::revoke_granted_permissions() {
 	}
 }
 
+#if DEV_ENABLED
+
+// Function to check if a debugger is attached to the current process
+bool is_debugger_attached() {
+	int mib[4];
+	struct kinfo_proc info {};
+	size_t size = sizeof(info);
+
+	// Initialize the flags so that, if sysctl fails, info.kp_proc.p_flag will be 0.
+	info.kp_proc.p_flag = 0;
+
+	// Initialize mib, which tells sysctl the info we want, in this case we're looking for information
+	// about a specific process ID.
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_PROC;
+	mib[2] = KERN_PROC_PID;
+	mib[3] = getpid();
+
+	if (sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, nullptr, 0) != 0) {
+		perror("sysctl");
+		return false;
+	}
+
+	return (info.kp_proc.p_flag & P_TRACED) != 0;
+}
+
+void OS_MacOS::wait_for_debugger(uint32_t p_msec) {
+	if (p_msec == 0) {
+		return;
+	}
+
+	CFAbsoluteTime start = CFAbsoluteTimeGetCurrent();
+	CFTimeInterval wait_time = p_msec / 1000.0;
+
+	NSTimer *timer = [NSTimer timerWithTimeInterval:0.100
+											repeats:YES
+											  block:^(NSTimer *t) {
+												if (is_debugger_attached() || CFAbsoluteTimeGetCurrent() > start + wait_time) {
+													[NSApp stopModalWithCode:NSModalResponseContinue];
+													[t invalidate];
+												}
+											  }];
+
+	[[NSRunLoop mainRunLoop] addTimer:timer forMode:NSModalPanelRunLoopMode];
+
+	pid_t pid = getpid();
+	alert(vformat("Attach debugger to pid: %d", pid));
+
+	print("continue...");
+}
+
+#endif
+
 void OS_MacOS::initialize_core() {
 	OS_Unix::initialize_core();
 
@@ -612,14 +665,14 @@ Error OS_MacOS::create_process(const String &p_path, const List<String> &p_argum
 			[[NSWorkspace sharedWorkspace] openApplicationAtURL:url
 												  configuration:configuration
 											  completionHandler:^(NSRunningApplication *app, NSError *error) {
-												  if (error) {
-													  err = ERR_CANT_FORK;
-													  NSLog(@"Failed to execute: %@", error.localizedDescription);
-												  } else {
-													  pid = [app processIdentifier];
-													  err = OK;
-												  }
-												  dispatch_semaphore_signal(lock);
+												if (error) {
+													err = ERR_CANT_FORK;
+													NSLog(@"Failed to execute: %@", error.localizedDescription);
+												} else {
+													pid = [app processIdentifier];
+													err = OK;
+												}
+												dispatch_semaphore_signal(lock);
 											  }];
 			dispatch_semaphore_wait(lock, dispatch_time(DISPATCH_TIME_NOW, 20000000000)); // 20 sec timeout, wait for app to launch.
 

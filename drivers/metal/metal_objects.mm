@@ -29,7 +29,7 @@
 /**************************************************************************/
 
 #import "metal_objects.h"
-
+#import "metal_context.h"
 #import "pixel_formats.h"
 
 void MDCommandBuffer::begin() {
@@ -73,6 +73,29 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID pipeline) {
 			render.dirty.clear_flag(RenderState::DIRTY_PIPELINE);
 			render.dirty.set_flag(RenderState::DIRTY_UNIFORMS);
 			render.pipeline = (MDRenderPipeline *)p;
+
+			if (render.encoder == nil) {
+				// this condition occurs when there are no attachments when calling render_next_subpass()
+				render.desc.defaultRasterSampleCount = static_cast<NSUInteger>(render.pipeline->sample_count);
+				render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:render.desc];
+			}
+
+			if (render.viewports.size() > 0) {
+				[render.encoder setViewports:render.viewports.ptr() count:render.viewports.size()];
+			}
+			if (render.scissors.size() > 0) {
+				[render.encoder setScissorRects:render.scissors.ptr() count:render.scissors.size()];
+			}
+
+			if (!render.vertex_buffers.is_empty()) {
+				uint32_t p_binding_count = render.vertex_buffers.size();
+				uint32_t first = context->get_metal_buffer_index_for_vertex_attribute_binding(p_binding_count - 1);
+				[render.encoder setVertexBuffers:render.vertex_buffers.ptr()
+										 offsets:render.vertex_offsets.ptr()
+									   withRange:NSMakeRange(first, p_binding_count)];
+				render.dirty.clear_flag(RenderState::DIRTY_VERTEX);
+			}
+
 			[render.encoder setRenderPipelineState:render.pipeline->state];
 			if (render.pipeline->depth_stencil != nil) {
 				[render.encoder setDepthStencilState:render.pipeline->depth_stencil];
@@ -140,20 +163,17 @@ void MDCommandBuffer::render_bind_uniform_set(RDD::UniformSetID p_uniform_set, R
 	if (render.uniform_sets.size() <= set->index) {
 		render.uniform_sets.resize(set->index + 1);
 	}
-	if (render.uniform_sets[set->index] != nullptr && render.uniform_sets[set->index] != set) {
+	if (render.uniform_sets[set->index] == nullptr || render.uniform_sets[set->index] != set) {
 		render.dirty.set_flag(RenderState::DIRTY_UNIFORMS);
 	}
 	render.uniform_sets.write[set->index] = set;
 }
 
-void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<RDD::AttachmentClearRect> p_rects) {
+void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<Rect2i> p_rects) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
 
 	// vertex count
-	uint32_t vertex_count = 0;
-	for (int i = 0; i < p_rects.size(); i++) {
-		vertex_count += p_rects[i].layer_count * 6;
-	}
+	uint32_t vertex_count = p_rects.size() * 6;
 
 	simd::float4 vertices[vertex_count];
 	simd::float4 clear_colors[ClearAttKey::ATTACHMENT_COUNT];
@@ -221,7 +241,35 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 	[enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertex_count];
 	[enc popDebugGroup];
 
-	render.mark_dirty();
+	render.dirty.set_flag(RenderState::DIRTY_PIPELINE);
+}
+
+void MDCommandBuffer::render_set_viewport(VectorView<Rect2i> p_viewports) {
+	render.viewports.resize(p_viewports.size());
+	for (int i = 0; i < p_viewports.size(); i += 1) {
+		Rect2i const &vp = p_viewports[i];
+		render.viewports[i] = {
+			.originX = static_cast<double>(vp.position.x),
+			.originY = static_cast<double>(vp.position.y),
+			.width = static_cast<double>(vp.size.width),
+			.height = static_cast<double>(vp.size.height),
+			.znear = 0.0,
+			.zfar = 1.0,
+		};
+	}
+}
+
+void MDCommandBuffer::render_set_scissor(VectorView<Rect2i> p_scissors) {
+	render.scissors.resize(p_scissors.size());
+	for (int i = 0; i < p_scissors.size(); i += 1) {
+		Rect2i const &vp = p_scissors[i];
+		render.scissors[i] = {
+			.x = static_cast<NSUInteger>(vp.position.x),
+			.y = static_cast<NSUInteger>(vp.position.y),
+			.width = static_cast<NSUInteger>(vp.size.width),
+			.height = static_cast<NSUInteger>(vp.size.height),
+		};
+	}
 }
 
 void MDCommandBuffer::render_bind_uniform_sets() {
@@ -241,7 +289,7 @@ void MDCommandBuffer::render_bind_uniform_sets() {
 	for (MDUniformSet *set : render.uniform_sets) {
 		if (set == nullptr || set->index >= shader->sets.size())
 			continue;
-		UniformSet set_info = shader->sets.get(set->index);
+		UniformSet const &set_info = shader->sets[set->index];
 
 		BoundUniformSet &bus = set->boundUniformSetForShader(shader, device);
 
@@ -258,14 +306,14 @@ void MDCommandBuffer::render_bind_uniform_sets() {
 
 		// vertex
 		{
-			uint32_t *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_VERTEX);
+			uint32_t const *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_VERTEX);
 			if (offset) {
 				[enc setVertexBuffer:bus.buffer offset:*offset atIndex:set->index];
 			}
 		}
 		// fragment
 		{
-			uint32_t *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_FRAGMENT);
+			uint32_t const *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_FRAGMENT);
 			if (offset) {
 				[enc setFragmentBuffer:bus.buffer offset:*offset atIndex:set->index];
 			}
@@ -273,21 +321,21 @@ void MDCommandBuffer::render_bind_uniform_sets() {
 	}
 }
 
-void MDCommandBuffer::populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<RDD::AttachmentClearRect> p_rects) {
+void MDCommandBuffer::populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<Rect2i> p_rects) {
 	uint32_t idx = 0;
 	for (int i = 0; i < p_rects.size(); i++) {
-		RDD::AttachmentClearRect const &rect = p_rects[i];
+		Rect2i const &rect = p_rects[i];
 		idx = populate_vertices(p_vertices, idx, rect, p_fb_size);
 	}
 }
 
-uint32_t MDCommandBuffer::populate_vertices(simd::float4 *p_vertices, uint32_t p_start_vertex, RDD::AttachmentClearRect const &p_rect, Size2i p_fb_size) {
+uint32_t MDCommandBuffer::populate_vertices(simd::float4 *p_vertices, uint32_t p_start_vertex, Rect2i const &p_rect, Size2i p_fb_size) {
 	// Determine the positions of the four edges of the
 	// clear rectangle as a fraction of the attachment size.
-	float leftPos = (float)(p_rect.rect.position.x) / (float)p_fb_size.width;
-	float rightPos = (float)(p_rect.rect.size.width) / (float)p_fb_size.width + leftPos;
-	float bottomPos = (float)(p_rect.rect.position.y) / (float)p_fb_size.height;
-	float topPos = (float)(p_rect.rect.size.height) / (float)p_fb_size.height + bottomPos;
+	float leftPos = (float)(p_rect.position.x) / (float)p_fb_size.width;
+	float rightPos = (float)(p_rect.size.width) / (float)p_fb_size.width + leftPos;
+	float bottomPos = (float)(p_rect.position.y) / (float)p_fb_size.height;
+	float topPos = (float)(p_rect.size.height) / (float)p_fb_size.height + bottomPos;
 
 	// Transform to clip-space coordinates, which are bounded by (-1.0 < p < 1.0) in clip-space.
 	leftPos = (leftPos * 2.0f) - 1.0f;
@@ -298,40 +346,36 @@ uint32_t MDCommandBuffer::populate_vertices(simd::float4 *p_vertices, uint32_t p
 	simd::float4 vtx;
 
 	uint32_t idx = p_start_vertex;
-	uint32_t startLayer = p_rect.base_layer;
-	uint32_t endLayer = startLayer + p_rect.layer_count;
-	for (uint32_t layer = startLayer; layer < endLayer; layer++) {
-		vtx.z = 0.0;
-		vtx.w = (float)layer;
+	vtx.z = 0.0;
+	vtx.w = (float)1;
 
-		// Top left vertex	- First triangle
-		vtx.y = topPos;
-		vtx.x = leftPos;
-		p_vertices[idx++] = vtx;
+	// Top left vertex	- First triangle
+	vtx.y = topPos;
+	vtx.x = leftPos;
+	p_vertices[idx++] = vtx;
 
-		// Bottom left vertex
-		vtx.y = bottomPos;
-		vtx.x = leftPos;
-		p_vertices[idx++] = vtx;
+	// Bottom left vertex
+	vtx.y = bottomPos;
+	vtx.x = leftPos;
+	p_vertices[idx++] = vtx;
 
-		// Bottom right vertex
-		vtx.y = bottomPos;
-		vtx.x = rightPos;
-		p_vertices[idx++] = vtx;
+	// Bottom right vertex
+	vtx.y = bottomPos;
+	vtx.x = rightPos;
+	p_vertices[idx++] = vtx;
 
-		// Bottom right vertex	- Second triangle
-		p_vertices[idx++] = vtx;
+	// Bottom right vertex	- Second triangle
+	p_vertices[idx++] = vtx;
 
-		// Top right vertex
-		vtx.y = topPos;
-		vtx.x = rightPos;
-		p_vertices[idx++] = vtx;
+	// Top right vertex
+	vtx.y = topPos;
+	vtx.x = rightPos;
+	p_vertices[idx++] = vtx;
 
-		// Top left vertex
-		vtx.y = topPos;
-		vtx.x = leftPos;
-		p_vertices[idx++] = vtx;
-	}
+	// Top left vertex
+	vtx.y = topPos;
+	vtx.x = leftPos;
+	p_vertices[idx++] = vtx;
 
 	return idx;
 }
@@ -343,20 +387,127 @@ void MDCommandBuffer::render_begin_pass(RDD::RenderPassID p_render_pass, RDD::Fr
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
 	MDFrameBuffer *fb = (MDFrameBuffer *)(p_frameBuffer.id);
 
-	MTLRenderPassDescriptor *desc = fb->newRenderPassDescriptorWithRenderPass(pass, p_clear_values);
-	desc.renderTargetWidth = p_rect.size.width;
-	desc.renderTargetHeight = p_rect.size.height;
-
 	type = MDCommandBufferStateType::Render;
 	render.pass = pass;
 	render.current_subpass = UINT32_MAX;
 	render.render_area = p_rect;
+	render.clear_values.resize(p_clear_values.size());
+	for (int i = 0; i < p_clear_values.size(); i++) {
+		render.clear_values[i] = p_clear_values[i];
+	}
 	render.is_rendering_entire_area = (p_rect.position == Point2i(0, 0)) && p_rect.size == fb->size;
 	if (!render.is_rendering_entire_area) {
 		CRASH_NOW_MSG("Unimplemented!");
 	}
 	render.frameBuffer = fb;
-	render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:desc];
+	render_next_subpass();
+}
+
+void MDCommandBuffer::_end_render_pass() {
+	MDFrameBuffer const &fb_info = *render.frameBuffer;
+	MDRenderPass const &pass_info = *render.pass;
+	MDSubpass const &subpass = pass_info.subpasses[render.current_subpass];
+
+	for (uint32_t i = 0; i < subpass.resolve_references.size(); i++) {
+		uint32_t color_index = subpass.color_references[i].attachment;
+		uint32_t resolve_index = subpass.resolve_references[i].attachment;
+		DEV_ASSERT((color_index == RDD::AttachmentReference::UNUSED) == (resolve_index == RDD::AttachmentReference::UNUSED));
+		if (color_index == RDD::AttachmentReference::UNUSED || !fb_info.textures[color_index]) {
+			continue;
+		}
+
+		id<MTLTexture> color_tex = fb_info.textures[color_index];
+		id<MTLTexture> resolve_tex = fb_info.textures[resolve_index];
+
+		CRASH_NOW_MSG("unimplemented: resolving attachments in subpass");
+	}
+
+	[render.encoder endEncoding];
+	render.encoder = nil;
+}
+
+void MDCommandBuffer::render_next_subpass() {
+	DEV_ASSERT(commandBuffer != nil);
+
+	if (render.current_subpass == UINT32_MAX) {
+		render.current_subpass = 0;
+	} else {
+		_end_render_pass();
+		render.current_subpass++;
+	}
+
+	MDFrameBuffer const &fb = *render.frameBuffer;
+	MDRenderPass const &pass = *render.pass;
+	MDSubpass const &subpass = pass.subpasses[render.current_subpass];
+
+	MTLRenderPassDescriptor *desc = MTLRenderPassDescriptor.renderPassDescriptor;
+	PixelFormats &pf = context->get_pixel_formats();
+
+	uint32_t attachmentCount = 0;
+	for (uint32_t i = 0; i < subpass.color_references.size(); i++) {
+		uint32_t idx = subpass.color_references[i].attachment;
+		if (idx == RDD::AttachmentReference::UNUSED) {
+			continue;
+		}
+
+		attachmentCount += 1;
+		MTLRenderPassColorAttachmentDescriptor *ca = desc.colorAttachments[i];
+
+		uint32_t resolveIdx = subpass.resolve_references.is_empty() ? RDD::AttachmentReference::UNUSED : subpass.resolve_references[i].attachment;
+		bool has_resolve = resolveIdx != RDD::AttachmentReference::UNUSED;
+		bool can_resolve = true;
+		if (resolveIdx != RDD::AttachmentReference::UNUSED) {
+			id<MTLTexture> resolve_tex = fb.textures[resolveIdx];
+			can_resolve = mvkAreAllFlagsEnabled(pf.getCapabilities(resolve_tex.pixelFormat), kMVKMTLFmtCapsResolve);
+			if (can_resolve) {
+				ca.resolveTexture = resolve_tex;
+			} else {
+				CRASH_NOW_MSG("unimplemented: using a texture format that is not supported for resolve");
+			}
+		}
+
+		MDAttachment const &attachment = pass.attachments[idx];
+
+		id<MTLTexture> tex = fb.textures[idx];
+		if ((attachment.type & MDAttachmentType::Color)) {
+			if (attachment.configureDescriptor(ca, pf, subpass, tex, render.is_rendering_entire_area, has_resolve, can_resolve)) {
+				Color clearColor = render.clear_values[i].color;
+				ca.clearColor = MTLClearColorMake(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+			}
+		}
+	}
+
+	if (subpass.depth_stencil_reference.attachment != RDD::AttachmentReference::UNUSED) {
+		attachmentCount += 1;
+		uint32_t idx = subpass.depth_stencil_reference.attachment;
+		MDAttachment const &attachment = pass.attachments[idx];
+		id<MTLTexture> tex = fb.textures[idx];
+		if (attachment.type & MDAttachmentType::Depth) {
+			MTLRenderPassDepthAttachmentDescriptor *da = desc.depthAttachment;
+			if (attachment.configureDescriptor(da, pf, subpass, tex, render.is_rendering_entire_area, false, false)) {
+				da.clearDepth = render.clear_values[idx].depth;
+			}
+		}
+
+		if (attachment.type & MDAttachmentType::Stencil) {
+			MTLRenderPassStencilAttachmentDescriptor *sa = desc.stencilAttachment;
+			if (attachment.configureDescriptor(sa, pf, subpass, tex, render.is_rendering_entire_area, false, false)) {
+				sa.clearStencil = render.clear_values[idx].stencil;
+			}
+		}
+	}
+
+	desc.renderTargetWidth = render.render_area.size.width;
+	desc.renderTargetHeight = render.render_area.size.height;
+
+	if (attachmentCount == 0) {
+		// cache the descriptor and create it with a matching sample count
+		// for the pipeline, by setting the defaultRasterSampleCount from
+		// the pipeline's sample count
+		render.desc = desc;
+	} else {
+		render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:desc];
+	}
 }
 
 void MDCommandBuffer::render_draw(uint32_t p_vertex_count,
@@ -364,6 +515,8 @@ void MDCommandBuffer::render_draw(uint32_t p_vertex_count,
 		uint32_t p_base_vertex,
 		uint32_t p_first_instance) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
+	DEV_ASSERT(render.dirty.has_flag(RenderState::DIRTY_VERTEX) == false);
+
 	render_bind_uniform_sets();
 
 	id<MTLRenderCommandEncoder> enc = render.encoder;
@@ -373,6 +526,28 @@ void MDCommandBuffer::render_draw(uint32_t p_vertex_count,
 			  vertexCount:p_vertex_count
 			instanceCount:p_instance_count
 			 baseInstance:p_first_instance];
+}
+
+void MDCommandBuffer::render_bind_vertex_buffers(uint32_t p_binding_count, const RDD::BufferID *p_buffers, const uint64_t *p_offsets) {
+	DEV_ASSERT(type == MDCommandBufferStateType::Render);
+
+	render.vertex_buffers.resize(p_binding_count);
+	render.vertex_offsets.resize(p_binding_count);
+
+	// reverse the buffers, as their bindings are assigned in descending order
+	for (int i = 0; i < p_binding_count; i += 1) {
+		render.vertex_buffers[i] = rid::get(p_buffers[p_binding_count - i - 1]);
+		render.vertex_offsets[i] = p_offsets[p_binding_count - i - 1];
+	}
+
+	if (render.encoder) {
+		uint32_t first = context->get_metal_buffer_index_for_vertex_attribute_binding(p_binding_count - 1);
+		[render.encoder setVertexBuffers:render.vertex_buffers.ptr()
+								 offsets:render.vertex_offsets.ptr()
+							   withRange:NSMakeRange(first, p_binding_count)];
+	} else {
+		render.dirty.set_flag(RenderState::DIRTY_VERTEX);
+	}
 }
 
 void MDCommandBuffer::render_bind_index_buffer(RDD::BufferID p_buffer, RDD::IndexBufferFormat p_format, uint64_t p_offset) {
@@ -388,6 +563,8 @@ void MDCommandBuffer::render_draw_indexed(uint32_t p_index_count,
 		int32_t p_vertex_offset,
 		uint32_t p_first_instance) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
+	DEV_ASSERT(render.dirty.has_flag(RenderState::DIRTY_VERTEX) == false);
+
 	render_bind_uniform_sets();
 
 	id<MTLRenderCommandEncoder> enc = render.encoder;
@@ -419,7 +596,7 @@ void MDCommandBuffer::compute_bind_uniform_set(RDD::UniformSetID p_uniform_set, 
 	id<MTLDevice> device = enc.device;
 
 	MDShader *shader = (MDShader *)(p_shader.id);
-	UniformSet set_info = shader->sets.get(p_set_index);
+	UniformSet const &set_info = shader->sets[p_set_index];
 
 	MDUniformSet *set = (MDUniformSet *)(p_uniform_set.id);
 	BoundUniformSet &bus = set->boundUniformSetForShader(shader, device);
@@ -431,10 +608,28 @@ void MDCommandBuffer::compute_bind_uniform_set(RDD::UniformSetID p_uniform_set, 
 		}
 	}
 
-	uint32_t *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_COMPUTE);
+	uint32_t const *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_COMPUTE);
 	if (offset) {
 		[enc setBuffer:bus.buffer offset:*offset atIndex:p_set_index];
 	}
+}
+
+void MDCommandBuffer::compute_dispatch(uint32_t p_x_groups, uint32_t p_y_groups, uint32_t p_z_groups) {
+	DEV_ASSERT(type == MDCommandBufferStateType::Compute);
+
+	MTLRegion region = MTLRegionMake3D(0, 0, 0, p_x_groups, p_y_groups, p_z_groups);
+
+	id<MTLComputeCommandEncoder> enc = compute.encoder;
+	[enc dispatchThreadgroups:region.size threadsPerThreadgroup:compute.pipeline->compute_state.local];
+}
+
+void MDCommandBuffer::compute_dispatch_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset) {
+	DEV_ASSERT(type == MDCommandBufferStateType::Compute);
+
+	id<MTLBuffer> indirectBuffer = rid::get(p_indirect_buffer);
+
+	id<MTLComputeCommandEncoder> enc = compute.encoder;
+	[enc dispatchThreadgroupsWithIndirectBuffer:indirectBuffer indirectBufferOffset:p_offset threadsPerThreadgroup:compute.pipeline->compute_state.local];
 }
 
 void MDCommandBuffer::end_compute_dispatch() {
@@ -453,7 +648,7 @@ void MDCommandBuffer::end_blit() {
 	type = MDCommandBufferStateType::None;
 }
 
-MDComputeShader::MDComputeShader(String p_name, Vector<UniformSet> p_sets, id<MTLLibrary> p_kernel) :
+MDComputeShader::MDComputeShader(String p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_kernel) :
 		MDShader(p_name, p_sets), kernel(p_kernel) {
 }
 
@@ -470,7 +665,7 @@ void MDComputeShader::encode_push_constant_data(VectorView<uint32_t> data, MDCom
 	[enc setBytes:ptr length:length atIndex:push_constants.binding];
 }
 
-MDRenderShader::MDRenderShader(String p_name, Vector<UniformSet> p_sets, id<MTLLibrary> _Nonnull p_vert, id<MTLLibrary> _Nonnull p_frag) :
+MDRenderShader::MDRenderShader(String p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> _Nonnull p_vert, id<MTLLibrary> _Nonnull p_frag) :
 		MDShader(p_name, p_sets), vert(p_vert), frag(p_frag) {
 }
 
@@ -522,9 +717,9 @@ BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<M
 				RDD::BoundUniform const &uniform = p_uniforms[i];
 				UniformInfo ui = set.uniforms[i];
 
-				// no binding for this stage
 				BindingInfo *bi = ui.bindings.getptr(stage);
 				if (bi == nullptr)
+					// no binding for this stage
 					continue;
 
 				if ((ui.active_stages & stage_usage) == 0) {
@@ -581,6 +776,14 @@ BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<M
 							id<MTLTexture> obj = rid::get(uniform.ids[0]);
 							[enc setTexture:obj atIndex:bi->index];
 							add_usage(obj, stage, bi->usage);
+							BindingInfo *sbi = ui.bindings_secondary.getptr(stage);
+							if (sbi) {
+								id<MTLTexture> tex = obj.parentTexture ? obj.parentTexture : obj;
+								id<MTLBuffer> buf = tex.buffer;
+								if (buf) {
+									[enc setBuffer:buf offset: tex.bufferOffset atIndex: sbi->index];
+								}
+							}
 						} else {
 							id<MTLTexture> __unsafe_unretained *objects = ALLOCA_ARRAY(id<MTLTexture> __unsafe_unretained, count);
 							for (size_t j = 0; j < count; j += 1) {
@@ -626,39 +829,104 @@ BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<M
 	return bound_uniforms.get(p_shader);
 }
 
-MTLRenderPassDescriptor *MDFrameBuffer::newRenderPassDescriptorWithRenderPass(MDRenderPass *pass, VectorView<RDD::RenderPassClearValue> colors) const {
-	MTLRenderPassDescriptor *desc = MTLRenderPassDescriptor.renderPassDescriptor;
-	if (pass->attachments.is_empty()) {
-		desc.defaultRasterSampleCount = 4;
-		return desc;
-	}
-	for (int i = 0; i < pass->attachments.size(); i++) {
-		MDAttachment const &attachment = pass->attachments[i];
-		id<MTLTexture> tex = textures[i];
-		if ((attachment.type & MDAttachmentType::Color)) {
-			MTLRenderPassColorAttachmentDescriptor *ca = desc.colorAttachments[i];
-			ca.texture = tex;
-			ca.loadAction = attachment.loadAction;
-			ca.storeAction = attachment.storeAction;
-			Color clearColor = colors[i].color;
-			ca.clearColor = MTLClearColorMake(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-		}
+MVKMTLFmtCaps MDSubpass::getRequiredFmtCapsForAttachmentAt(uint32_t p_index) const {
+	MVKMTLFmtCaps caps = kMVKMTLFmtCapsNone;
 
-		if (attachment.type & MDAttachmentType::Depth) {
-			desc.depthAttachment.texture = tex;
-			desc.depthAttachment.loadAction = attachment.loadAction;
-			desc.depthAttachment.storeAction = attachment.storeAction;
-			desc.depthAttachment.clearDepth = colors[i].depth;
-		}
-
-		if (attachment.type & MDAttachmentType::Stencil) {
-			desc.stencilAttachment.texture = tex;
-			desc.stencilAttachment.loadAction = attachment.loadAction;
-			desc.stencilAttachment.storeAction = attachment.storeAction;
-			desc.stencilAttachment.clearStencil = colors[i].stencil;
+	for (RDD::AttachmentReference const &ar : input_references) {
+		if (ar.attachment == p_index) {
+			mvkEnableFlags(caps, kMVKMTLFmtCapsRead);
+			break;
 		}
 	}
-	return desc;
+
+	for (RDD::AttachmentReference const &ar : color_references) {
+		if (ar.attachment == p_index) {
+			mvkEnableFlags(caps, kMVKMTLFmtCapsColorAtt);
+			break;
+		}
+	}
+
+	for (RDD::AttachmentReference const &ar : resolve_references) {
+		if (ar.attachment == p_index) {
+			mvkEnableFlags(caps, kMVKMTLFmtCapsResolve);
+			break;
+		}
+	}
+
+	if (depth_stencil_reference.attachment == p_index) {
+		mvkEnableFlags(caps, kMVKMTLFmtCapsDSAtt);
+	}
+
+	return caps;
+}
+
+void MDAttachment::linkToSubpass(const MDRenderPass &pass) {
+	firstUseSubpassIndex = UINT32_MAX;
+	lastUseSubpassIndex = 0;
+
+	for (MDSubpass const &subpass : pass.subpasses) {
+		MVKMTLFmtCaps reqCaps = subpass.getRequiredFmtCapsForAttachmentAt(index);
+		if (reqCaps) {
+			firstUseSubpassIndex = MIN(subpass.subpass_index, firstUseSubpassIndex);
+			lastUseSubpassIndex = MAX(subpass.subpass_index, lastUseSubpassIndex);
+		}
+	}
+}
+
+MTLStoreAction MDAttachment::getMTLStoreAction(MDSubpass const &p_subpass,
+		bool p_is_rendering_entire_area,
+		bool p_has_resolve,
+		bool p_can_resolve) const {
+	if (!p_is_rendering_entire_area || !isLastUseOf(p_subpass)) {
+		return p_has_resolve && p_can_resolve ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
+	}
+
+	switch (storeAction) {
+		case MTLStoreActionStore:
+			return p_has_resolve && p_can_resolve ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
+		case MTLStoreActionDontCare:
+			return p_has_resolve ? (p_can_resolve ? MTLStoreActionMultisampleResolve : MTLStoreActionStore) : MTLStoreActionDontCare;
+
+		default:
+			return MTLStoreActionStore;
+	}
+}
+
+bool MDAttachment::configureDescriptor(MTLRenderPassAttachmentDescriptor *p_desc,
+		PixelFormats &p_pf,
+		MDSubpass const &p_subpass,
+		id<MTLTexture> p_attachment,
+		bool p_is_rendering_entire_area,
+		bool p_has_resolve,
+		bool p_can_resolve) const {
+	p_desc.texture = p_attachment;
+
+	MTLLoadAction load;
+	if (!p_is_rendering_entire_area || !isFirstUseOf(p_subpass)) {
+		load = MTLLoadActionLoad;
+	} else {
+		load = loadAction;
+	}
+
+	p_desc.loadAction = load;
+
+	MTLPixelFormat mtlFmt = p_attachment.pixelFormat;
+	bool isDepthFormat = p_pf.isDepthFormat(mtlFmt);
+	bool isStencilFormat = p_pf.isStencilFormat(mtlFmt);
+	if (isStencilFormat && !isDepthFormat) {
+		p_desc.storeAction = MTLStoreActionDontCare;
+	} else {
+		p_desc.storeAction = getMTLStoreAction(p_subpass, p_is_rendering_entire_area, p_has_resolve, p_can_resolve);
+	}
+
+	return load == MTLLoadActionClear;
+}
+
+MDRenderPass::MDRenderPass(TightLocalVector<MDAttachment> &&p_attachments, TightLocalVector<MDSubpass> &&p_subpasses) :
+		attachments(p_attachments), subpasses(p_subpasses) {
+	for (MDAttachment &att : attachments) {
+		att.linkToSubpass(*this);
+	}
 }
 
 std::shared_ptr<MDQueryPool> MDQueryPool::new_query_pool(id<MTLDevice> device, NSError **error) {

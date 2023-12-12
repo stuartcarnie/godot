@@ -167,9 +167,9 @@ Error MetalContext::_update_swap_chain(Window *window) {
 		color.storeAction = MTLStoreActionStore;
 		attachments.push_back(color);
 	}
-	TightLocalVector<RDD::Subpass> subpasses;
+	TightLocalVector<MDSubpass> subpasses;
 	{
-		RDD::Subpass subpass;
+		MDSubpass subpass = { .subpass_index = 0 };
 		{
 			RDD::AttachmentReference color_ref;
 			{
@@ -194,9 +194,24 @@ Error MetalContext::initialize() {
 	ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
 
 	metal_device_properties = memnew(MetalDeviceProperties(device));
-	pixel_formats = memnew(PixelFormats(this));
+	pixel_formats = memnew(PixelFormats(device));
+
+	String rendering_method;
+	if (OS::get_singleton()->get_current_rendering_method() == "mobile") {
+		rendering_method = "Forward Mobile";
+	} else {
+		rendering_method = "Forward+";
+	}
+
+	print_line(vformat("Metal API %s - %s - %s", get_device_api_version(), rendering_method, device_name));
 
 	return OK;
+}
+
+size_t MetalContext::get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const {
+	size_t deviceAlignment = 0;
+	MTLPixelFormat mtlPixFmt = pixel_formats->getMTLPixelFormat(p_format);
+	return [device minimumLinearTextureAlignmentForPixelFormat: mtlPixFmt];
 }
 
 void MetalContext::set_setup_buffer(RDD::CommandBufferID p_command_buffer) {
@@ -234,9 +249,13 @@ void MetalContext::flush(bool p_flush_setup, bool p_flush_pending) {
 	[last waitUntilCompleted];
 }
 
-Error MetalContext::prepare_buffers() {
+Error MetalContext::prepare_buffers(RDD::CommandBufferID p_command_buffer) {
 	[scope beginScope];
 	return OK;
+}
+
+void MetalContext::postpare_buffers(RDD::CommandBufferID p_command_buffer) {
+	//	[scope endScope];
 }
 
 Error MetalContext::swap_buffers() {
@@ -312,11 +331,23 @@ void MetalContext::local_device_push_command_buffers(RID p_local_device, const R
 	LocalDevice *ld = local_device_owner.get_or_null(p_local_device);
 	ERR_FAIL_COND(ld->waiting);
 	ld->waiting = true;
+
+	// capture the last
+	{
+		MDCommandBuffer *cb = (MDCommandBuffer *)(p_buffers[p_count - 1].id);
+		ld->command_buffer = cb->get_command_buffer();
+	}
+	for (int i = 0; i < p_count; i++) {
+		MDCommandBuffer *cb = (MDCommandBuffer *)(p_buffers[i].id);
+		cb->commit();
+	}
 }
 
 void MetalContext::local_device_sync(RID p_local_device) {
 	LocalDevice *ld = local_device_owner.get_or_null(p_local_device);
 	ERR_FAIL_COND(!ld->waiting);
+	[ld->command_buffer waitUntilCompleted];
+	ld->command_buffer = nil;
 	ld->waiting = false;
 }
 
