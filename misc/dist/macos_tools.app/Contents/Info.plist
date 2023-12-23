@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>4.3</string>
 	<key>CFBundleSignature</key>
-	<string>godot</string>
+	<string>GODO</string>
 	<key>CFBundleVersion</key>
 	<string>4.3</string>
 	<key>NSMicrophoneUsageDescription</key>
