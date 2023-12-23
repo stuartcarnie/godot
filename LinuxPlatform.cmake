@@ -18,5 +18,7 @@ set(WANT_ALSA 1)
 set(WANT_PULSEAUDIO 1)
 set(WANT_X11 1)
 set(WANT_FONTCONFIG 1)
+set(WANT_GLAD 1)
+set(WANT_OPENXR 1)
 
 add_compile_definitions(UNIX_ENABLED)

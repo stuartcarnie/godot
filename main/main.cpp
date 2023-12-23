@@ -1734,6 +1734,24 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 #endif
 	}
 
+#if DEV_ENABLED
+	extern char **environ;
+	for (char **env = environ; *env; ++env) {
+		if (strncasecmp(*env, "GODOT_P_", 8) == 0) {
+			String env_var(*env, strchr(*env, '=') - *env);
+			String env_val = OS::get_singleton()->get_environment(env_var);
+			env_var = env_var.substr(8, env_var.length() - 8);
+			env_var = env_var.replace("__", "/");
+			if (ProjectSettings::get_singleton()->has_setting(env_var)) {
+				print_line("Override setting '" + env_var + "' to '" + env_val + "'");
+				ProjectSettings::get_singleton()->set_setting(env_var, env_val);
+			} else {
+				WARN_PRINT("Environment variable '" + env_var + "' is not a valid project setting");
+			}
+		}
+	}
+#endif
+
 	// Initialize WorkerThreadPool.
 	{
 #ifdef THREADS_ENABLED

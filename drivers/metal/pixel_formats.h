@@ -28,8 +28,28 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef PIXELFORMATS_H
-#define PIXELFORMATS_H
+/**************************************************************************/
+/*                                                                        */
+/* Portions of this code were derived from MoltenVK.                      */
+/*                                                                        */
+/* Copyright (c) 2015-2023 The Brenwill Workshop Ltd.                     */
+/* (http://www.brenwill.com)                                              */
+/*                                                                        */
+/* Licensed under the Apache License, Version 2.0 (the "License");        */
+/* you may not use this file except in compliance with the License.       */
+/* You may obtain a copy of the License at                                */
+/*                                                                        */
+/*     http://www.apache.org/licenses/LICENSE-2.0                         */
+/*                                                                        */
+/* Unless required by applicable law or agreed to in writing, software    */
+/* distributed under the License is distributed on an "AS IS" BASIS,      */
+/* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or        */
+/* implied. See the License for the specific language governing           */
+/* permissions and limitations under the License.                         */
+/**************************************************************************/
+
+#ifndef PIXEL_FORMATS_H
+#define PIXEL_FORMATS_H
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -38,8 +58,6 @@
 
 #import <Metal/Metal.h>
 
-static const uint32_t _dataFormatCount = 256;
-static const uint32_t _dataFormatCoreCount = RenderingDevice::DATA_FORMAT_MAX;
 static const uint32_t _mtlPixelFormatCount = 256;
 static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2; // The actual last enum value is not available on iOS
 static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
@@ -49,57 +67,61 @@ static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 
 typedef enum : uint16_t {
 
-	kMVKMTLFmtCapsNone = 0,
+	kMTLFmtCapsNone = 0,
 	/*! The format can be used in a shader read operation. */
-	kMVKMTLFmtCapsRead = (1 << 0),
-	kMVKMTLFmtCapsFilter = (1 << 1),
+	kMTLFmtCapsRead = (1 << 0),
+	/*! The format can be used in a shader filter operation during sampling. */
+	kMTLFmtCapsFilter = (1 << 1),
 	/*! The format can be used in a shader write operation. */
-	kMVKMTLFmtCapsWrite = (1 << 2),
-	kMVKMTLFmtCapsAtomic = (1 << 3),
+	kMTLFmtCapsWrite = (1 << 2),
+	/*! The format can be used with atomic operations. */
+	kMTLFmtCapsAtomic = (1 << 3),
 	/*! The format can be used as a color attachment. */
-	kMVKMTLFmtCapsColorAtt = (1 << 4),
+	kMTLFmtCapsColorAtt = (1 << 4),
 	/*! The format can be used as a depth-stencil attachment. */
-	kMVKMTLFmtCapsDSAtt = (1 << 5),
-	kMVKMTLFmtCapsBlend = (1 << 6),
-	kMVKMTLFmtCapsMSAA = (1 << 7),
+	kMTLFmtCapsDSAtt = (1 << 5),
+	/*! The format can be used with blend operations. */
+	kMTLFmtCapsBlend = (1 << 6),
+	/*! The format can be used as a destination for multisample antialias (MSAA) data. */
+	kMTLFmtCapsMSAA = (1 << 7),
 	/*! The format can be used as a resolve attachment. */
-	kMVKMTLFmtCapsResolve = (1 << 8),
-	kMVKMTLFmtCapsVertex = (1 << 9),
+	kMTLFmtCapsResolve = (1 << 8),
+	kMTLFmtCapsVertex = (1 << 9),
 
-	kMVKMTLFmtCapsRF = (kMVKMTLFmtCapsRead | kMVKMTLFmtCapsFilter),
-	kMVKMTLFmtCapsRC = (kMVKMTLFmtCapsRead | kMVKMTLFmtCapsColorAtt),
-	kMVKMTLFmtCapsRCB = (kMVKMTLFmtCapsRC | kMVKMTLFmtCapsBlend),
-	kMVKMTLFmtCapsRCM = (kMVKMTLFmtCapsRC | kMVKMTLFmtCapsMSAA),
-	kMVKMTLFmtCapsRCMB = (kMVKMTLFmtCapsRCM | kMVKMTLFmtCapsBlend),
-	kMVKMTLFmtCapsRWC = (kMVKMTLFmtCapsRC | kMVKMTLFmtCapsWrite),
-	kMVKMTLFmtCapsRWCB = (kMVKMTLFmtCapsRWC | kMVKMTLFmtCapsBlend),
-	kMVKMTLFmtCapsRWCM = (kMVKMTLFmtCapsRWC | kMVKMTLFmtCapsMSAA),
-	kMVKMTLFmtCapsRWCMB = (kMVKMTLFmtCapsRWCM | kMVKMTLFmtCapsBlend),
-	kMVKMTLFmtCapsRFCMRB = (kMVKMTLFmtCapsRCMB | kMVKMTLFmtCapsFilter | kMVKMTLFmtCapsResolve),
-	kMVKMTLFmtCapsRFWCMB = (kMVKMTLFmtCapsRWCMB | kMVKMTLFmtCapsFilter),
-	kMVKMTLFmtCapsAll = (kMVKMTLFmtCapsRFWCMB | kMVKMTLFmtCapsResolve),
+	kMTLFmtCapsRF = (kMTLFmtCapsRead | kMTLFmtCapsFilter),
+	kMTLFmtCapsRC = (kMTLFmtCapsRead | kMTLFmtCapsColorAtt),
+	kMTLFmtCapsRCB = (kMTLFmtCapsRC | kMTLFmtCapsBlend),
+	kMTLFmtCapsRCM = (kMTLFmtCapsRC | kMTLFmtCapsMSAA),
+	kMTLFmtCapsRCMB = (kMTLFmtCapsRCM | kMTLFmtCapsBlend),
+	kMTLFmtCapsRWC = (kMTLFmtCapsRC | kMTLFmtCapsWrite),
+	kMTLFmtCapsRWCB = (kMTLFmtCapsRWC | kMTLFmtCapsBlend),
+	kMTLFmtCapsRWCM = (kMTLFmtCapsRWC | kMTLFmtCapsMSAA),
+	kMTLFmtCapsRWCMB = (kMTLFmtCapsRWCM | kMTLFmtCapsBlend),
+	kMTLFmtCapsRFCMRB = (kMTLFmtCapsRCMB | kMTLFmtCapsFilter | kMTLFmtCapsResolve),
+	kMTLFmtCapsRFWCMB = (kMTLFmtCapsRWCMB | kMTLFmtCapsFilter),
+	kMTLFmtCapsAll = (kMTLFmtCapsRFWCMB | kMTLFmtCapsResolve),
 
-	kMVKMTLFmtCapsDRM = (kMVKMTLFmtCapsDSAtt | kMVKMTLFmtCapsRead | kMVKMTLFmtCapsMSAA),
-	kMVKMTLFmtCapsDRFM = (kMVKMTLFmtCapsDRM | kMVKMTLFmtCapsFilter),
-	kMVKMTLFmtCapsDRMR = (kMVKMTLFmtCapsDRM | kMVKMTLFmtCapsResolve),
-	kMVKMTLFmtCapsDRFMR = (kMVKMTLFmtCapsDRFM | kMVKMTLFmtCapsResolve),
+	kMTLFmtCapsDRM = (kMTLFmtCapsDSAtt | kMTLFmtCapsRead | kMTLFmtCapsMSAA),
+	kMTLFmtCapsDRFM = (kMTLFmtCapsDRM | kMTLFmtCapsFilter),
+	kMTLFmtCapsDRMR = (kMTLFmtCapsDRM | kMTLFmtCapsResolve),
+	kMTLFmtCapsDRFMR = (kMTLFmtCapsDRFM | kMTLFmtCapsResolve),
 
-	kMVKMTLFmtCapsChromaSubsampling = kMVKMTLFmtCapsRF,
-	kMVKMTLFmtCapsMultiPlanar = kMVKMTLFmtCapsChromaSubsampling,
-} MVKMTLFmtCaps;
+	kMTLFmtCapsChromaSubsampling = kMTLFmtCapsRF,
+	kMTLFmtCapsMultiPlanar = kMTLFmtCapsChromaSubsampling,
+} MTLFmtCaps;
 
-inline MVKMTLFmtCaps operator|(MVKMTLFmtCaps leftCaps, MVKMTLFmtCaps rightCaps) {
-	return static_cast<MVKMTLFmtCaps>(static_cast<uint32_t>(leftCaps) | rightCaps);
+inline MTLFmtCaps operator|(MTLFmtCaps leftCaps, MTLFmtCaps rightCaps) {
+	return static_cast<MTLFmtCaps>(static_cast<uint32_t>(leftCaps) | rightCaps);
 }
 
-inline MVKMTLFmtCaps &operator|=(MVKMTLFmtCaps &leftCaps, MVKMTLFmtCaps rightCaps) {
+inline MTLFmtCaps &operator|=(MTLFmtCaps &leftCaps, MTLFmtCaps rightCaps) {
 	return (leftCaps = leftCaps | rightCaps);
 }
 
 #pragma mark -
 #pragma mark Metal view classes
 
-enum class MVKMTLViewClass : uint8_t {
+enum class MTLViewClass : uint8_t {
 	None,
 	Color8,
 	Color16,
@@ -146,34 +168,28 @@ enum class MVKMTLViewClass : uint8_t {
 #pragma mark Format descriptors
 
 /** Enumerates the data type of a format. */
-typedef enum {
-	kMVKFormatNone, /**< Format type is unknown. */
-	kMVKFormatColorHalf, /**< A 16-bit floating point color. */
-	kMVKFormatColorFloat, /**< A 32-bit floating point color. */
-	kMVKFormatColorInt8, /**< A signed 8-bit integer color. */
-	kMVKFormatColorUInt8, /**< An unsigned 8-bit integer color. */
-	kMVKFormatColorInt16, /**< A signed 16-bit integer color. */
-	kMVKFormatColorUInt16, /**< An unsigned 16-bit integer color. */
-	kMVKFormatColorInt32, /**< A signed 32-bit integer color. */
-	kMVKFormatColorUInt32, /**< An unsigned 32-bit integer color. */
-	kMVKFormatDepthStencil, /**< A depth and stencil value. */
-	kMVKFormatCompressed, /**< A block-compressed color. */
-} MVKFormatType;
+enum class MTLFormatType {
+	None, /**< Format type is unknown. */
+	ColorHalf, /**< A 16-bit floating point color. */
+	ColorFloat, /**< A 32-bit floating point color. */
+	ColorInt8, /**< A signed 8-bit integer color. */
+	ColorUInt8, /**< An unsigned 8-bit integer color. */
+	ColorInt16, /**< A signed 16-bit integer color. */
+	ColorUInt16, /**< An unsigned 16-bit integer color. */
+	ColorInt32, /**< A signed 32-bit integer color. */
+	ColorUInt32, /**< An unsigned 32-bit integer color. */
+	DepthStencil, /**< A depth and stencil value. */
+	Compressed, /**< A block-compressed color. */
+};
 
 typedef struct Extent2D {
 	uint32_t width;
 	uint32_t height;
 } Extent2D;
 
-typedef struct FormatProperties {
-	uint32_t linearTilingFeatures;
-	uint32_t optimalTilingFeatures;
-	uint32_t bufferFeatures;
-} FormatProperties;
-
 /** Describes the properties of a DataFormat, including the corresponding Metal pixel and vertex format. */
-typedef struct MVKDataFormatDesc {
-	RenderingDevice::DataFormat dataFormat;
+typedef struct DataFormatDesc {
+	RD::DataFormat dataFormat;
 	MTLPixelFormat mtlPixelFormat;
 	MTLPixelFormat mtlPixelFormatSubstitute;
 	MTLVertexFormat mtlVertexFormat;
@@ -182,8 +198,7 @@ typedef struct MVKDataFormatDesc {
 	uint8_t chromaSubsamplingComponentBits;
 	Extent2D blockTexelSize;
 	uint32_t bytesPerBlock;
-	MVKFormatType formatType;
-	FormatProperties properties;
+	MTLFormatType formatType;
 	const char *name;
 	bool hasReportedSubstitution;
 
@@ -194,29 +209,28 @@ typedef struct MVKDataFormatDesc {
 
 	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); };
 	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
-} MVKDataFormatDesc;
+} DataFormatDesc;
 
 /** Describes the properties of a MTLPixelFormat or MTLVertexFormat. */
-typedef struct MVKMTLFormatDesc {
+typedef struct MTLFormatDesc {
 	union {
 		MTLPixelFormat mtlPixelFormat;
 		MTLVertexFormat mtlVertexFormat;
 	};
-	RenderingDevice::DataFormat dataFormat;
-	MVKMTLFmtCaps mtlFmtCaps;
-	MVKMTLViewClass mtlViewClass;
+	RD::DataFormat dataFormat;
+	MTLFmtCaps mtlFmtCaps;
+	MTLViewClass mtlViewClass;
 	MTLPixelFormat mtlPixelFormatLinear;
 	const char *name;
 
-	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mtlFmtCaps != kMVKMTLFmtCapsNone); };
-} MVKMTLFormatDesc;
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mtlFmtCaps != kMTLFmtCapsNone); };
+} MTLFormatDesc;
 
 class PixelFormats {
-	using RD = RenderingDevice;
-	using DataFormat = RenderingDevice::DataFormat;
+	using DataFormat = RD::DataFormat;
 
 public:
-	/** Returns whether the DataFormat is supported by this implementation. */
+	/** Returns whether the DataFormat is supported by the GPU bound to this instance. */
 	bool isSupported(DataFormat dataFormat);
 
 	/** Returns whether the DataFormat is supported by this implementation, or can be substituted by one that is. */
@@ -256,26 +270,26 @@ public:
 	/** Returns whether the specified Metal MTLPixelFormat is a PVRTC format. */
 	bool isPVRTCFormat(MTLPixelFormat mtlFormat);
 
-	/** Returns the format type corresponding to the specified Vulkan VkFormat, */
-	MVKFormatType getFormatType(DataFormat dataFormat);
+	/** Returns the format type corresponding to the specified Godot pixel format, */
+	MTLFormatType getFormatType(DataFormat dataFormat);
 
 	/** Returns the format type corresponding to the specified Metal MTLPixelFormat, */
-	MVKFormatType getFormatType(MTLPixelFormat mtlFormat);
+	MTLFormatType getFormatType(MTLPixelFormat mtlFormat);
 
 	/**
-	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
+	 * Returns the Metal MTLPixelFormat corresponding to the specified Godot pixel
 	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
 	 */
 	MTLPixelFormat getMTLPixelFormat(DataFormat datFormat);
 
 	/**
 	 * Returns the DataFormat corresponding to the specified Metal MTLPixelFormat,
-	 * or returns DATA_FORMAT_MAX if no corresponding VkFormat exists.
+	 * or returns DATA_FORMAT_MAX if no corresponding DataFormat exists.
 	 */
 	DataFormat getDataFormat(MTLPixelFormat mtlFormat);
 
 	/**
-	 * Returns the size, in bytes, of a texel block of the specified Vulkan format.
+	 * Returns the size, in bytes, of a texel block of the specified Godot pixel.
 	 * For uncompressed formats, the returned value corresponds to the size in bytes of a single texel.
 	 */
 	uint32_t getBytesPerBlock(DataFormat datFormat);
@@ -293,7 +307,19 @@ public:
 	uint8_t getChromaSubsamplingComponentBits(DataFormat dataFormat);
 
 	/**
-	 * Returns the size, in bytes, of a row of texels of the specified Vulkan format.
+	 * Returns the size, in bytes, of a texel of the specified Godot format.
+	 * The returned value may be fractional for certain compressed formats.
+	 */
+	float getBytesPerTexel(DataFormat dataFormat);
+
+	/**
+	 * Returns the size, in bytes, of a texel of the specified Metal format.
+	 * The returned value may be fractional for certain compressed formats.
+	 */
+	float getBytesPerTexel(MTLPixelFormat mtlFormat);
+
+	/**
+	 * Returns the size, in bytes, of a row of texels of the specified Godot pixel format.
 	 *
 	 * For compressed formats, this takes into consideration the compression block size,
 	 * and texelsPerRow should specify the width in texels, not blocks. The result is rounded
@@ -311,7 +337,7 @@ public:
 	size_t getBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow);
 
 	/**
-	 * Returns the size, in bytes, of a texture layer of the specified Vulkan format.
+	 * Returns the size, in bytes, of a texture layer of the specified Godot pixel format.
 	 *
 	 * For compressed formats, this takes into consideration the compression block size,
 	 * and texelRowsPerLayer should specify the height in texels, not blocks. The result is
@@ -327,14 +353,18 @@ public:
 	 */
 	size_t getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 
+	/** Returns the Metal format capabilities supported by the specified Godot format, without substitution. */
+	MTLFmtCaps getCapabilities(DataFormat datformat, bool isExtended = false);
+
 	/** Returns the Metal format capabilities supported by the specified Metal format. */
-	MVKMTLFmtCaps getCapabilities(MTLPixelFormat mtlFormat, bool isExtended = false);
+	MTLFmtCaps getCapabilities(MTLPixelFormat mtlFormat, bool isExtended = false);
 
 	/**
 	 * Returns the Metal MTLVertexFormat corresponding to the specified
 	 * DataFormat as used as a vertex attribute format.
 	 */
 	MTLVertexFormat getMTLVertexFormat(DataFormat dataFormat);
+
 #pragma mark Construction
 
 	explicit PixelFormats(id<MTLDevice> p_device);
@@ -342,42 +372,36 @@ public:
 protected:
 	id<MTLDevice> device;
 
-	MVKDataFormatDesc &getDataFormatDesc(DataFormat dataFormat);
-	MVKDataFormatDesc &getDataFormatDesc(MTLPixelFormat mtlFormat);
-	MVKMTLFormatDesc &getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
-	MVKMTLFormatDesc &getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
-	void initVkFormatCapabilities();
+	DataFormatDesc &getDataFormatDesc(DataFormat dataFormat);
+	DataFormatDesc &getDataFormatDesc(MTLPixelFormat mtlFormat);
+	MTLFormatDesc &getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
+	MTLFormatDesc &getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
+	void initDataFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
 	void buildMTLFormatMaps();
-	void buildVkFormatMaps();
-	void setFormatProperties(MVKDataFormatDesc &vkDesc);
+	void buildDFFormatMaps();
 	void modifyMTLFormatCapabilities();
 	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
 	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 			MTLFeatureSet mtlFeatSet,
 			MTLPixelFormat mtlPixFmt,
-			MVKMTLFmtCaps mtlFmtCaps);
+			MTLFmtCaps mtlFmtCaps);
 	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 			MTLGPUFamily gpuFamily,
 			MTLPixelFormat mtlPixFmt,
-			MVKMTLFmtCaps mtlFmtCaps);
+			MTLFmtCaps mtlFmtCaps);
 	void disableMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt,
-			MVKMTLFmtCaps mtlFmtCaps);
+			MTLFmtCaps mtlFmtCaps);
 	void disableAllMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt);
 	void addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 			MTLFeatureSet mtlFeatSet,
 			MTLVertexFormat mtlVtxFmt,
-			MVKMTLFmtCaps mtlFmtCaps);
+			MTLFmtCaps mtlFmtCaps);
 
-	MVKDataFormatDesc _dataFormatDescriptions[_dataFormatCount];
-	MVKMTLFormatDesc _mtlPixelFormatDescriptions[_mtlPixelFormatCount];
-	MVKMTLFormatDesc _mtlVertexFormatDescriptions[_mtlVertexFormatCount];
-
-	// Vulkan core formats have small values and are mapped by simple lookup array.
-	// Vulkan extension formats have larger values and are mapped by a map.
-	uint16_t _dataFormatDescIndicesByDataFormatsCore[_dataFormatCoreCount];
-	HashMap<uint32_t, uint32_t> _dataFormatDescIndicesByDataFormatsExt;
+	DataFormatDesc _dataFormatDescriptions[RD::DATA_FORMAT_MAX];
+	MTLFormatDesc _mtlPixelFormatDescriptions[_mtlPixelFormatCount];
+	MTLFormatDesc _mtlVertexFormatDescriptions[_mtlVertexFormatCount];
 
 	// Most Metal formats have small values and are mapped by simple lookup array.
 	// Outliers are mapped by a map.
@@ -389,4 +413,4 @@ protected:
 
 #pragma clang diagnostic pop
 
-#endif //PIXELFORMATS_H
+#endif //PIXEL_FORMATS_H

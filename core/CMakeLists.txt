@@ -43,12 +43,12 @@ target_link_libraries(godot-core PUBLIC godot-object)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(godot-core PUBLIC platform-linuxbsd)
-endif ()
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(godot-core PUBLIC platform-windows)
-endif ()
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(godot-core PUBLIC platform-macos)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_link_libraries(godot-core PUBLIC platform-ios)
+else ()
+    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif ()

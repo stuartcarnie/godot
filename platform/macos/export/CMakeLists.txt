@@ -29,8 +29,6 @@ target_sources(platform-macos-export PRIVATE
         lipo.h
         macho.cpp
         macho.h
-        plist.cpp
-        plist.h
 )
 # [[[end]]]
 target_link_libraries(platform-macos-export PRIVATE godot-config)

@@ -1,4 +1,12 @@
-set(GENERATED_EDITOR_ICONS_HEADER ${CMAKE_BINARY_INCLUDE_DIR}/editor/editor_icons.gen.h)
+set(GENERATED_EDITOR_ICONS_HEADER ${CMAKE_BINARY_INCLUDE_DIR}/editor/themes/editor_icons.gen.h)
+# [[[cog
+#   import cog
+#   from cmake_builders import list_files
+#   cog.outl('set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}')
+#   for file in list_files(cog, '.', exts=['svg']):
+#       cog.outl(f'        {file}')
+#   cog.outl(')')
+# ]]]
 set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         2D.svg
         3D.svg
@@ -308,6 +316,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         GuiGraphNodePort.svg
         GuiHsplitter.svg
         GuiIndeterminate.svg
+        GuiIndeterminateDisabled.svg
         GuiMiniCheckerboard.svg
         GuiOptionArrow.svg
         GuiProgressBar.svg
@@ -574,6 +583,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         PhysicalBone2D.svg
         PhysicalBone3D.svg
         PhysicalSkyMaterial.svg
+        PhysicsMaterial.svg
         PickerCursor.svg
         PickerShapeCircle.svg
         PickerShapeRectangle.svg
@@ -622,6 +632,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Progress8.svg
         ProgressBar.svg
         ProjectIconLoading.svg
+        ProjectList.svg
         Projection.svg
         Quad.svg
         QuadMesh.svg
@@ -630,6 +641,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         RID.svg
         RandomNumberGenerator.svg
         Range.svg
+        RangeSliderLeft.svg
+        RangeSliderRight.svg
         RayCast2D.svg
         RayCast3D.svg
         Rect2.svg
@@ -679,6 +692,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ShapeCast2D.svg
         ShapeCast3D.svg
         Shortcut.svg
+        ShowInFileSystem.svg
         Signal.svg
         Signals.svg
         SignalsAndGroups.svg
@@ -724,6 +738,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         SystemFont.svg
         TabBar.svg
         TabContainer.svg
+        Terminal.svg
         TerrainConnect.svg
         TerrainMatchCorners.svg
         TerrainMatchCornersAndSides.svg
@@ -733,7 +748,9 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         TextEditorPlay.svg
         TextFile.svg
         TextMesh.svg
+        Texture2D.svg
         Texture2DArray.svg
+        Texture3D.svg
         TextureButton.svg
         TextureProgressBar.svg
         TextureRect.svg
@@ -747,12 +764,14 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         TileChecked.svg
         TileMap.svg
         TileMapHighlightSelected.svg
+        TileMapLayer.svg
         TileSelection.svg
         TileSet.svg
         TileUnchecked.svg
         Time.svg
         TimelineIndicator.svg
         Timer.svg
+        TitleBarLogo.svg
         ToolAddNode.svg
         ToolBoneSelect.svg
         ToolConnect.svg
@@ -883,11 +902,12 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         int.svg
         uint.svg
 )
+# [[[end]]]
 
 generate_editor_icons_header("${GODOT_EDITOR_ICONS_SOURCE}" "${GENERATED_EDITOR_ICONS_HEADER}"
-        "${CMAKE_BINARY_DIR}/include/editor/editor_icons_cmd.txt")
+        "${CMAKE_BINARY_DIR}/include/editor/themes/editor_icons_cmd.txt")
 
-add_library(godot-editor-icons INTERFACE ${CMAKE_BINARY_DIR}/include/editor/editor_icons.gen.h)
+add_library(godot-editor-icons INTERFACE ${GENERATED_EDITOR_ICONS_HEADER})
 
 # export to parent
 set(GODOT_EDITOR_ICONS_SOURCE ${GODOT_EDITOR_ICONS_SOURCE} PARENT_SCOPE)

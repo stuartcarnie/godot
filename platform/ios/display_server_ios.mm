@@ -72,6 +72,9 @@ DisplayServerIOS::DisplayServerIOS(const String &p_rendering_driver, WindowMode 
 #ifdef VULKAN_ENABLED
 		RenderingContextDriverVulkanIOS::WindowPlatformData vulkan;
 #endif
+#ifdef METAL_ENABLED
+		MetalContextIOS::WindowPlatformData metal;
+#endif
 	} wpd;
 
 #if defined(VULKAN_ENABLED)
@@ -84,7 +87,13 @@ DisplayServerIOS::DisplayServerIOS(const String &p_rendering_driver, WindowMode 
 		rendering_context = memnew(RenderingContextDriverVulkanIOS);
 	}
 #endif
-
+#ifdef METAL_ENABLED
+	if (rendering_driver == "metal") {
+		layer = [AppDelegate.viewController.godotView initializeRenderingForDriver:@"metal"];
+		wpd.metal.layer = (__bridge void *)layer;
+		context_rd = memnew(MetalContextIOS);
+	}
+#endif
 	if (rendering_context) {
 		if (rendering_context->initialize() != OK) {
 			ERR_PRINT(vformat("Failed to initialize %s context", rendering_driver));
@@ -158,6 +167,9 @@ Vector<String> DisplayServerIOS::get_rendering_drivers_func() {
 
 #if defined(VULKAN_ENABLED)
 	drivers.push_back("vulkan");
+#endif
+#if defined(METAL_ENABLED)
+	drivers.push_back("metal");
 #endif
 #if defined(GLES3_ENABLED)
 	drivers.push_back("opengl3");

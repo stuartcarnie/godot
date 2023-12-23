@@ -28,21 +28,57 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+/**************************************************************************/
+/*                                                                        */
+/* Portions of this code were derived from MoltenVK.                      */
+/*                                                                        */
+/* Copyright (c) 2015-2023 The Brenwill Workshop Ltd.                     */
+/* (http://www.brenwill.com)                                              */
+/*                                                                        */
+/* Licensed under the Apache License, Version 2.0 (the "License");        */
+/* you may not use this file except in compliance with the License.       */
+/* You may obtain a copy of the License at                                */
+/*                                                                        */
+/*     http://www.apache.org/licenses/LICENSE-2.0                         */
+/*                                                                        */
+/* Unless required by applicable law or agreed to in writing, software    */
+/* distributed under the License is distributed on an "AS IS" BASIS,      */
+/* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or        */
+/* implied. See the License for the specific language governing           */
+/* permissions and limitations under the License.                         */
+/**************************************************************************/
+
 #include "metal_device_properties.h"
 
-#import "spirv_cross.hpp"
-#import "spirv_msl.hpp"
 #import <Metal/Metal.h>
+#import <spirv_cross.hpp>
+#import <spirv_msl.hpp>
 
-// For Apple Silicon, the Device ID is determined by the highest
-// GPU capability, which is a combination of OS version and GPU type.
-void MetalDeviceProperties::initGpuProperties(id<MTLDevice> device) {
+MTLGPUFamily &operator--(MTLGPUFamily &family) {
+	family = static_cast<MTLGPUFamily>(static_cast<int>(family) - 1);
+	if (family < MTLGPUFamilyApple1) {
+		family = MTLGPUFamilyMetal3;
+	}
+
+	return family;
+}
+
+void MetalDeviceProperties::init_gpu_properties(id<MTLDevice> device) {
 	device_type = RenderingDevice::DEVICE_TYPE_INTEGRATED_GPU;
+	device_vendor = "Apple";
 	device_name = device.name.UTF8String;
 }
 
-void MetalDeviceProperties::initFeatures(id<MTLDevice> device) {
+void MetalDeviceProperties::init_features(id<MTLDevice> device) {
 	features = { 0 };
+
+	features.highestFamily = MTLGPUFamilyApple1;
+	for (MTLGPUFamily family = MTLGPUFamilyApple9; family >= MTLGPUFamilyApple1; --family) {
+		if ([device supportsFamily:family]) {
+			features.highestFamily = family;
+			break;
+		}
+	}
 
 	features.hostMemoryPageSize = sysconf(_SC_PAGESIZE);
 
@@ -54,6 +90,11 @@ void MetalDeviceProperties::initFeatures(id<MTLDevice> device) {
 
 	features.layeredRendering = [device supportsFamily:MTLGPUFamilyApple5];
 	features.multisampleLayeredRendering = [device supportsFamily:MTLGPUFamilyApple7];
+	features.tesselationShader = [device supportsFamily:MTLGPUFamilyApple3];
+	features.imageCubeArray = [device supportsFamily:MTLGPUFamilyApple3];
+	features.quadPermute = [device supportsFamily:MTLGPUFamilyApple4];
+	features.simdPermute = [device supportsFamily:MTLGPUFamilyApple6];
+	features.simdReduction = [device supportsFamily:MTLGPUFamilyApple7];
 
 	features.mslVersionEnum = MTLLanguageVersion1_1;
 
@@ -74,22 +115,22 @@ void MetalDeviceProperties::initFeatures(id<MTLDevice> device) {
 	features.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min)
 
 	switch (features.mslVersionEnum) {
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 140000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 170000
 		case MTLLanguageVersion3_1:
 			setMSLVersion(3, 1);
 			break;
 #endif
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 130000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 130000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 160000
 		case MTLLanguageVersion3_0:
 			setMSLVersion(3, 0);
 			break;
 #endif
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 150000
 		case MTLLanguageVersion2_4:
 			setMSLVersion(2, 4);
 			break;
 #endif
-#if MAC_OS_X_VERSION_MIN_REQUIRED >= 110000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 110000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 140000
 		case MTLLanguageVersion2_3:
 			setMSLVersion(2, 3);
 			break;
@@ -109,7 +150,7 @@ void MetalDeviceProperties::initFeatures(id<MTLDevice> device) {
 		case MTLLanguageVersion1_1:
 			setMSLVersion(1, 1);
 			break;
-#if TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE && !TARGET_OS_MACCATALYST
 		case MTLLanguageVersion1_0:
 			setMSLVersion(1, 0);
 			break;
@@ -117,7 +158,7 @@ void MetalDeviceProperties::initFeatures(id<MTLDevice> device) {
 	}
 }
 
-void MetalDeviceProperties::initLimits(id<MTLDevice> device) {
+void MetalDeviceProperties::init_limits(id<MTLDevice> device) {
 	using std::max;
 	using std::min;
 
@@ -154,6 +195,8 @@ void MetalDeviceProperties::initLimits(id<MTLDevice> device) {
 	limits.maxImageDimension3D = 2048;
 
 	limits.maxThreadsPerThreadGroup = device.maxThreadsPerThreadgroup;
+	// no effective limits
+	limits.maxComputeWorkGroupCount = { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 	// https://github.com/KhronosGroup/MoltenVK/blob/568cc3acc0e2299931fdaecaaa1fc3ec5b4af281/MoltenVK/MoltenVK/GPUObjects/MVKDevice.h#L85
 	limits.maxBoundDescriptorSets = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 	// FST: Maximum number of color render targets per render pass descriptor
@@ -184,11 +227,45 @@ void MetalDeviceProperties::initLimits(id<MTLDevice> device) {
 		limits.maxBuffersPerArgumentBuffer = 31;
 	}
 
+	limits.minSubgroupSize = limits.maxSubgroupSize = 1;
+	// These values were taken from MoltenVK
+	if (features.simdPermute) {
+		limits.minSubgroupSize = 4;
+		limits.maxSubgroupSize = 32;
+	} else if (features.quadPermute) {
+		limits.minSubgroupSize = limits.maxSubgroupSize = 4;
+	}
+
+	limits.subgroupSupportedShaderStages.set_flag(RDD::ShaderStage::SHADER_STAGE_COMPUTE_BIT);
+	if (features.tesselationShader) {
+		limits.subgroupSupportedShaderStages.set_flag(RDD::ShaderStage::SHADER_STAGE_TESSELATION_CONTROL_BIT);
+	}
+	if (@available(macOS 10.15, iOS 13.0, *)) {
+		limits.subgroupSupportedShaderStages.set_flag(RDD::ShaderStage::SHADER_STAGE_FRAGMENT_BIT);
+	}
+
+	limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_BASIC_BIT);
+	if (features.simdPermute || features.quadPermute) {
+		limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_VOTE_BIT);
+		limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_BALLOT_BIT);
+		limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_SHUFFLE_BIT);
+		limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_SHUFFLE_RELATIVE_BIT);
+	}
+
+	if (features.simdReduction) {
+		limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_ARITHMETIC_BIT);
+	}
+
+	if (features.quadPermute) {
+		limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_QUAD_BIT);
+	}
+
 	limits.maxBufferLength = device.maxBufferLength;
+
 	// FST: Maximum size of vertex descriptor layout stride
 	limits.maxVertexDescriptorLayoutStride = std::numeric_limits<uint64_t>::max();
 
-	// Maxiumum nunmber of viewports
+	// Maximum number of viewports
 	if ([device supportsFamily:MTLGPUFamilyApple5]) {
 		limits.maxViewports = 16;
 	} else {
@@ -204,15 +281,27 @@ void MetalDeviceProperties::initLimits(id<MTLDevice> device) {
 	} else {
 		limits.maxPerStageTextureCount = 31;
 	}
-}
 
-void MetalDeviceProperties::initTextureCaps(id<MTLDevice> device) {
+	limits.maxVertexInputAttributes = 31;
+	limits.maxVertexInputBindings = 31;
+	limits.maxVertexInputBindingStride = (2 * KIBI);
+
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+	limits.minUniformBufferOffsetAlignment = 64;
+#endif
+
+#if TARGET_OS_OSX
+	// this is Apple Silicon specific
+	limits.minUniformBufferOffsetAlignment = 16;
+#endif
+
+	limits.maxDrawIndexedIndexValue = std::numeric_limits<uint32_t>::max() - 1;
 }
 
 MetalDeviceProperties::MetalDeviceProperties(id<MTLDevice> device) {
-	initGpuProperties(device);
-	initFeatures(device);
-	initLimits(device);
+	init_gpu_properties(device);
+	init_features(device);
+	init_limits(device);
 }
 
 MetalDeviceProperties::~MetalDeviceProperties() {

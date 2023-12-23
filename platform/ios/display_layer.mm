@@ -30,14 +30,6 @@
 
 #import "display_layer.h"
 
-#import "display_server_ios.h"
-#import "os_ios.h"
-
-#include "core/config/project_settings.h"
-#include "core/os/keyboard.h"
-#include "main/main.h"
-#include "servers/audio_server.h"
-
 #import <AudioToolbox/AudioServices.h>
 #import <GameController/GameController.h>
 #import <OpenGLES/EAGL.h>
@@ -45,6 +37,14 @@
 #import <OpenGLES/ES1/glext.h>
 #import <QuartzCore/QuartzCore.h>
 #import <UIKit/UIKit.h>
+
+#import "display_server_ios.h"
+#import "os_ios.h"
+
+#include "core/config/project_settings.h"
+#include "core/os/keyboard.h"
+#include "main/main.h"
+#include "servers/audio_server.h"
 
 @implementation GodotMetalLayer
 

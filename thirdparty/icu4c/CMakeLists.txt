@@ -1,4 +1,5 @@
 set(GODOT_MODULE_TEXT_SERVER_ADV_DIR ${GODOT_MODULES_BASE_DIR}/text_server_adv)
+
 godot_add_library(icu4c FOLDER thirdparty STATIC)
 # [[[cog
 #   import cog
@@ -239,6 +240,8 @@ target_sources(icu4c PRIVATE
         common/uloc.cpp
         common/uloc_keytype.cpp
         common/uloc_tag.cpp
+        common/ulocale.cpp
+        common/ulocbuilder.cpp
         common/ulocimp.h
         common/umapfile.cpp
         common/umapfile.h
@@ -315,6 +318,8 @@ target_sources(icu4c PRIVATE
         common/unicode/uiter.h
         common/unicode/uldnames.h
         common/unicode/uloc.h
+        common/unicode/ulocale.h
+        common/unicode/ulocbuilder.h
         common/unicode/umachine.h
         common/unicode/umisc.h
         common/unicode/umutablecptrie.h
@@ -451,11 +456,9 @@ target_compile_definitions(icu4c PRIVATE
         -DU_ENABLE_DYLOAD=0
         -DU_HAVE_LIB_SUFFIX=1
         -DU_LIB_SUFFIX_C_NAME=_godot
-        -DICU_DATA_NAME=icudt72l.dat
 )
 target_compile_definitions(icu4c PUBLIC
         -DU_HAVE_LIB_SUFFIX=1
         -DU_LIB_SUFFIX_C_NAME=_godot
-        -DICU_DATA_NAME=icudt72l.dat
 )
 target_compile_options(icu4c PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)

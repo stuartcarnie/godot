@@ -16,4 +16,14 @@ target_sources(godot-module-ktx PRIVATE
 # [[[end]]]
 
 target_link_libraries(godot-module-ktx PUBLIC ktx)
-target_link_libraries(godot-module-ktx PRIVATE platform-macos)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(godot-module-ktx PRIVATE platform-linuxbsd)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(godot-module-ktx PRIVATE platform-windows)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(godot-module-ktx PRIVATE platform-macos)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_link_libraries(godot-module-ktx PRIVATE platform-ios)
+else ()
+    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+endif ()

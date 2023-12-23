@@ -32,6 +32,8 @@ target_sources(thorvg PRIVATE
         src/renderer/tvgShape.cpp
         src/renderer/tvgSwCanvas.cpp
         src/renderer/tvgTaskScheduler.cpp
+        src/renderer/tvgText.cpp
+        # src/renderer/tvgWgCanvas.cpp
         # renderer sw_engine
         src/renderer/sw_engine/tvgSwFill.cpp
         src/renderer/sw_engine/tvgSwImage.cpp

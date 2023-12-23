@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import <GameController/GameController.h>
+#import <Foundation/Foundation.h>
 
 @interface JoypadIOSObserver : NSObject
 

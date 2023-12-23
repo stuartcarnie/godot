@@ -71,6 +71,8 @@ if (WANT_EDITOR)
 	        editor/editor_import_blend_runner.h
 	        editor/editor_scene_exporter_gltf_plugin.cpp
 	        editor/editor_scene_exporter_gltf_plugin.h
+	        editor/editor_scene_exporter_gltf_settings.cpp
+	        editor/editor_scene_exporter_gltf_settings.h
 	        editor/editor_scene_importer_blend.cpp
 	        editor/editor_scene_importer_blend.h
 	        editor/editor_scene_importer_fbx.cpp

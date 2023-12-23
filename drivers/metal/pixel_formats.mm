@@ -28,9 +28,51 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+/**************************************************************************/
+/*                                                                        */
+/* Portions of this code were derived from MoltenVK.                      */
+/*                                                                        */
+/* Copyright (c) 2015-2023 The Brenwill Workshop Ltd.                     */
+/* (http://www.brenwill.com)                                              */
+/*                                                                        */
+/* Licensed under the Apache License, Version 2.0 (the "License");        */
+/* you may not use this file except in compliance with the License.       */
+/* You may obtain a copy of the License at                                */
+/*                                                                        */
+/*     http://www.apache.org/licenses/LICENSE-2.0                         */
+/*                                                                        */
+/* Unless required by applicable law or agreed to in writing, software    */
+/* distributed under the License is distributed on an "AS IS" BASIS,      */
+/* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or        */
+/* implied. See the License for the specific language governing           */
+/* permissions and limitations under the License.                         */
+/**************************************************************************/
+
 #include "pixel_formats.h"
 
 #include "utils.h"
+
+#if TARGET_OS_IPHONE || TARGET_OS_TV
+#define MTLPixelFormatDepth24Unorm_Stencil8 MTLPixelFormatInvalid
+#define MTLPixelFormatX24_Stencil8 MTLPixelFormatInvalid
+#endif
+
+
+/** Selects and returns one of the values, based on the platform OS. */
+_FORCE_INLINE_ constexpr MTLFmtCaps select_platform_caps(MTLFmtCaps macOSVal, MTLFmtCaps iOSVal) {
+#if (TARGET_OS_IOS || TARGET_OS_TV) && !TARGET_OS_MACCATALYST
+	return iOSVal;
+#elif TARGET_OS_OSX
+	return macOSVal;
+#else
+#error "unsupported platform"
+#endif
+}
+
+template <typename T>
+void clear(T *pVal, size_t count = 1) {
+	memset(pVal, 0, sizeof(T) * count);
+}
 
 #pragma mark -
 #pragma mark PixelFormats
@@ -59,28 +101,28 @@ bool PixelFormats::isPVRTCFormat(MTLPixelFormat mtlFormat) {
 	}
 }
 
-MVKFormatType PixelFormats::getFormatType(DataFormat dataFormat) {
+MTLFormatType PixelFormats::getFormatType(DataFormat dataFormat) {
 	return getDataFormatDesc(dataFormat).formatType;
 }
 
-MVKFormatType PixelFormats::getFormatType(MTLPixelFormat mtlFormat) {
+MTLFormatType PixelFormats::getFormatType(MTLPixelFormat mtlFormat) {
 	return getDataFormatDesc(mtlFormat).formatType;
 }
 
 MTLPixelFormat PixelFormats::getMTLPixelFormat(DataFormat dataFormat) {
-	auto &vkDesc = getDataFormatDesc(dataFormat);
-	MTLPixelFormat mtlPixFmt = vkDesc.mtlPixelFormat;
+	DataFormatDesc &dfDesc = getDataFormatDesc(dataFormat);
+	MTLPixelFormat mtlPixFmt = dfDesc.mtlPixelFormat;
 
 	// If the MTLPixelFormat is not supported but DataFormat is valid,
 	// attempt to substitute a different format.
-	if (mtlPixFmt == MTLPixelFormatInvalid && dataFormat != RD::DATA_FORMAT_MAX && vkDesc.chromaSubsamplingPlaneCount <= 1) {
-		mtlPixFmt = vkDesc.mtlPixelFormatSubstitute;
+	if (mtlPixFmt == MTLPixelFormatInvalid && dataFormat != RD::DATA_FORMAT_MAX && dfDesc.chromaSubsamplingPlaneCount <= 1) {
+		mtlPixFmt = dfDesc.mtlPixelFormatSubstitute;
 	}
 
 	return mtlPixFmt;
 }
 
-RenderingDevice::DataFormat PixelFormats::getDataFormat(MTLPixelFormat mtlFormat) {
+RD::DataFormat PixelFormats::getDataFormat(MTLPixelFormat mtlFormat) {
 	return getMTLPixelFormatDesc(mtlFormat).dataFormat;
 }
 
@@ -100,76 +142,86 @@ uint8_t PixelFormats::getChromaSubsamplingComponentBits(DataFormat dataFormat) {
 	return getDataFormatDesc(dataFormat).chromaSubsamplingComponentBits;
 }
 
+float PixelFormats::getBytesPerTexel(DataFormat dataFormat) {
+	return getDataFormatDesc(dataFormat).bytesPerTexel();
+}
+
+float PixelFormats::getBytesPerTexel(MTLPixelFormat mtlFormat) {
+	return getDataFormatDesc(mtlFormat).bytesPerTexel();
+}
+
 size_t PixelFormats::getBytesPerRow(DataFormat datFormat, uint32_t texelsPerRow) {
-	auto &vkDesc = getDataFormatDesc(datFormat);
-	return mvkCeilingDivide(texelsPerRow, vkDesc.blockTexelSize.width) * vkDesc.bytesPerBlock;
+	DataFormatDesc &dfDesc = getDataFormatDesc(datFormat);
+	return Math::division_round_up(texelsPerRow, dfDesc.blockTexelSize.width) * dfDesc.bytesPerBlock;
 }
 
 size_t PixelFormats::getBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow) {
-	auto &vkDesc = getDataFormatDesc(mtlFormat);
-	return mvkCeilingDivide(texelsPerRow, vkDesc.blockTexelSize.width) * vkDesc.bytesPerBlock;
+	DataFormatDesc &dfDesc = getDataFormatDesc(mtlFormat);
+	return Math::division_round_up(texelsPerRow, dfDesc.blockTexelSize.width) * dfDesc.bytesPerBlock;
 }
 
 size_t PixelFormats::getBytesPerLayer(DataFormat datFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
-	return mvkCeilingDivide(texelRowsPerLayer, getDataFormatDesc(datFormat).blockTexelSize.height) * bytesPerRow;
+	return Math::division_round_up(texelRowsPerLayer, getDataFormatDesc(datFormat).blockTexelSize.height) * bytesPerRow;
 }
 
 size_t PixelFormats::getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
-	return mvkCeilingDivide(texelRowsPerLayer, getDataFormatDesc(mtlFormat).blockTexelSize.height) * bytesPerRow;
+	return Math::division_round_up(texelRowsPerLayer, getDataFormatDesc(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
-MVKMTLFmtCaps PixelFormats::getCapabilities(MTLPixelFormat mtlFormat, bool isExtended) {
-	MVKMTLFormatDesc& mtlDesc = getMTLPixelFormatDesc(mtlFormat);
-	MVKMTLFmtCaps caps = mtlDesc.mtlFmtCaps;
-	if (!isExtended || mtlDesc.mtlViewClass == MVKMTLViewClass::None) { return caps; }
+MTLFmtCaps PixelFormats::getCapabilities(DataFormat dataFormat, bool isExtended) {
+	return getCapabilities(getDataFormatDesc(dataFormat).mtlPixelFormat, isExtended);
+}
+
+MTLFmtCaps PixelFormats::getCapabilities(MTLPixelFormat mtlFormat, bool isExtended) {
+	MTLFormatDesc &mtlDesc = getMTLPixelFormatDesc(mtlFormat);
+	MTLFmtCaps caps = mtlDesc.mtlFmtCaps;
+	if (!isExtended || mtlDesc.mtlViewClass == MTLViewClass::None) {
+		return caps;
+	}
 	// Now get caps of all formats in the view class.
-	for (auto& otherDesc : _mtlPixelFormatDescriptions) {
-		if (otherDesc.mtlViewClass == mtlDesc.mtlViewClass) { caps |= otherDesc.mtlFmtCaps; }
+	for (MTLFormatDesc &otherDesc : _mtlPixelFormatDescriptions) {
+		if (otherDesc.mtlViewClass == mtlDesc.mtlViewClass) {
+			caps |= otherDesc.mtlFmtCaps;
+		}
 	}
 	return caps;
 }
 
 MTLVertexFormat PixelFormats::getMTLVertexFormat(DataFormat dataFormat) {
-	auto &vkDesc = getDataFormatDesc(dataFormat);
-	MTLVertexFormat mtlVtxFmt = vkDesc.mtlVertexFormat;
+	DataFormatDesc &dfDesc = getDataFormatDesc(dataFormat);
+	MTLVertexFormat format = dfDesc.mtlVertexFormat;
 
-	// If the MTLVertexFormat is not supported,
-	// report an error, and possibly substitute a different MTLVertexFormat.
-	if (!mtlVtxFmt && dataFormat != RenderingDevice::DATA_FORMAT_MAX) {
+	if (format == MTLVertexFormatInvalid) {
 		std::string errMsg;
 		errMsg += "DataFormat ";
-		errMsg += vkDesc.name;
+		errMsg += dfDesc.name;
 		errMsg += " is not supported for vertex buffers on this device.";
 
-		if (vkDesc.vertexIsSupportedOrSubstitutable()) {
-			mtlVtxFmt = vkDesc.mtlVertexFormatSubstitute;
+		if (dfDesc.vertexIsSupportedOrSubstitutable()) {
+			format = dfDesc.mtlVertexFormatSubstitute;
 
-			auto &vkDescSubs = getDataFormatDesc(getMTLVertexFormatDesc(mtlVtxFmt).dataFormat);
+			DataFormatDesc &dfDescSubs = getDataFormatDesc(getMTLVertexFormatDesc(format).dataFormat);
 			errMsg += " Using DataFormat ";
-			errMsg += vkDescSubs.name;
+			errMsg += dfDescSubs.name;
 			errMsg += " instead.";
 		}
 		WARN_PRINT(errMsg.c_str());
 	}
 
-	return mtlVtxFmt;
+	return format;
 }
 
-// Return a reference to the Vulkan format descriptor corresponding to the VkFormat.
-MVKDataFormatDesc &PixelFormats::getDataFormatDesc(DataFormat dataFormat) {
-	uint16_t fmtIdx = ((dataFormat < _dataFormatCoreCount)
-					? _dataFormatDescIndicesByDataFormatsCore[dataFormat]
-					: _dataFormatDescIndicesByDataFormatsExt[dataFormat]);
-	return _dataFormatDescriptions[fmtIdx];
+DataFormatDesc &PixelFormats::getDataFormatDesc(DataFormat dataFormat) {
+	CRASH_BAD_INDEX_MSG(dataFormat, RD::DATA_FORMAT_MAX, "Attempting to describe an invalid DataFormat");
+	return _dataFormatDescriptions[dataFormat];
 }
 
-// Return a reference to the Vulkan format descriptor corresponding to the MTLPixelFormat.
-MVKDataFormatDesc &PixelFormats::getDataFormatDesc(MTLPixelFormat mtlFormat) {
+DataFormatDesc &PixelFormats::getDataFormatDesc(MTLPixelFormat mtlFormat) {
 	return getDataFormatDesc(getMTLPixelFormatDesc(mtlFormat).dataFormat);
 }
 
 // Return a reference to the Metal format descriptor corresponding to the MTLPixelFormat.
-MVKMTLFormatDesc &PixelFormats::getMTLPixelFormatDesc(MTLPixelFormat mtlFormat) {
+MTLFormatDesc &PixelFormats::getMTLPixelFormatDesc(MTLPixelFormat mtlFormat) {
 	uint16_t fmtIdx = ((mtlFormat < _mtlPixelFormatCoreCount)
 					? _mtlFormatDescIndicesByMTLPixelFormatsCore[mtlFormat]
 					: _mtlFormatDescIndicesByMTLPixelFormatsExt[mtlFormat]);
@@ -177,7 +229,7 @@ MVKMTLFormatDesc &PixelFormats::getMTLPixelFormatDesc(MTLPixelFormat mtlFormat) 
 }
 
 // Return a reference to the Metal format descriptor corresponding to the MTLVertexFormat.
-MVKMTLFormatDesc &PixelFormats::getMTLVertexFormatDesc(MTLVertexFormat mtlFormat) {
+MTLFormatDesc &PixelFormats::getMTLVertexFormatDesc(MTLVertexFormat mtlFormat) {
 	uint16_t fmtIdx = (mtlFormat < _mtlVertexFormatCount) ? _mtlFormatDescIndicesByMTLVertexFormats[mtlFormat] : 0;
 	return _mtlVertexFormatDescriptions[fmtIdx];
 }
@@ -189,30 +241,23 @@ PixelFormats::PixelFormats(id<MTLDevice> p_device) :
 	buildMTLFormatMaps();
 	modifyMTLFormatCapabilities();
 
-	initVkFormatCapabilities();
-	buildVkFormatMaps();
+	initDataFormatCapabilities();
+	buildDFFormatMaps();
 }
 
-#define addVkFormatDescFull(DATA_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)                                             \
-	CRASH_BAD_INDEX_MSG(fmtIdx, _dataFormatCount, "Attempting to describe too many DataFormats");                                                                                           \
-	_dataFormatDescriptions[fmtIdx++] = { RD::DATA_FORMAT_##DATA_FMT, MTLPixelFormat##MTL_FMT, MTLPixelFormat##MTL_FMT_ALT, MTLVertexFormat##MTL_VTX_FMT, MTLVertexFormat##MTL_VTX_FMT_ALT, \
-		CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat##MVK_FMT_TYPE, { 0, 0, 0 }, "DATA_FORMAT_" #DATA_FMT, false }
+#define addDfFormatDescFull(DATA_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)                                                               \
+	CRASH_BAD_INDEX_MSG(RD::DATA_FORMAT_##DATA_FMT, RD::DATA_FORMAT_MAX, "Attempting to describe too many DataFormats");                                                                                      \
+	_dataFormatDescriptions[RD::DATA_FORMAT_##DATA_FMT] = { RD::DATA_FORMAT_##DATA_FMT, MTLPixelFormat##MTL_FMT, MTLPixelFormat##MTL_FMT_ALT, MTLVertexFormat##MTL_VTX_FMT, MTLVertexFormat##MTL_VTX_FMT_ALT, \
+		CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, MTLFormatType::MVK_FMT_TYPE, "DATA_FORMAT_" #DATA_FMT, false }
 
 #define addDataFormatDesc(DATA_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE) \
-	addVkFormatDescFull(DATA_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)
+	addDfFormatDescFull(DATA_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)
 
-#define addVkFormatDescChromaSubsampling(DATA_FMT, MTL_FMT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT) \
-	addVkFormatDescFull(DATA_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat)
+#define addDfFormatDescChromaSubsampling(DATA_FMT, MTL_FMT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT) \
+	addDfFormatDescFull(DATA_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat)
 
-void PixelFormats::initVkFormatCapabilities() {
-	mvkClear(_dataFormatDescriptions, _dataFormatCount);
-
-	uint32_t fmtIdx = 0;
-
-	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
-
-	// UNDEFINED must come first.
-	// addDataFormatDesc( UNDEFINED, Invalid, Invalid, Invalid, Invalid, 1, 1, 0, None );
+void PixelFormats::initDataFormatCapabilities() {
+	clear(_dataFormatDescriptions, RD::DATA_FORMAT_MAX);
 
 	addDataFormatDesc(R4G4_UNORM_PACK8, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat);
 	addDataFormatDesc(R4G4B4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat);
@@ -410,100 +455,73 @@ void PixelFormats::initVkFormatCapabilities() {
 	addDataFormatDesc(EAC_R11G11_SNORM_BLOCK, EAC_RG11Snorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed);
 
 	addDataFormatDesc(ASTC_4x4_UNORM_BLOCK, ASTC_4x4_LDR, Invalid, Invalid, Invalid, 4, 4, 16, Compressed);
-	//	addDataFormatDesc( ASTC_4x4_SFLOAT_BLOCK_EXT, ASTC_4x4_HDR, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
 	addDataFormatDesc(ASTC_4x4_SRGB_BLOCK, ASTC_4x4_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed);
 	addDataFormatDesc(ASTC_5x4_UNORM_BLOCK, ASTC_5x4_LDR, Invalid, Invalid, Invalid, 5, 4, 16, Compressed);
-	//	addDataFormatDesc( ASTC_5x4_SFLOAT_BLOCK_EXT, ASTC_5x4_HDR, Invalid, Invalid, Invalid, 5, 4, 16, Compressed );
 	addDataFormatDesc(ASTC_5x4_SRGB_BLOCK, ASTC_5x4_sRGB, Invalid, Invalid, Invalid, 5, 4, 16, Compressed);
 	addDataFormatDesc(ASTC_5x5_UNORM_BLOCK, ASTC_5x5_LDR, Invalid, Invalid, Invalid, 5, 5, 16, Compressed);
-	//	addDataFormatDesc( ASTC_5x5_SFLOAT_BLOCK_EXT, ASTC_5x5_HDR, Invalid, Invalid, Invalid, 5, 5, 16, Compressed );
 	addDataFormatDesc(ASTC_5x5_SRGB_BLOCK, ASTC_5x5_sRGB, Invalid, Invalid, Invalid, 5, 5, 16, Compressed);
 	addDataFormatDesc(ASTC_6x5_UNORM_BLOCK, ASTC_6x5_LDR, Invalid, Invalid, Invalid, 6, 5, 16, Compressed);
-	//	addDataFormatDesc( ASTC_6x5_SFLOAT_BLOCK_EXT, ASTC_6x5_HDR, Invalid, Invalid, Invalid, 6, 5, 16, Compressed );
 	addDataFormatDesc(ASTC_6x5_SRGB_BLOCK, ASTC_6x5_sRGB, Invalid, Invalid, Invalid, 6, 5, 16, Compressed);
 	addDataFormatDesc(ASTC_6x6_UNORM_BLOCK, ASTC_6x6_LDR, Invalid, Invalid, Invalid, 6, 6, 16, Compressed);
-	//	addDataFormatDesc( ASTC_6x6_SFLOAT_BLOCK_EXT, ASTC_6x6_HDR, Invalid, Invalid, Invalid, 6, 6, 16, Compressed );
 	addDataFormatDesc(ASTC_6x6_SRGB_BLOCK, ASTC_6x6_sRGB, Invalid, Invalid, Invalid, 6, 6, 16, Compressed);
 	addDataFormatDesc(ASTC_8x5_UNORM_BLOCK, ASTC_8x5_LDR, Invalid, Invalid, Invalid, 8, 5, 16, Compressed);
-	//	addDataFormatDesc( ASTC_8x5_SFLOAT_BLOCK_EXT, ASTC_8x5_HDR, Invalid, Invalid, Invalid, 8, 5, 16, Compressed );
 	addDataFormatDesc(ASTC_8x5_SRGB_BLOCK, ASTC_8x5_sRGB, Invalid, Invalid, Invalid, 8, 5, 16, Compressed);
 	addDataFormatDesc(ASTC_8x6_UNORM_BLOCK, ASTC_8x6_LDR, Invalid, Invalid, Invalid, 8, 6, 16, Compressed);
-	//	addDataFormatDesc( ASTC_8x6_SFLOAT_BLOCK_EXT, ASTC_8x6_HDR, Invalid, Invalid, Invalid, 8, 6, 16, Compressed );
 	addDataFormatDesc(ASTC_8x6_SRGB_BLOCK, ASTC_8x6_sRGB, Invalid, Invalid, Invalid, 8, 6, 16, Compressed);
 	addDataFormatDesc(ASTC_8x8_UNORM_BLOCK, ASTC_8x8_LDR, Invalid, Invalid, Invalid, 8, 8, 16, Compressed);
-	//	addDataFormatDesc( ASTC_8x8_SFLOAT_BLOCK_EXT, ASTC_8x8_HDR, Invalid, Invalid, Invalid, 8, 8, 16, Compressed );
 	addDataFormatDesc(ASTC_8x8_SRGB_BLOCK, ASTC_8x8_sRGB, Invalid, Invalid, Invalid, 8, 8, 16, Compressed);
 	addDataFormatDesc(ASTC_10x5_UNORM_BLOCK, ASTC_10x5_LDR, Invalid, Invalid, Invalid, 10, 5, 16, Compressed);
-	//	addDataFormatDesc( ASTC_10x5_SFLOAT_BLOCK_EXT, ASTC_10x5_HDR, Invalid, Invalid, Invalid, 10, 5, 16, Compressed );
 	addDataFormatDesc(ASTC_10x5_SRGB_BLOCK, ASTC_10x5_sRGB, Invalid, Invalid, Invalid, 10, 5, 16, Compressed);
 	addDataFormatDesc(ASTC_10x6_UNORM_BLOCK, ASTC_10x6_LDR, Invalid, Invalid, Invalid, 10, 6, 16, Compressed);
-	//	addDataFormatDesc( ASTC_10x6_SFLOAT_BLOCK_EXT, ASTC_10x6_HDR, Invalid, Invalid, Invalid, 10, 6, 16, Compressed );
 	addDataFormatDesc(ASTC_10x6_SRGB_BLOCK, ASTC_10x6_sRGB, Invalid, Invalid, Invalid, 10, 6, 16, Compressed);
 	addDataFormatDesc(ASTC_10x8_UNORM_BLOCK, ASTC_10x8_LDR, Invalid, Invalid, Invalid, 10, 8, 16, Compressed);
-	//	addDataFormatDesc( ASTC_10x8_SFLOAT_BLOCK_EXT, ASTC_10x8_HDR, Invalid, Invalid, Invalid, 10, 8, 16, Compressed );
 	addDataFormatDesc(ASTC_10x8_SRGB_BLOCK, ASTC_10x8_sRGB, Invalid, Invalid, Invalid, 10, 8, 16, Compressed);
 	addDataFormatDesc(ASTC_10x10_UNORM_BLOCK, ASTC_10x10_LDR, Invalid, Invalid, Invalid, 10, 10, 16, Compressed);
-	//	addDataFormatDesc( ASTC_10x10_SFLOAT_BLOCK_EXT, ASTC_10x10_HDR, Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
 	addDataFormatDesc(ASTC_10x10_SRGB_BLOCK, ASTC_10x10_sRGB, Invalid, Invalid, Invalid, 10, 10, 16, Compressed);
 	addDataFormatDesc(ASTC_12x10_UNORM_BLOCK, ASTC_12x10_LDR, Invalid, Invalid, Invalid, 12, 10, 16, Compressed);
-	//	addDataFormatDesc( ASTC_12x10_SFLOAT_BLOCK_EXT, ASTC_12x10_HDR, Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
 	addDataFormatDesc(ASTC_12x10_SRGB_BLOCK, ASTC_12x10_sRGB, Invalid, Invalid, Invalid, 12, 10, 16, Compressed);
 	addDataFormatDesc(ASTC_12x12_UNORM_BLOCK, ASTC_12x12_LDR, Invalid, Invalid, Invalid, 12, 12, 16, Compressed);
-	//	addDataFormatDesc( ASTC_12x12_SFLOAT_BLOCK_EXT, ASTC_12x12_HDR, Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
 	addDataFormatDesc(ASTC_12x12_SRGB_BLOCK, ASTC_12x12_sRGB, Invalid, Invalid, Invalid, 12, 12, 16, Compressed);
 
-	// Extension VK_IMG_format_pvrtc
-	//	addDataFormatDesc( PVRTC1_2BPP_UNORM_BLOCK_IMG, PVRTC_RGBA_2BPP, Invalid, Invalid, Invalid, 8, 4, 8, Compressed );
-	//	addDataFormatDesc( PVRTC1_4BPP_UNORM_BLOCK_IMG, PVRTC_RGBA_4BPP, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	//	addDataFormatDesc( PVRTC2_2BPP_UNORM_BLOCK_IMG, Invalid, Invalid, Invalid, Invalid, 8, 4, 8, Compressed );
-	//	addDataFormatDesc( PVRTC2_4BPP_UNORM_BLOCK_IMG, Invalid, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	//	addDataFormatDesc( PVRTC1_2BPP_SRGB_BLOCK_IMG, PVRTC_RGBA_2BPP_sRGB, Invalid, Invalid, Invalid, 8, 4, 8, Compressed );
-	//	addDataFormatDesc( PVRTC1_4BPP_SRGB_BLOCK_IMG, PVRTC_RGBA_4BPP_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-	//	addDataFormatDesc( PVRTC2_2BPP_SRGB_BLOCK_IMG, Invalid, Invalid, Invalid, Invalid, 8, 4, 8, Compressed );
-	//	addDataFormatDesc( PVRTC2_4BPP_SRGB_BLOCK_IMG, Invalid, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
-
-	// Extension VK_KHR_sampler_ycbcr_conversion
-	addVkFormatDescChromaSubsampling(G8B8G8R8_422_UNORM, GBGR422, 1, 8, 2, 1, 4);
-	addVkFormatDescChromaSubsampling(B8G8R8G8_422_UNORM, BGRG422, 1, 8, 2, 1, 4);
-	addVkFormatDescChromaSubsampling(G8_B8_R8_3PLANE_420_UNORM, Invalid, 3, 8, 2, 2, 6);
-	addVkFormatDescChromaSubsampling(G8_B8R8_2PLANE_420_UNORM, Invalid, 2, 8, 2, 2, 6);
-	addVkFormatDescChromaSubsampling(G8_B8_R8_3PLANE_422_UNORM, Invalid, 3, 8, 2, 1, 4);
-	addVkFormatDescChromaSubsampling(G8_B8R8_2PLANE_422_UNORM, Invalid, 2, 8, 2, 1, 4);
-	addVkFormatDescChromaSubsampling(G8_B8_R8_3PLANE_444_UNORM, Invalid, 3, 8, 1, 1, 3);
-	addVkFormatDescChromaSubsampling(R10X6_UNORM_PACK16, R16Unorm, 0, 10, 1, 1, 2);
-	addVkFormatDescChromaSubsampling(R10X6G10X6_UNORM_2PACK16, RG16Unorm, 0, 10, 1, 1, 4);
-	addVkFormatDescChromaSubsampling(R10X6G10X6B10X6A10X6_UNORM_4PACK16, RGBA16Unorm, 0, 10, 1, 1, 8);
-	addVkFormatDescChromaSubsampling(G10X6B10X6G10X6R10X6_422_UNORM_4PACK16, Invalid, 1, 10, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(B10X6G10X6R10X6G10X6_422_UNORM_4PACK16, Invalid, 1, 10, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16, Invalid, 3, 10, 2, 2, 12);
-	addVkFormatDescChromaSubsampling(G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, Invalid, 2, 10, 2, 2, 12);
-	addVkFormatDescChromaSubsampling(G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16, Invalid, 3, 10, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16, Invalid, 2, 10, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16, Invalid, 3, 10, 1, 1, 6);
-	addVkFormatDescChromaSubsampling(R12X4_UNORM_PACK16, R16Unorm, 0, 12, 1, 1, 2);
-	addVkFormatDescChromaSubsampling(R12X4G12X4_UNORM_2PACK16, RG16Unorm, 0, 12, 1, 1, 4);
-	addVkFormatDescChromaSubsampling(R12X4G12X4B12X4A12X4_UNORM_4PACK16, RGBA16Unorm, 0, 12, 1, 1, 8);
-	addVkFormatDescChromaSubsampling(G12X4B12X4G12X4R12X4_422_UNORM_4PACK16, Invalid, 1, 12, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(B12X4G12X4R12X4G12X4_422_UNORM_4PACK16, Invalid, 1, 12, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16, Invalid, 3, 12, 2, 2, 12);
-	addVkFormatDescChromaSubsampling(G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16, Invalid, 2, 12, 2, 2, 12);
-	addVkFormatDescChromaSubsampling(G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16, Invalid, 3, 12, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16, Invalid, 2, 12, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16, Invalid, 3, 12, 1, 1, 6);
-	addVkFormatDescChromaSubsampling(G16B16G16R16_422_UNORM, Invalid, 1, 16, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(B16G16R16G16_422_UNORM, Invalid, 1, 16, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(G16_B16_R16_3PLANE_420_UNORM, Invalid, 3, 16, 2, 2, 12);
-	addVkFormatDescChromaSubsampling(G16_B16R16_2PLANE_420_UNORM, Invalid, 2, 16, 2, 2, 12);
-	addVkFormatDescChromaSubsampling(G16_B16_R16_3PLANE_422_UNORM, Invalid, 3, 16, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(G16_B16R16_2PLANE_422_UNORM, Invalid, 2, 16, 2, 1, 8);
-	addVkFormatDescChromaSubsampling(G16_B16_R16_3PLANE_444_UNORM, Invalid, 3, 16, 1, 1, 6);
-
-	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
+	addDfFormatDescChromaSubsampling(G8B8G8R8_422_UNORM, GBGR422, 1, 8, 2, 1, 4);
+	addDfFormatDescChromaSubsampling(B8G8R8G8_422_UNORM, BGRG422, 1, 8, 2, 1, 4);
+	addDfFormatDescChromaSubsampling(G8_B8_R8_3PLANE_420_UNORM, Invalid, 3, 8, 2, 2, 6);
+	addDfFormatDescChromaSubsampling(G8_B8R8_2PLANE_420_UNORM, Invalid, 2, 8, 2, 2, 6);
+	addDfFormatDescChromaSubsampling(G8_B8_R8_3PLANE_422_UNORM, Invalid, 3, 8, 2, 1, 4);
+	addDfFormatDescChromaSubsampling(G8_B8R8_2PLANE_422_UNORM, Invalid, 2, 8, 2, 1, 4);
+	addDfFormatDescChromaSubsampling(G8_B8_R8_3PLANE_444_UNORM, Invalid, 3, 8, 1, 1, 3);
+	addDfFormatDescChromaSubsampling(R10X6_UNORM_PACK16, R16Unorm, 0, 10, 1, 1, 2);
+	addDfFormatDescChromaSubsampling(R10X6G10X6_UNORM_2PACK16, RG16Unorm, 0, 10, 1, 1, 4);
+	addDfFormatDescChromaSubsampling(R10X6G10X6B10X6A10X6_UNORM_4PACK16, RGBA16Unorm, 0, 10, 1, 1, 8);
+	addDfFormatDescChromaSubsampling(G10X6B10X6G10X6R10X6_422_UNORM_4PACK16, Invalid, 1, 10, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(B10X6G10X6R10X6G10X6_422_UNORM_4PACK16, Invalid, 1, 10, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16, Invalid, 3, 10, 2, 2, 12);
+	addDfFormatDescChromaSubsampling(G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, Invalid, 2, 10, 2, 2, 12);
+	addDfFormatDescChromaSubsampling(G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16, Invalid, 3, 10, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16, Invalid, 2, 10, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16, Invalid, 3, 10, 1, 1, 6);
+	addDfFormatDescChromaSubsampling(R12X4_UNORM_PACK16, R16Unorm, 0, 12, 1, 1, 2);
+	addDfFormatDescChromaSubsampling(R12X4G12X4_UNORM_2PACK16, RG16Unorm, 0, 12, 1, 1, 4);
+	addDfFormatDescChromaSubsampling(R12X4G12X4B12X4A12X4_UNORM_4PACK16, RGBA16Unorm, 0, 12, 1, 1, 8);
+	addDfFormatDescChromaSubsampling(G12X4B12X4G12X4R12X4_422_UNORM_4PACK16, Invalid, 1, 12, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(B12X4G12X4R12X4G12X4_422_UNORM_4PACK16, Invalid, 1, 12, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16, Invalid, 3, 12, 2, 2, 12);
+	addDfFormatDescChromaSubsampling(G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16, Invalid, 2, 12, 2, 2, 12);
+	addDfFormatDescChromaSubsampling(G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16, Invalid, 3, 12, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16, Invalid, 2, 12, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16, Invalid, 3, 12, 1, 1, 6);
+	addDfFormatDescChromaSubsampling(G16B16G16R16_422_UNORM, Invalid, 1, 16, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(B16G16R16G16_422_UNORM, Invalid, 1, 16, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(G16_B16_R16_3PLANE_420_UNORM, Invalid, 3, 16, 2, 2, 12);
+	addDfFormatDescChromaSubsampling(G16_B16R16_2PLANE_420_UNORM, Invalid, 2, 16, 2, 2, 12);
+	addDfFormatDescChromaSubsampling(G16_B16_R16_3PLANE_422_UNORM, Invalid, 3, 16, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(G16_B16R16_2PLANE_422_UNORM, Invalid, 2, 16, 2, 1, 8);
+	addDfFormatDescChromaSubsampling(G16_B16_R16_3PLANE_444_UNORM, Invalid, 3, 16, 1, 1, 6);
 }
 
 #define addMTLPixelFormatDescFull(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS, MTL_FMT_LINEAR) \
 	CRASH_BAD_INDEX_MSG(fmtIdx, _mtlPixelFormatCount, "Adding too many pixel formats");      \
-	_mtlPixelFormatDescriptions[fmtIdx++] = { .mtlPixelFormat = MTLPixelFormat##MTL_FMT, RD::DATA_FORMAT_MAX, mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps##MACOS_CAPS, kMVKMTLFmtCaps##IOS_CAPS), MVKMTLViewClass::VIEW_CLASS, MTLPixelFormat##MTL_FMT_LINEAR, "MTLPixelFormat" #MTL_FMT }
+	_mtlPixelFormatDescriptions[fmtIdx++] = { .mtlPixelFormat = MTLPixelFormat##MTL_FMT, RD::DATA_FORMAT_MAX, select_platform_caps(kMTLFmtCaps##MACOS_CAPS, kMTLFmtCaps##IOS_CAPS), MTLViewClass::VIEW_CLASS, MTLPixelFormat##MTL_FMT_LINEAR, "MTLPixelFormat" #MTL_FMT }
 
 #define addMTLPixelFormatDesc(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS) \
 	addMTLPixelFormatDescFull(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS, MTL_FMT)
@@ -512,7 +530,7 @@ void PixelFormats::initVkFormatCapabilities() {
 	addMTLPixelFormatDescFull(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS, MTL_FMT_LINEAR)
 
 void PixelFormats::initMTLPixelFormatCapabilities() {
-	mvkClear(_mtlPixelFormatDescriptions, _mtlPixelFormatCount);
+	clear(_mtlPixelFormatDescriptions, _mtlPixelFormatCount);
 
 	uint32_t fmtIdx = 0;
 
@@ -690,10 +708,10 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 
 #define addMTLVertexFormatDesc(MTL_VTX_FMT, IOS_CAPS, MACOS_CAPS)                                           \
 	CRASH_BAD_INDEX_MSG(fmtIdx, _mtlVertexFormatCount, "Attempting to describe too many MTLVertexFormats"); \
-	_mtlVertexFormatDescriptions[fmtIdx++] = { .mtlVertexFormat = MTLVertexFormat##MTL_VTX_FMT, RD::DATA_FORMAT_MAX, mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps##MACOS_CAPS, kMVKMTLFmtCaps##IOS_CAPS), MVKMTLViewClass::None, MTLPixelFormatInvalid, "MTLVertexFormat" #MTL_VTX_FMT }
+	_mtlVertexFormatDescriptions[fmtIdx++] = { .mtlVertexFormat = MTLVertexFormat##MTL_VTX_FMT, RD::DATA_FORMAT_MAX, select_platform_caps(kMTLFmtCaps##MACOS_CAPS, kMTLFmtCaps##IOS_CAPS), MTLViewClass::None, MTLPixelFormatInvalid, "MTLVertexFormat" #MTL_VTX_FMT }
 
 void PixelFormats::initMTLVertexFormatCapabilities() {
-	mvkClear(_mtlVertexFormatDescriptions, _mtlVertexFormatCount);
+	clear(_mtlVertexFormatDescriptions, _mtlVertexFormatCount);
 
 	uint32_t fmtIdx = 0;
 
@@ -772,8 +790,8 @@ void PixelFormats::initMTLVertexFormatCapabilities() {
 
 void PixelFormats::buildMTLFormatMaps() {
 	// Set all MTLPixelFormats and MTLVertexFormats to undefined/invalid
-	mvkClear(_mtlFormatDescIndicesByMTLPixelFormatsCore, _mtlPixelFormatCoreCount);
-	mvkClear(_mtlFormatDescIndicesByMTLVertexFormats, _mtlVertexFormatCount);
+	clear(_mtlFormatDescIndicesByMTLPixelFormatsCore, _mtlPixelFormatCoreCount);
+	clear(_mtlFormatDescIndicesByMTLVertexFormats, _mtlVertexFormatCount);
 
 	// Build lookup table for MTLPixelFormat specs.
 	// For most Metal format values, which are small and consecutive, use a simple lookup array.
@@ -802,9 +820,9 @@ void PixelFormats::buildMTLFormatMaps() {
 void PixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 		MTLFeatureSet mtlFeatSet,
 		MTLPixelFormat mtlPixFmt,
-		MVKMTLFmtCaps mtlFmtCaps) {
+		MTLFmtCaps mtlFmtCaps) {
 	if ([mtlDevice supportsFeatureSet:mtlFeatSet]) {
-		mvkEnableFlags(getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps, mtlFmtCaps);
+		flags::set(getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps, mtlFmtCaps);
 	}
 }
 
@@ -812,29 +830,29 @@ void PixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 void PixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 		MTLGPUFamily gpuFamily,
 		MTLPixelFormat mtlPixFmt,
-		MVKMTLFmtCaps mtlFmtCaps) {
+		MTLFmtCaps mtlFmtCaps) {
 	if ([mtlDevice supportsFamily:gpuFamily]) {
-		mvkEnableFlags(getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps, mtlFmtCaps);
+		flags::set(getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps, mtlFmtCaps);
 	}
 }
 
 // Disable capability flags in the Metal pixel format.
 void PixelFormats::disableMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt,
-		MVKMTLFmtCaps mtlFmtCaps) {
-	mvkDisableFlags(getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps, mtlFmtCaps);
+		MTLFmtCaps mtlFmtCaps) {
+	flags::clear(getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps, mtlFmtCaps);
 }
 
 void PixelFormats::disableAllMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt) {
-	getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps = kMVKMTLFmtCapsNone;
+	getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps = kMTLFmtCapsNone;
 }
 
 // If the device supports the feature set, add additional capabilities to a MTLVertexFormat
 void PixelFormats::addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 		MTLFeatureSet mtlFeatSet,
 		MTLVertexFormat mtlVtxFmt,
-		MVKMTLFmtCaps mtlFmtCaps) {
+		MTLFmtCaps mtlFmtCaps) {
 	if ([mtlDevice supportsFeatureSet:mtlFeatSet]) {
-		mvkEnableFlags(getMTLVertexFormatDesc(mtlVtxFmt).mtlFmtCaps, mtlFmtCaps);
+		flags::set(getMTLVertexFormatDesc(mtlVtxFmt).mtlFmtCaps, mtlFmtCaps);
 	}
 }
 
@@ -843,19 +861,19 @@ void PixelFormats::modifyMTLFormatCapabilities() {
 }
 
 #define addFeatSetMTLPixFmtCaps(FEAT_SET, MTL_FMT, CAPS) \
-	addMTLPixelFormatCapabilities(mtlDevice, MTLFeatureSet_##FEAT_SET, MTLPixelFormat##MTL_FMT, kMVKMTLFmtCaps##CAPS)
+	addMTLPixelFormatCapabilities(mtlDevice, MTLFeatureSet_##FEAT_SET, MTLPixelFormat##MTL_FMT, kMTLFmtCaps##CAPS)
 
 #define addFeatSetMTLVtxFmtCaps(FEAT_SET, MTL_FMT, CAPS) \
-	addMTLVertexFormatCapabilities(mtlDevice, MTLFeatureSet_##FEAT_SET, MTLVertexFormat##MTL_FMT, kMVKMTLFmtCaps##CAPS)
+	addMTLVertexFormatCapabilities(mtlDevice, MTLFeatureSet_##FEAT_SET, MTLVertexFormat##MTL_FMT, kMTLFmtCaps##CAPS)
 
 #define addGPUMTLPixFmtCaps(GPU_FAM, MTL_FMT, CAPS) \
-	addMTLPixelFormatCapabilities(mtlDevice, MTLGPUFamily##GPU_FAM, MTLPixelFormat##MTL_FMT, kMVKMTLFmtCaps##CAPS)
+	addMTLPixelFormatCapabilities(mtlDevice, MTLGPUFamily##GPU_FAM, MTLPixelFormat##MTL_FMT, kMTLFmtCaps##CAPS)
 
 #define disableAllMTLPixFmtCaps(MTL_FMT) \
 	disableAllMTLPixelFormatCapabilities(MTLPixelFormat##MTL_FMT)
 
 #define disableMTLPixFmtCaps(MTL_FMT, CAPS) \
-	disableMTLPixelFormatCapabilities(MTLPixelFormat##MTL_FMT, kMVKMTLFmtCaps##CAPS)
+	disableMTLPixelFormatCapabilities(MTLPixelFormat##MTL_FMT, kMTLFmtCaps##CAPS)
 
 void PixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	if (!mtlDevice.supportsBCTextureCompression) {
@@ -903,11 +921,11 @@ void PixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	}
 
 #if TARGET_OS_OSX
-	addFeatSetMTLPixFmtCaps(macOS_GPUFamily1_v1, R32Uint, Atomic);
-	addFeatSetMTLPixFmtCaps(macOS_GPUFamily1_v1, R32Sint, Atomic);
+	addGPUMTLPixFmtCaps(Apple1, R32Uint, Atomic);
+	addGPUMTLPixFmtCaps(Apple1, R32Sint, Atomic);
 
 	if (mtlDevice.isDepth24Stencil8PixelFormatSupported) {
-		addFeatSetMTLPixFmtCaps(macOS_GPUFamily1_v1, Depth24Unorm_Stencil8, DRFMR);
+		addGPUMTLPixFmtCaps(Apple1, Depth24Unorm_Stencil8, DRFMR);
 	}
 
 	addFeatSetMTLPixFmtCaps(macOS_GPUFamily1_v2, Depth16Unorm, DRFMR);
@@ -927,7 +945,7 @@ void PixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addGPUMTLPixFmtCaps(Apple5, BGRA8Unorm_sRGB, All);
 
 	// Blending is actually supported for this format, but format channels cannot be individually write-enabled during blending.
-	// Disabling blending is the least-intrusive way to handle this in a Vulkan-friendly way.
+	// Disabling blending is the least-intrusive way to handle this in a Godot-friendly way.
 	addGPUMTLPixFmtCaps(Apple5, RGB9E5Float, All);
 	disableMTLPixFmtCaps(RGB9E5Float, Blend);
 
@@ -1086,23 +1104,23 @@ void PixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 
 	addFeatSetMTLPixFmtCaps(iOS_GPUFamily1_v4, BGR10A2Unorm, All);
 
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_4x4_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_5x4_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_5x5_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_6x5_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_6x6_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_8x5_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_8x6_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_8x8_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_10x5_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_10x6_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_10x8_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_10x10_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_12x10_HDR, RF);
-	addGPUOSMTLPixFmtCaps(Apple6, 13.0, ASTC_12x12_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_4x4_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_5x4_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_5x5_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_6x5_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_6x6_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_8x5_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_8x6_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_8x8_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_10x5_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_10x6_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_10x8_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_10x10_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_12x10_HDR, RF);
+	addGPUMTLPixFmtCaps(Apple6, ASTC_12x12_HDR, RF);
 
-	addGPUOSMTLPixFmtCaps(Apple1, 13.0, Depth16Unorm, DRFM);
-	addGPUOSMTLPixFmtCaps(Apple3, 13.0, Depth16Unorm, DRFMR);
+	addGPUMTLPixFmtCaps(Apple1, Depth16Unorm, DRFM);
+	addGPUMTLPixFmtCaps(Apple3, Depth16Unorm, DRFMR);
 
 	// Vertex formats
 	addFeatSetMTLVtxFmtCaps(iOS_GPUFamily1_v4, UCharNormalized, Vertex);
@@ -1170,111 +1188,47 @@ void PixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 #undef disableAllMTLPixFmtCaps
 #undef addFeatSetMTLVtxFmtCaps
 
-// Populates the VkFormat lookup maps and connects Vulkan and Metal pixel formats to one-another.
-void PixelFormats::buildVkFormatMaps() {
-	// Set the VkFormats to undefined/invalid
-	mvkClear(_dataFormatDescIndicesByDataFormatsCore, _dataFormatCoreCount);
-
-	// Iterate through the VkFormat descriptions, populate the lookup maps and back pointers,
+// Populates the DataFormat lookup maps and connects Godot and Metal pixel formats to one-another.
+void PixelFormats::buildDFFormatMaps() {
+	// Iterate through the DataFormat descriptions, populate the lookup maps and back pointers,
 	// and validate the Metal formats for the platform and OS.
-	for (uint32_t fmtIdx = 0; fmtIdx < _dataFormatCount; fmtIdx++) {
-		MVKDataFormatDesc &vkDesc = _dataFormatDescriptions[fmtIdx];
-		DataFormat vkFmt = vkDesc.dataFormat;
-		if (vkFmt != RD::DATA_FORMAT_MAX) {
-			// Create a lookup between the Vulkan format and an index to the format info.
-			// For core Vulkan format values, which are small and consecutive, use a simple lookup array.
-			// For extension format values, which can be large, use a map.
-			if (vkFmt < _dataFormatCoreCount) {
-				_dataFormatDescIndicesByDataFormatsCore[vkFmt] = fmtIdx;
-			} else {
-				_dataFormatDescIndicesByDataFormatsExt[vkFmt] = fmtIdx;
-			}
-
-			// Populate the back reference from the Metal formats to the Vulkan format.
+	for (uint32_t fmtIdx = 0; fmtIdx < RD::DATA_FORMAT_MAX; fmtIdx++) {
+		DataFormatDesc &dfDesc = _dataFormatDescriptions[fmtIdx];
+		DataFormat dfFmt = dfDesc.dataFormat;
+		if (dfFmt != RD::DATA_FORMAT_MAX) {
+			// Populate the back reference from the Metal formats to the Godot format.
 			// Validate the corresponding Metal formats for the platform, and clear them
-			// in the Vulkan format if not supported.
-			if (vkDesc.mtlPixelFormat) {
-				auto &mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat);
+			// in the Godot format if not supported.
+			if (dfDesc.mtlPixelFormat) {
+				MTLFormatDesc &mtlDesc = getMTLPixelFormatDesc(dfDesc.mtlPixelFormat);
 				if (mtlDesc.dataFormat == RD::DATA_FORMAT_MAX) {
-					mtlDesc.dataFormat = vkFmt;
+					mtlDesc.dataFormat = dfFmt;
 				}
 				if (!mtlDesc.isSupported()) {
-					vkDesc.mtlPixelFormat = MTLPixelFormatInvalid;
+					dfDesc.mtlPixelFormat = MTLPixelFormatInvalid;
 				}
 			}
-			if (vkDesc.mtlPixelFormatSubstitute) {
-				auto &mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormatSubstitute);
+			if (dfDesc.mtlPixelFormatSubstitute) {
+				MTLFormatDesc &mtlDesc = getMTLPixelFormatDesc(dfDesc.mtlPixelFormatSubstitute);
 				if (!mtlDesc.isSupported()) {
-					vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
+					dfDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid;
 				}
 			}
-			if (vkDesc.mtlVertexFormat) {
-				auto &mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormat);
+			if (dfDesc.mtlVertexFormat) {
+				MTLFormatDesc &mtlDesc = getMTLVertexFormatDesc(dfDesc.mtlVertexFormat);
 				if (mtlDesc.dataFormat == RD::DATA_FORMAT_MAX) {
-					mtlDesc.dataFormat = vkFmt;
+					mtlDesc.dataFormat = dfFmt;
 				}
 				if (!mtlDesc.isSupported()) {
-					vkDesc.mtlVertexFormat = MTLVertexFormatInvalid;
+					dfDesc.mtlVertexFormat = MTLVertexFormatInvalid;
 				}
 			}
-			if (vkDesc.mtlVertexFormatSubstitute) {
-				auto &mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormatSubstitute);
+			if (dfDesc.mtlVertexFormatSubstitute) {
+				MTLFormatDesc &mtlDesc = getMTLVertexFormatDesc(dfDesc.mtlVertexFormatSubstitute);
 				if (!mtlDesc.isSupported()) {
-					vkDesc.mtlVertexFormatSubstitute = MTLVertexFormatInvalid;
+					dfDesc.mtlVertexFormatSubstitute = MTLVertexFormatInvalid;
 				}
 			}
-
-			// Set Vulkan format properties
-			setFormatProperties(vkDesc);
 		}
 	}
-}
-
-using TU = RenderingDevice::TextureUsageBits;
-
-// Enumeration of RenderingDevice format features aligned to the MVKMTLFmtCaps enumeration.
-typedef enum : uint32_t {
-	kMVKVkFormatFeatureFlagsTexNone = 0,
-	kMVKVkFormatFeatureFlagsTexRead = (TU::TEXTURE_USAGE_SAMPLING_BIT | TU::TEXTURE_USAGE_CAN_COPY_FROM_BIT | TU::TEXTURE_USAGE_CAN_UPDATE_BIT),
-	kMVKVkFormatFeatureFlagsTexWrite = (TU::TEXTURE_USAGE_STORAGE_BIT),
-	kMVKVkFormatFeatureFlagsTexAtomic = (TU::TEXTURE_USAGE_STORAGE_ATOMIC_BIT),
-	kMVKVkFormatFeatureFlagsTexColorAtt = (TU::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT),
-	kMVKVkFormatFeatureFlagsTexDSAtt = (TU::TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT),
-} MVKVkFormatFeatureFlags;
-
-// Sets the VkFormatProperties (optimal/linear/buffer) for the Vulkan format.
-void PixelFormats::setFormatProperties(MVKDataFormatDesc &vkDesc) {
-#define enableFormatFeatures(CAP, TYPE, MTL_FMT_CAPS, VK_FEATS)        \
-	if (mvkAreAllFlagsEnabled(MTL_FMT_CAPS, kMVKMTLFmtCaps##CAP)) {    \
-		mvkEnableFlags(VK_FEATS, kMVKVkFormatFeatureFlags##TYPE##CAP); \
-	}
-
-	FormatProperties &vkProps = vkDesc.properties;
-	MVKMTLFmtCaps mtlPixFmtCaps = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat).mtlFmtCaps;
-	vkProps.optimalTilingFeatures = kMVKVkFormatFeatureFlagsTexNone;
-	vkProps.linearTilingFeatures = kMVKVkFormatFeatureFlagsTexNone;
-
-	// Chroma subsampling and multi planar features
-	uint8_t chromaSubsamplingPlaneCount = getChromaSubsamplingPlaneCount(vkDesc.dataFormat);
-	uint8_t chromaSubsamplingComponentBits = getChromaSubsamplingComponentBits(vkDesc.dataFormat);
-
-	// Optimal tiling features
-	enableFormatFeatures(Read, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
-	enableFormatFeatures(Write, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
-	enableFormatFeatures(Atomic, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
-	enableFormatFeatures(ColorAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
-	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
-
-	bool supportsStencilFeedback = [device supportsFamily:MTLGPUFamilyApple5];
-
-	// Linear tiling is not available to depth/stencil or compressed formats.
-	// GBGR and BGRG formats also do not support linear tiling in Metal.
-	if (!(vkDesc.formatType == kMVKFormatDepthStencil || vkDesc.formatType == kMVKFormatCompressed ||
-				(chromaSubsamplingPlaneCount == 1 && vkDesc.blockTexelSize.width > 1))) {
-		// Start with optimal tiling features, and modify.
-		vkProps.linearTilingFeatures = vkProps.optimalTilingFeatures;
-	}
-
-	// Texel buffers are not available to depth/stencil, compressed, or chroma subsampled formats.
-	vkProps.bufferFeatures = kMVKVkFormatFeatureFlagsTexNone;
 }

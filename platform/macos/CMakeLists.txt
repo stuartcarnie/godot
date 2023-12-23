@@ -33,6 +33,8 @@ target_sources(platform-macos PRIVATE
         godot_menu_delegate.mm
         godot_menu_item.h
         godot_menu_item.mm
+        godot_open_save_delegate.h
+        godot_open_save_delegate.mm
         godot_window.h
         godot_window.mm
         godot_window_delegate.h
@@ -80,19 +82,19 @@ target_compile_definitions(platform-macos
 )
 
 target_link_libraries(platform-macos PUBLIC
-        "$<LINK_LIBRARY:FRAMEWORK,Cocoa>"
-        "$<LINK_LIBRARY:FRAMEWORK,Carbon>"
-        "$<LINK_LIBRARY:FRAMEWORK,AudioUnit>"
-        "$<LINK_LIBRARY:FRAMEWORK,CoreAudio>"
-        "$<LINK_LIBRARY:FRAMEWORK,CoreMIDI>"
-        "$<LINK_LIBRARY:FRAMEWORK,IOKit>"
-        "$<LINK_LIBRARY:FRAMEWORK,ForceFeedback>"
-        "$<LINK_LIBRARY:FRAMEWORK,CoreVideo>"
-        "$<LINK_LIBRARY:FRAMEWORK,AVFoundation>"
-        "$<LINK_LIBRARY:FRAMEWORK,CoreMedia>"
-        "$<LINK_LIBRARY:FRAMEWORK,QuartzCore>"
-        "$<LINK_LIBRARY:FRAMEWORK,Security>"
-        "$<LINK_LIBRARY:FRAMEWORK,Metal>"
-        "$<LINK_LIBRARY:FRAMEWORK,MetalKit>"
-        "$<LINK_LIBRARY:FRAMEWORK,IOSurface>"
+        $<LINK_LIBRARY:FRAMEWORK,Cocoa.framework>
+        $<LINK_LIBRARY:FRAMEWORK,Carbon.framework>
+        $<LINK_LIBRARY:FRAMEWORK,AudioUnit.framework>
+        $<LINK_LIBRARY:FRAMEWORK,CoreAudio.framework>
+        $<LINK_LIBRARY:FRAMEWORK,CoreMIDI.framework>
+        $<LINK_LIBRARY:FRAMEWORK,IOKit.framework>
+        $<LINK_LIBRARY:FRAMEWORK,ForceFeedback.framework>
+        $<LINK_LIBRARY:FRAMEWORK,CoreVideo.framework>
+        $<LINK_LIBRARY:FRAMEWORK,AVFoundation.framework>
+        $<LINK_LIBRARY:FRAMEWORK,CoreMedia.framework>
+        $<LINK_LIBRARY:FRAMEWORK,QuartzCore.framework>
+        $<LINK_LIBRARY:FRAMEWORK,Security.framework>
+        $<LINK_LIBRARY:FRAMEWORK,Metal.framework>
+        $<LINK_LIBRARY:FRAMEWORK,MetalKit.framework>
+        $<LINK_LIBRARY:FRAMEWORK,IOSurface.framework>
 )

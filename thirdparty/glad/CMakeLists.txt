@@ -6,7 +6,7 @@ if (${WANT_OPENGL} AND ${OPENGL_FOUND})
             gl.c
             KHR/khrplatform.h
     )
-    if (CMAKE_SYSTEM_NAME STREQUAL "Windows" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    if (CMAKE_SYSTEM_NAME STREQUAL "Windows" OR CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
         target_sources(glad PRIVATE
                 # TODO: if using angle_libs, don't add this
                 egl.c

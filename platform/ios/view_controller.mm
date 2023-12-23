@@ -30,6 +30,9 @@
 
 #import "view_controller.h"
 
+#import <AVFoundation/AVFoundation.h>
+#import <GameController/GameController.h>
+
 #import "display_server_ios.h"
 #import "godot_view.h"
 #import "godot_view_renderer.h"
@@ -38,9 +41,6 @@
 #import "os_ios.h"
 
 #include "core/config/project_settings.h"
-
-#import <AVFoundation/AVFoundation.h>
-#import <GameController/GameController.h>
 
 @interface ViewController () <GodotViewDelegate>
 

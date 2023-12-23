@@ -76,7 +76,7 @@ static Vector<uint8_t> _compile_shader_glsl(RenderingDevice::ShaderStage p_stage
 		TargetVersion = glslang::EShTargetSpv_1_3;
 	} else if (capabilities->device_family == RenderingDevice::DeviceFamily::DEVICE_METAL) {
 		ClientVersion = glslang::EShTargetVulkan_1_1;
-		TargetVersion = glslang::EShTargetSpv_1_3; 		// SPIRV-Cross supports this one
+		TargetVersion = glslang::EShTargetSpv_1_6;
 	} else {
 		// once we support other backends we'll need to do something here
 		if (r_error) {

@@ -2954,6 +2954,7 @@ RID RenderingDevice::render_pipeline_create(RID p_shader, FramebufferFormatID p_
 			for (int j = 0; j < vd.vertex_formats.size(); j++) {
 				if (vd.vertex_formats[j].location == i) {
 					found = true;
+					break;
 				}
 			}
 

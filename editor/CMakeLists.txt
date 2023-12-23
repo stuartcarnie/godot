@@ -3,8 +3,11 @@ cmake_minimum_required(VERSION 3.26 FATAL_ERROR)
 add_subdirectory(debugger)
 add_subdirectory(export)
 add_subdirectory(gui)
+add_subdirectory(icons)
 add_subdirectory(import)
 add_subdirectory(plugins)
+add_subdirectory(project_manager)
+add_subdirectory(themes)
 add_subdirectory(translations)
 
 set(GENERATED_PLATFORM_EXPORTERS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/register_exporters.gen.cpp)
@@ -13,8 +16,12 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND EXPORT_PLATFORM_SOURCE_PLATFORMS "windows")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     list(APPEND EXPORT_PLATFORM_SOURCE_PLATFORMS "macos")
-else ()
+elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    list(APPEND EXPORT_PLATFORM_SOURCE_PLATFORMS "ios")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND EXPORT_PLATFORM_SOURCE_PLATFORMS "linuxbsd")
+else ()
+    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif ()
 
 generate_godot_editor_platform_exporters("${EXPORT_PLATFORM_SOURCE_PLATFORMS}" "${GENERATED_PLATFORM_EXPORTERS_OUTPUT}")
@@ -22,11 +29,8 @@ generate_godot_editor_platform_exporters("${EXPORT_PLATFORM_SOURCE_PLATFORMS}" "
 set(GENERATED_EDITOR_DOC_DATA_CLASSES_PATH ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc_data_class_path.gen.h)
 generate_document_class_paths("${GENERATED_EDITOR_DOC_DATA_CLASSES_PATH}")
 
-add_subdirectory(icons)
-
 godot_add_library(godot-editor FOLDER editor STATIC
         ${GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT}
-        ${GODOT_EDITOR_BUILTIN_FONTS_OUPUT}
         ${GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT}
         ${GENERATED_PLATFORM_EXPORTERS_OUTPUT}
         ${GENERATED_EDITOR_DOC_DATA_CLASSES_PATH})
@@ -77,14 +81,14 @@ target_sources(godot-editor PRIVATE
         editor_command_palette.h
         editor_data.cpp
         editor_data.h
+        editor_dock_manager.cpp
+        editor_dock_manager.h
         editor_feature_profile.cpp
         editor_feature_profile.h
         editor_file_system.cpp
         editor_file_system.h
         editor_folding.cpp
         editor_folding.h
-        editor_fonts.cpp
-        editor_fonts.h
         editor_help.cpp
         editor_help.h
         editor_help_search.cpp
@@ -127,8 +131,6 @@ target_sources(godot-editor PRIVATE
         editor_run.h
         editor_run_native.cpp
         editor_run_native.h
-        editor_scale.cpp
-        editor_scale.h
         editor_script.cpp
         editor_script.h
         editor_sectioned_inspector.cpp
@@ -139,8 +141,6 @@ target_sources(godot-editor PRIVATE
         editor_settings_dialog.h
         editor_string_names.cpp
         editor_string_names.h
-        editor_themes.cpp
-        editor_themes.h
         editor_translation.cpp
         editor_translation.h
         editor_translation_parser.cpp
@@ -218,7 +218,7 @@ target_sources(godot-editor PRIVATE
 # [[[end]]]
 
 target_link_libraries(godot-editor PUBLIC godot-object godot-config minizip)
-target_link_libraries(godot-editor PRIVATE godot-doc godot-editor-icons godot-editor-translations fonts)
+target_link_libraries(godot-editor PRIVATE godot-doc godot-editor-icons godot-editor-themes godot-editor-translations)
 target_include_directories(godot-editor PRIVATE
         ${CMAKE_BINARY_INCLUDE_DIR}/editor
         ${CMAKE_CURRENT_SOURCE_DIR})

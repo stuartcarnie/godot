@@ -81,6 +81,7 @@ set_abs(RENDERER_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         renderer_rd/shaders/environment/voxel_gi.glsl
         renderer_rd/shaders/environment/voxel_gi_debug.glsl
         renderer_rd/shaders/environment/voxel_gi_sdf.glsl
+        renderer_rd/shaders/forward_clustered/best_fit_normal.glsl
         renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
         renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl
         renderer_rd/shaders/forward_mobile/scene_forward_mobile.glsl
@@ -141,6 +142,10 @@ target_sources(godot-server-renderer PRIVATE
         rendering_device_commons.h
         rendering_device_driver.cpp
         rendering_device_driver.h
+        rendering_device_graph.cpp
+        rendering_device_graph.h
+        rendering_light_culler.cpp
+        rendering_light_culler.h
         rendering_method.cpp
         rendering_method.h
         rendering_server_default.cpp

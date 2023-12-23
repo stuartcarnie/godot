@@ -77,5 +77,8 @@ target_sources(driver-gles3 PRIVATE
 # [[[end]]]
 
 target_include_directories(driver-gles3 PUBLIC ${CMAKE_BINARY_INCLUDE_DIR})
-target_link_libraries(driver-gles3 PUBLIC godot-core glad)
-target_compile_definitions(driver-gles3 PUBLIC GLES3_ENABLED=1 EGL_ENABLED=1 GLAD_ENABLED=1)
+target_link_libraries(driver-gles3 PUBLIC godot-core $<${WANT_GLAD}:glad>)
+target_compile_definitions(driver-gles3 PUBLIC
+        GLES3_ENABLED=1
+        $<${WANT_GLAD}:EGL_ENABLED=1 GLAD_ENABLED=1>
+)

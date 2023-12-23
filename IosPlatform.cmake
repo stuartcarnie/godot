@@ -1,0 +1,17 @@
+set(NEED_UNIX_DRIVER 1)
+set(WANT_VOLK 0)
+set(WANT_VULKAN 1)
+set(WANT_METAL 1)
+set(WANT_OPENGL 1)
+set(WANT_GLAD 1)
+set(WANT_FONTCONFIG 0)
+set(WANT_COREAUDIO 1)
+set(WANT_COREMIDI 0)
+set(WANT_GLAD 0)
+set(WANT_OPENXR 0)
+set(GODOT_PLATFORM "ios")
+add_compile_definitions(IOS_ENABLED)
+
+option(ENABLE_METAL "Enable the Metal renderer" OFF)
+
+add_compile_definitions(UNIX_ENABLED)

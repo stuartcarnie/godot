@@ -64,6 +64,8 @@ target_sources(godot-io PRIVATE
         packet_peer_udp.h
         pck_packer.cpp
         pck_packer.h
+        plist.cpp
+        plist.h
         remote_filesystem_client.cpp
         remote_filesystem_client.h
         resource.cpp

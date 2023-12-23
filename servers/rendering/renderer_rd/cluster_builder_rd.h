@@ -185,7 +185,7 @@ private:
 	};
 
 	uint32_t cluster_size = 32;
-	bool use_msaa = true;
+	bool use_msaa = false;
 	Divisor divisor = DIVISOR_4;
 
 	Size2i screen_size;

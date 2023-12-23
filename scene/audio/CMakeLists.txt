@@ -10,6 +10,8 @@ godot_add_library(godot-scene-audio FOLDER scene STATIC)
 target_sources(godot-scene-audio PRIVATE
         audio_stream_player.cpp
         audio_stream_player.h
+        audio_stream_player_internal.cpp
+        audio_stream_player_internal.h
 )
 # [[[end]]]
 target_link_libraries(godot-scene-audio PUBLIC godot-templates)

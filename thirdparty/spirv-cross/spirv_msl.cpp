@@ -14122,7 +14122,16 @@ string CompilerMSL::argument_decl(const SPIRFunction::Parameter &arg)
 	auto *backing_var = maybe_get_backing_variable(name_id);
 	if (backing_var && atomic_image_vars.count(backing_var->self))
 	{
-		decl += ", device atomic_" + type_to_glsl(get<SPIRType>(var_type.image.type), 0);
+		// -- GODOT start --
+		Bitset flags = get_decoration_bitset(backing_var->self);
+		if (flags.get(DecorationVolatile) || flags.get(DecorationCoherent)) {
+			decl += ", volatile device atomic_";
+		} else {
+			decl += ", device atomic_";
+		}
+
+		decl += type_to_glsl(get<SPIRType>(var_type.image.type), 0);
+		// -- GODOT end --
 		decl += "* " + to_expression(name_id) + "_atomic";
 	}
 

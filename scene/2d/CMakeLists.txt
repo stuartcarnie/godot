@@ -84,6 +84,8 @@ target_sources(godot-scene-2d PRIVATE
         sprite_2d.h
         tile_map.cpp
         tile_map.h
+        tile_map_layer.cpp
+        tile_map_layer.h
         touch_screen_button.cpp
         touch_screen_button.h
         visible_on_screen_notifier_2d.cpp

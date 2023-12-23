@@ -1,0 +1,14 @@
+{
+    "platform" : "@GODOT_PLATFORM@",
+    "arch" : "@OS_ARCH@",
+    "editor_build": @EDITOR_BUILD@,
+    "modules_enabled_by_default" : true,
+    "disable_3d" : false,
+    "vulkan" : @WANT_VULKAN_B@,
+    "metal" : @WANT_METAL_B@,
+    "openxr" : @WANT_OPENXR_B@,
+    "opengl3" : true,
+    "minizip" : true,
+    "builtin_certs" : true,
+    "system_certs_path" : ""
+}

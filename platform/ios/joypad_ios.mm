@@ -30,6 +30,8 @@
 
 #import "joypad_ios.h"
 
+#import <GameController/GameController.h>
+
 #import "godot_view.h"
 #import "os_ios.h"
 

@@ -1,4 +1,5 @@
-set(ICU_FONT_DATA_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/icu4c/icudt73l.dat)
+set(ICU4C_DAT_NAME icudt74l.dat)
+set(ICU_FONT_DATA_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/icu4c/${ICU4C_DAT_NAME})
 set(ICU_FONT_DATA_DESTINATION ${CMAKE_BINARY_INCLUDE_DIR}/thirdparty/icu4c/icudata.gen.h)
 generate_file(make_icu_data ${ICU_FONT_DATA_SOURCE} ${ICU_FONT_DATA_DESTINATION})
 
@@ -26,7 +27,9 @@ target_sources(godot-module-text-server-adv PRIVATE
 )
 # [[[end]]]
 
-
 target_link_libraries(godot-module-text-server-adv PUBLIC godot-object thorvg harfbuzz freetype msdfgen icu4c)
-target_compile_definitions(godot-module-text-server-adv PUBLIC ICU_STATIC_DATA=1)
+target_compile_definitions(godot-module-text-server-adv PRIVATE
+		$<${WANT_EDITOR}:ICU_STATIC_DATA=1>
+		-DICU_DATA_NAME=${ICU4C_DAT_NAME}
+)
 target_include_directories(godot-module-text-server-adv PRIVATE ${CMAKE_BINARY_INCLUDE_DIR}/thirdparty/icu4c)

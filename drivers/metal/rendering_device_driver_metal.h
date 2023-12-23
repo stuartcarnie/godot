@@ -28,6 +28,26 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+/**************************************************************************/
+/*                                                                        */
+/* Portions of this code were derived from MoltenVK.                      */
+/*                                                                        */
+/* Copyright (c) 2015-2023 The Brenwill Workshop Ltd.                     */
+/* (http://www.brenwill.com)                                              */
+/*                                                                        */
+/* Licensed under the Apache License, Version 2.0 (the "License");        */
+/* you may not use this file except in compliance with the License.       */
+/* You may obtain a copy of the License at                                */
+/*                                                                        */
+/*     http://www.apache.org/licenses/LICENSE-2.0                         */
+/*                                                                        */
+/* Unless required by applicable law or agreed to in writing, software    */
+/* distributed under the License is distributed on an "AS IS" BASIS,      */
+/* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or        */
+/* implied. See the License for the specific language governing           */
+/* permissions and limitations under the License.                         */
+/**************************************************************************/
+
 #ifndef RENDERING_DEVICE_DRIVER_METAL_H
 #define RENDERING_DEVICE_DRIVER_METAL_H
 
@@ -35,8 +55,8 @@
 #include "metal_objects.h"
 #include "servers/rendering/rendering_device_driver.h"
 
-#include "spirv.hpp"
 #include <Metal/Metal.h>
+#include <spirv.hpp>
 
 #ifdef DEBUG_ENABLED
 #ifndef _DEBUG
@@ -58,26 +78,17 @@ class RenderingDeviceDriverMetal : public RenderingDeviceDriver {
 	static const MTLSamplerAddressMode address_modes[SAMPLER_REPEAT_MODE_MAX];
 	static const MTLSamplerBorderColor sampler_border_colors[SAMPLER_BORDER_COLOR_MAX];
 
-	/*****************/
-	/**** GENERIC ****/
-	/*****************/
+#pragma mark - Generic
 
 	MetalContext *context = nullptr;
 	id<MTLDevice> device = nil;
+	id<MTLBinaryArchive> archive = nil;
+	uint32_t archive_count = 0;
 
-	/****************/
-	/**** MEMORY ****/
-	/****************/
+#pragma mark - Memory
 
-	//	VmaAllocator allocator = nullptr;
-	//	HashMap<uint32_t, VmaPool> small_allocs_pools;
-	//
-	//	VmaPool _find_or_create_small_allocs_pool(uint32_t p_mem_type_index);
+#pragma mark - Buffers
 
-	/*****************/
-	/**** BUFFERS ****/
-	/*****************/
-private:
 public:
 	virtual BufferID buffer_create(uint64_t p_size, BitField<BufferUsageBits> p_usage, MemoryAllocationType p_allocation_type) override final;
 	virtual bool buffer_set_texel_format(BufferID p_buffer, DataFormat p_format) override final;
@@ -86,12 +97,12 @@ public:
 	virtual uint8_t *buffer_map(BufferID p_buffer) override final;
 	virtual void buffer_unmap(BufferID p_buffer) override final;
 
-	/*****************/
-	/**** TEXTURE ****/
-	/*****************/
+#pragma mark - Texture
+
 private:
-	uint32_t _compute_plane_slice(DataFormat p_format, BitField<TextureAspectBits> p_aspect_bits);
-	uint32_t _compute_plane_slice(DataFormat p_format, TextureAspect p_aspect);
+	/// Returns true if the texture is a valid linear format.
+	Result<bool> is_valid_linear(TextureFormat const &p_format) const;
+	void _get_sub_resource(TextureID p_texture, const TextureSubresource &p_subresource, TextureCopyableLayout *r_layout) const;
 
 public:
 	virtual TextureID texture_create(const TextureFormat &p_format, const TextureView &p_view) override final;
@@ -105,25 +116,21 @@ public:
 	virtual void texture_unmap(TextureID p_texture) override final;
 	virtual BitField<TextureUsageBits> texture_get_usages_supported_by_format(DataFormat p_format, bool p_cpu_readable) override final;
 
-	/*****************/
-	/**** SAMPLER ****/
-	/*****************/
+#pragma mark - Sampler
+
 public:
 	virtual SamplerID sampler_create(const SamplerState &p_state) final override;
 	virtual void sampler_free(SamplerID p_sampler) final override;
 	virtual bool sampler_is_format_supported_for_filter(DataFormat p_format, SamplerFilter p_filter) override final;
 
-	/**********************/
-	/**** VERTEX ARRAY ****/
-	/**********************/
+#pragma mark - Vertex Array
+
 private:
 public:
 	virtual VertexFormatID vertex_format_create(VectorView<VertexAttribute> p_vertex_attribs) override final;
 	virtual void vertex_format_free(VertexFormatID p_vertex_format) override final;
 
-	/******************/
-	/**** BARRIERS ****/
-	/******************/
+#pragma mark - Barriers
 
 	virtual void command_pipeline_barrier(
 			CommandBufferID p_cmd_buffer,
@@ -133,9 +140,7 @@ public:
 			VectorView<BufferBarrier> p_buffer_barriers,
 			VectorView<TextureBarrier> p_texture_barriers) override final;
 
-	/*************************/
-	/**** COMMAND BUFFERS ****/
-	/*************************/
+#pragma mark - Command Buffers
 
 	// ----- POOL -----
 
@@ -155,51 +160,24 @@ public:
 	virtual void command_buffer_end(CommandBufferID p_cmd_buffer) override final;
 	virtual void command_buffer_execute_secondary(CommandBufferID p_cmd_buffer, VectorView<CommandBufferID> p_secondary_cmd_buffers) override final;
 
-	/*********************/
-	/**** FRAMEBUFFER ****/
-	/*********************/
+#pragma mark - Frame Buffer
 
 	virtual FramebufferID framebuffer_create(RenderPassID p_render_pass, VectorView<TextureID> p_attachments, uint32_t p_width, uint32_t p_height) override final;
 	virtual void framebuffer_free(FramebufferID p_framebuffer) override final;
 
-	/****************/
-	/**** SHADER ****/
-	/****************/
+#pragma mark - Shader
+
 private:
 	// Serialization types need access to private state
 
-	friend class ShaderStageData;
-	friend class SpecializationConstantData;
-	friend class UniformData;
-	friend class ShaderBinaryData;
-	friend class PushConstantData;
+	friend struct ShaderStageData;
+	friend struct SpecializationConstantData;
+	friend struct UniformData;
+	friend struct ShaderBinaryData;
+	friend struct PushConstantData;
 
-	enum LengthType {
-		Bytes,
-		Array
-	};
-
-	inline LengthType length_type(UniformType type) {
-		switch (type) {
-			case UNIFORM_TYPE_SAMPLER:
-			case UNIFORM_TYPE_SAMPLER_WITH_TEXTURE:
-			case UNIFORM_TYPE_SAMPLER_WITH_TEXTURE_BUFFER:
-			case UNIFORM_TYPE_TEXTURE:
-			case UNIFORM_TYPE_IMAGE:
-			case UNIFORM_TYPE_TEXTURE_BUFFER:
-			case UNIFORM_TYPE_IMAGE_BUFFER:
-			case UNIFORM_TYPE_INPUT_ATTACHMENT:
-				return LengthType::Array;
-
-			case UNIFORM_TYPE_UNIFORM_BUFFER:
-			case UNIFORM_TYPE_STORAGE_BUFFER:
-				return LengthType::Bytes;
-
-			case UNIFORM_TYPE_MAX:
-				// silence compiler warning
-				return LengthType::Bytes;
-		}
-	}
+private:
+	Error _reflect_spirv16(VectorView<ShaderStageSPIRVData> p_spirv, ShaderReflection &r_reflection);
 
 public:
 	virtual String shader_get_binary_cache_key() override final;
@@ -207,21 +185,29 @@ public:
 	virtual ShaderID shader_create_from_bytecode(const Vector<uint8_t> &p_shader_binary, ShaderDescription &r_shader_desc, String &r_name) override final;
 	virtual void shader_free(ShaderID p_shader) override final;
 
-	/*********************/
-	/**** UNIFORM SET ****/
-	/*********************/
+#pragma mark - Uniform Set
 
 public:
 	virtual UniformSetID uniform_set_create(VectorView<BoundUniform> p_uniforms, ShaderID p_shader, uint32_t p_set_index) override final;
 	virtual void uniform_set_free(UniformSetID p_uniform_set) override final;
 
-	// ----- COMMANDS -----
+#pragma mark - Commands
 
 	virtual void command_uniform_set_prepare_for_use(CommandBufferID p_cmd_buffer, UniformSetID p_uniform_set, ShaderID p_shader, uint32_t p_set_index) override final;
 
-	/******************/
-	/**** TRANSFER ****/
-	/******************/
+#pragma mark Transfer
+
+private:
+	enum class CopySource {
+		Buffer,
+		Texture,
+	};
+	void _copy_texture_buffer(CommandBufferID p_cmd_buffer,
+			CopySource source,
+			TextureID p_texture,
+			BufferID p_buffer,
+			VectorView<BufferTextureCopyRegion> p_regions);
+public:
 
 	virtual void command_clear_buffer(CommandBufferID p_cmd_buffer, BufferID p_buffer, uint64_t p_offset, uint64_t p_size) override final;
 	virtual void command_copy_buffer(CommandBufferID p_cmd_buffer, BufferID p_src_buffer, BufferID p_dst_buffer, VectorView<BufferCopyRegion> p_regions) override final;
@@ -233,9 +219,8 @@ public:
 	virtual void command_copy_buffer_to_texture(CommandBufferID p_cmd_buffer, BufferID p_src_buffer, TextureID p_dst_texture, TextureLayout p_dst_texture_layout, VectorView<BufferTextureCopyRegion> p_regions) override final;
 	virtual void command_copy_texture_to_buffer(CommandBufferID p_cmd_buffer, TextureID p_src_texture, TextureLayout p_src_texture_layout, BufferID p_dst_buffer, VectorView<BufferTextureCopyRegion> p_regions) override final;
 
-	/******************/
-	/**** PIPELINE ****/
-	/******************/
+#pragma mark Pipeline
+
 private:
 	Result<id<MTLFunction>> _create_function(id<MTLLibrary> p_library, NSString *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants);
 
@@ -247,15 +232,16 @@ public:
 	virtual void command_bind_push_constants(CommandBufferID p_cmd_buffer, ShaderID p_shader, uint32_t p_first_index, VectorView<uint32_t> p_data) override final;
 
 	// ----- CACHE -----
+private:
+	String _pipeline_get_cache_path() const;
 
+public:
 	virtual bool pipeline_cache_create(const Vector<uint8_t> &p_data) override final;
 	virtual void pipeline_cache_free() override final;
 	virtual size_t pipeline_cache_query_size() override final;
 	virtual Vector<uint8_t> pipeline_cache_serialize() override final;
 
-	/*******************/
-	/**** RENDERING ****/
-	/*******************/
+#pragma mark Rendering
 
 	// ----- SUBPASS -----
 
@@ -308,9 +294,7 @@ public:
 			uint32_t p_render_subpass,
 			VectorView<PipelineSpecializationConstant> p_specialization_constants) override final;
 
-	/*****************/
-	/**** COMPUTE ****/
-	/*****************/
+#pragma mark - Compute
 
 	// ----- COMMANDS -----
 
@@ -326,9 +310,7 @@ public:
 
 	virtual PipelineID compute_pipeline_create(ShaderID p_shader, VectorView<PipelineSpecializationConstant> p_specialization_constants) override final;
 
-	/*****************/
-	/**** QUERIES ****/
-	/*****************/
+#pragma mark - Queries
 
 	// ----- TIMESTAMP -----
 
@@ -342,22 +324,21 @@ public:
 	virtual void command_timestamp_query_pool_reset(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_query_count) override final;
 	virtual void command_timestamp_write(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_index) override final;
 
-	/****************/
-	/**** SCREEN ****/
-	/****************/
+#pragma mark - Labels
+
+	virtual void command_begin_label(CommandBufferID p_cmd_buffer, const char *p_label_name, const Color &p_color) override final;
+	virtual void command_end_label(CommandBufferID p_cmd_buffer) override final;
+
+#pragma mark - Screen
 
 	virtual DataFormat screen_get_format() override final;
 
-	/********************/
-	/**** SUBMISSION ****/
-	/********************/
+#pragma mark - Submission
 
 	virtual void begin_segment(CommandBufferID p_cmd_buffer, uint32_t p_frame_index, uint32_t p_frames_drawn) override final;
 	virtual void end_segment() override final;
 
-	/**************/
-	/**** MISC ****/
-	/**************/
+#pragma mark - Miscellaneous
 
 	virtual void set_object_name(ObjectType p_type, ID p_driver_id, const String &p_name) override final;
 	virtual uint64_t get_resource_native_handle(DriverResource p_type, ID p_driver_id) override final;

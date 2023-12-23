@@ -13,7 +13,6 @@ function(set_abs _out_var _base_directory)
     return(PROPAGATE ${_out_var})
 endfunction()
 
-
 # These are used to collect all the library targets in a list
 set(GODOT_LIBRARIES CACHE STRING "All the godot library targets" FORCE)
 

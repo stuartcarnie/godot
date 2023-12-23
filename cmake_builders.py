@@ -4,6 +4,7 @@ import os
 import sys
 import pathlib
 import argparse
+import json
 
 # Engine Modules
 from glsl_builders import *
@@ -18,6 +19,7 @@ import core.object.make_virtuals
 from main.main_builders import *
 from scene.theme.icons.default_theme_icons_builders import *
 from editor.editor_builders import *
+import editor.themes.editor_theme_builders
 from scene.theme.default_theme_builders import *
 from editor.icons.editor_icons_builders import *
 import editor.template_builders
@@ -51,10 +53,9 @@ class Target:
 
 class Environment:
     def __init__(self):
-        self._doc_class_path = OrderedDict()
-        self._module_dependencies = OrderedDict()
-        self._module_icons_paths = list()
-        self._editor_build = True
+        self['doc_class_path'] = OrderedDict()
+        self['module_dependencies'] = OrderedDict()
+        self['module_icons_paths'] = list()
         pass
 
     def __getitem__(self, item):
@@ -68,19 +69,19 @@ class Environment:
 
     @property
     def doc_class_path(self) -> OrderedDict:
-        return self._doc_class_path
+        return self.__dict__['doc_class_path']
 
     @property
     def module_icons_paths(self) -> list:
-        return self._module_icons_paths
+        return self.__dict__['module_icons_paths']
 
     @property
     def editor_build(self) -> bool:
-        return self._editor_build
+        return self.__dict__['editor_build']
 
     @property
     def module_dependencies(self) -> OrderedDict:
-        return self._module_dependencies
+        return self.__dict__['module_dependencies']
 
 
 # endregion
@@ -106,7 +107,7 @@ env["builtin_certs"] = True
 env["system_certs_path"] = ""
 
 
-def detect_modules_within_searchpath(path: str, env: Environment, selected_platform: str = "macos") -> OrderedDict:
+def detect_modules_within_searchpath(path: str, env: Environment, selected_platform: str) -> OrderedDict:
     # Built-in modules don't have nested modules,
     # so save the time it takes to parse directories.
     modules_detected = detect_modules(path, recursive=False)
@@ -374,6 +375,14 @@ def cmd_make_editor_documentation_translations(source: [str], target: str) -> in
 
 @check_output
 @source_target
+def cmd_make_editor_themes_fonts(source: str, target: str) -> int:
+    source_input = read_lines(source)
+    editor.themes.editor_theme_builders.make_fonts_header(target=[target], source=source_input, env=None)
+    return 0
+
+
+@check_output
+@source_target
 def cmd_make_version_data_headers(target: str, target2: str) -> int:
     generate_version_header(module_version_string="", optional_version_outpath=target,
                             optional_version_hash_output=target2)
@@ -468,14 +477,14 @@ def cmd_make_modules_enabled_and_types(args: argparse.Namespace) -> int:
     input_file = args.input
     log.debug('Detect all the Godot Modules to generate the module data')
     base_godot_engine_dir = str(pathlib.Path(input_file).parent) + "/"
-    unordered_modules = detect_modules_within_searchpath(input_file, env)
+    unordered_modules = detect_modules_within_searchpath(input_file, env, env['platform'])
     # Strip paths based on the output
     for dict_key, dict_item in unordered_modules.items():
         unordered_modules[dict_key] = dict_item.replace(base_godot_engine_dir, "")
 
     # If a custom path is provided apply it
     if args.input2:
-        custom_modules = detect_modules_within_searchpath(args.input2, env)
+        custom_modules = detect_modules_within_searchpath(args.input2, env, env['platform'])
         unordered_modules.update(custom_modules)
 
     modules = OrderedDict()
@@ -500,7 +509,7 @@ def cmd_make_modules_enabled_and_types(args: argparse.Namespace) -> int:
 @check_output
 @source_target
 def cmd_make_data_class_path(source: str, target: str) -> int:
-    modules = detect_modules_within_searchpath(source + "modules/", env)
+    modules = detect_modules_within_searchpath(source + "modules/", env, env['platform'])
 
     # Push the current working directory
     original_cwd = os.getcwd()
@@ -641,6 +650,8 @@ def _main() -> int:
         func=cmd_make_editor_properties_translations)
     sp.add_parser('make_editor_documentation_translations', parents=[args_inl_out]).set_defaults(
         func=cmd_make_editor_documentation_translations)
+    sp.add_parser('make_editor_themes_fonts', parents=[args_in_out]).set_defaults(
+        func=cmd_make_editor_themes_fonts)
     sp.add_parser('make_version_data_headers', parents=[args_out2]).set_defaults(func=cmd_make_version_data_headers)
     sp.add_parser('make_script_encryption_header', parents=[args_out]).set_defaults(
         func=cmd_make_script_encryption_header)
@@ -669,10 +680,21 @@ def _main() -> int:
     cmd.add_argument('--output', dest='output', required=True)
     cmd.set_defaults(func=cmd_generate_export_icon)
 
+    parser.add_argument("--env", dest="env", required=True)
+
     parsed = parser.parse_args()
 
     for arg in [var for var in vars(parsed) if var != 'func']:
         log.debug(f'{arg} : {getattr(parsed, arg)}')
+
+    # Load the environment
+    # Read JSON data from a file
+    with open(parsed.env, 'r') as file:
+        cmake_env = json.load(file)
+
+    # Set the environment
+    for key, value in cmake_env.items():
+        env[key] = value
 
     if hasattr(parsed, 'func'):
         return parsed.func(parsed)
@@ -718,7 +740,8 @@ def write_script_encryption_key(target):
 
 # region cog helpers
 
-def list_files(cog, search_paths: str | list[str], exts: [str] = None, recursive: bool = False) -> [str]:
+def list_files(cog, search_paths: str | list[str], exts: [str] = None, recursive: bool = False, all_files=False) -> [
+    str]:
     base_path = pathlib.Path(cog.inFile).parent
 
     search_paths = [search_paths] if isinstance(search_paths, str) else search_paths
@@ -732,7 +755,7 @@ def list_files(cog, search_paths: str | list[str], exts: [str] = None, recursive
             if not recursive: dirs.clear()
             root = pathlib.Path(root)
             for f in [root.joinpath(file).relative_to(base_path) for file in files]:
-                if f.suffix in exts:
+                if f.suffix in exts or all_files:
                     res.append(f)
 
     res.sort()

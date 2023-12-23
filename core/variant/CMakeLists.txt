@@ -25,6 +25,8 @@ target_sources(godot-variant PRIVATE
         variant.cpp
         variant.h
         variant_call.cpp
+        variant_callable.cpp
+        variant_callable.h
         variant_construct.cpp
         variant_construct.h
         variant_destruct.cpp

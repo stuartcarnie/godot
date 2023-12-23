@@ -28,6 +28,26 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+/**************************************************************************/
+/*                                                                        */
+/* Portions of this code were derived from MoltenVK.                      */
+/*                                                                        */
+/* Copyright (c) 2015-2023 The Brenwill Workshop Ltd.                     */
+/* (http://www.brenwill.com)                                              */
+/*                                                                        */
+/* Licensed under the Apache License, Version 2.0 (the "License");        */
+/* you may not use this file except in compliance with the License.       */
+/* You may obtain a copy of the License at                                */
+/*                                                                        */
+/*     http://www.apache.org/licenses/LICENSE-2.0                         */
+/*                                                                        */
+/* Unless required by applicable law or agreed to in writing, software    */
+/* distributed under the License is distributed on an "AS IS" BASIS,      */
+/* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or        */
+/* implied. See the License for the specific language governing           */
+/* permissions and limitations under the License.                         */
+/**************************************************************************/
+
 #ifndef METAL_DEVICE_PROPERTIES_H
 #define METAL_DEVICE_PROPERTIES_H
 
@@ -42,7 +62,6 @@
 // Common scaling multipliers
 #define KIBI (1024)
 #define MEBI (KIBI * KIBI)
-#define GIBI (KIBI * MEBI)
 
 /** The buffer index to use for vertex content. */
 const static uint32_t VERT_CONTENT_BUFFER_INDEX = 0;
@@ -66,6 +85,11 @@ struct MetalFeatures {
 	long hostMemoryPageSize;
 	bool layeredRendering;
 	bool multisampleLayeredRendering;
+	bool quadPermute; 		/**< If true, quadgroup permutation functions (vote, ballot, shuffle) are supported in shaders. */
+	bool simdPermute; 		/**< If true, SIMD-group permutation functions (vote, ballot, shuffle) are supported in shaders. */
+	bool simdReduction;		/**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
+	bool tesselationShader; /**< If true, tesselation shaders are supported. */
+	bool imageCubeArray;	/**< If true, image cube arrays are supported. */
 };
 
 struct MetalLimits {
@@ -79,31 +103,39 @@ struct MetalLimits {
 	uint64_t maxViewportDimensionX;
 	uint64_t maxViewportDimensionY;
 	MTLSize maxThreadsPerThreadGroup;
+	MTLSize maxComputeWorkGroupCount;
 	uint64_t maxBoundDescriptorSets;
 	uint64_t maxColorAttachments;
 	uint64_t maxTexturesPerArgumentBuffer;
 	uint64_t maxSamplersPerArgumentBuffer;
 	uint64_t maxBuffersPerArgumentBuffer;
 	uint64_t maxBufferLength;
+	uint64_t minUniformBufferOffsetAlignment;
 	uint64_t maxVertexDescriptorLayoutStride;
 	uint16_t maxViewports;
 	uint32_t maxPerStageBufferCount; /**< The total number of per-stage Metal buffers available for shader uniform content and attributes. */
 	uint32_t maxPerStageTextureCount; /**< The total number of per-stage Metal textures available for shader uniform content. */
 	uint32_t maxPerStageSamplerCount; /**< The total number of per-stage Metal samplers available for shader uniform content. */
+	uint32_t maxVertexInputAttributes;
+	uint32_t maxVertexInputBindings;
+	uint32_t maxVertexInputBindingStride;
+	uint32_t maxDrawIndexedIndexValue;
 
-	bool supportsMultipleViewports() const { return maxViewports > 1; };
+	uint32_t minSubgroupSize; /**< The minimum number of threads in a SIMD-group. */
+	uint32_t maxSubgroupSize; /**< The maximum number of threads in a SIMD-group. */
+	BitField<RDD::ShaderStage> subgroupSupportedShaderStages;
+	BitField<RD::SubgroupOperations> subgroupSupportedOperations; /**< The subgroup operations supported by the device. */
 };
 
 class MetalDeviceProperties {
 private:
-	void initGpuProperties(id<MTLDevice> device);
-	void initFeatures(id<MTLDevice> device);
-	void initLimits(id<MTLDevice> device);
-	void initTextureCaps(id<MTLDevice> device);
-	bool msl_version_is_at_least(MTLLanguageVersion minVer) { return features.mslVersionEnum >= minVer; }
+	void init_gpu_properties(id<MTLDevice> device);
+	void init_features(id<MTLDevice> device);
+	void init_limits(id<MTLDevice> device);
 
 public:
 	RenderingDevice::DeviceType device_type;
+	String device_vendor;
 	String device_name;
 	MetalFeatures features;
 	MetalLimits limits;

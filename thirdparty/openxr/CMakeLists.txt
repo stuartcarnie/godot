@@ -9,6 +9,7 @@ godot_add_library(openxr FOLDER thirdparty STATIC)
 # ]]]
 target_sources(openxr PRIVATE
         include/openxr/openxr.h
+        include/openxr/openxr_loader_negotiation.h
         include/openxr/openxr_platform.h
         include/openxr/openxr_platform_defines.h
         include/openxr/openxr_reflection.h
@@ -18,7 +19,6 @@ target_sources(openxr PRIVATE
         src/common/filesystem_utils.cpp
         src/common/filesystem_utils.hpp
         src/common/hex_and_handles.h
-        src/common/loader_interfaces.h
         src/common/object_info.cpp
         src/common/object_info.h
         src/common/platform_utils.hpp
@@ -47,6 +47,8 @@ target_sources(openxr PRIVATE
         src/loader/api_layer_interface.hpp
         src/loader/exception_handling.hpp
         src/loader/loader_core.cpp
+        src/loader/loader_init_data.cpp
+        src/loader/loader_init_data.hpp
         src/loader/loader_instance.cpp
         src/loader/loader_instance.hpp
         src/loader/loader_logger.cpp
@@ -66,26 +68,31 @@ target_sources(openxr PRIVATE
 # [[[end]]]
 target_include_directories(openxr PUBLIC include)
 target_include_directories(openxr PRIVATE
-                                src
-                                src/common
-                                src/external/jsoncpp/include)
-                                
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-	target_compile_definitions(openxr PUBLIC XR_OS_LINUX=1 HAVE_SECURE_GETENV=1)
-endif()
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-	target_compile_definitions(openxr PUBLIC XR_OS_WINDOWS=1 XR_USE_PLATFORM_WIN32=1)
-endif()
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-	target_compile_definitions(openxr PUBLIC XR_OS_APPLE=1)
-endif()
-if(${WANT_OPENGL} AND ${OPENGL_FOUND})
+        src
+        src/common
+        src/external/jsoncpp/include)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_compile_definitions(openxr PUBLIC XR_OS_LINUX=1 HAVE_SECURE_GETENV=1)
+endif ()
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_compile_definitions(openxr PUBLIC XR_OS_WINDOWS=1 XR_USE_PLATFORM_WIN32=1)
+endif ()
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_compile_definitions(openxr PUBLIC XR_OS_APPLE=1)
+endif ()
+if (${WANT_X11})
+    target_compile_definitions(openxr PUBLIC XR_USE_PLATFORM_XLIB=1)
+endif ()
+
+if (${WANT_OPENGL} AND ${OPENGL_FOUND})
     target_link_libraries(openxr PUBLIC ${OPENGL_LIBRARIES})
-endif()
-if(${WANT_VULKAN} AND ${VULKAN_FOUND})
+endif ()
+if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     target_link_libraries(openxr PUBLIC vulkan)
-endif()
+endif ()
 target_compile_options(openxr PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
 target_compile_definitions(openxr PUBLIC
+        DISABLE_STD_FILESYSTEM
         "$<$<BOOL:${DISABLE_EXCEPTIONS}>:XRLOADER_DISABLE_EXCEPTION_HANDLING;JSON_USE_EXCEPTION=0>"
 )

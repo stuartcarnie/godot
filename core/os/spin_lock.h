@@ -41,8 +41,6 @@ class SpinLock {
 	mutable os_unfair_lock _lock = OS_UNFAIR_LOCK_INIT;
 
 public:
-	SpinLock() = default;
-
 	_ALWAYS_INLINE_ void lock() const {
 		os_unfair_lock_lock(&_lock);
 	}
@@ -50,10 +48,6 @@ public:
 	_ALWAYS_INLINE_ void unlock() const {
 		os_unfair_lock_unlock(&_lock);
 	}
-
-private:
-	SpinLock(const SpinLock&);
-	SpinLock& operator=(const SpinLock&);
 };
 
 #else

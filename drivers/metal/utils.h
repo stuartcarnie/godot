@@ -1,102 +1,81 @@
-#include <memory>
+/**************************************************************************/
+/*  utils.h                                                               */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
 
-/** Selects and returns one of the values, based on the platform OS. */
-template <typename T>
-const T &mvkSelectPlatformValue(const T &macOSVal, const T &iOSVal) {
-#if (TARGET_OS_IOS || TARGET_OS_TV) && !TARGET_OS_MACCATALYST
-	return iOSVal;
-#endif
-#if TARGET_OS_OSX
-	return macOSVal;
-#endif
-}
-
-#pragma mark - Values and Structs
-
-/**
- * If pVal is not null, clears the memory occupied by *pVal by writing zeros to all bytes.
- * The optional count allows clearing multiple elements in an array.
- */
-template <typename T>
-void mvkClear(T *pVal, size_t count = 1) {
-	if (pVal) {
-		memset(pVal, 0, sizeof(T) * count);
-	}
-}
-
-/**
- * If pV1 and pV2 are both not null, returns whether the contents of the two values are equal,
- * otherwise returns false. The optional count allows comparing multiple elements in an array.
- */
-template<typename T>
-bool mvkAreEqual(const T* pV1, const T* pV2, size_t count = 1) {
-	return (pV1 && pV2) && (memcmp(pV1, pV2, sizeof(T) * count) == 0);
-}
+#ifndef METAL_UTILS_H
+#define METAL_UTILS_H
 
 #pragma mark - Boolean flags
 
-/** Enables the flags (sets bits to 1) within the value parameter specified by the bitMask parameter. */
+namespace flags {
+
+/*! Sets the flags within the value parameter specified by the mask parameter. */
 template <typename Tv, typename Tm>
-void mvkEnableFlags(Tv &value, const Tm bitMask) { value = (Tv)(value | bitMask); }
-
-/** Disables the flags (sets bits to 0) within the value parameter specified by the bitMask parameter. */
-template <typename Tv, typename Tm>
-void mvkDisableFlags(Tv &value, const Tm bitMask) { value = (Tv)(value & ~(Tv)bitMask); }
-
-/** Returns whether the specified value has ANY of the flags specified in bitMask enabled (set to 1). */
-template<typename Tv, typename Tm>
-static constexpr bool mvkIsAnyFlagEnabled(Tv value, const Tm bitMask) { return ((value & bitMask) != 0); }
-
-/** Returns whether the specified value has ALL of the flags specified in bitMask enabled (set to 1). */
-template <typename Tv, typename Tm>
-static constexpr bool mvkAreAllFlagsEnabled(Tv value, const Tm bitMask) { return ((value & bitMask) == bitMask); }
-
-#pragma mark - Math
-
-/** Returns the result of a division, rounded up. */
-template <typename T, typename U>
-constexpr typename std::common_type<T, U>::type mvkCeilingDivide(T numerator, U denominator) {
-	typedef typename std::common_type<T, U>::type R;
-	// Short circuit very common usecase of dividing by one.
-	return (denominator == 1) ? numerator : (R(numerator) + denominator - 1) / denominator;
+void set(Tv &value, Tm bitMask) {
+	using T = std::underlying_type_t<Tv>;
+	value = static_cast<Tv>(static_cast<T>(value) | static_cast<T>(bitMask));
 }
+
+/*! Clears the flags within the value parameter specified by the bitMask parameter. */
+template <typename Tv, typename Tm>
+void clear(Tv &value, Tm bitMask) {
+	using T = std::underlying_type_t<Tv>;
+	value = static_cast<Tv>(static_cast<T>(value) & ~static_cast<T>(bitMask));
+}
+
+/*! Returns whether the specified value has any of the bits specified in bitMask set to 1. */
+template <typename Tv, typename Tm>
+static constexpr bool any(Tv value, const Tm bitMask) { return ((value & bitMask) != 0); }
+
+/*! Returns whether the specified value has all of the bits specified in bitMask set to 1. */
+template <typename Tv, typename Tm>
+static constexpr bool all(Tv value, const Tm bitMask) { return ((value & bitMask) == bitMask); }
+
+} //namespace flags
 
 #pragma mark - Alignment and Offsets
 
-/** Returns whether the specified positive value is a power-of-two. */
-template<typename T>
-static constexpr bool mvkIsPowerOfTwo(T value) {
+static constexpr bool is_power_of_two(uint64_t value) {
 	return value && ((value & (value - 1)) == 0);
 }
 
-/**
- * Aligns the byte reference to the specified alignment, and returns the aligned value,
- * which will be greater than or equal to the reference if alignDown is false, or less
- * than or equal to the reference if alignDown is true.
- *
- * This is a low level utility method. Usually you will use the convenience functions
- * mvkAlignAddress() and mvkAlignByteCount() to align addresses and offsets respectively.
- */
-static constexpr uintptr_t mvkAlignByteRef(uintptr_t byteRef, uintptr_t byteAlignment, bool alignDown = false) {
-	if (byteAlignment == 0) { return byteRef; }
+static constexpr uint64_t round_up_to_alignment(uint64_t p_value, uint64_t p_alignment) {
+	DEV_ASSERT(is_power_of_two(p_alignment));
 
-	assert(mvkIsPowerOfTwo(byteAlignment));
-
-	uintptr_t mask = byteAlignment - 1;
-	uintptr_t alignedRef = (byteRef + mask) & ~mask;
-
-	if (alignDown && (alignedRef > byteRef)) {
-		alignedRef -= byteAlignment;
+	if (p_alignment == 0) {
+		return p_value;
 	}
 
-	return alignedRef;
+	uint64_t mask = p_alignment - 1;
+	uint64_t aligned_value = (p_value + mask) & ~mask;
+
+	return aligned_value;
 }
 
-/**
- * Aligns the byte offset to the specified byte alignment, and returns the aligned offset,
- * which will be greater than or equal to the original offset if alignDown is false, or less
- * than or equal to the original offset if alignDown is true.
- */
-static constexpr uint64_t mvkAlignByteCount(uint64_t byteCount, uint64_t byteAlignment, bool alignDown = false) {
-	return mvkAlignByteRef(byteCount, byteAlignment, alignDown);
-}
+#endif // METAL_UTILS_H

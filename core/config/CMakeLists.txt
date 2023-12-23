@@ -40,14 +40,10 @@ target_sources(godot-config PRIVATE
 
 target_include_directories(godot-config PUBLIC ${CMAKE_BINARY_INCLUDE_DIR})
 target_link_libraries(godot-config PUBLIC godot-string godot-object)
-if(${WANT_OPENGL} AND ${OPENGL_FOUND})
-    target_compile_definitions(godot-config PUBLIC GLES3_ENABLED=1)
-endif()
-if(${WANT_VULKAN} AND ${VULKAN_FOUND})
-    target_compile_definitions(godot-config PUBLIC VULKAN_ENABLED=1)
-endif()
 
 target_compile_definitions(godot-config
         PRIVATE
-        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED=1>
+        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:OPENGL_FOUND}>>:GLES3_ENABLED=1>
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
+        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
 )

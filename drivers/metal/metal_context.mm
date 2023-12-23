@@ -46,15 +46,13 @@ Error MetalContext::_create_device() {
 	scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithCommandQueue:queue];
 	scope.label = @"Metal Context";
 
-	device_name = device.name.UTF8String;
-
 	resource_cache = std::make_unique<MDResourceCache>(device, this);
 
 	return OK;
 }
 
 Error MetalContext::_check_capabilities() {
-	auto options = [MTLCompileOptions new];
+	MTLCompileOptions *options = [MTLCompileOptions new];
 	version_major = (options.languageVersion >> 0x10) & 0xff;
 	version_minor = (options.languageVersion >> 0x00) & 0xff;
 
@@ -132,29 +130,30 @@ RDD::FramebufferID MetalContext::window_get_framebuffer(DisplayServer::WindowID 
 
 void MetalContext::window_destroy(DisplayServer::WindowID p_window_id) {
 	ERR_FAIL_COND(!windows.has(p_window_id));
-	// _clean_up_swap_chain(&windows[p_window_id]);
 
 	windows.erase(p_window_id);
 }
 
 Error MetalContext::_update_swap_chain(Window *window) {
-	CGFloat scale = window->layer.contentsScale;
 	CGSize drawableSize = CGSizeMake(window->width, window->height);
 	CGSize current = window->layer.drawableSize;
 	if (!CGSizeEqualToSize(current, drawableSize)) {
 		window->layer.drawableSize = drawableSize;
 	}
 
+#if TARGET_OS_OSX
+	// display sync is only supported on macOS
 	switch (window->vsync_mode) {
 		case DisplayServer::VSYNC_MAILBOX:
-			break;
 		case DisplayServer::VSYNC_ADAPTIVE:
-			break;
 		case DisplayServer::VSYNC_ENABLED:
+			window->layer.displaySyncEnabled = YES;
 			break;
 		case DisplayServer::VSYNC_DISABLED:
+			window->layer.displaySyncEnabled = NO;
 			break;
 	}
+#endif
 
 	format = window->layer.pixelFormat;
 
@@ -203,15 +202,45 @@ Error MetalContext::initialize() {
 		rendering_method = "Forward+";
 	}
 
-	print_line(vformat("Metal API %s - %s - %s", get_device_api_version(), rendering_method, device_name));
+	String gpu_family = "Apple1";
+	MTLGPUFamily family = metal_device_properties->features.highestFamily;
+	if (family >= MTLGPUFamilyApple1 && family <= MTLGPUFamilyApple9) {
+		int version = family - MTLGPUFamilyApple1 + 1;
+		gpu_family = vformat("Apple%d", version);
+	}
+
+	print_line(vformat("Metal API %s (%s) - %s - %s",
+			get_device_api_version(), gpu_family,
+			rendering_method,
+			metal_device_properties->device_name));
+
+	// Check required features and abort if any of them is missing.
+	if (!metal_device_properties->features.imageCubeArray) {
+		// NOTE: Apple A11 (Apple4) GPUs support image cube arrays, which are devices from 2017 and newer.
+		String error_string = vformat("Your Apple GPU does not support the following features which are required to use Metal-based renderers in Godot:\n\n");
+		if (!metal_device_properties->features.imageCubeArray) {
+			error_string += "- No support for image cube arrays.\n";
+		}
+
+#if defined(IOS_ENABLED)
+		// iOS platform ports currently don't exit themselves when this method returns `ERR_CANT_CREATE`.
+		OS::get_singleton()->alert(error_string + "\nClick OK to exit (black screen will be visible).");
+#else
+		OS::get_singleton()->alert(error_string + "\nClick OK to exit.");
+#endif
+
+		return ERR_CANT_CREATE;
+	}
 
 	return OK;
 }
 
 size_t MetalContext::get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const {
-	size_t deviceAlignment = 0;
-	MTLPixelFormat mtlPixFmt = pixel_formats->getMTLPixelFormat(p_format);
-	return [device minimumLinearTextureAlignmentForPixelFormat: mtlPixFmt];
+	return [device minimumLinearTextureAlignmentForPixelFormat:pixel_formats->getMTLPixelFormat(p_format)];
+}
+
+size_t MetalContext::get_texel_buffer_alignment_for_format(MTLPixelFormat p_format) const {
+	return [device minimumLinearTextureAlignmentForPixelFormat:p_format];
 }
 
 void MetalContext::set_setup_buffer(RDD::CommandBufferID p_command_buffer) {
@@ -230,7 +259,7 @@ void MetalContext::append_command_buffer(RDD::CommandBufferID p_command_buffer) 
 	command_buffer_count++;
 }
 
-void MetalContext::flush(bool p_flush_setup, bool p_flush_pending) {
+void MetalContext::flush(bool p_flush_setup, bool p_flush_pending, bool p_sync) {
 	id<MTLCommandBuffer> last = nil;
 	if (p_flush_setup && command_buffer_queue[0]) {
 		last = command_buffer_queue[0]->get_command_buffer();
@@ -246,7 +275,9 @@ void MetalContext::flush(bool p_flush_setup, bool p_flush_pending) {
 		}
 		command_buffer_count = 1;
 	}
-	[last waitUntilCompleted];
+	if (p_sync) {
+		[last waitUntilCompleted];
+	}
 }
 
 Error MetalContext::prepare_buffers(RDD::CommandBufferID p_command_buffer) {
@@ -255,7 +286,6 @@ Error MetalContext::prepare_buffers(RDD::CommandBufferID p_command_buffer) {
 }
 
 void MetalContext::postpare_buffers(RDD::CommandBufferID p_command_buffer) {
-	//	[scope endScope];
 }
 
 Error MetalContext::swap_buffers() {
@@ -357,31 +387,12 @@ void MetalContext::local_device_free(RID p_local_device) {
 	local_device_owner.free(p_local_device);
 }
 
-void MetalContext::command_begin_label(RDD::CommandBufferID p_command_buffer, String p_label_name, const Color &p_color) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_command_buffer.id);
-	CharString utf8 = p_label_name.utf8();
-	NSString *s = [[NSString alloc] initWithBytesNoCopy:(void *)utf8.ptr() length:utf8.size() encoding:NSUTF8StringEncoding freeWhenDone:NO];
-	[cb->get_command_buffer() pushDebugGroup:s];
-}
-
-void MetalContext::command_insert_label(RDD::CommandBufferID p_command_buffer, String p_label_name, const Color &p_color) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_command_buffer.id);
-	CharString utf8 = p_label_name.utf8();
-	NSString *s = [[NSString alloc] initWithBytesNoCopy:(void *)utf8.ptr() length:utf8.size() encoding:NSUTF8StringEncoding freeWhenDone:NO];
-	[cb->get_encoder() insertDebugSignpost:s];
-}
-
-void MetalContext::command_end_label(RDD::CommandBufferID p_command_buffer) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_command_buffer.id);
-	[cb->get_command_buffer() popDebugGroup];
-}
-
 String MetalContext::get_device_vendor_name() const {
-	return device_vendor;
+	return metal_device_properties->device_vendor;
 }
 
 String MetalContext::get_device_name() const {
-	return device_name;
+	return metal_device_properties->device_name;
 }
 
 RenderingDevice::DeviceType MetalContext::get_device_type() const {

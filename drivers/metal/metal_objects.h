@@ -28,8 +28,28 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_METAL_OBJECTS_H
-#define GODOT_METAL_OBJECTS_H
+/**************************************************************************/
+/*                                                                        */
+/* Portions of this code were derived from MoltenVK.                      */
+/*                                                                        */
+/* Copyright (c) 2015-2023 The Brenwill Workshop Ltd.                     */
+/* (http://www.brenwill.com)                                              */
+/*                                                                        */
+/* Licensed under the Apache License, Version 2.0 (the "License");        */
+/* you may not use this file except in compliance with the License.       */
+/* You may obtain a copy of the License at                                */
+/*                                                                        */
+/*     http://www.apache.org/licenses/LICENSE-2.0                         */
+/*                                                                        */
+/* Unless required by applicable law or agreed to in writing, software    */
+/* distributed under the License is distributed on an "AS IS" BASIS,      */
+/* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or        */
+/* implied. See the License for the specific language governing           */
+/* permissions and limitations under the License.                         */
+/**************************************************************************/
+
+#ifndef METAL_OBJECTS_H
+#define METAL_OBJECTS_H
 
 #import "metal_device_properties.h"
 #import "pixel_formats.h"
@@ -57,7 +77,7 @@ MTL_CLASS(Texture)
 
 } //namespace MTL
 
-enum ShaderStageUsage : uint8_t {
+enum ShaderStageUsage : uint32_t {
 	None = 0,
 	Vertex = RDD::SHADER_STAGE_VERTEX_BIT,
 	Fragment = RDD::SHADER_STAGE_FRAGMENT_BIT,
@@ -67,7 +87,7 @@ enum ShaderStageUsage : uint8_t {
 };
 
 _FORCE_INLINE_ ShaderStageUsage &operator|=(ShaderStageUsage &a, int b) {
-	a = ShaderStageUsage(uint8_t(a) | uint8_t(b));
+	a = ShaderStageUsage(uint32_t(a) | uint32_t(b));
 	return a;
 }
 
@@ -115,9 +135,9 @@ struct ClearAttKey {
 	_FORCE_INLINE_ bool is_depth_enabled() const { return pixel_formats[DEPTH_INDEX] != 0; }
 	_FORCE_INLINE_ bool is_stencil_enabled() const { return pixel_formats[STENCIL_INDEX] != 0; }
 
-	_FORCE_INLINE_ bool operator==(const ClearAttKey &rhs) const { return mvkAreEqual(this, &rhs); }
+	_FORCE_INLINE_ bool operator==(const ClearAttKey &rhs) const { return memcmp(this, &rhs, sizeof(ClearAttKey)); }
 
-	[[nodiscard]] uint32_t hash() const {
+	uint32_t hash() const {
 		uint32_t h = hash_murmur3_one_32(sample_count);
 		h = hash_murmur3_buffer(pixel_formats, ATTACHMENT_COUNT * sizeof(pixel_formats[0]), h);
 		return h;
@@ -170,16 +190,21 @@ private:
 	id<MTLCommandQueue> queue = nil;
 	id<MTLCommandBuffer> commandBuffer = nil;
 
-	void end_compute_dispatch();
-	void end_blit();
+	void _end_compute_dispatch();
+	void _end_blit();
+
+	id<MTLCounterSampleBuffer> sample_buffer = nil;
+	uint32_t sample_buffer_query_index = 0;
 
 #pragma mark - Render
 
-	void render_bind_uniform_sets();
+	void _render_set_dirty_state();
+	void _render_bind_uniform_sets();
 
-	static void populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<Rect2i> p_rects);
-	static uint32_t populate_vertices(simd::float4 *p_vertices, uint32_t p_index, Rect2i const &p_rect, Size2i p_fb_size);
+	static void _populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<Rect2i> p_rects);
+	static uint32_t _populate_vertices(simd::float4 *p_vertices, uint32_t p_index, Rect2i const &p_rect, Size2i p_fb_size);
 	void _end_render_pass();
+	void _render_clear_render_area();
 
 public:
 	MDCommandBufferStateType type = MDCommandBufferStateType::None;
@@ -191,7 +216,8 @@ public:
 		MDRenderPipeline *pipeline = nullptr;
 		LocalVector<RDD::RenderPassClearValue> clear_values;
 		LocalVector<MTLViewport> viewports;
-		LocalVector<MTLScissorRect > scissors;
+		LocalVector<MTLScissorRect> scissors;
+		std::optional<Color> blend_constants;
 		uint32_t current_subpass = UINT32_MAX;
 		Rect2i render_area = {};
 		bool is_rendering_entire_area = false;
@@ -209,17 +235,13 @@ public:
 			DIRTY_DEPTH    = 0b0000'0100,
 			DIRTY_VERTEX   = 0b0000'1000,
 			DIRTY_VIEWPORT = 0b0001'0000,
-			DIRTY_SCISSORS = 0b0010'0000,
+			DIRTY_SCISSOR  = 0b0010'0000,
+			DIRTY_BLEND    = 0b0100'0000,
 		};
 		// clang-format on
 		BitField<DirtyFlag> dirty = DIRTY_NONE;
 
-		Vector<MDUniformSet *> uniform_sets;
-
-		void mark_dirty() {
-			if (pipeline)
-				dirty.set_flag(DIRTY_PIPELINE);
-		}
+		LocalVector<MDUniformSet *> uniform_sets;
 
 		_FORCE_INLINE_ void reset() {
 			pass = nil;
@@ -237,9 +259,57 @@ public:
 			clear_values.clear();
 			viewports.clear();
 			scissors.clear();
+			blend_constants.reset();
 			vertex_buffers.clear();
 			vertex_offsets.clear();
 		}
+
+		_FORCE_INLINE_ void mark_viewport_dirty() {
+			if (viewports.is_empty())
+				return;
+			dirty.set_flag(DirtyFlag::DIRTY_VIEWPORT);
+		}
+
+		_FORCE_INLINE_ void mark_scissors_dirty() {
+			if (scissors.is_empty())
+				return;
+			dirty.set_flag(DirtyFlag::DIRTY_SCISSOR);
+		}
+
+		_FORCE_INLINE_ void mark_vertex_dirty() {
+			if (vertex_buffers.is_empty())
+				return;
+			dirty.set_flag(DirtyFlag::DIRTY_VERTEX);
+		}
+
+		_FORCE_INLINE_ MTLScissorRect clip_to_render_area(MTLScissorRect p_rect) const {
+			int32_t raLeft = render_area.position.x;
+			int32_t raRight = raLeft + render_area.size.width;
+			int32_t raBottom = render_area.position.y;
+			int32_t raTop = raBottom + render_area.size.height;
+
+			p_rect.x = CLAMP(p_rect.x, raLeft, MAX(raRight - 1, raLeft));
+			p_rect.y = CLAMP(p_rect.y, raBottom, MAX(raTop - 1, raBottom));
+			p_rect.width = MIN(p_rect.width, raRight - p_rect.x);
+			p_rect.height = MIN(p_rect.height, raTop - p_rect.y);
+
+			return p_rect;
+		}
+
+		_FORCE_INLINE_ Rect2i clip_to_render_area(Rect2i p_rect) const {
+			int32_t raLeft = render_area.position.x;
+			int32_t raRight = raLeft + render_area.size.width;
+			int32_t raBottom = render_area.position.y;
+			int32_t raTop = raBottom + render_area.size.height;
+
+			p_rect.position.x = CLAMP(p_rect.position.x, raLeft, MAX(raRight - 1, raLeft));
+			p_rect.position.y = CLAMP(p_rect.position.y, raBottom, MAX(raTop - 1, raBottom));
+			p_rect.size.width = MIN(p_rect.size.width, raRight - p_rect.position.x);
+			p_rect.size.height = MIN(p_rect.size.height, raTop - p_rect.position.y);
+
+			return p_rect;
+		}
+
 	} render;
 
 	struct {
@@ -262,19 +332,6 @@ public:
 		return commandBuffer;
 	}
 
-	id<MTLCommandEncoder> get_encoder() const {
-		switch (type) {
-			case MDCommandBufferStateType::Render:
-				return render.encoder;
-			case MDCommandBufferStateType::Compute:
-				return compute.encoder;
-			case MDCommandBufferStateType::Blit:
-				return blit.encoder;
-			default:
-				return nil;
-		}
-	}
-
 	void begin();
 	void commit();
 	void end();
@@ -284,12 +341,17 @@ public:
 
 	void bind_pipeline(RDD::PipelineID pipeline);
 
+#pragma mark - Counters
+
+	void mark_timestamp(id<MTLCounterSampleBuffer> p_buffer, uint32_t p_query_index);
+
 #pragma mark - Render Commands
 
 	void render_bind_uniform_set(RDD::UniformSetID p_uniform_set, RDD::ShaderID p_shader, uint32_t p_set_index);
 	void render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<Rect2i> p_rects);
 	void render_set_viewport(VectorView<Rect2i> p_viewports);
 	void render_set_scissor(VectorView<Rect2i> p_scissors);
+	void render_set_blend_constants(const Color &p_constants);
 	void render_begin_pass(RDD::RenderPassID p_render_pass,
 			RDD::FramebufferID p_frameBuffer,
 			RDD::CommandBufferType p_cmd_buffer_type,
@@ -308,6 +370,12 @@ public:
 			uint32_t p_first_index,
 			int32_t p_vertex_offset,
 			uint32_t p_first_instance);
+
+	void render_draw_indexed_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride);
+	void render_draw_indexed_indirect_count(RDD::BufferID p_indirect_buffer, uint64_t p_offset, RDD::BufferID p_count_buffer, uint64_t p_count_buffer_offset, uint32_t p_max_draw_count, uint32_t p_stride);
+	void render_draw_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride);
+	void render_draw_indirect_count(RDD::BufferID p_indirect_buffer, uint64_t p_offset, RDD::BufferID p_count_buffer, uint64_t p_count_buffer_offset, uint32_t p_max_draw_count, uint32_t p_stride);
+
 	void render_end_pass();
 
 #pragma mark - Compute Commands
@@ -317,7 +385,7 @@ public:
 	void compute_dispatch_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset);
 
 	MDCommandBuffer(id<MTLCommandQueue> p_queue, MetalContext *p_context) :
-			queue(p_queue), context(p_context) {
+			context(p_context), queue(p_queue) {
 		type = MDCommandBufferStateType::None;
 	}
 
@@ -334,7 +402,7 @@ struct BindingInfo {
 	uint32_t arrayLength = 0;
 	bool isMultisampled = false;
 
-	[[nodiscard]] inline auto new_argument_descriptor() const -> MTLArgumentDescriptor * {
+	inline auto new_argument_descriptor() const -> MTLArgumentDescriptor * {
 		MTLArgumentDescriptor *desc = MTLArgumentDescriptor.argumentDescriptor;
 		desc.dataType = dataType;
 		desc.index = index;
@@ -343,34 +411,62 @@ struct BindingInfo {
 		desc.arrayLength = arrayLength;
 		return desc;
 	}
+
+	size_t serialize_size() const {
+		return sizeof(uint32_t) * 8 /* 8 uint32_t fields */;
+	}
+
+	template <typename W>
+	void serialize(W &p_writer) const {
+		p_writer.write((uint32_t)dataType);
+		p_writer.write(index);
+		p_writer.write((uint32_t)access);
+		p_writer.write((uint32_t)usage);
+		p_writer.write((uint32_t)textureType);
+		p_writer.write(imageFormat);
+		p_writer.write(arrayLength);
+		p_writer.write(isMultisampled);
+	}
+
+	template <typename R>
+	void deserialize(R &p_reader) {
+		p_reader.read((uint32_t &)dataType);
+		p_reader.read(index);
+		p_reader.read((uint32_t &)access);
+		p_reader.read((uint32_t &)usage);
+		p_reader.read((uint32_t &)textureType);
+		p_reader.read((uint32_t &)imageFormat);
+		p_reader.read(arrayLength);
+		p_reader.read(isMultisampled);
+	}
 };
 
 using RDC = RenderingDeviceCommons;
 
 struct UniformInfo {
-	uint32 binding;
-	ShaderStageUsage active_stages;
+	uint32_t binding;
+	ShaderStageUsage active_stages = None;
 	HashMap<RDC::ShaderStage, BindingInfo> bindings;
 	HashMap<RDC::ShaderStage, BindingInfo> bindings_secondary;
 };
 
 struct UniformSet {
 	LocalVector<UniformInfo> uniforms;
-	uint32_t buffer_size;
+	uint32_t buffer_size = 0;
 	HashMap<RDC::ShaderStage, uint32_t> offsets;
 	HashMap<RDC::ShaderStage, id<MTLArgumentEncoder>> encoders;
 };
 
 class MDShader {
 protected:
-	String name;
+	CharString name;
 
 public:
 	LocalVector<UniformSet> sets;
 
 	virtual void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) = 0;
 
-	MDShader(String p_name, LocalVector<UniformSet> p_sets) :
+	MDShader(CharString p_name, LocalVector<UniformSet> p_sets) :
 			name(p_name), sets(p_sets) {}
 	virtual ~MDShader() = default;
 };
@@ -385,12 +481,12 @@ public:
 
 	id<MTLLibrary> kernel;
 #if DEV_ENABLED
-	NSString *kernel_source = nil;
+	CharString kernel_source;
 #endif
 
 	void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
 
-	MDComputeShader(String p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_kernel);
+	MDComputeShader(CharString p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_kernel);
 	~MDComputeShader() override = default;
 };
 
@@ -410,13 +506,13 @@ public:
 	id<MTLLibrary> vert;
 	id<MTLLibrary> frag;
 #if DEV_ENABLED
-	NSString *vert_source = nil;
-	NSString *frag_source = nil;
+	CharString vert_source;
+	CharString frag_source;
 #endif
 
 	void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
 
-	MDRenderShader(String p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_vert, id<MTLLibrary> p_frag);
+	MDRenderShader(CharString p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_vert, id<MTLLibrary> p_frag);
 	~MDRenderShader() override = default;
 };
 
@@ -461,11 +557,12 @@ struct BoundUniformSet {
 class MDUniformSet {
 public:
 	NSUInteger index;
-	LocalVector<RDD::BoundUniform> p_uniforms;
+	LocalVector<RDD::BoundUniform> uniforms;
 	HashMap<MDShader *, BoundUniformSet> bound_uniforms;
 
 	BoundUniformSet &boundUniformSetForShader(MDShader *p_shader, id<MTLDevice> device);
 };
+
 enum class MDAttachmentType : uint8_t {
 	None = 0,
 	Color = 1 << 0,
@@ -474,7 +571,7 @@ enum class MDAttachmentType : uint8_t {
 };
 
 _FORCE_INLINE_ MDAttachmentType &operator|=(MDAttachmentType &a, MDAttachmentType b) {
-	a = MDAttachmentType(uint8_t(a) | uint8_t(b));
+	flags::set(a, b);
 	return a;
 }
 
@@ -489,7 +586,7 @@ struct MDSubpass {
 	RDD::AttachmentReference depth_stencil_reference;
 	LocalVector<RDD::AttachmentReference> resolve_references;
 
-	MVKMTLFmtCaps getRequiredFmtCapsForAttachmentAt(uint32_t p_index) const;
+	MTLFmtCaps getRequiredFmtCapsForAttachmentAt(uint32_t p_index) const;
 };
 
 struct MDAttachment {
@@ -503,6 +600,8 @@ public:
 	MDAttachmentType type = MDAttachmentType::None;
 	MTLLoadAction loadAction = MTLLoadActionDontCare;
 	MTLStoreAction storeAction = MTLStoreActionDontCare;
+	MTLLoadAction stencilLoadAction = MTLLoadActionDontCare;
+	MTLStoreAction stencilStoreAction = MTLStoreActionDontCare;
 	uint32_t samples = 1;
 
 	/*!
@@ -510,7 +609,7 @@ public:
 	 * @param subpass
 	 * @return
 	 */
-	[[nodiscard]] _FORCE_INLINE_ bool isFirstUseOf(MDSubpass const &subpass) const {
+	_FORCE_INLINE_ bool isFirstUseOf(MDSubpass const &subpass) const {
 		return subpass.subpass_index == firstUseSubpassIndex;
 	}
 
@@ -519,7 +618,7 @@ public:
 	 * @param subpass
 	 * @return
 	 */
-	[[nodiscard]] _FORCE_INLINE_ bool isLastUseOf(MDSubpass const &subpass) const {
+	_FORCE_INLINE_ bool isLastUseOf(MDSubpass const &subpass) const {
 		return subpass.subpass_index == lastUseSubpassIndex;
 	}
 
@@ -528,14 +627,18 @@ public:
 	MTLStoreAction getMTLStoreAction(MDSubpass const &p_subpass,
 			bool p_is_rendering_entire_area,
 			bool p_has_resolve,
-			bool p_can_resolve) const;
+			bool p_can_resolve,
+			bool p_is_stencil) const;
 	bool configureDescriptor(MTLRenderPassAttachmentDescriptor *p_desc,
 			PixelFormats &p_pf,
 			MDSubpass const &p_subpass,
 			id<MTLTexture> p_attachment,
 			bool p_is_rendering_entire_area,
 			bool p_has_resolve,
-			bool p_can_resolve) const;
+			bool p_can_resolve,
+			bool p_is_stencil) const;
+	/** Returns whether this attachment should be cleared in the subpass. */
+	bool shouldClear(MDSubpass const &p_subpass, bool p_is_stencil) const;
 };
 
 class MDRenderPass {
@@ -655,16 +758,22 @@ public:
 	MDFrameBuffer(LocalVector<MTL::Texture> p_textures, Size2i p_size) :
 			textures(p_textures), size(p_size) {}
 
-	MTLRenderPassDescriptor *newRenderPassDescriptorWithRenderPass(MDRenderPass *pass, VectorView<RDD::RenderPassClearValue> colors) const;
 	virtual ~MDFrameBuffer() = default;
 };
 
 class MDScreenFrameBuffer final : public MDFrameBuffer {
 public:
 	id<CAMetalDrawable> drawable;
-	explicit MDScreenFrameBuffer(id<CAMetalDrawable> p_drawable, Size2i p_size) :
+	MDScreenFrameBuffer(id<CAMetalDrawable> p_drawable, Size2i p_size) :
 			MDFrameBuffer(LocalVector<MTL::Texture>({ p_drawable.texture }), p_size), drawable(p_drawable) {}
 	~MDScreenFrameBuffer() final = default;
+};
+
+/*!
+ * @brief A wrapper for a MTLTexture.
+ */
+class MDTexture {
+public:
 };
 
 class MDQueryPool {
@@ -672,25 +781,16 @@ class MDQueryPool {
 	NSUInteger sampleCount = 0;
 	id<MTLCounterSet> counterSet = nil;
 	id<MTLCounterSampleBuffer> _counterSampleBuffer = nil;
-	// sampling
-	double cpuStart = 0.0;
-	double gpuStart = 0.0;
-	double cpuTimeSpan = 0.0;
-	double gpuTimeSpan = 0.0;
-
-	// buffer
-	LocalVector<double> results;
-
-	void resolveSampleBuffer();
+	id<MTLBuffer> _buffer = nil;
+	MTLTimestamp cpuStart = 0.0;
+	MTLTimestamp gpuStart = 0.0;
 
 public:
-	[[nodiscard]] id<MTLCounterSampleBuffer> get_counter_sample_buffer() const { return _counterSampleBuffer; }
-
-	void reset_with_command_buffer(RDD::CommandBufferID p_cmd_buffer);
+	void reset_with_command_buffer(RDD::CommandBufferID p_cmd_buffer, uint32_t p_query_count);
 	void get_results(uint64_t *p_results, NSUInteger count);
 	void write_command_buffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger index);
 
-	static std::shared_ptr<MDQueryPool> new_query_pool(id<MTLDevice> device, NSError **error);
+	static MDQueryPool *new_query_pool(id<MTLDevice> device, uint32_t p_query_count, NSError **error);
 
 	~MDQueryPool() = default;
 
@@ -698,45 +798,19 @@ private:
 	MDQueryPool() = default;
 };
 
-namespace rid2 {
-template <typename U, typename T>
-U to_id(std::shared_ptr<T> p_obj) {
-	return U(new std::shared_ptr<T>(p_obj));
-}
-
-template <typename T>
-void release(RDD::ID p_id) {
-	auto *sp = (std::shared_ptr<T> *)p_id.id;
-	delete sp;
-}
-
-template <typename T>
-std::shared_ptr<T> get(RDD::ID p_id) {
-	auto *sp = (std::shared_ptr<T> *)p_id.id;
-	return *sp;
-}
-} //namespace rid2
-
 /// These functions are used to convert between Objective-C objects and
 /// the RIDs used by Godot, respecting automatic reference counting.
 namespace rid {
+
 /// owned converts an Objective C object to a pointer, and incrementing the
 /// reference count.
-_ALWAYS_INLINE_
+_FORCE_INLINE_
 void *owned(id p_id) {
 	return (__bridge_retained void *)p_id;
 }
 
-/// unowned converts an Objective C object to a pointer, without incrementing
-/// the reference count.
-_ALWAYS_INLINE_
-void *unowned(id p_id) {
-	return (__bridge void *)p_id;
-}
-
-#define MAKE_ID(FROM, TO)                                            \
-	_ALWAYS_INLINE_ TO make(FROM p_obj) { return TO(owned(p_obj)); } \
-	_ALWAYS_INLINE_ TO make_unowned(FROM p_obj) { return TO(unowned(p_obj)); }
+#define MAKE_ID(FROM, TO) \
+	_FORCE_INLINE_ TO make(FROM p_obj) { return TO(owned(p_obj)); }
 
 MAKE_ID(id<MTLTexture>, RDD::TextureID)
 MAKE_ID(id<MTLBuffer>, RDD::BufferID)
@@ -745,17 +819,17 @@ MAKE_ID(MTLVertexDescriptor *, RDD::VertexFormatID)
 MAKE_ID(id<MTLCommandQueue>, RDD::CommandPoolID)
 
 /// get converts a pointer to an Objective C object without changing the reference count.
-_ALWAYS_INLINE_
+_FORCE_INLINE_
 auto get(RDD::ID p_id) {
 	return (p_id.id) ? (__bridge ::id)(void *)p_id.id : nil;
 }
 
 /// release converts a pointer to an Objective C object, and decrements the reference count.
-_ALWAYS_INLINE_
+_FORCE_INLINE_
 auto release(RDD::ID p_id) {
 	return (__bridge_transfer ::id)(void *)p_id.id;
 }
 
 } //namespace rid
 
-#endif //GODOT_METAL_OBJECTS_H
+#endif //METAL_OBJECTS_H

@@ -60,6 +60,7 @@ generate_file(make_editor_translations "${GODOT_EDITOR_TRANSLATIONS_SOURCE}" "${
 #   cog.outl(')')
 # ]]]
 set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
+        properties/ar.po
         properties/de.po
         properties/es.po
         properties/et.po

@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef METAL_CONTEXT_IMPL_H
-#define METAL_CONTEXT_IMPL_H
+#ifndef METAL_CONTEXT_H
+#define METAL_CONTEXT_H
 
 #include "core/error/error_list.h"
 #include "core/string/ustring.h"
@@ -84,11 +84,8 @@ private:
 	RenderingDeviceDriverMetal *driver = nullptr;
 
 	HashMap<DisplayServer::WindowID, Window> windows;
-	uint32_t swapchainImageCount = 0;
 
 	// Commands.
-
-	bool prepared = false;
 
 	LocalVector<MDCommandBuffer *> command_buffer_queue;
 	int command_buffer_count = 1;
@@ -96,8 +93,6 @@ private:
 	id<MTLCommandQueue> queue;
 	id<MTLCaptureScope> scope;
 
-	String device_vendor;
-	String device_name;
 	String pipeline_cache_id;
 
 	Error _create_device();
@@ -142,19 +137,16 @@ public:
 	}
 
 	size_t get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const;
+	size_t get_texel_buffer_alignment_for_format(MTLPixelFormat p_format) const;
 
 	void set_setup_buffer(RDD::CommandBufferID p_command_buffer) final;
 	void append_command_buffer(RDD::CommandBufferID p_command_buffer) final;
 	void resize_notify();
-	void flush(bool p_flush_setup, bool p_flush_pending) final;
+	void flush(bool p_flush_setup, bool p_flush_pending, bool p_sync) final;
 	Error prepare_buffers(RDD::CommandBufferID p_command_buffer) final;
 	void postpare_buffers(RDD::CommandBufferID p_command_buffer) final;
 	Error swap_buffers() final;
 	Error initialize() final;
-
-	void command_begin_label(RDD::CommandBufferID p_command_buffer, String p_label_name, const Color &p_color) final;
-	void command_insert_label(RDD::CommandBufferID p_command_buffer, String p_label_name, const Color &p_color) final;
-	void command_end_label(RDD::CommandBufferID p_command_buffer) final;
 
 	String get_device_vendor_name() const final;
 	String get_device_name() const final;
@@ -167,8 +159,10 @@ public:
 
 	RenderingDeviceDriver *get_driver(RID p_local_device) final;
 
+	bool is_debug_utils_enabled() const override final { return true; };
+
 	MetalContext();
 	~MetalContext() override;
 };
 
-#endif //METAL_CONTEXT_IMPL_H
+#endif //METAL_CONTEXT_H

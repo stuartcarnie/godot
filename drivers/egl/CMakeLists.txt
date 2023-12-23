@@ -13,5 +13,5 @@ target_sources(driver-egl_manager PRIVATE
 )
 # [[[end]]]
 
-target_compile_definitions(driver-egl_manager PUBLIC EGL_ENABLED=1)
-target_link_libraries(driver-egl_manager PUBLIC godot-error glad)
+target_compile_definitions(driver-egl_manager PUBLIC $<${WANT_GLAD}:EGL_ENABLED=1>)
+target_link_libraries(driver-egl_manager PUBLIC godot-error $<${WANT_GLAD}:glad>)

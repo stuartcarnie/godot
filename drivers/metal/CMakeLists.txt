@@ -8,7 +8,6 @@ godot_add_library(driver-metal FOLDER drivers STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(driver-metal PRIVATE
-        cista.h
         metal_context.h
         metal_context.mm
         metal_device_properties.h
@@ -22,6 +21,8 @@ target_sources(driver-metal PRIVATE
         utils.h
 )
 # [[[end]]]
+target_compile_features(driver-metal PRIVATE cxx_std_20)
+set_target_properties(driver-metal PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
 target_link_libraries(driver-metal PUBLIC godot-error godot-os spirv-cross)
 target_compile_definitions(driver-metal PUBLIC METAL_ENABLED=1 RD_ENABLED=1)
 target_compile_options(driver-metal PRIVATE -fexceptions)
