@@ -97,6 +97,31 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID pipeline) {
 			if (render.encoder == nil) {
 				// this condition occurs when there are no attachments when calling render_next_subpass()
 				render.desc.defaultRasterSampleCount = static_cast<NSUInteger>(render.pipeline->sample_count);
+				if (render.pipeline->sample_count == 4) {
+					static id<MTLTexture> tex = nil;
+					static id<MTLTexture> res_tex = nil;
+					static dispatch_once_t onceToken;
+					dispatch_once(&onceToken, ^{
+						Size2i sz = render.frameBuffer->size;
+						MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:sz.width height:sz.height mipmapped:NO];
+						td.textureType = MTLTextureType2DMultisample;
+						td.storageMode = MTLStorageModeMemoryless;
+						td.usage = MTLTextureUsageRenderTarget;
+						td.sampleCount = render.pipeline->sample_count;
+						tex = [context->get_device() newTextureWithDescriptor:td];
+
+						td.textureType = MTLTextureType2D;
+						td.storageMode = MTLStorageModePrivate;
+						td.usage = MTLTextureUsageShaderWrite;
+						td.sampleCount = 1;
+						res_tex = [context->get_device() newTextureWithDescriptor:td];
+					});
+					render.desc.colorAttachments[0].texture = tex;
+					render.desc.colorAttachments[0].loadAction = MTLLoadActionClear;
+					render.desc.colorAttachments[0].storeAction = MTLStoreActionMultisampleResolve;
+
+					render.desc.colorAttachments[0].resolveTexture = res_tex;
+				}
 				render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:render.desc];
 			}
 
@@ -204,7 +229,7 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 	float depth_value = 0;
 	uint32_t stencil_value = 0;
 
-	for (int i = 0; i < p_attachment_clears.size(); i++) {
+	for (uint32_t i = 0; i < p_attachment_clears.size(); i++) {
 		RDD::AttachmentClear const &attClear = p_attachment_clears[i];
 		uint32_t attachment_index;
 		if (attClear.aspect.has_flag(RDD::TEXTURE_ASPECT_COLOR_BIT)) {
@@ -280,7 +305,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	if (render.dirty.has_flag(RenderState::DIRTY_SCISSOR)) {
 		size_t len = render.scissors.size();
 		MTLScissorRect rects[len];
-		for (int i = 0; i < len; i++) {
+		for (size_t i = 0; i < len; i++) {
 			rects[i] = render.clip_to_render_area(render.scissors[i]);
 		}
 		[render.encoder setScissorRects:rects count:len];
@@ -304,7 +329,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 
 void MDCommandBuffer::render_set_viewport(VectorView<Rect2i> p_viewports) {
 	render.viewports.resize(p_viewports.size());
-	for (int i = 0; i < p_viewports.size(); i += 1) {
+	for (uint32_t i = 0; i < p_viewports.size(); i += 1) {
 		Rect2i const &vp = p_viewports[i];
 		render.viewports[i] = {
 			.originX = static_cast<double>(vp.position.x),
@@ -321,7 +346,7 @@ void MDCommandBuffer::render_set_viewport(VectorView<Rect2i> p_viewports) {
 
 void MDCommandBuffer::render_set_scissor(VectorView<Rect2i> p_scissors) {
 	render.scissors.resize(p_scissors.size());
-	for (int i = 0; i < p_scissors.size(); i += 1) {
+	for (uint32_t i = 0; i < p_scissors.size(); i += 1) {
 		Rect2i const &vp = p_scissors[i];
 		render.scissors[i] = {
 			.x = static_cast<NSUInteger>(vp.position.x),
@@ -393,7 +418,7 @@ void MDCommandBuffer::_render_bind_uniform_sets() {
 
 void MDCommandBuffer::_populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<Rect2i> p_rects) {
 	uint32_t idx = 0;
-	for (int i = 0; i < p_rects.size(); i++) {
+	for (uint32_t i = 0; i < p_rects.size(); i++) {
 		Rect2i const &rect = p_rects[i];
 		idx = _populate_vertices(p_vertices, idx, rect, p_fb_size);
 	}
@@ -462,7 +487,7 @@ void MDCommandBuffer::render_begin_pass(RDD::RenderPassID p_render_pass, RDD::Fr
 	render.current_subpass = UINT32_MAX;
 	render.render_area = p_rect;
 	render.clear_values.resize(p_clear_values.size());
-	for (int i = 0; i < p_clear_values.size(); i++) {
+	for (uint32_t i = 0; i < p_clear_values.size(); i++) {
 		render.clear_values[i] = p_clear_values[i];
 	}
 	render.is_rendering_entire_area = (p_rect.position == Point2i(0, 0)) && p_rect.size == fb->size;
@@ -602,8 +627,8 @@ void MDCommandBuffer::render_next_subpass() {
 		}
 	}
 
-	desc.renderTargetWidth = MAX(MIN(render.render_area.position.x + render.render_area.size.width, fb.size.width), 1u);
-	desc.renderTargetHeight = MAX(MIN(render.render_area.position.y + render.render_area.size.height, fb.size.height), 1u);
+	desc.renderTargetWidth = MAX((NSUInteger)MIN(render.render_area.position.x + render.render_area.size.width, fb.size.width), 1u);
+	desc.renderTargetHeight = MAX((NSUInteger)MIN(render.render_area.position.y + render.render_area.size.height, fb.size.height), 1u);
 
 	if (sample_buffer) {
 		// TODO: should set this on the _last_ pass when the subpass count > 1
@@ -655,7 +680,7 @@ void MDCommandBuffer::render_bind_vertex_buffers(uint32_t p_binding_count, const
 	render.vertex_offsets.resize(p_binding_count);
 
 	// reverse the buffers, as their bindings are assigned in descending order
-	for (int i = 0; i < p_binding_count; i += 1) {
+	for (uint32_t i = 0; i < p_binding_count; i += 1) {
 		render.vertex_buffers[i] = rid::get(p_buffers[p_binding_count - i - 1]);
 		render.vertex_offsets[i] = p_offsets[p_binding_count - i - 1];
 	}
@@ -825,7 +850,7 @@ MDComputeShader::MDComputeShader(CharString p_name, LocalVector<UniformSet> p_se
 
 void MDComputeShader::encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) {
 	DEV_ASSERT(cb->type == MDCommandBufferStateType::Compute);
-	if (push_constants.binding == -1)
+	if (push_constants.binding == (uint32_t)-1)
 		return;
 
 	id<MTLComputeCommandEncoder> enc = cb->compute.encoder;
@@ -911,7 +936,7 @@ BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<M
 						size_t count = uniform.ids.size() / 2;
 						id<MTLTexture> __unsafe_unretained *textures = ALLOCA_ARRAY(id<MTLTexture> __unsafe_unretained, count);
 						id<MTLSamplerState> __unsafe_unretained *samplers = ALLOCA_ARRAY(id<MTLSamplerState> __unsafe_unretained, count);
-						for (int j = 0; j < count; j += 1) {
+						for (uint32_t j = 0; j < count; j += 1) {
 							id<MTLSamplerState> sampler = rid::get(uniform.ids[j * 2 + 0]);
 							id<MTLTexture> texture = rid::get(uniform.ids[j * 2 + 1]);
 							samplers[j] = sampler;
@@ -1175,7 +1200,7 @@ void MDQueryPool::reset_with_command_buffer(RDD::CommandBufferID p_cmd_buffer, u
 void MDQueryPool::get_results(uint64_t *_Nonnull p_results, NSUInteger count) {
 	DEV_ASSERT(count <= sampleCount);
 	MTLCounterResultTimestamp *timestamps = (MTLCounterResultTimestamp *)_buffer.contents;
-	for (int i = 0; i < count; i++) {
+	for (uint32_t i = 0; i < count; i++) {
 		MTLTimestamp timestamp = timestamps[i].timestamp;
 
 		if (timestamp == MTLCounterErrorValue) {
@@ -1246,7 +1271,7 @@ vertex VaryingsPos vertClear(AttributesPos attributes [[stage_in]], constant Cle
 
 id<MTLFunction> MDResourceFactory::new_clear_frag_func(ClearAttKey &p_key) {
 	@autoreleasepool {
-		NSMutableString *msl = [NSMutableString stringWithCapacity:(2 * KIBI)];
+		NSMutableString *msl = [NSMutableString stringWithCapacity:2048];
 
 		[msl appendFormat:@R"(
 #include <metal_stdlib>

@@ -463,7 +463,7 @@ uint64_t RenderingDeviceDriverMetal::texture_get_allocation_size(TextureID p_tex
 void RenderingDeviceDriverMetal::_get_sub_resource(TextureID p_texture, const TextureSubresource &p_subresource, TextureCopyableLayout *r_layout) const {
 	id<MTLTexture> obj = rid::get(p_texture);
 
-	*r_layout = { 0 };
+	*r_layout = { };
 
 	PixelFormats &pf = context->get_pixel_formats();
 
@@ -711,7 +711,7 @@ RDD::VertexFormatID RenderingDeviceDriverMetal::vertex_format_create(VectorView<
 
 	PixelFormats &pixel_formats = context->get_pixel_formats();
 
-	for (int i = 0; i < p_vertex_attribs.size(); i++) {
+	for (uint32_t i = 0; i < p_vertex_attribs.size(); i++) {
 		VertexAttribute const &vf = p_vertex_attribs[i];
 
 		ERR_FAIL_COND_V_MSG(get_format_vertex_size(vf.format) == 0, VertexFormatID(),
@@ -801,7 +801,7 @@ RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p
 	LocalVector<MTL::Texture> textures;
 	textures.resize(p_attachments.size());
 
-	for (int i = 0; i < p_attachments.size(); i += 1) {
+	for (uint32_t i = 0; i < p_attachments.size(); i += 1) {
 		MDAttachment const &a = pass->attachments[i];
 		id<MTLTexture> tex = rid::get(p_attachments[i]);
 		if (tex == nil) {
@@ -826,7 +826,7 @@ void RenderingDeviceDriverMetal::framebuffer_free(FramebufferID p_framebuffer) {
 
 #pragma mark - Shader
 
-const uint32_t SHADER_BINARY_VERSION = 1;
+const uint32_t SHADER_BINARY_VERSION = 3;
 
 String RenderingDeviceDriverMetal::shader_get_binary_cache_key() {
 	return "Metal-SV" + uitos(SHADER_BINARY_VERSION);
@@ -837,7 +837,7 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 
 	r_reflection = {};
 
-	for (int i = 0; i < p_spirv.size(); i++) {
+	for (uint32_t i = 0; i < p_spirv.size(); i++) {
 		ShaderStageSPIRVData v = p_spirv[i];
 		ShaderStage stage = v.shader_stage;
 		uint32_t const *const ir = reinterpret_cast<uint32_t const *const>(v.spirv.ptr());
@@ -902,11 +902,11 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 
 				std::string const &name = compiler.get_name(res.id);
 				uint32_t set = get_decoration(res.id, spv::DecorationDescriptorSet);
-				ERR_FAIL_COND_V_MSG(set == -1, FAILED, "No descriptor set found");
+				ERR_FAIL_COND_V_MSG(set == (uint32_t)-1, FAILED, "No descriptor set found");
 				ERR_FAIL_COND_V_MSG(set >= MAX_UNIFORM_SETS, FAILED, "On shader stage '" + String(SHADER_STAGE_NAMES[stage]) + "', uniform '" + name.c_str() + "' uses a set (" + itos(set) + ") index larger than what is supported (" + itos(MAX_UNIFORM_SETS) + ").");
 
 				uniform.binding = get_decoration(res.id, spv::DecorationBinding);
-				ERR_FAIL_COND_V_MSG(uniform.binding == -1, FAILED, "No binding found");
+				ERR_FAIL_COND_V_MSG(uniform.binding == (uint32_t)-1, FAILED, "No binding found");
 
 				spirv_cross::SPIRType const &a_type = compiler.get_type(res.type_id);
 				uniform.type = uniform_type(a_type);
@@ -950,7 +950,7 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 				if (set < (uint32_t)r_reflection.uniform_sets.size()) {
 					// Check if this already exists.
 					bool exists = false;
-					for (int k = 0; k < r_reflection.uniform_sets[set].size(); k++) {
+					for (uint32_t k = 0; k < r_reflection.uniform_sets[set].size(); k++) {
 						if (r_reflection.uniform_sets[set][k].binding == uniform.binding) {
 							// Already exists, verify that it's the same type.
 							ERR_FAIL_COND_V_MSG(r_reflection.uniform_sets[set][k].type != uniform.type, FAILED,
@@ -1053,7 +1053,7 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 			for (auto &res : resources.stage_inputs) {
 				SPIRType a_type = compiler.get_type(res.base_type_id);
 				uint32_t loc = get_decoration(res.id, spv::DecorationLocation);
-				if (loc != -1) {
+				if (loc != (uint32_t)-1) {
 					r_reflection.vertex_input_mask |= 1 << loc;
 				}
 			}
@@ -1064,7 +1064,7 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 				SPIRType a_type = compiler.get_type(res.base_type_id);
 				uint32_t loc = get_decoration(res.id, spv::DecorationLocation);
 				uint32_t built_in = spv::BuiltIn(get_decoration(res.id, spv::DecorationBuiltIn));
-				if (loc != -1 && built_in != spv::BuiltInFragDepth) {
+				if (loc != (uint32_t)-1 && built_in != spv::BuiltInFragDepth) {
 					r_reflection.fragment_output_mask |= 1 << loc;
 				}
 			}
@@ -1099,7 +1099,7 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 			}
 			sconst.stages.set_flag(stage_flag);
 
-			for (int k = 0; k < r_reflection.specialization_constants.size(); k++) {
+			for (uint32_t k = 0; k < r_reflection.specialization_constants.size(); k++) {
 				if (r_reflection.specialization_constants[k].constant_id == sconst.constant_id) {
 					ERR_FAIL_COND_V_MSG(r_reflection.specialization_constants[k].type != sconst.type, FAILED, "More than one specialization constant used for id (" + itos(sconst.constant_id) + "), but their types differ.");
 					ERR_FAIL_COND_V_MSG(r_reflection.specialization_constants[k].int_value != sconst.int_value, FAILED, "More than one specialization constant used for id (" + itos(sconst.constant_id) + "), but their default values differ.");
@@ -1119,12 +1119,14 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 	}
 
 	// sort all uniform_sets
-	for (int i = 0; i < r_reflection.uniform_sets.size(); i++) {
+	for (uint32_t i = 0; i < r_reflection.uniform_sets.size(); i++) {
 		r_reflection.uniform_sets.write[i].sort();
 	}
 
 	return OK;
 }
+
+// region Serialisation
 
 class BufWriter;
 
@@ -1185,8 +1187,7 @@ public:
 	void write_compressed(CharString const &p_string) {
 		write(p_string.length()); // uncompressed size
 
-		int comp_size = Compression::get_max_compressed_buffer_size(p_string.length(), Compression::MODE_ZSTD);
-		DEV_ASSERT(pos + sizeof(uint32_t) + comp_size <= length);
+		DEV_ASSERT(pos + sizeof(uint32_t) + Compression::get_max_compressed_buffer_size(p_string.length(), Compression::MODE_ZSTD) <= length);
 
 		// save pointer for compressed size
 		uint8_t *dst_size_ptr = data + pos; // compressed size
@@ -1225,6 +1226,10 @@ public:
 
 	uint64_t get_pos() const {
 		return pos;
+	}
+
+	uint64_t get_length() const {
+		return length;
 	}
 
 private:
@@ -1342,7 +1347,7 @@ public:
 		CHECK(comp_size);
 
 		p_val.resize(len + 1 /* NUL */);
-		int bytes = Compression::decompress(reinterpret_cast<uint8_t *>(p_val.ptrw()), len, data + pos, comp_size, Compression::MODE_ZSTD);
+		uint32_t bytes = (uint32_t)Compression::decompress(reinterpret_cast<uint8_t *>(p_val.ptrw()), len, data + pos, comp_size, Compression::MODE_ZSTD);
 		if (bytes != len) {
 			status = Status::BAD_COMPRESSION;
 			return;
@@ -1366,7 +1371,7 @@ public:
 		read(len);
 		CHECK(len);
 		p_val.resize(len);
-		for (int i = 0; i < len; i++) {
+		for (uint32_t i = 0; i < len; i++) {
 			read(p_val[i]);
 		}
 	}
@@ -1644,6 +1649,8 @@ struct ShaderBinaryData {
 	}
 };
 
+// endregion
+
 RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vector<uint8_t> &p_shader_binary, ShaderDescription &r_shader_desc, String &r_name) {
 	r_shader_desc = {}; // Driver-agnostic.
 
@@ -1698,7 +1705,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 		Vector<ShaderUniform> &uset = r_shader_desc.uniform_sets.write[uniform_set.index];
 		uset.resize(uniform_set.uniforms.size());
 
-		for (int i = 0; i < uniform_set.uniforms.size(); i++) {
+		for (uint32_t i = 0; i < uniform_set.uniforms.size(); i++) {
 			auto &uniform = uniform_set.uniforms[i];
 
 			ShaderUniform su;
@@ -1747,13 +1754,13 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 			}
 			// sort by index
 			[descriptors sortUsingComparator:^NSComparisonResult(MTLArgumentDescriptor *a, MTLArgumentDescriptor *b) {
-			  if (a.index < b.index) {
-				  return NSOrderedAscending;
-			  } else if (a.index > b.index) {
-				  return NSOrderedDescending;
-			  } else {
-				  return NSOrderedSame;
-			  }
+				if (a.index < b.index) {
+					return NSOrderedAscending;
+				} else if (a.index > b.index) {
+					return NSOrderedDescending;
+				} else {
+					return NSOrderedSame;
+				}
 			}];
 
 			id<MTLArgumentEncoder> enc = [device newArgumentEncoderWithArguments:descriptors];
@@ -1764,7 +1771,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 	}
 
 	r_shader_desc.specialization_constants.resize(binary_data.constants.size());
-	for (int i = 0; i < binary_data.constants.size(); i++) {
+	for (uint32_t i = 0; i < binary_data.constants.size(); i++) {
 		SpecializationConstantData &c = binary_data.constants[i];
 
 		ShaderSpecializationConstant sc;
@@ -1901,11 +1908,12 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 
 	msl_options.argument_buffers = true;
 	msl_options.force_active_argument_buffer_resources = true; // same as MoltenVK when using argument buffers
-	msl_options.pad_argument_buffer_resources = true; // same as MoltenVK when using argument buffers
+	// msl_options.pad_argument_buffer_resources = true; // same as MoltenVK when using argument buffers
 	msl_options.texture_buffer_native = true; // texture_buffer support
 	msl_options.use_framebuffer_fetch_subpasses = false;
 	msl_options.pad_fragment_output_components = true;
 	msl_options.r32ui_alignment_constant_id = R32UI_ALIGNMENT_CONSTANT_ID;
+	msl_options.agx_manual_cube_grad_fixup = true;
 
 	spirv_cross::CompilerGLSL::Options options{};
 	options.vertex.flip_vert_y = true;
@@ -1913,7 +1921,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 	options.emit_line_directives = true;
 #endif
 
-	for (int i = 0; i < p_spirv.size(); i++) {
+	for (uint32_t i = 0; i < p_spirv.size(); i++) {
 		ShaderStageSPIRVData v = p_spirv[i];
 		ShaderStage stage = v.shader_stage;
 		char const *stage_name = SHADER_STAGE_NAMES[stage];
@@ -2050,7 +2058,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 						case spv::DimSubpassData: {
 							// subpass input
 							primary_binding = get_decoration(res.id, spv::DecorationInputAttachmentIndex);
-						} // fallthrough to spv::Dim2D
+						} DISPATCH_FALLTHROUGH;
 						case spv::Dim2D: {
 							if (image.arrayed && image.ms) {
 								primary.textureType = MTLTextureType2DMultisampleArray;
@@ -2093,6 +2101,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 							break;
 						case spv::AccessQualifierReadOnly:
 							opt_access = MTLBindingAccessReadOnly;
+							DISPATCH_FALLTHROUGH;
 						default:
 							break;
 					}
@@ -2138,7 +2147,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 				// sampler.
 				if (basetype == BT::SampledImage) {
 					uint32_t binding = compiler.get_automatic_msl_resource_binding_secondary(res.id);
-					if (binding != -1) {
+					if (binding != (uint32_t)-1) {
 						found->bindings_secondary[stage] = BindingInfo{
 							.dataType = MTLDataTypeSampler,
 							.index = binding,
@@ -2151,7 +2160,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 				// for atomic operations.
 				if (basetype == BT::Image) {
 					uint32_t binding = compiler.get_automatic_msl_resource_binding_secondary(res.id);
-					if (binding != -1) {
+					if (binding != (uint32_t)-1) {
 						found->bindings_secondary[stage] = BindingInfo{
 							.dataType = MTLDataTypePointer,
 							.index = binding,
@@ -2195,7 +2204,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		if (!resources.push_constant_buffers.empty()) {
 			for (auto &res : resources.push_constant_buffers) {
 				auto binding = compiler.get_automatic_msl_resource_binding(res.id);
-				if (binding != -1) {
+				if (binding != (uint32_t)-1) {
 					bin_data.push_constant.used_stages |= 1 << stage;
 					bin_data.push_constant.msl_binding[stage] = binding;
 				}
@@ -2210,7 +2219,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 			for (auto &res : resources.stage_inputs) {
 				auto a_base_type = compiler.get_type(res.base_type_id);
 				uint32_t binding = compiler.get_automatic_msl_resource_binding(res.id);
-				if (binding != -1) {
+				if (binding != (uint32_t)-1) {
 					bin_data.vertex_input_mask |= 1 << binding;
 				}
 			}
@@ -2250,7 +2259,7 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 	MDUniformSet *set = new MDUniformSet();
 	Vector<BoundUniform> bound_uniforms;
 	bound_uniforms.resize(p_uniforms.size());
-	for (int i = 0; i < p_uniforms.size(); i += 1) {
+	for (uint32_t i = 0; i < p_uniforms.size(); i += 1) {
 		bound_uniforms.write[i] = p_uniforms[i];
 	}
 	set->uniforms = bound_uniforms;
@@ -2861,7 +2870,7 @@ RDM::Result<id<MTLFunction>> RenderingDeviceDriverMetal::_create_function(id<MTL
 
 	NSArray<MTLFunctionConstant *> *constants = function.functionConstantsDictionary.allValues;
 	bool is_sorted = true;
-	for (int i = 1; i < constants.count; i++) {
+	for (uint32_t i = 1; i < constants.count; i++) {
 		if (constants[i - 1].index < constants[i].index) {
 			is_sorted = false;
 			break;
@@ -2870,19 +2879,19 @@ RDM::Result<id<MTLFunction>> RenderingDeviceDriverMetal::_create_function(id<MTL
 
 	if (!is_sorted) {
 		constants = [constants sortedArrayUsingComparator:^NSComparisonResult(MTLFunctionConstant *a, MTLFunctionConstant *b) {
-		  if (a.index < b.index) {
-			  return NSOrderedAscending;
-		  } else if (a.index > b.index) {
-			  return NSOrderedDescending;
-		  } else {
-			  return NSOrderedSame;
-		  }
+			if (a.index < b.index) {
+				return NSOrderedAscending;
+			} else if (a.index > b.index) {
+				return NSOrderedDescending;
+			} else {
+				return NSOrderedSame;
+			}
 		}];
 	}
 
 	MTLFunctionConstantValues *constantValues = [MTLFunctionConstantValues new];
-	int i = 0;
-	int j = 0;
+	uint32_t i = 0;
+	uint32_t j = 0;
 	while (i < constants.count && j < p_specialization_constants.size()) {
 		MTLFunctionConstant *curr = constants[i];
 		PipelineSpecializationConstant const &sc = p_specialization_constants[j];
@@ -2971,16 +2980,16 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 
 	{
 		MDSubpass const &subpass = pass->subpasses[p_render_subpass];
-		for (int i = 0; i < subpass.color_references.size(); i++) {
-			int32_t attachment = subpass.color_references[i].attachment;
-			if (attachment != ATTACHMENT_UNUSED) {
+		for (uint32_t i = 0; i < subpass.color_references.size(); i++) {
+			uint32_t attachment = subpass.color_references[i].attachment;
+			if (attachment != AttachmentReference::UNUSED) {
 				MDAttachment const &a = pass->attachments[attachment];
 				desc.colorAttachments[i].pixelFormat = a.format;
 			}
 		}
 
-		if (subpass.depth_stencil_reference.attachment != ATTACHMENT_UNUSED) {
-			int32_t attachment = subpass.depth_stencil_reference.attachment;
+		if (subpass.depth_stencil_reference.attachment != AttachmentReference::UNUSED) {
+			uint32_t attachment = subpass.depth_stencil_reference.attachment;
 			MDAttachment const &a = pass->attachments[attachment];
 
 			if (a.type & MDAttachmentType::Depth) {
@@ -3020,7 +3029,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 		case RENDER_PRIMITIVE_TESSELATION_PATCH:
 			desc.maxTessellationFactor = p_rasterization_state.patch_control_points;
 			desc.tessellationPartitionMode = MTLTessellationPartitionModeInteger;
-			ERR_FAIL_V_MSG(PipelineID(), "tesselation not implemented");
+			ERR_FAIL_V_MSG(PipelineID(), "tessellation not implemented");
 			break;
 		case RENDER_PRIMITIVE_MAX:
 		default:
@@ -3131,7 +3140,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 
 	// Blend state.
 	{
-		for (int i = 0; i < p_color_attachments.size(); i++) {
+		for (uint32_t i = 0; i < p_color_attachments.size(); i++) {
 			if (p_color_attachments[i] == ATTACHMENT_UNUSED)
 				continue;
 

@@ -14,11 +14,11 @@ target_sources(driver-metal PRIVATE
         metal_device_properties.mm
         metal_objects.h
         metal_objects.mm
+        metal_utils.h
         pixel_formats.h
         pixel_formats.mm
         rendering_device_driver_metal.h
         rendering_device_driver_metal.mm
-        utils.h
 )
 # [[[end]]]
 target_compile_features(driver-metal PRIVATE cxx_std_20)

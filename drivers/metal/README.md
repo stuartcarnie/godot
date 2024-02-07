@@ -2,10 +2,16 @@
 
 This document aims to describe the Metal rendering device implementation in Godot.
 
+## Future work / ideas
+
+* Use placement heaps
+* Explicit hazard tracking 
+* [MetalFX][] upscaling support?
+
 ## Acknowledgements
 
 The Metal rendering owes a lot to the work of the [MoltenVK] project, which is a Vulkan implementation on top of Metal. 
-In accordance with the Apache 2.0 license, the following copyright notices have been included:
+In accordance with the Apache 2.0 license, the following copyright notices have been included where applicable:
 
 ```
 /**************************************************************************/
@@ -30,3 +36,4 @@ In accordance with the Apache 2.0 license, the following copyright notices have 
 ```
 
 [MoltenVK]: https://github.com/KhronosGroup/MoltenVK
+[MetalFX]: https://developer.apple.com/documentation/metalfx?language=objc

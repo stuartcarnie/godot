@@ -18,6 +18,8 @@ godot_add_library(godot-scene FOLDER scene STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-scene PRIVATE
+        property_list_helper.cpp
+        property_list_helper.h
         property_utils.cpp
         property_utils.h
         register_scene_types.cpp

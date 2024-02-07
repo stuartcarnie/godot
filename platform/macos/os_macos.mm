@@ -665,14 +665,14 @@ Error OS_MacOS::create_process(const String &p_path, const List<String> &p_argum
 			[[NSWorkspace sharedWorkspace] openApplicationAtURL:url
 												  configuration:configuration
 											  completionHandler:^(NSRunningApplication *app, NSError *error) {
-												if (error) {
-													err = ERR_CANT_FORK;
-													NSLog(@"Failed to execute: %@", error.localizedDescription);
-												} else {
-													pid = [app processIdentifier];
-													err = OK;
-												}
-												dispatch_semaphore_signal(lock);
+												  if (error) {
+													  err = ERR_CANT_FORK;
+													  NSLog(@"Failed to execute: %@", error.localizedDescription);
+												  } else {
+													  pid = [app processIdentifier];
+													  err = OK;
+												  }
+												  dispatch_semaphore_signal(lock);
 											  }];
 			dispatch_semaphore_wait(lock, dispatch_time(DISPATCH_TIME_NOW, 20000000000)); // 20 sec timeout, wait for app to launch.
 

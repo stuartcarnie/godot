@@ -9,7 +9,7 @@ env_spirv = env_modules.Clone()
 
 thirdparty_obj = []
 
-if env["builtin_glslang"]:
+if env["metal"]:
     thirdparty_dir = "#thirdparty/spirv-cross/"
     thirdparty_sources = [
         "spirv_cfg.cpp",
@@ -25,17 +25,14 @@ if env["builtin_glslang"]:
 
     thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
 
-    # Treat SPIRV-Cross headers as system headers to avoid raising warnings. Not supported on MSVC.
-    # Include `#thirdparty` to workaround mismatch between location of `SPIRV` in library source
-    # and in installed public headers.
-    if not env.msvc:
-        env_spirv.Append(CPPFLAGS=["-isystem", Dir(thirdparty_dir).path, "-isystem", Dir("#thirdparty").path])
-    else:
-        env_spirv.Prepend(CPPPATH=[thirdparty_dir, "#thirdparty"])
+    env_spirv.Prepend(CPPPATH=["#thirdparty/spirv-cross/"])
 
-    env_spirv.Append(CPPDEFINES=["SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS"])
     env_thirdparty = env_spirv.Clone()
     env_thirdparty.disable_warnings()
+    # Must enable exceptions for SPIRV-Cross; otherwise, it will abort the process on errors
+    if "-fno-exceptions" in env_thirdparty["CXXFLAGS"]:
+        env_thirdparty["CXXFLAGS"].remove("-fno-exceptions")
+    env_thirdparty.Append(CXXFLAGS=["-fexceptions"])
     env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
     env.modules_sources += thirdparty_obj
 
@@ -46,6 +43,8 @@ module_obj = []
 
 env_spirv.add_source_files(module_obj, "*.cpp")
 env.modules_sources += module_obj
+
+Export("env_spirv")
 
 # Needed to force rebuilding the module files when the thirdparty library is updated.
 env.Depends(module_obj, thirdparty_obj)

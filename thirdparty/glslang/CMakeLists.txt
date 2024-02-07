@@ -31,7 +31,6 @@ target_sources(godot-glslang PRIVATE
         glslang/MachineIndependent/propagateNoContraction.cpp
         glslang/MachineIndependent/reflection.cpp
         glslang/ResourceLimits/ResourceLimits.cpp
-        OGLCompilersDLL/InitializeDll.cpp
         SPIRV/disassemble.cpp
         SPIRV/doc.cpp
         SPIRV/GlslangToSpv.cpp

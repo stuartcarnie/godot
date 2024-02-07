@@ -71,6 +71,9 @@ Error MetalContext::_window_create(DisplayServer::WindowID p_window_id, DisplayS
 
 	metal_layer.allowsNextDrawableTimeout = YES;
 	metal_layer.framebufferOnly = YES;
+	metal_layer.opaque = OS::get_singleton()->is_layered_allowed() ? NO : YES;
+	metal_layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+	metal_layer.maximumDrawableCount = 3;
 
 	Window window;
 	window.layer = metal_layer;
@@ -268,7 +271,7 @@ void MetalContext::flush(bool p_flush_setup, bool p_flush_pending, bool p_sync) 
 	}
 
 	if (p_flush_pending && command_buffer_count > 1) {
-		for (int i = 1; i < command_buffer_count; i++) {
+		for (uint32_t i = 1; i < command_buffer_count; i++) {
 			last = command_buffer_queue[i]->get_command_buffer();
 			command_buffer_queue[i]->commit();
 			command_buffer_queue[i] = nullptr;

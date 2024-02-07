@@ -38,13 +38,13 @@
 	self->have_utterance = false;
 	self->last_utterance = -1;
 	self->paused = false;
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	if (@available(macOS 10.14, *)) {
 #endif
 		self->synth = [[AVSpeechSynthesizer alloc] init];
 		[self->synth setDelegate:self];
 		print_verbose("Text-to-Speech: AVSpeechSynthesizer initialized.");
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	} else {
 		self->synth = [[NSSpeechSynthesizer alloc] init];
 		[self->synth setDelegate:self];
@@ -90,7 +90,7 @@
 	[self update];
 }
 
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 // NSSpeechSynthesizer callback (macOS 10.4+)
 - (void)speechSynthesizer:(NSSpeechSynthesizer *)ns_synth willSpeakWord:(NSRange)characterRange ofString:(NSString *)string {
 	if (!paused && have_utterance) {
@@ -126,7 +126,7 @@
 	if (!speaking && queue.size() > 0) {
 		DisplayServer::TTSUtterance &message = queue.front()->get();
 
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 		if (@available(macOS 10.14, *)) {
 #endif
 			AVSpeechSynthesizer *av_synth = synth;
@@ -142,7 +142,7 @@
 
 			ids[new_utterance] = message.id;
 			[av_synth speakUtterance:new_utterance];
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 		} else {
 			NSSpeechSynthesizer *ns_synth = synth;
 			[ns_synth setObject:nil forProperty:NSSpeechResetProperty error:nil];
@@ -165,12 +165,12 @@
 }
 
 - (void)pauseSpeaking {
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	if (@available(macOS 10.14, *)) {
 #endif
 		AVSpeechSynthesizer *av_synth = synth;
 		[av_synth pauseSpeakingAtBoundary:AVSpeechBoundaryImmediate];
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	} else {
 		NSSpeechSynthesizer *ns_synth = synth;
 		[ns_synth pauseSpeakingAtBoundary:NSSpeechImmediateBoundary];
@@ -180,12 +180,12 @@
 }
 
 - (void)resumeSpeaking {
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	if (@available(macOS 10.14, *)) {
 #endif
 		AVSpeechSynthesizer *av_synth = synth;
 		[av_synth continueSpeaking];
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	} else {
 		NSSpeechSynthesizer *ns_synth = synth;
 		[ns_synth continueSpeaking];
@@ -199,12 +199,12 @@
 		DisplayServer::get_singleton()->tts_post_utterance_event(DisplayServer::TTS_UTTERANCE_CANCELED, message.id);
 	}
 	queue.clear();
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	if (@available(macOS 10.14, *)) {
 #endif
 		AVSpeechSynthesizer *av_synth = synth;
 		[av_synth stopSpeakingAtBoundary:AVSpeechBoundaryImmediate];
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	} else {
 		NSSpeechSynthesizer *ns_synth = synth;
 		if (have_utterance) {
@@ -223,12 +223,12 @@
 }
 
 - (bool)isPaused {
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	if (@available(macOS 10.14, *)) {
 #endif
 		AVSpeechSynthesizer *av_synth = synth;
 		return [av_synth isPaused];
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	} else {
 		return paused;
 	}
@@ -263,7 +263,7 @@
 
 - (Array)getVoices {
 	Array list;
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	if (@available(macOS 10.14, *)) {
 #endif
 		for (AVSpeechSynthesisVoice *voice in [AVSpeechSynthesisVoice speechVoices]) {
@@ -276,7 +276,7 @@
 			voice_d["language"] = String::utf8([voiceLocaleIdentifier UTF8String]);
 			list.push_back(voice_d);
 		}
-#if MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
 	} else {
 		for (NSString *voiceIdentifierString in [NSSpeechSynthesizer availableVoices]) {
 			NSString *voiceLocaleIdentifier = [[NSSpeechSynthesizer attributesForVoice:voiceIdentifierString] objectForKey:NSVoiceLocaleIdentifier];

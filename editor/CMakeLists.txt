@@ -200,6 +200,8 @@ target_sources(godot-editor PRIVATE
         renames_map_3_to_4.h
         reparent_dialog.cpp
         reparent_dialog.h
+        run_instances_dialog.cpp
+        run_instances_dialog.h
         scene_create_dialog.cpp
         scene_create_dialog.h
         scene_tree_dock.cpp

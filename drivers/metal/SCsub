@@ -2,22 +2,40 @@
 
 Import("env")
 
-spirv_cross = "#thirdparty/spirv-cross"
+env_metal = env.Clone()
+if "-fno-exceptions" in env_metal["CXXFLAGS"]:
+    env_metal["CXXFLAGS"].remove("-fno-exceptions")
+if "-std=gnu++17" in env_metal["CXXFLAGS"]:
+    env_metal["CXXFLAGS"].remove("-std=gnu++17")
+env_metal.Append(CXXFLAGS=["-fexceptions", "-std=c++20"])
 
-# Use bundled Vulkan headers
-env.Prepend(CPPPATH=[spirv_cross, spirv_cross + "/include"])
+thirdparty_obj = []
+thirdparty_dir = "#thirdparty/spirv-cross"
+
+env_metal.Prepend(CPPPATH=[thirdparty_dir, thirdparty_dir + "/include"])
+
+# Godot source files
+
+driver_obj = []
 
 # Driver source files
-env.add_source_files(env.drivers_sources, "*.cpp")
-env.add_source_files(env.drivers_sources, "*.mm")
+env_metal.add_source_files(
+    driver_obj,
+    [
+        "metal_context.mm",
+        "metal_device_properties.mm",
+        "metal_objects.mm",
+        "rendering_device_driver_metal.mm",
+    ],
+)
+# Additional flags for pixel_formats.mm
+env_metal_tmp = env_metal.Clone()
+env_metal_tmp.Append(CXXFLAGS=["-Wno-deprecated-declarations"])
+env_metal_tmp.add_source_files(
+    driver_obj,
+    [
+        "pixel_formats.mm",
+    ],
+)
 
-# lib_env = env.Clone()
-#
-# lib_env.metal_sources = []
-# lib_env.Prepend(CPPPATH=[spirv_cross, spirv_cross + "/include"])
-#
-# # Driver source files
-# lib_env.add_source_files(lib_env.metal_sources, "*.cpp")
-# lib_env.add_source_files(lib_env.metal_sources, "*.mm")
-# lib = lib_env.add_shared_library("metal_driver", lib_env.metal_sources)
-# env.Prepend(LIBS=[lib])
+env_metal.drivers_sources += driver_obj

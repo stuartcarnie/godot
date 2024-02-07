@@ -59,6 +59,8 @@ target_sources(godot-module-gdscript PRIVATE
         gdscript_rpc_callable.h
         gdscript_tokenizer.cpp
         gdscript_tokenizer.h
+        gdscript_tokenizer_buffer.cpp
+        gdscript_tokenizer_buffer.h
         gdscript_utility_callable.cpp
         gdscript_utility_callable.h
         gdscript_utility_functions.cpp

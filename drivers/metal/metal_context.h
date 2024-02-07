@@ -88,7 +88,7 @@ private:
 	// Commands.
 
 	LocalVector<MDCommandBuffer *> command_buffer_queue;
-	int command_buffer_count = 1;
+	uint32_t command_buffer_count = 1;
 
 	id<MTLCommandQueue> queue;
 	id<MTLCaptureScope> scope;

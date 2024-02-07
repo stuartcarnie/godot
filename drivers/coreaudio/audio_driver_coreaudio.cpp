@@ -67,8 +67,8 @@ OSStatus AudioDriverCoreAudio::output_device_address_cb(AudioObjectID inObjectID
 	return noErr;
 }
 
-// Switch to kAudioObjectPropertyElementMain everywhere
-#if __MAC_OS_X_VERSION_MAX_ALLOWED < __MAC_12_0
+// Switch to kAudioObjectPropertyElementMain everywhere to remove deprecated warnings
+#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 120000) || (TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 150000)
 #define kAudioObjectPropertyElementMain kAudioObjectPropertyElementMaster
 #endif
 #endif

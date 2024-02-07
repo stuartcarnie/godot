@@ -52,15 +52,16 @@
 #define METAL_OBJECTS_H
 
 #import "metal_device_properties.h"
+#import "metal_utils.h"
 #import "pixel_formats.h"
 #import "servers/rendering/rendering_device_driver.h"
-#import "utils.h"
 
 #import "spirv.hpp"
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <simd/simd.h>
+#import <optional>
 
 // These types can be used in Vector and other containers that use
 // pointer operations not supported by ARC.
@@ -135,7 +136,9 @@ struct ClearAttKey {
 	_FORCE_INLINE_ bool is_depth_enabled() const { return pixel_formats[DEPTH_INDEX] != 0; }
 	_FORCE_INLINE_ bool is_stencil_enabled() const { return pixel_formats[STENCIL_INDEX] != 0; }
 
-	_FORCE_INLINE_ bool operator==(const ClearAttKey &rhs) const { return memcmp(this, &rhs, sizeof(ClearAttKey)); }
+	_FORCE_INLINE_ bool operator==(const ClearAttKey &rhs) const {
+		return memcmp(this, &rhs, sizeof(ClearAttKey)) == 0;
+	}
 
 	uint32_t hash() const {
 		uint32_t h = hash_murmur3_one_32(sample_count);
@@ -223,7 +226,7 @@ public:
 		bool is_rendering_entire_area = false;
 		MTLRenderPassDescriptor *desc = nil;
 		id<MTLRenderCommandEncoder> encoder = nil;
-		id<MTLBuffer> index_buffer = nil;
+		id<MTLBuffer> __unsafe_unretained index_buffer = nil; // buffer is owned by RDD
 		MTLIndexType index_type = MTLIndexTypeUInt16;
 		LocalVector<id<MTLBuffer> __unsafe_unretained> vertex_buffers;
 		LocalVector<NSUInteger> vertex_offsets;
@@ -282,11 +285,11 @@ public:
 			dirty.set_flag(DirtyFlag::DIRTY_VERTEX);
 		}
 
-		_FORCE_INLINE_ MTLScissorRect clip_to_render_area(MTLScissorRect p_rect) const {
-			int32_t raLeft = render_area.position.x;
-			int32_t raRight = raLeft + render_area.size.width;
-			int32_t raBottom = render_area.position.y;
-			int32_t raTop = raBottom + render_area.size.height;
+		MTLScissorRect clip_to_render_area(MTLScissorRect p_rect) const {
+			uint32_t raLeft = render_area.position.x;
+			uint32_t raRight = raLeft + render_area.size.width;
+			uint32_t raBottom = render_area.position.y;
+			uint32_t raTop = raBottom + render_area.size.height;
 
 			p_rect.x = CLAMP(p_rect.x, raLeft, MAX(raRight - 1, raLeft));
 			p_rect.y = CLAMP(p_rect.y, raBottom, MAX(raTop - 1, raBottom));
@@ -296,7 +299,7 @@ public:
 			return p_rect;
 		}
 
-		_FORCE_INLINE_ Rect2i clip_to_render_area(Rect2i p_rect) const {
+		Rect2i clip_to_render_area(Rect2i p_rect) const {
 			int32_t raLeft = render_area.position.x;
 			int32_t raRight = raLeft + render_area.size.width;
 			int32_t raBottom = render_area.position.y;
@@ -312,6 +315,7 @@ public:
 
 	} render;
 
+	// state specific for a compute pass
 	struct {
 		MDComputePipeline *pipeline = nullptr;
 		id<MTLComputeCommandEncoder> encoder = nil;
@@ -321,6 +325,7 @@ public:
 		}
 	} compute;
 
+	// state specific to a blit pass
 	struct {
 		id<MTLBlitCommandEncoder> encoder = nil;
 		_FORCE_INLINE_ void reset() {
@@ -477,7 +482,7 @@ public:
 		NSUInteger binding = -1;
 		uint32_t size = 0;
 	} push_constants;
-	MTLSize local = { 0 };
+	MTLSize local = { };
 
 	id<MTLLibrary> kernel;
 #if DEV_ENABLED
@@ -686,7 +691,7 @@ public:
 			float depth_bias = 0.0;
 			float slope_scale = 0.0;
 			float clamp = 0.0;
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> enc) const {
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained enc) const {
 				if (!enabled)
 					return;
 				[enc setDepthBias:depth_bias slopeScale:slope_scale clamp:clamp];
@@ -697,7 +702,7 @@ public:
 			bool enabled = false;
 			uint32_t front_reference = 0;
 			uint32_t back_reference = 0;
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> enc) const {
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained enc) const {
 				if (!enabled)
 					return;
 				[enc setStencilFrontReferenceValue:front_reference backReferenceValue:back_reference];
@@ -711,14 +716,14 @@ public:
 			float b = 0.0;
 			float a = 0.0;
 
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> enc) const {
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained enc) const {
 				if (!enabled)
 					return;
 				[enc setBlendColorRed:r green:g blue:b alpha:a];
 			};
 		} blend;
 
-		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> enc) const {
+		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained enc) const {
 			[enc setCullMode:cull_mode];
 			[enc setTriangleFillMode:fill_mode];
 			[enc setDepthClipMode:clip_mode];
@@ -741,7 +746,7 @@ class MDComputePipeline final : public MDPipeline {
 public:
 	id<MTLComputePipelineState> state = nil;
 	struct {
-		MTLSize local = { 0 };
+		MTLSize local = { };
 	} compute_state;
 
 	MDComputeShader *shader = nil;
@@ -830,6 +835,6 @@ auto release(RDD::ID p_id) {
 	return (__bridge_transfer ::id)(void *)p_id.id;
 }
 
-} //namespace rid
+} // namespace rid
 
-#endif //METAL_OBJECTS_H
+#endif // METAL_OBJECTS_H

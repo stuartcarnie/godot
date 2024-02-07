@@ -17,8 +17,6 @@ target_sources(etcpak PRIVATE
         ProcessDxtc.hpp
         ProcessRGB.cpp
         ProcessRGB.hpp
-        ProcessRgtc.cpp
-        ProcessRgtc.hpp
         Tables.cpp
         Tables.hpp
         Vector.hpp

@@ -62,6 +62,15 @@ static const uint32_t _mtlPixelFormatCount = 256;
 static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2; // The actual last enum value is not available on iOS
 static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 
+// If the supportsBCTextureCompression query is available, use it.
+bool supports_bc_texture_compression(id<MTLDevice> mtlDevice) {
+	if (@available(macOS 11.0, iOS 16.4, *)) {
+		return mtlDevice.supportsBCTextureCompression;
+	} else {
+		return false;
+	}
+}
+
 #pragma mark -
 #pragma mark Metal format capabilities
 
@@ -413,4 +422,4 @@ protected:
 
 #pragma clang diagnostic pop
 
-#endif //PIXEL_FORMATS_H
+#endif // PIXEL_FORMATS_H

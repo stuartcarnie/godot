@@ -192,13 +192,12 @@ void ShaderRD::_build_variant_code(StringBuilder &builder, uint32_t p_variant, c
 					builder.append(String("#define ") + String(E.key) + "_CODE_USED\n");
 				}
 #if (defined(MACOS_ENABLED) || defined(IOS_ENABLED)) && defined(__x86_64__)
-				// issue
+				// The features disabled by this flag appear to be x86-specific issues.
 				if (RD::get_singleton()->get_device_capabilities()->device_family == RD::DeviceFamily::DEVICE_VULKAN) {
 					builder.append("#define MOLTENVK_USED\n");
 				}
 #endif
-				// Resolves image artefacts on Apple GPUs. Image atomics are supported on Metal 3.1 and Apple8+ GPUs
-				//  but no support in MoltenVK or SPIRV-Cross yet.
+				// Image atomics are supported on Metal 3.1 but no support in MoltenVK or SPIRV-Cross yet.
 				builder.append("#define NO_IMAGE_ATOMICS\n");
 
 				builder.append(String("#define RENDER_DRIVER_") + OS::get_singleton()->get_current_rendering_driver_name().to_upper() + "\n");

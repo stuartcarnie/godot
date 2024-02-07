@@ -59,10 +59,6 @@
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 
-// Common scaling multipliers
-#define KIBI (1024)
-#define MEBI (KIBI * KIBI)
-
 /** The buffer index to use for vertex content. */
 const static uint32_t VERT_CONTENT_BUFFER_INDEX = 0;
 const static uint32_t MAX_COLOR_ATTACHMENT_COUNT = 8;
@@ -85,11 +81,11 @@ struct MetalFeatures {
 	long hostMemoryPageSize;
 	bool layeredRendering;
 	bool multisampleLayeredRendering;
-	bool quadPermute; 		/**< If true, quadgroup permutation functions (vote, ballot, shuffle) are supported in shaders. */
-	bool simdPermute; 		/**< If true, SIMD-group permutation functions (vote, ballot, shuffle) are supported in shaders. */
-	bool simdReduction;		/**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
-	bool tesselationShader; /**< If true, tesselation shaders are supported. */
-	bool imageCubeArray;	/**< If true, image cube arrays are supported. */
+	bool quadPermute; /**< If true, quadgroup permutation functions (vote, ballot, shuffle) are supported in shaders. */
+	bool simdPermute; /**< If true, SIMD-group permutation functions (vote, ballot, shuffle) are supported in shaders. */
+	bool simdReduction; /**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
+	bool tessellationShader; /**< If true, tessellation shaders are supported. */
+	bool imageCubeArray; /**< If true, image cube arrays are supported. */
 };
 
 struct MetalLimits {
@@ -149,4 +145,4 @@ private:
 	static const SampleCount sample_count[RenderingDevice::TextureSamples::TEXTURE_SAMPLES_MAX];
 };
 
-#endif //METAL_DEVICE_PROPERTIES_H
+#endif // METAL_DEVICE_PROPERTIES_H

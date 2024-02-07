@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef METAL_CONTEXT_MACOS_H
-#define METAL_CONTEXT_MACOS_H
+#ifndef METAL_CONTEXT_IOS_H
+#define METAL_CONTEXT_IOS_H
 
 #ifdef METAL_ENABLED
 
@@ -48,4 +48,4 @@ public:
 
 #endif // METAL_ENABLED
 
-#endif // METAL_CONTEXT_MACOS_H
+#endif // METAL_CONTEXT_IOS_H

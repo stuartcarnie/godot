@@ -1,5 +1,5 @@
 def can_build(env, platform):
-    return True
+    return env["metal"]
 
 
 def configure(env):

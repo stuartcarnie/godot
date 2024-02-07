@@ -97,7 +97,7 @@ function(generate_documentation_compressed _input _output _tempFileOutput)
             COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
             ARGS --env ${GODOT_ENV_FILE} make_documentation_header_compressed --output ${_output} --input ${_tempFileOutput}
             DEPENDS ${_input}
-            COMMENT "Generating documentation compressed to  ${_output}"
+            COMMENT "Generating documentation compressed to ${_output}"
             VERBATIM
     )
 endfunction()

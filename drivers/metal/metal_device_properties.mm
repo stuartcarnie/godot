@@ -54,10 +54,14 @@
 #import <spirv_cross.hpp>
 #import <spirv_msl.hpp>
 
+// Common scaling multipliers
+#define KIBI (1024)
+#define MEBI (KIBI * KIBI)
+
 MTLGPUFamily &operator--(MTLGPUFamily &family) {
 	family = static_cast<MTLGPUFamily>(static_cast<int>(family) - 1);
 	if (family < MTLGPUFamilyApple1) {
-		family = MTLGPUFamilyMetal3;
+		family = MTLGPUFamilyApple9;
 	}
 
 	return family;
@@ -70,7 +74,7 @@ void MetalDeviceProperties::init_gpu_properties(id<MTLDevice> device) {
 }
 
 void MetalDeviceProperties::init_features(id<MTLDevice> device) {
-	features = { 0 };
+	features = { };
 
 	features.highestFamily = MTLGPUFamilyApple1;
 	for (MTLGPUFamily family = MTLGPUFamilyApple9; family >= MTLGPUFamilyApple1; --family) {
@@ -90,51 +94,33 @@ void MetalDeviceProperties::init_features(id<MTLDevice> device) {
 
 	features.layeredRendering = [device supportsFamily:MTLGPUFamilyApple5];
 	features.multisampleLayeredRendering = [device supportsFamily:MTLGPUFamilyApple7];
-	features.tesselationShader = [device supportsFamily:MTLGPUFamilyApple3];
+	features.tessellationShader = [device supportsFamily:MTLGPUFamilyApple3];
 	features.imageCubeArray = [device supportsFamily:MTLGPUFamilyApple3];
 	features.quadPermute = [device supportsFamily:MTLGPUFamilyApple4];
 	features.simdPermute = [device supportsFamily:MTLGPUFamilyApple6];
 	features.simdReduction = [device supportsFamily:MTLGPUFamilyApple7];
 
-	features.mslVersionEnum = MTLLanguageVersion1_1;
-
-	if (@available(macOS 11, iOS 14, *)) {
-		features.mslVersionEnum = MTLLanguageVersion2_3;
-	}
-	if (@available(macOS 12, iOS 15, *)) {
-		features.mslVersionEnum = MTLLanguageVersion2_4;
-	}
-	if (@available(macOS 13, iOS 16, *)) {
-		features.mslVersionEnum = MTLLanguageVersion3_0;
-	}
-	if (@available(macOS 14, iOS 17, *)) {
-		features.mslVersionEnum = MTLLanguageVersion3_1;
-	}
+	MTLCompileOptions *opts = [MTLCompileOptions new];
+	features.mslVersionEnum = opts.languageVersion; // by default, Metal uses the most recent language version
 
 #define setMSLVersion(maj, min) \
 	features.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min)
 
 	switch (features.mslVersionEnum) {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 140000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 170000
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 140000 || __IPHONE_OS_VERSION_MAX_ALLOWED >= 170000
 		case MTLLanguageVersion3_1:
 			setMSLVersion(3, 1);
 			break;
 #endif
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 130000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 160000
 		case MTLLanguageVersion3_0:
 			setMSLVersion(3, 0);
 			break;
-#endif
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 150000
 		case MTLLanguageVersion2_4:
 			setMSLVersion(2, 4);
 			break;
-#endif
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 110000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 140000
 		case MTLLanguageVersion2_3:
 			setMSLVersion(2, 3);
 			break;
-#endif
 		case MTLLanguageVersion2_2:
 			setMSLVersion(2, 2);
 			break;
@@ -237,12 +223,10 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> device) {
 	}
 
 	limits.subgroupSupportedShaderStages.set_flag(RDD::ShaderStage::SHADER_STAGE_COMPUTE_BIT);
-	if (features.tesselationShader) {
+	if (features.tessellationShader) {
 		limits.subgroupSupportedShaderStages.set_flag(RDD::ShaderStage::SHADER_STAGE_TESSELATION_CONTROL_BIT);
 	}
-	if (@available(macOS 10.15, iOS 13.0, *)) {
-		limits.subgroupSupportedShaderStages.set_flag(RDD::ShaderStage::SHADER_STAGE_FRAGMENT_BIT);
-	}
+	limits.subgroupSupportedShaderStages.set_flag(RDD::ShaderStage::SHADER_STAGE_FRAGMENT_BIT);
 
 	limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_BASIC_BIT);
 	if (features.simdPermute || features.quadPermute) {
