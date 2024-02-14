@@ -49,8 +49,8 @@
 /**************************************************************************/
 
 #import "metal_objects.h"
-#import "metal_context.h"
 #import "pixel_formats.h"
+#import "rendering_device_driver_metal.h"
 
 void MDCommandBuffer::begin() {
 	DEV_ASSERT(commandBuffer == nil);
@@ -76,8 +76,8 @@ void MDCommandBuffer::commit() {
 	commandBuffer = nil;
 }
 
-void MDCommandBuffer::bind_pipeline(RDD::PipelineID pipeline) {
-	MDPipeline *p = (MDPipeline *)(pipeline.id);
+void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
+	MDPipeline *p = (MDPipeline *)(p_pipeline.id);
 
 	// end current encoder if it is a compute encoder or blit encoder,
 	// as they do not have a defined end boundary in the RDD like render
@@ -102,19 +102,19 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID pipeline) {
 					static id<MTLTexture> res_tex = nil;
 					static dispatch_once_t onceToken;
 					dispatch_once(&onceToken, ^{
-						Size2i sz = render.frameBuffer->size;
-						MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:sz.width height:sz.height mipmapped:NO];
-						td.textureType = MTLTextureType2DMultisample;
-						td.storageMode = MTLStorageModeMemoryless;
-						td.usage = MTLTextureUsageRenderTarget;
-						td.sampleCount = render.pipeline->sample_count;
-						tex = [context->get_device() newTextureWithDescriptor:td];
+					  Size2i sz = render.frameBuffer->size;
+					  MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:sz.width height:sz.height mipmapped:NO];
+					  td.textureType = MTLTextureType2DMultisample;
+					  td.storageMode = MTLStorageModeMemoryless;
+					  td.usage = MTLTextureUsageRenderTarget;
+					  td.sampleCount = render.pipeline->sample_count;
+					  tex = [device_driver->get_device() newTextureWithDescriptor:td];
 
-						td.textureType = MTLTextureType2D;
-						td.storageMode = MTLStorageModePrivate;
-						td.usage = MTLTextureUsageShaderWrite;
-						td.sampleCount = 1;
-						res_tex = [context->get_device() newTextureWithDescriptor:td];
+					  td.textureType = MTLTextureType2D;
+					  td.storageMode = MTLStorageModePrivate;
+					  td.usage = MTLTextureUsageShaderWrite;
+					  td.sampleCount = 1;
+					  res_tex = [device_driver->get_device() newTextureWithDescriptor:td];
 					});
 					render.desc.colorAttachments[0].texture = tex;
 					render.desc.colorAttachments[0].loadAction = MTLLoadActionClear;
@@ -168,7 +168,7 @@ id<MTLBlitCommandEncoder> MDCommandBuffer::blit_command_encoder() {
 	return blit.encoder;
 }
 
-void MDCommandBuffer::encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDescriptor *desc, NSString *label) {
+void MDCommandBuffer::encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDescriptor *p_desc, NSString *p_label) {
 	switch (type) {
 		case MDCommandBufferStateType::None:
 			break;
@@ -183,9 +183,9 @@ void MDCommandBuffer::encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDesc
 			break;
 	}
 
-	id<MTLRenderCommandEncoder> enc = [commandBuffer renderCommandEncoderWithDescriptor:desc];
-	if (label != nil) {
-		[enc pushDebugGroup:label];
+	id<MTLRenderCommandEncoder> enc = [commandBuffer renderCommandEncoderWithDescriptor:p_desc];
+	if (p_label != nil) {
+		[enc pushDebugGroup:p_label];
 		[enc popDebugGroup];
 	}
 	[enc endEncoding];
@@ -268,7 +268,7 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 
 	id<MTLRenderCommandEncoder> enc = render.encoder;
 
-	MDResourceCache &cache = context->get_resource_cache();
+	MDResourceCache &cache = device_driver->get_resource_cache();
 
 	[enc pushDebugGroup:@"ClearAttachments"];
 	[enc setRenderPipelineState:cache.get_clear_render_pipeline_state(key, nil)];
@@ -284,7 +284,7 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 
 	[enc setVertexBytes:clear_colors length:sizeof(clear_colors) atIndex:0];
 	[enc setFragmentBytes:clear_colors length:sizeof(clear_colors) atIndex:0];
-	[enc setVertexBytes:vertices length:vertex_count * sizeof(vertices[0]) atIndex:context->get_metal_buffer_index_for_vertex_attribute_binding(VERT_CONTENT_BUFFER_INDEX)];
+	[enc setVertexBytes:vertices length:vertex_count * sizeof(vertices[0]) atIndex:device_driver->get_metal_buffer_index_for_vertex_attribute_binding(VERT_CONTENT_BUFFER_INDEX)];
 
 	[enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertex_count];
 	[enc popDebugGroup];
@@ -319,7 +319,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 
 	if (render.dirty.has_flag(RenderState::DIRTY_VERTEX)) {
 		uint32_t p_binding_count = render.vertex_buffers.size();
-		uint32_t first = context->get_metal_buffer_index_for_vertex_attribute_binding(p_binding_count - 1);
+		uint32_t first = device_driver->get_metal_buffer_index_for_vertex_attribute_binding(p_binding_count - 1);
 		[render.encoder setVertexBuffers:render.vertex_buffers.ptr()
 								 offsets:render.vertex_offsets.ptr()
 							   withRange:NSMakeRange(first, p_binding_count)];
@@ -500,7 +500,7 @@ void MDCommandBuffer::_end_render_pass() {
 	MDRenderPass const &pass_info = *render.pass;
 	MDSubpass const &subpass = pass_info.subpasses[render.current_subpass];
 
-	PixelFormats &pf = context->get_pixel_formats();
+	PixelFormats &pf = device_driver->get_pixel_formats();
 
 	for (uint32_t i = 0; i < subpass.resolve_references.size(); i++) {
 		uint32_t color_index = subpass.color_references[i].attachment;
@@ -571,7 +571,7 @@ void MDCommandBuffer::render_next_subpass() {
 	MDSubpass const &subpass = pass.subpasses[render.current_subpass];
 
 	MTLRenderPassDescriptor *desc = MTLRenderPassDescriptor.renderPassDescriptor;
-	PixelFormats &pf = context->get_pixel_formats();
+	PixelFormats &pf = device_driver->get_pixel_formats();
 
 	uint32_t attachmentCount = 0;
 	for (uint32_t i = 0; i < subpass.color_references.size(); i++) {
@@ -686,7 +686,7 @@ void MDCommandBuffer::render_bind_vertex_buffers(uint32_t p_binding_count, const
 	}
 
 	if (render.encoder) {
-		uint32_t first = context->get_metal_buffer_index_for_vertex_attribute_binding(p_binding_count - 1);
+		uint32_t first = device_driver->get_metal_buffer_index_for_vertex_attribute_binding(p_binding_count - 1);
 		[render.encoder setVertexBuffers:render.vertex_buffers.ptr()
 								 offsets:render.vertex_offsets.ptr()
 							   withRange:NSMakeRange(first, p_binding_count)];
@@ -848,15 +848,15 @@ MDComputeShader::MDComputeShader(CharString p_name, LocalVector<UniformSet> p_se
 		MDShader(p_name, p_sets), kernel(p_kernel) {
 }
 
-void MDComputeShader::encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) {
-	DEV_ASSERT(cb->type == MDCommandBufferStateType::Compute);
+void MDComputeShader::encode_push_constant_data(VectorView<uint32_t> p_data, MDCommandBuffer *p_cb) {
+	DEV_ASSERT(p_cb->type == MDCommandBufferStateType::Compute);
 	if (push_constants.binding == (uint32_t)-1)
 		return;
 
-	id<MTLComputeCommandEncoder> enc = cb->compute.encoder;
+	id<MTLComputeCommandEncoder> enc = p_cb->compute.encoder;
 
-	void const *ptr = data.ptr();
-	size_t length = data.size() * sizeof(uint32_t);
+	void const *ptr = p_data.ptr();
+	size_t length = p_data.size() * sizeof(uint32_t);
 
 	[enc setBytes:ptr length:length atIndex:push_constants.binding];
 }
@@ -865,12 +865,12 @@ MDRenderShader::MDRenderShader(CharString p_name, LocalVector<UniformSet> p_sets
 		MDShader(p_name, p_sets), vert(p_vert), frag(p_frag) {
 }
 
-void MDRenderShader::encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) {
-	DEV_ASSERT(cb->type == MDCommandBufferStateType::Render);
-	id<MTLRenderCommandEncoder> enc = cb->render.encoder;
+void MDRenderShader::encode_push_constant_data(VectorView<uint32_t> p_data, MDCommandBuffer *p_cb) {
+	DEV_ASSERT(p_cb->type == MDCommandBufferStateType::Render);
+	id<MTLRenderCommandEncoder> enc = p_cb->render.encoder;
 
-	void const *ptr = data.ptr();
-	size_t length = data.size() * sizeof(uint32_t);
+	void const *ptr = p_data.ptr();
+	size_t length = p_data.size() * sizeof(uint32_t);
 
 	if (push_constants.vert.binding > -1) {
 		[enc setVertexBytes:ptr length:length atIndex:push_constants.vert.binding];
@@ -881,7 +881,7 @@ void MDRenderShader::encode_push_constant_data(VectorView<uint32_t> data, MDComm
 	}
 }
 
-BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<MTLDevice> device) {
+BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<MTLDevice> p_device) {
 	BoundUniformSet *sus = bound_uniforms.getptr(p_shader);
 	if (sus != nullptr) {
 		return *sus;
@@ -901,7 +901,7 @@ BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<M
 	id<MTLBuffer> enc_buffer = nil;
 	if (set.buffer_size > 0) {
 		MTLResourceOptions options = MTLResourceStorageModeShared | MTLResourceHazardTrackingModeTracked;
-		enc_buffer = [device newBufferWithLength:set.buffer_size options:options];
+		enc_buffer = [p_device newBufferWithLength:set.buffer_size options:options];
 		for (auto &kv : set.encoders) {
 			RDD::ShaderStage const stage = kv.key;
 			ShaderStageUsage const stage_usage = ShaderStageUsage(1 << stage);
@@ -1069,11 +1069,11 @@ MTLFmtCaps MDSubpass::getRequiredFmtCapsForAttachmentAt(uint32_t p_index) const 
 	return caps;
 }
 
-void MDAttachment::linkToSubpass(const MDRenderPass &pass) {
+void MDAttachment::linkToSubpass(const MDRenderPass &p_pass) {
 	firstUseSubpassIndex = UINT32_MAX;
 	lastUseSubpassIndex = 0;
 
-	for (MDSubpass const &subpass : pass.subpasses) {
+	for (MDSubpass const &subpass : p_pass.subpasses) {
 		MTLFmtCaps reqCaps = subpass.getRequiredFmtCapsForAttachmentAt(index);
 		if (reqCaps) {
 			firstUseSubpassIndex = MIN(subpass.subpass_index, firstUseSubpassIndex);
@@ -1148,14 +1148,14 @@ MDRenderPass::MDRenderPass(TightLocalVector<MDAttachment> &&p_attachments, Tight
 	}
 }
 
-MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> device, uint32_t p_query_count, NSError **error) {
+MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> p_device, uint32_t p_query_count, NSError **p_error) {
 	std::unique_ptr<MDQueryPool> pool(new MDQueryPool());
 
-	[device sampleTimestamps:&pool->cpuStart gpuTimestamp:&pool->gpuStart];
+	[p_device sampleTimestamps:&pool->cpuStart gpuTimestamp:&pool->gpuStart];
 
 	pool->sampleCount = p_query_count;
 
-	for (id<MTLCounterSet> cs in device.counterSets) {
+	for (id<MTLCounterSet> cs in p_device.counterSets) {
 		if ([cs.name isEqualToString:MTLCommonCounterSetTimestamp]) {
 			for (id<MTLCounter> ctr in cs.counters) {
 				if ([ctr.name isEqualToString:MTLCommonCounterTimestamp]) {
@@ -1176,12 +1176,12 @@ MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> device, uint32_t p_query_
 		desc.storageMode = MTLStorageModePrivate;
 		desc.sampleCount = pool->sampleCount;
 
-		pool->_counterSampleBuffer = [device newCounterSampleBufferWithDescriptor:desc error:error];
-		if (*error) {
+		pool->_counterSampleBuffer = [p_device newCounterSampleBufferWithDescriptor:desc error:p_error];
+		if (*p_error) {
 			return nil;
 		}
 
-		pool->_buffer = [device newBufferWithLength:sizeof(MTLCounterResultTimestamp) * pool->sampleCount
+		pool->_buffer = [p_device newBufferWithLength:sizeof(MTLCounterResultTimestamp) * pool->sampleCount
 											options:MTLResourceStorageModeShared];
 	}
 
@@ -1197,10 +1197,10 @@ void MDQueryPool::reset_with_command_buffer(RDD::CommandBufferID p_cmd_buffer, u
 			destinationOffset:0];
 }
 
-void MDQueryPool::get_results(uint64_t *_Nonnull p_results, NSUInteger count) {
-	DEV_ASSERT(count <= sampleCount);
+void MDQueryPool::get_results(uint64_t *_Nonnull p_results, NSUInteger p_count) {
+	DEV_ASSERT(p_count <= sampleCount);
 	MTLCounterResultTimestamp *timestamps = (MTLCounterResultTimestamp *)_buffer.contents;
-	for (uint32_t i = 0; i < count; i++) {
+	for (uint32_t i = 0; i < p_count; i++) {
 		MTLTimestamp timestamp = timestamps[i].timestamp;
 
 		if (timestamp == MTLCounterErrorValue) {
@@ -1214,9 +1214,9 @@ void MDQueryPool::get_results(uint64_t *_Nonnull p_results, NSUInteger count) {
 	}
 }
 
-void MDQueryPool::write_command_buffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger index) {
+void MDQueryPool::write_command_buffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger p_index) {
 	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	cb->mark_timestamp(_counterSampleBuffer, index);
+	cb->mark_timestamp(_counterSampleBuffer, p_index);
 }
 
 #pragma mark - Resource Factory
@@ -1225,6 +1225,7 @@ id<MTLFunction> MDResourceFactory::new_func(NSString *p_source, NSString *p_name
 	@autoreleasepool {
 		NSError *err = nil;
 		MTLCompileOptions *options = [MTLCompileOptions new];
+		id<MTLDevice> device = device_driver->get_device();
 		id<MTLLibrary> mtlLib = [device newLibraryWithSource:p_source
 													 options:options
 													   error:&err]; // temp retain
@@ -1314,7 +1315,7 @@ fragment ClearColorsOut fragClear(VaryingsPos varyings [[stage_in]], constant Cl
 }
 
 NSString *MDResourceFactory::get_format_type_string(MTLPixelFormat p_fmt) {
-	switch (context->get_pixel_formats().getFormatType(p_fmt)) {
+	switch (device_driver->get_pixel_formats().getFormatType(p_fmt)) {
 		case MTLFormatType::ColorInt8:
 		case MTLFormatType::ColorInt16:
 			return @"short";
@@ -1355,11 +1356,11 @@ id<MTLDepthStencilState> MDResourceFactory::new_depth_stencil_state(bool p_use_d
 		dsDesc.backFaceStencil = nil;
 	}
 
-	return [context->get_device() newDepthStencilStateWithDescriptor:dsDesc];
+	return [device_driver->get_device() newDepthStencilStateWithDescriptor:dsDesc];
 }
 
 id<MTLRenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttKey &p_key, NSError **p_error) {
-	PixelFormats &pixFmts = context->get_pixel_formats();
+	PixelFormats &pixFmts = device_driver->get_pixel_formats();
 
 	id<MTLFunction> vtxFunc = new_clear_vert_func(p_key);
 	id<MTLFunction> fragFunc = new_clear_frag_func(p_key);
@@ -1391,7 +1392,7 @@ id<MTLRenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttK
 	// Vertex attribute descriptors
 	MTLVertexAttributeDescriptorArray *vaDescArray = vtxDesc.attributes;
 	MTLVertexAttributeDescriptor *vaDesc;
-	NSUInteger vtxBuffIdx = context->get_metal_buffer_index_for_vertex_attribute_binding(VERT_CONTENT_BUFFER_INDEX);
+	NSUInteger vtxBuffIdx = device_driver->get_metal_buffer_index_for_vertex_attribute_binding(VERT_CONTENT_BUFFER_INDEX);
 	NSUInteger vtxStride = 0;
 
 	// Vertex location
@@ -1408,7 +1409,7 @@ id<MTLRenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttK
 	vbDesc.stepRate = 1;
 	vbDesc.stride = vtxStride;
 
-	return [device newRenderPipelineStateWithDescriptor:plDesc error:p_error];
+	return [device_driver->get_device() newRenderPipelineStateWithDescriptor:plDesc error:p_error];
 }
 
 id<MTLRenderPipelineState> MDResourceCache::get_clear_render_pipeline_state(ClearAttKey &p_key, NSError **p_error) {

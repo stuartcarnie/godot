@@ -202,7 +202,7 @@ DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mod
 				RenderingContextDriverVulkanMacOS::WindowPlatformData vulkan;
 #endif
 #ifdef METAL_ENABLED
-				MetalContextMacOS::WindowPlatformData metal;
+				RenderingContextDriverMetal::WindowPlatformData metal;
 #endif
 			} wpd;
 #ifdef VULKAN_ENABLED
@@ -212,7 +212,7 @@ DisplayServerMacOS::WindowID DisplayServerMacOS::_create_window(WindowMode p_mod
 #endif
 #ifdef METAL_ENABLED
 			if (rendering_driver == "metal") {
-				wpd.metal.layer = (__bridge void *)layer;
+				wpd.metal.layer = (CAMetalLayer *)layer;
 			}
 #endif
 			Error err = rendering_context->window_create(window_id_counter, &wpd);
@@ -4858,7 +4858,7 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, WindowM
 #endif
 #if defined(METAL_ENABLED)
 	if (rendering_driver == "metal") {
-		context_rd = memnew(MetalContextMacOS);
+		rendering_context = memnew(RenderingContextDriverMetal);
 	}
 #endif
 

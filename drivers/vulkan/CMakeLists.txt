@@ -9,10 +9,11 @@ if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     #   cog.outl(')')
     # ]]]
     target_sources(driver-vulkan PRIVATE
+            rendering_context_driver_vulkan.cpp
+            rendering_context_driver_vulkan.h
             rendering_device_driver_vulkan.cpp
             rendering_device_driver_vulkan.h
-            vulkan_context.cpp
-            vulkan_context.h
+            vulkan_hooks.cpp
             vulkan_hooks.h
     )
     # [[[end]]]

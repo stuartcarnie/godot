@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  metal_context_macos.h                                                 */
+/*  rendering_context_driver_metal.h                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,24 +28,62 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef METAL_CONTEXT_MACOS_H
-#define METAL_CONTEXT_MACOS_H
+#ifndef RENDERING_CONTEXT_DRIVER_METAL_H
+#define RENDERING_CONTEXT_DRIVER_METAL_H
 
 #ifdef METAL_ENABLED
 
-#include "drivers/metal/metal_context.h"
+#import "rendering_device_driver_metal.h"
+#import "servers/rendering/rendering_context_driver.h"
 
-class MetalContextMacOS : public MetalContext {
+#import <Metal/Metal.h>
+#import <QuartzCore/CALayer.h>
+
+@class CAMetalLayer;
+@protocol CAMetalDrawable;
+class PixelFormats;
+class MDResourceCache;
+
+class RenderingContextDriverMetal : public RenderingContextDriver {
+	Device device; // there is only one device on Apple Silicon (for now)
+
 public:
-	struct WindowPlatformData {
-		void const *layer;
-	};
-	Error window_create(DisplayServer::WindowID p_window_id, DisplayServer::VSyncMode p_vsync_mode, int p_width, int p_height, const void *p_platform_data) final;
+	Error initialize() final override;
+	const Device &device_get(uint32_t p_device_index) const final override;
+	uint32_t device_get_count() const final override;
+	bool device_supports_present(uint32_t p_device_index, SurfaceID p_surface) const final override { return true; };
+	RenderingDeviceDriver *driver_create() final override;
+	void driver_free(RenderingDeviceDriver *p_driver) final override;
+	SurfaceID surface_create(const void *p_platform_data) final override;
+	void surface_set_size(SurfaceID p_surface, uint32_t p_width, uint32_t p_height) final override;
+	void surface_set_vsync_mode(SurfaceID p_surface, DisplayServer::VSyncMode p_vsync_mode) final override;
+	DisplayServer::VSyncMode surface_get_vsync_mode(SurfaceID p_surface) const final override;
+	uint32_t surface_get_width(SurfaceID p_surface) const final override;
+	uint32_t surface_get_height(SurfaceID p_surface) const final override;
+	void surface_set_needs_resize(SurfaceID p_surface, bool p_needs_resize) final override;
+	bool surface_get_needs_resize(SurfaceID p_surface) const final override;
+	void surface_destroy(SurfaceID p_surface) final override;
+	bool is_debug_utils_enabled() const final override { return true; };
 
-	MetalContextMacOS() = default;
-	~MetalContextMacOS() override = default;
+#pragma mark - Metal-specific methods
+
+	// Platform-specific data for the Windows embedded in this driver.
+	struct WindowPlatformData {
+		CAMetalLayer * __unsafe_unretained layer;
+	};
+
+	struct Surface {
+		CAMetalLayer *layer = nil;
+		uint32_t width = 0;
+		uint32_t height = 0;
+		DisplayServer::VSyncMode vsync_mode = DisplayServer::VSYNC_ENABLED;
+		bool needs_resize = false;
+	};
+
+	RenderingContextDriverMetal();
+	~RenderingContextDriverMetal() override;
 };
 
 #endif // METAL_ENABLED
 
-#endif // METAL_CONTEXT_MACOS_H
+#endif // RENDERING_CONTEXT_DRIVER_METAL_H

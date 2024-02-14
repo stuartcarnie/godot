@@ -44,7 +44,7 @@
 #endif
 #endif
 
-class MetalContext;
+class RenderingContextDriverMetal;
 
 class RenderingDeviceDriverMetal : public RenderingDeviceDriver {
 	template <typename T>
@@ -60,10 +60,32 @@ class RenderingDeviceDriverMetal : public RenderingDeviceDriver {
 
 #pragma mark - Generic
 
-	MetalContext *context = nullptr;
+	RenderingContextDriverMetal *context_driver = nullptr;
+	RenderingContextDriver::Device context_device;
 	id<MTLDevice> device = nil;
+
+	uint32_t version_major = 2;
+	uint32_t version_minor = 0;
+	MetalDeviceProperties *metal_device_properties = nullptr;
+	PixelFormats *pixel_formats = nullptr;
+	std::unique_ptr<MDResourceCache> resource_cache;
+
+	RDD::Capabilities capabilities;
+	RDD::MultiviewCapabilities multiview_capabilities;
+
 	id<MTLBinaryArchive> archive = nil;
 	uint32_t archive_count = 0;
+
+	id<MTLCommandQueue> device_queue = nil;
+	id<MTLCaptureScope> device_scope = nil;
+
+	String pipeline_cache_id;
+
+	Error _create_device();
+	Error _check_capabilities();
+
+public:
+	Error initialize(uint32_t p_device_index, uint32_t p_frame_count) override final;
 
 #pragma mark - Memory
 
@@ -120,11 +142,48 @@ public:
 			VectorView<BufferBarrier> p_buffer_barriers,
 			VectorView<TextureBarrier> p_texture_barriers) override final;
 
-#pragma mark - Command Buffers
+#pragma mark - Fences
+
+private:
+	struct Fence {
+		dispatch_semaphore_t semaphore;
+		Fence() :
+				semaphore(dispatch_semaphore_create(0)) {}
+	};
+
+public:
+	virtual FenceID fence_create() override final;
+	virtual Error fence_wait(FenceID p_fence) override final;
+	virtual void fence_free(FenceID p_fence) override final;
+
+#pragma mark - Semaphores
+
+private:
+	struct Semaphore {
+		dispatch_semaphore_t semaphore;
+		Semaphore() :
+				semaphore(dispatch_semaphore_create(0)) {}
+	};
+
+public:
+	virtual SemaphoreID semaphore_create() override final;
+	virtual void semaphore_free(SemaphoreID p_semaphore) override final;
+
+#pragma mark - Commands
+	// ----- QUEUE FAMILY -----
+
+	virtual CommandQueueFamilyID command_queue_family_get(BitField<CommandQueueFamilyBits> p_cmd_queue_family_bits, RenderingContextDriver::SurfaceID p_surface = 0) override final;
+
+	// ----- QUEUE -----
+public:
+	virtual CommandQueueID command_queue_create(CommandQueueFamilyID p_cmd_queue_family, bool p_identify_as_main_queue = false) override final;
+	virtual Error command_queue_execute(CommandQueueID p_cmd_queue, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_wait_semaphores, VectorView<SemaphoreID> p_signal_semaphores, FenceID p_signal_fence) override final;
+	virtual Error command_queue_present(CommandQueueID p_cmd_queue, VectorView<SwapChainID> p_swap_chains, VectorView<SemaphoreID> p_wait_semaphores) override final;
+	virtual void command_queue_free(CommandQueueID p_cmd_queue) override final;
 
 	// ----- POOL -----
 
-	virtual CommandPoolID command_pool_create(CommandBufferType p_cmd_buffer_type) override final;
+	virtual CommandPoolID command_pool_create(CommandQueueFamilyID p_cmd_queue_family, CommandBufferType p_cmd_buffer_type) override final;
 	virtual void command_pool_free(CommandPoolID p_cmd_pool) override final;
 
 	// ----- BUFFER -----
@@ -134,11 +193,35 @@ private:
 	Vector<MDCommandBuffer *> command_buffers;
 
 public:
-	virtual CommandBufferID command_buffer_create(CommandBufferType p_cmd_buffer_type, CommandPoolID p_cmd_pool) override final;
+	virtual CommandBufferID command_buffer_create(CommandPoolID p_cmd_pool) override final;
 	virtual bool command_buffer_begin(CommandBufferID p_cmd_buffer) override final;
 	virtual bool command_buffer_begin_secondary(CommandBufferID p_cmd_buffer, RenderPassID p_render_pass, uint32_t p_subpass, FramebufferID p_framebuffer) override final;
 	virtual void command_buffer_end(CommandBufferID p_cmd_buffer) override final;
 	virtual void command_buffer_execute_secondary(CommandBufferID p_cmd_buffer, VectorView<CommandBufferID> p_secondary_cmd_buffers) override final;
+
+#pragma mark - Swapchain
+
+private:
+	struct SwapChain {
+		CAMetalLayer *layer = nil;
+		RenderingContextDriver::SurfaceID surface = RenderingContextDriver::SurfaceID();
+		RenderPassID render_pass;
+		MDScreenFrameBuffer *frame_buffer = nil;
+		RDD::DataFormat data_format = DATA_FORMAT_MAX;
+		SwapChain() :
+				render_pass(nullptr) {}
+	};
+
+	void _swap_chain_release(SwapChain *p_swap_chain);
+	void _swap_chain_release_buffers(SwapChain *p_swap_chain);
+
+public:
+	virtual SwapChainID swap_chain_create(RenderingContextDriver::SurfaceID p_surface) override final;
+	virtual Error swap_chain_resize(CommandQueueID p_cmd_queue, SwapChainID p_swap_chain, uint32_t p_desired_framebuffer_count) override final;
+	virtual FramebufferID swap_chain_acquire_framebuffer(CommandQueueID p_cmd_queue, SwapChainID p_swap_chain, bool &r_resize_required) override final;
+	virtual RenderPassID swap_chain_get_render_pass(SwapChainID p_swap_chain) override final;
+	virtual DataFormat swap_chain_get_format(SwapChainID p_swap_chain) override final;
+	virtual void swap_chain_free(SwapChainID p_swap_chain) override final;
 
 #pragma mark - Frame Buffer
 
@@ -183,7 +266,7 @@ private:
 		Texture,
 	};
 	void _copy_texture_buffer(CommandBufferID p_cmd_buffer,
-			CopySource source,
+			CopySource p_source,
 			TextureID p_texture,
 			BufferID p_buffer,
 			VectorView<BufferTextureCopyRegion> p_regions);
@@ -309,13 +392,9 @@ public:
 	virtual void command_begin_label(CommandBufferID p_cmd_buffer, const char *p_label_name, const Color &p_color) override final;
 	virtual void command_end_label(CommandBufferID p_cmd_buffer) override final;
 
-#pragma mark - Screen
-
-	virtual DataFormat screen_get_format() override final;
-
 #pragma mark - Submission
 
-	virtual void begin_segment(CommandBufferID p_cmd_buffer, uint32_t p_frame_index, uint32_t p_frames_drawn) override final;
+	virtual void begin_segment(uint32_t p_frame_index, uint32_t p_frames_drawn) override final;
 	virtual void end_segment() override final;
 
 #pragma mark - Miscellaneous
@@ -327,9 +406,26 @@ public:
 	virtual uint64_t api_trait_get(ApiTrait p_trait) override final;
 	virtual bool has_feature(Features p_feature) override final;
 	virtual const MultiviewCapabilities &get_multiview_capabilities() override final;
+	virtual String get_api_name() const override final { return "Metal"; };
+	virtual String get_api_version() const override final;
+	virtual String get_pipeline_cache_uuid() const override final;
+	virtual const Capabilities &get_capabilities() const override final;
+
+	// Metal-specific
+	id<MTLDevice> get_device() const { return device; }
+	PixelFormats &get_pixel_formats() const { return *pixel_formats; }
+	MDResourceCache &get_resource_cache() const { return *resource_cache; }
+	MetalDeviceProperties const &get_device_properties() const { return *metal_device_properties; }
+
+	_FORCE_INLINE_ uint32_t get_metal_buffer_index_for_vertex_attribute_binding(uint32_t p_binding) {
+		return (metal_device_properties->limits.maxPerStageBufferCount - 1) - p_binding;
+	}
+
+	size_t get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const;
+	size_t get_texel_buffer_alignment_for_format(MTLPixelFormat p_format) const;
 
 	/******************/
-	RenderingDeviceDriverMetal(MetalContext *p_context, id<MTLDevice> p_device);
+	RenderingDeviceDriverMetal(RenderingContextDriverMetal *p_context_driver);
 	~RenderingDeviceDriverMetal();
 };
 

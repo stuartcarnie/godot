@@ -35,6 +35,8 @@ target_sources(platform-macos PRIVATE
         godot_menu_item.mm
         godot_open_save_delegate.h
         godot_open_save_delegate.mm
+        godot_status_item.h
+        godot_status_item.mm
         godot_window.h
         godot_window.mm
         godot_window_delegate.h
@@ -45,16 +47,14 @@ target_sources(platform-macos PRIVATE
         key_mapping_macos.mm
         macos_terminal_logger.h
         macos_terminal_logger.mm
-        metal_context_macos.h
-        metal_context_macos.mm
         os_macos.h
         os_macos.mm
         platform_config.h
         platform_gl.h
+        rendering_context_driver_vulkan_macos.h
+        rendering_context_driver_vulkan_macos.mm
         tts_macos.h
         tts_macos.mm
-        vulkan_context_macos.h
-        vulkan_context_macos.mm
 )
 # [[[end]]]
 

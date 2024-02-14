@@ -30,6 +30,8 @@ target_sources(godot-scene-main PRIVATE
         scene_tree.h
         shader_globals_override.cpp
         shader_globals_override.h
+        status_indicator.cpp
+        status_indicator.h
         timer.cpp
         timer.h
         viewport.cpp

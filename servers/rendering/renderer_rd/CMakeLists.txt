@@ -14,8 +14,6 @@ godot_add_library(godot-server-rendering-renderer_rd FOLDER servers STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-server-rendering-renderer_rd PRIVATE
-        api_context_rd.cpp
-        api_context_rd.h
         cluster_builder_rd.cpp
         cluster_builder_rd.h
         framebuffer_cache_rd.cpp

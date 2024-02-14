@@ -46,7 +46,7 @@
 #include "rendering_context_driver_vulkan_macos.h"
 #endif // VULKAN_ENABLED
 #if defined(METAL_ENABLED)
-#include "metal_context_macos.h"
+#include "drivers/metal/rendering_context_driver_metal.h"
 #endif
 #endif // RD_ENABLED
 

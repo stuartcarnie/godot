@@ -51,7 +51,6 @@
 #ifndef METAL_DEVICE_PROPERTIES_H
 #define METAL_DEVICE_PROPERTIES_H
 
-#include "core/error/error_list.h"
 #include "core/string/ustring.h"
 #include "core/templates/hash_map.h"
 #include "servers/rendering/rendering_device.h"
@@ -125,9 +124,9 @@ struct MetalLimits {
 
 class MetalDeviceProperties {
 private:
-	void init_gpu_properties(id<MTLDevice> device);
-	void init_features(id<MTLDevice> device);
-	void init_limits(id<MTLDevice> device);
+	void init_gpu_properties(id<MTLDevice> p_device);
+	void init_features(id<MTLDevice> p_device);
+	void init_limits(id<MTLDevice> p_device);
 
 public:
 	RenderingDevice::DeviceType device_type;
@@ -136,9 +135,9 @@ public:
 	MetalFeatures features;
 	MetalLimits limits;
 
-	SampleCount find_nearest_supported_sample_count(RenderingDevice::TextureSamples samples) const;
+	SampleCount find_nearest_supported_sample_count(RenderingDevice::TextureSamples p_samples) const;
 
-	MetalDeviceProperties(id<MTLDevice> device);
+	MetalDeviceProperties(id<MTLDevice> p_device);
 	~MetalDeviceProperties();
 
 private:

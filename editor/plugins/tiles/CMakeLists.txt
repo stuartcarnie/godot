@@ -14,8 +14,8 @@ target_sources(godot-editor-plugins-tiles PRIVATE
         tile_atlas_view.h
         tile_data_editors.cpp
         tile_data_editors.h
-        tile_map_editor.cpp
-        tile_map_editor.h
+        tile_map_layer_editor.cpp
+        tile_map_layer_editor.h
         tile_proxies_manager_dialog.cpp
         tile_proxies_manager_dialog.h
         tile_set_atlas_source_editor.cpp

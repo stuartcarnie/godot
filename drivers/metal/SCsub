@@ -22,9 +22,9 @@ driver_obj = []
 env_metal.add_source_files(
     driver_obj,
     [
-        "metal_context.mm",
         "metal_device_properties.mm",
         "metal_objects.mm",
+        "rendering_context_driver_metal.mm",
         "rendering_device_driver_metal.mm",
     ],
 )

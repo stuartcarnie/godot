@@ -40,12 +40,12 @@ target_sources(platform-ios PRIVATE
         os_ios.mm
         platform_config.h
         platform_gl.h
+        rendering_context_driver_vulkan_ios.h
+        rendering_context_driver_vulkan_ios.mm
         tts_ios.h
         tts_ios.mm
         view_controller.h
         view_controller.mm
-        vulkan_context_ios.h
-        vulkan_context_ios.mm
 )
 # [[[end]]]
 

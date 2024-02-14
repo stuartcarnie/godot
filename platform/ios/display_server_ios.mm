@@ -73,7 +73,7 @@ DisplayServerIOS::DisplayServerIOS(const String &p_rendering_driver, WindowMode 
 		RenderingContextDriverVulkanIOS::WindowPlatformData vulkan;
 #endif
 #ifdef METAL_ENABLED
-		MetalContextIOS::WindowPlatformData metal;
+		RenderingContextDriverMetal::WindowPlatformData metal;
 #endif
 	} wpd;
 
@@ -90,8 +90,8 @@ DisplayServerIOS::DisplayServerIOS(const String &p_rendering_driver, WindowMode 
 #ifdef METAL_ENABLED
 	if (rendering_driver == "metal") {
 		layer = [AppDelegate.viewController.godotView initializeRenderingForDriver:@"metal"];
-		wpd.metal.layer = (__bridge void *)layer;
-		context_rd = memnew(MetalContextIOS);
+		wpd.metal.layer = (CAMetalLayer *)layer;
+		rendering_context = memnew(RenderingContextDriverMetal);
 	}
 #endif
 	if (rendering_context) {

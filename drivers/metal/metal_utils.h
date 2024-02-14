@@ -37,32 +37,32 @@ namespace flags {
 
 /*! Sets the flags within the value parameter specified by the mask parameter. */
 template <typename Tv, typename Tm>
-void set(Tv &value, Tm bitMask) {
+void set(Tv &p_value, Tm p_mask) {
 	using T = std::underlying_type_t<Tv>;
-	value = static_cast<Tv>(static_cast<T>(value) | static_cast<T>(bitMask));
+	p_value = static_cast<Tv>(static_cast<T>(p_value) | static_cast<T>(p_mask));
 }
 
-/*! Clears the flags within the value parameter specified by the bitMask parameter. */
+/*! Clears the flags within the value parameter specified by the mask parameter. */
 template <typename Tv, typename Tm>
-void clear(Tv &value, Tm bitMask) {
+void clear(Tv &p_value, Tm p_mask) {
 	using T = std::underlying_type_t<Tv>;
-	value = static_cast<Tv>(static_cast<T>(value) & ~static_cast<T>(bitMask));
+	p_value = static_cast<Tv>(static_cast<T>(p_value) & ~static_cast<T>(p_mask));
 }
 
-/*! Returns whether the specified value has any of the bits specified in bitMask set to 1. */
+/*! Returns whether the specified value has any of the bits specified in mask set to 1. */
 template <typename Tv, typename Tm>
-static constexpr bool any(Tv value, const Tm bitMask) { return ((value & bitMask) != 0); }
+static constexpr bool any(Tv p_value, const Tm p_mask) { return ((p_value & p_mask) != 0); }
 
-/*! Returns whether the specified value has all of the bits specified in bitMask set to 1. */
+/*! Returns whether the specified value has all of the bits specified in mask set to 1. */
 template <typename Tv, typename Tm>
-static constexpr bool all(Tv value, const Tm bitMask) { return ((value & bitMask) == bitMask); }
+static constexpr bool all(Tv p_value, const Tm p_mask) { return ((p_value & p_mask) == p_mask); }
 
 } //namespace flags
 
 #pragma mark - Alignment and Offsets
 
-static constexpr bool is_power_of_two(uint64_t value) {
-	return value && ((value & (value - 1)) == 0);
+static constexpr bool is_power_of_two(uint64_t p_value) {
+	return p_value && ((p_value & (p_value - 1)) == 0);
 }
 
 static constexpr uint64_t round_up_to_alignment(uint64_t p_value, uint64_t p_alignment) {

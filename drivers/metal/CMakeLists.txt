@@ -8,8 +8,6 @@ godot_add_library(driver-metal FOLDER drivers STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(driver-metal PRIVATE
-        metal_context.h
-        metal_context.mm
         metal_device_properties.h
         metal_device_properties.mm
         metal_objects.h
@@ -17,6 +15,8 @@ target_sources(driver-metal PRIVATE
         metal_utils.h
         pixel_formats.h
         pixel_formats.mm
+        rendering_context_driver_metal.h
+        rendering_context_driver_metal.mm
         rendering_device_driver_metal.h
         rendering_device_driver_metal.mm
 )

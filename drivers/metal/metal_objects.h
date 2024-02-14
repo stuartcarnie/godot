@@ -111,7 +111,7 @@ class MDRenderPipeline;
 class MDComputePipeline;
 class MDFrameBuffer;
 class MDQueryPool;
-class MetalContext;
+class RenderingDeviceDriverMetal;
 class MDUniformSet;
 class MDShader;
 
@@ -126,18 +126,18 @@ struct ClearAttKey {
 	uint16_t sample_count = 0;
 	uint16_t pixel_formats[ATTACHMENT_COUNT] = { 0 };
 
-	_FORCE_INLINE_ void set_color_format(uint32_t idx, MTLPixelFormat fmt) { pixel_formats[idx] = fmt; }
-	_FORCE_INLINE_ void set_depth_format(MTLPixelFormat fmt) { pixel_formats[DEPTH_INDEX] = fmt; }
-	_FORCE_INLINE_ void set_stencil_format(MTLPixelFormat fmt) { pixel_formats[STENCIL_INDEX] = fmt; }
+	_FORCE_INLINE_ void set_color_format(uint32_t p_idx, MTLPixelFormat p_fmt) { pixel_formats[p_idx] = p_fmt; }
+	_FORCE_INLINE_ void set_depth_format(MTLPixelFormat p_fmt) { pixel_formats[DEPTH_INDEX] = p_fmt; }
+	_FORCE_INLINE_ void set_stencil_format(MTLPixelFormat p_fmt) { pixel_formats[STENCIL_INDEX] = p_fmt; }
 	_FORCE_INLINE_ MTLPixelFormat depth_format() const { return (MTLPixelFormat)pixel_formats[DEPTH_INDEX]; }
 	_FORCE_INLINE_ MTLPixelFormat stencil_format() const { return (MTLPixelFormat)pixel_formats[STENCIL_INDEX]; }
 
-	_FORCE_INLINE_ bool is_enabled(uint32_t idx) const { return pixel_formats[idx] != 0; }
+	_FORCE_INLINE_ bool is_enabled(uint32_t p_idx) const { return pixel_formats[p_idx] != 0; }
 	_FORCE_INLINE_ bool is_depth_enabled() const { return pixel_formats[DEPTH_INDEX] != 0; }
 	_FORCE_INLINE_ bool is_stencil_enabled() const { return pixel_formats[STENCIL_INDEX] != 0; }
 
-	_FORCE_INLINE_ bool operator==(const ClearAttKey &rhs) const {
-		return memcmp(this, &rhs, sizeof(ClearAttKey)) == 0;
+	_FORCE_INLINE_ bool operator==(const ClearAttKey &p_rhs) const {
+		return memcmp(this, &p_rhs, sizeof(ClearAttKey)) == 0;
 	}
 
 	uint32_t hash() const {
@@ -149,8 +149,7 @@ struct ClearAttKey {
 
 class MDResourceFactory {
 private:
-	id<MTLDevice> device;
-	MetalContext *context;
+	RenderingDeviceDriverMetal *device_driver;
 
 	id<MTLFunction> new_func(NSString *p_source, NSString *p_name, NSError **p_error);
 	id<MTLFunction> new_clear_vert_func(ClearAttKey &p_key);
@@ -161,8 +160,8 @@ public:
 	id<MTLRenderPipelineState> new_clear_pipeline_state(ClearAttKey &p_key, NSError **p_error);
 	id<MTLDepthStencilState> new_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
 
-	MDResourceFactory(id<MTLDevice> p_device, MetalContext *p_context) :
-			device(p_device), context(p_context) {}
+	MDResourceFactory(RenderingDeviceDriverMetal *p_device_driver) :
+			device_driver(p_device_driver) {}
 	~MDResourceFactory() = default;
 };
 
@@ -182,14 +181,14 @@ public:
 	id<MTLRenderPipelineState> get_clear_render_pipeline_state(ClearAttKey &p_key, NSError **p_error);
 	id<MTLDepthStencilState> get_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
 
-	explicit MDResourceCache(id<MTLDevice> p_device, MetalContext *p_context) :
-			resource_factory(new MDResourceFactory(p_device, p_context)) {}
+	explicit MDResourceCache(RenderingDeviceDriverMetal *p_device_driver) :
+			resource_factory(new MDResourceFactory(p_device_driver)) {}
 	~MDResourceCache() = default;
 };
 
 class MDCommandBuffer {
 private:
-	MetalContext *context = nullptr;
+	RenderingDeviceDriverMetal *device_driver = nullptr;
 	id<MTLCommandQueue> queue = nil;
 	id<MTLCommandBuffer> commandBuffer = nil;
 
@@ -342,9 +341,9 @@ public:
 	void end();
 
 	id<MTLBlitCommandEncoder> blit_command_encoder();
-	void encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDescriptor *desc, NSString *label);
+	void encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDescriptor *p_desc, NSString *p_label);
 
-	void bind_pipeline(RDD::PipelineID pipeline);
+	void bind_pipeline(RDD::PipelineID p_pipeline);
 
 #pragma mark - Counters
 
@@ -389,8 +388,8 @@ public:
 	void compute_dispatch(uint32_t p_x_groups, uint32_t p_y_groups, uint32_t p_z_groups);
 	void compute_dispatch_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset);
 
-	MDCommandBuffer(id<MTLCommandQueue> p_queue, MetalContext *p_context) :
-			context(p_context), queue(p_queue) {
+	MDCommandBuffer(id<MTLCommandQueue> p_queue, RenderingDeviceDriverMetal *p_device_driver) :
+			device_driver(p_device_driver), queue(p_queue) {
 		type = MDCommandBufferStateType::None;
 	}
 
@@ -469,7 +468,7 @@ protected:
 public:
 	LocalVector<UniformSet> sets;
 
-	virtual void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) = 0;
+	virtual void encode_push_constant_data(VectorView<uint32_t> p_data, MDCommandBuffer *p_cb) = 0;
 
 	MDShader(CharString p_name, LocalVector<UniformSet> p_sets) :
 			name(p_name), sets(p_sets) {}
@@ -479,17 +478,17 @@ public:
 class MDComputeShader final : public MDShader {
 public:
 	struct {
-		NSUInteger binding = -1;
+		uint32_t binding = -1;
 		uint32_t size = 0;
 	} push_constants;
-	MTLSize local = { };
+	MTLSize local = {};
 
 	id<MTLLibrary> kernel;
 #if DEV_ENABLED
 	CharString kernel_source;
 #endif
 
-	void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
+	void encode_push_constant_data(VectorView<uint32_t> p_data, MDCommandBuffer *p_cb) final;
 
 	MDComputeShader(CharString p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_kernel);
 	~MDComputeShader() override = default;
@@ -515,7 +514,7 @@ public:
 	CharString frag_source;
 #endif
 
-	void encode_push_constant_data(VectorView<uint32_t> data, MDCommandBuffer *cb) final;
+	void encode_push_constant_data(VectorView<uint32_t> p_data, MDCommandBuffer *p_cb) final;
 
 	MDRenderShader(CharString p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_vert, id<MTLLibrary> p_frag);
 	~MDRenderShader() override = default;
@@ -534,9 +533,9 @@ enum StageResourceUsage : uint32_t {
 	ComputeWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_COMPUTE * 2),
 };
 
-_FORCE_INLINE_ StageResourceUsage &operator|=(StageResourceUsage &a, uint32_t b) {
-	a = StageResourceUsage(uint32_t(a) | b);
-	return a;
+_FORCE_INLINE_ StageResourceUsage &operator|=(StageResourceUsage &p_a, uint32_t p_b) {
+	p_a = StageResourceUsage(uint32_t(p_a) | p_b);
+	return p_a;
 }
 
 _FORCE_INLINE_ StageResourceUsage stage_resource_usage(RDC::ShaderStage p_stage, MTLResourceUsage p_usage) {
@@ -565,7 +564,7 @@ public:
 	LocalVector<RDD::BoundUniform> uniforms;
 	HashMap<MDShader *, BoundUniformSet> bound_uniforms;
 
-	BoundUniformSet &boundUniformSetForShader(MDShader *p_shader, id<MTLDevice> device);
+	BoundUniformSet &boundUniformSetForShader(MDShader *p_shader, id<MTLDevice> p_device);
 };
 
 enum class MDAttachmentType : uint8_t {
@@ -575,13 +574,13 @@ enum class MDAttachmentType : uint8_t {
 	Stencil = 1 << 2,
 };
 
-_FORCE_INLINE_ MDAttachmentType &operator|=(MDAttachmentType &a, MDAttachmentType b) {
-	flags::set(a, b);
-	return a;
+_FORCE_INLINE_ MDAttachmentType &operator|=(MDAttachmentType &p_a, MDAttachmentType p_b) {
+	flags::set(p_a, p_b);
+	return p_a;
 }
 
-_FORCE_INLINE_ bool operator&(MDAttachmentType a, MDAttachmentType b) {
-	return uint8_t(a) & uint8_t(b);
+_FORCE_INLINE_ bool operator&(MDAttachmentType p_a, MDAttachmentType p_b) {
+	return uint8_t(p_a) & uint8_t(p_b);
 }
 
 struct MDSubpass {
@@ -611,23 +610,23 @@ public:
 
 	/*!
 	 * @brief Returns true if this attachment is first used in the given subpass.
-	 * @param subpass
+	 * @param p_subpass
 	 * @return
 	 */
-	_FORCE_INLINE_ bool isFirstUseOf(MDSubpass const &subpass) const {
-		return subpass.subpass_index == firstUseSubpassIndex;
+	_FORCE_INLINE_ bool isFirstUseOf(MDSubpass const &p_subpass) const {
+		return p_subpass.subpass_index == firstUseSubpassIndex;
 	}
 
 	/*!
 	 * @brief Returns true if this attachment is last used in the given subpass.
-	 * @param subpass
+	 * @param p_subpass
 	 * @return
 	 */
-	_FORCE_INLINE_ bool isLastUseOf(MDSubpass const &subpass) const {
-		return subpass.subpass_index == lastUseSubpassIndex;
+	_FORCE_INLINE_ bool isLastUseOf(MDSubpass const &p_subpass) const {
+		return p_subpass.subpass_index == lastUseSubpassIndex;
 	}
 
-	void linkToSubpass(MDRenderPass const &pass);
+	void linkToSubpass(MDRenderPass const &p_pass);
 
 	MTLStoreAction getMTLStoreAction(MDSubpass const &p_subpass,
 			bool p_is_rendering_entire_area,
@@ -691,10 +690,10 @@ public:
 			float depth_bias = 0.0;
 			float slope_scale = 0.0;
 			float clamp = 0.0;
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained enc) const {
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
 				if (!enabled)
 					return;
-				[enc setDepthBias:depth_bias slopeScale:slope_scale clamp:clamp];
+				[p_enc setDepthBias:depth_bias slopeScale:slope_scale clamp:clamp];
 			};
 		} depth_bias;
 
@@ -702,10 +701,10 @@ public:
 			bool enabled = false;
 			uint32_t front_reference = 0;
 			uint32_t back_reference = 0;
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained enc) const {
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
 				if (!enabled)
 					return;
-				[enc setStencilFrontReferenceValue:front_reference backReferenceValue:back_reference];
+				[p_enc setStencilFrontReferenceValue:front_reference backReferenceValue:back_reference];
 			};
 		} stencil;
 
@@ -716,21 +715,21 @@ public:
 			float b = 0.0;
 			float a = 0.0;
 
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained enc) const {
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
 				if (!enabled)
 					return;
-				[enc setBlendColorRed:r green:g blue:b alpha:a];
+				[p_enc setBlendColorRed:r green:g blue:b alpha:a];
 			};
 		} blend;
 
-		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained enc) const {
-			[enc setCullMode:cull_mode];
-			[enc setTriangleFillMode:fill_mode];
-			[enc setDepthClipMode:clip_mode];
-			[enc setFrontFacingWinding:winding];
-			depth_bias.apply(enc);
-			stencil.apply(enc);
-			blend.apply(enc);
+		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+			[p_enc setCullMode:cull_mode];
+			[p_enc setTriangleFillMode:fill_mode];
+			[p_enc setDepthClipMode:clip_mode];
+			[p_enc setFrontFacingWinding:winding];
+			depth_bias.apply(p_enc);
+			stencil.apply(p_enc);
+			blend.apply(p_enc);
 		};
 
 	} raster_state;
@@ -746,7 +745,7 @@ class MDComputePipeline final : public MDPipeline {
 public:
 	id<MTLComputePipelineState> state = nil;
 	struct {
-		MTLSize local = { };
+		MTLSize local = {};
 	} compute_state;
 
 	MDComputeShader *shader = nil;
@@ -774,13 +773,6 @@ public:
 	~MDScreenFrameBuffer() final = default;
 };
 
-/*!
- * @brief A wrapper for a MTLTexture.
- */
-class MDTexture {
-public:
-};
-
 class MDQueryPool {
 	// GPU counters
 	NSUInteger sampleCount = 0;
@@ -792,10 +784,10 @@ class MDQueryPool {
 
 public:
 	void reset_with_command_buffer(RDD::CommandBufferID p_cmd_buffer, uint32_t p_query_count);
-	void get_results(uint64_t *p_results, NSUInteger count);
-	void write_command_buffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger index);
+	void get_results(uint64_t *p_results, NSUInteger p_count);
+	void write_command_buffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger p_index);
 
-	static MDQueryPool *new_query_pool(id<MTLDevice> device, uint32_t p_query_count, NSError **error);
+	static MDQueryPool *new_query_pool(id<MTLDevice> p_device, uint32_t p_query_count, NSError **p_error);
 
 	~MDQueryPool() = default;
 

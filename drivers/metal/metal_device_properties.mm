@@ -58,27 +58,27 @@
 #define KIBI (1024)
 #define MEBI (KIBI * KIBI)
 
-MTLGPUFamily &operator--(MTLGPUFamily &family) {
-	family = static_cast<MTLGPUFamily>(static_cast<int>(family) - 1);
-	if (family < MTLGPUFamilyApple1) {
-		family = MTLGPUFamilyApple9;
+MTLGPUFamily &operator--(MTLGPUFamily &p_family) {
+	p_family = static_cast<MTLGPUFamily>(static_cast<int>(p_family) - 1);
+	if (p_family < MTLGPUFamilyApple1) {
+		p_family = MTLGPUFamilyApple9;
 	}
 
-	return family;
+	return p_family;
 }
 
-void MetalDeviceProperties::init_gpu_properties(id<MTLDevice> device) {
+void MetalDeviceProperties::init_gpu_properties(id<MTLDevice> p_device) {
 	device_type = RenderingDevice::DEVICE_TYPE_INTEGRATED_GPU;
 	device_vendor = "Apple";
-	device_name = device.name.UTF8String;
+	device_name = p_device.name.UTF8String;
 }
 
-void MetalDeviceProperties::init_features(id<MTLDevice> device) {
+void MetalDeviceProperties::init_features(id<MTLDevice> p_device) {
 	features = { };
 
 	features.highestFamily = MTLGPUFamilyApple1;
 	for (MTLGPUFamily family = MTLGPUFamilyApple9; family >= MTLGPUFamilyApple1; --family) {
-		if ([device supportsFamily:family]) {
+		if ([p_device supportsFamily:family]) {
 			features.highestFamily = family;
 			break;
 		}
@@ -87,18 +87,18 @@ void MetalDeviceProperties::init_features(id<MTLDevice> device) {
 	features.hostMemoryPageSize = sysconf(_SC_PAGESIZE);
 
 	for (SampleCount sc = SampleCount1; sc <= SampleCount64; sc <<= 1) {
-		if ([device supportsTextureSampleCount:sc]) {
+		if ([p_device supportsTextureSampleCount:sc]) {
 			features.supportedSampleCounts |= sc;
 		}
 	}
 
-	features.layeredRendering = [device supportsFamily:MTLGPUFamilyApple5];
-	features.multisampleLayeredRendering = [device supportsFamily:MTLGPUFamilyApple7];
-	features.tessellationShader = [device supportsFamily:MTLGPUFamilyApple3];
-	features.imageCubeArray = [device supportsFamily:MTLGPUFamilyApple3];
-	features.quadPermute = [device supportsFamily:MTLGPUFamilyApple4];
-	features.simdPermute = [device supportsFamily:MTLGPUFamilyApple6];
-	features.simdReduction = [device supportsFamily:MTLGPUFamilyApple7];
+	features.layeredRendering = [p_device supportsFamily:MTLGPUFamilyApple5];
+	features.multisampleLayeredRendering = [p_device supportsFamily:MTLGPUFamilyApple7];
+	features.tessellationShader = [p_device supportsFamily:MTLGPUFamilyApple3];
+	features.imageCubeArray = [p_device supportsFamily:MTLGPUFamilyApple3];
+	features.quadPermute = [p_device supportsFamily:MTLGPUFamilyApple4];
+	features.simdPermute = [p_device supportsFamily:MTLGPUFamilyApple6];
+	features.simdReduction = [p_device supportsFamily:MTLGPUFamilyApple7];
 
 	MTLCompileOptions *opts = [MTLCompileOptions new];
 	features.mslVersionEnum = opts.languageVersion; // by default, Metal uses the most recent language version
@@ -144,7 +144,7 @@ void MetalDeviceProperties::init_features(id<MTLDevice> device) {
 	}
 }
 
-void MetalDeviceProperties::init_limits(id<MTLDevice> device) {
+void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 	using std::max;
 	using std::min;
 
@@ -152,7 +152,7 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> device) {
 
 	// FST: Maximum number of layers per 1D texture array, 2D texture array, or 3D texture
 	limits.maxImageArrayLayers = 2048;
-	if ([device supportsFamily:MTLGPUFamilyApple3]) {
+	if ([p_device supportsFamily:MTLGPUFamilyApple3]) {
 		// FST: Maximum 2D texture width and height
 		limits.maxFramebufferWidth = 16384;
 		limits.maxFramebufferHeight = 16384;
@@ -180,7 +180,7 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> device) {
 	// FST: Maximum 3D texture width, height, and depth
 	limits.maxImageDimension3D = 2048;
 
-	limits.maxThreadsPerThreadGroup = device.maxThreadsPerThreadgroup;
+	limits.maxThreadsPerThreadGroup = p_device.maxThreadsPerThreadgroup;
 	// no effective limits
 	limits.maxComputeWorkGroupCount = { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 	// https://github.com/KhronosGroup/MoltenVK/blob/568cc3acc0e2299931fdaecaaa1fc3ec5b4af281/MoltenVK/MoltenVK/GPUObjects/MVKDevice.h#L85
@@ -189,25 +189,25 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> device) {
 	limits.maxColorAttachments = 8;
 
 	// Maximum number of textures the device can access, per stage, from an argument buffer
-	if ([device supportsFamily:MTLGPUFamilyApple6]) {
+	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxTexturesPerArgumentBuffer = 1'000'000;
-	} else if ([device supportsFamily:MTLGPUFamilyApple4]) {
+	} else if ([p_device supportsFamily:MTLGPUFamilyApple4]) {
 		limits.maxTexturesPerArgumentBuffer = 96;
 	} else {
 		limits.maxTexturesPerArgumentBuffer = 31;
 	}
 
 	// Maximum number of samplers the device can access, per stage, from an argument buffer
-	if ([device supportsFamily:MTLGPUFamilyApple6]) {
+	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxSamplersPerArgumentBuffer = 1024;
 	} else {
 		limits.maxSamplersPerArgumentBuffer = 16;
 	}
 
 	// Maximum number of buffers the device can access, per stage, from an argument buffer
-	if ([device supportsFamily:MTLGPUFamilyApple6]) {
+	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxBuffersPerArgumentBuffer = std::numeric_limits<uint64_t>::max();
-	} else if ([device supportsFamily:MTLGPUFamilyApple4]) {
+	} else if ([p_device supportsFamily:MTLGPUFamilyApple4]) {
 		limits.maxBuffersPerArgumentBuffer = 96;
 	} else {
 		limits.maxBuffersPerArgumentBuffer = 31;
@@ -244,13 +244,13 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> device) {
 		limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_QUAD_BIT);
 	}
 
-	limits.maxBufferLength = device.maxBufferLength;
+	limits.maxBufferLength = p_device.maxBufferLength;
 
 	// FST: Maximum size of vertex descriptor layout stride
 	limits.maxVertexDescriptorLayoutStride = std::numeric_limits<uint64_t>::max();
 
 	// Maximum number of viewports
-	if ([device supportsFamily:MTLGPUFamilyApple5]) {
+	if ([p_device supportsFamily:MTLGPUFamilyApple5]) {
 		limits.maxViewports = 16;
 	} else {
 		limits.maxViewports = 1;
@@ -258,9 +258,9 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> device) {
 
 	limits.maxPerStageBufferCount = 31;
 	limits.maxPerStageSamplerCount = 16;
-	if ([device supportsFamily:MTLGPUFamilyApple6]) {
+	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxPerStageTextureCount = 128;
-	} else if ([device supportsFamily:MTLGPUFamilyApple4]) {
+	} else if ([p_device supportsFamily:MTLGPUFamilyApple4]) {
 		limits.maxPerStageTextureCount = 96;
 	} else {
 		limits.maxPerStageTextureCount = 31;
@@ -282,22 +282,22 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> device) {
 	limits.maxDrawIndexedIndexValue = std::numeric_limits<uint32_t>::max() - 1;
 }
 
-MetalDeviceProperties::MetalDeviceProperties(id<MTLDevice> device) {
-	init_gpu_properties(device);
-	init_features(device);
-	init_limits(device);
+MetalDeviceProperties::MetalDeviceProperties(id<MTLDevice> p_device) {
+	init_gpu_properties(p_device);
+	init_features(p_device);
+	init_limits(p_device);
 }
 
 MetalDeviceProperties::~MetalDeviceProperties() {
 }
 
-SampleCount MetalDeviceProperties::find_nearest_supported_sample_count(RenderingDevice::TextureSamples samples) const {
+SampleCount MetalDeviceProperties::find_nearest_supported_sample_count(RenderingDevice::TextureSamples p_samples) const {
 	SampleCount supported = features.supportedSampleCounts;
-	if (supported & sample_count[samples]) {
-		return sample_count[samples];
+	if (supported & sample_count[p_samples]) {
+		return sample_count[p_samples];
 	}
 
-	SampleCount requested_sample_count = sample_count[samples];
+	SampleCount requested_sample_count = sample_count[p_samples];
 	// Find the nearest supported sample count
 	while (requested_sample_count > SampleCount1) {
 		if (supported & requested_sample_count) {

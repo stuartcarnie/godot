@@ -62,15 +62,6 @@ static const uint32_t _mtlPixelFormatCount = 256;
 static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2; // The actual last enum value is not available on iOS
 static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 
-// If the supportsBCTextureCompression query is available, use it.
-bool supports_bc_texture_compression(id<MTLDevice> mtlDevice) {
-	if (@available(macOS 11.0, iOS 16.4, *)) {
-		return mtlDevice.supportsBCTextureCompression;
-	} else {
-		return false;
-	}
-}
-
 #pragma mark -
 #pragma mark Metal format capabilities
 
@@ -119,12 +110,12 @@ typedef enum : uint16_t {
 	kMTLFmtCapsMultiPlanar = kMTLFmtCapsChromaSubsampling,
 } MTLFmtCaps;
 
-inline MTLFmtCaps operator|(MTLFmtCaps leftCaps, MTLFmtCaps rightCaps) {
-	return static_cast<MTLFmtCaps>(static_cast<uint32_t>(leftCaps) | rightCaps);
+inline MTLFmtCaps operator|(MTLFmtCaps p_left, MTLFmtCaps p_right) {
+	return static_cast<MTLFmtCaps>(static_cast<uint32_t>(p_left) | p_right);
 }
 
-inline MTLFmtCaps &operator|=(MTLFmtCaps &leftCaps, MTLFmtCaps rightCaps) {
-	return (leftCaps = leftCaps | rightCaps);
+inline MTLFmtCaps &operator|=(MTLFmtCaps &p_left, MTLFmtCaps p_right) {
+	return (p_left = p_left | p_right);
 }
 
 #pragma mark -
@@ -240,14 +231,14 @@ class PixelFormats {
 
 public:
 	/** Returns whether the DataFormat is supported by the GPU bound to this instance. */
-	bool isSupported(DataFormat dataFormat);
+	bool isSupported(DataFormat p_format);
 
 	/** Returns whether the DataFormat is supported by this implementation, or can be substituted by one that is. */
-	bool isSupportedOrSubstitutable(DataFormat dataFormat);
+	bool isSupportedOrSubstitutable(DataFormat p_format);
 
 	/** Returns whether the specified Metal MTLPixelFormat can be used as a depth format. */
-	_FORCE_INLINE_ bool isDepthFormat(MTLPixelFormat mtlFormat) {
-		switch (mtlFormat) {
+	_FORCE_INLINE_ bool isDepthFormat(MTLPixelFormat p_format) {
+		switch (p_format) {
 			case MTLPixelFormatDepth32Float:
 			case MTLPixelFormatDepth16Unorm:
 			case MTLPixelFormatDepth32Float_Stencil8:
@@ -261,8 +252,8 @@ public:
 	}
 
 	/** Returns whether the specified Metal MTLPixelFormat can be used as a stencil format. */
-	_FORCE_INLINE_ bool isStencilFormat(MTLPixelFormat mtlFormat) {
-		switch (mtlFormat) {
+	_FORCE_INLINE_ bool isStencilFormat(MTLPixelFormat p_format) {
+		switch (p_format) {
 			case MTLPixelFormatStencil8:
 #if TARGET_OS_OSX
 			case MTLPixelFormatDepth24Unorm_Stencil8:
@@ -277,64 +268,64 @@ public:
 	}
 
 	/** Returns whether the specified Metal MTLPixelFormat is a PVRTC format. */
-	bool isPVRTCFormat(MTLPixelFormat mtlFormat);
+	bool isPVRTCFormat(MTLPixelFormat p_format);
 
 	/** Returns the format type corresponding to the specified Godot pixel format, */
-	MTLFormatType getFormatType(DataFormat dataFormat);
+	MTLFormatType getFormatType(DataFormat p_format);
 
 	/** Returns the format type corresponding to the specified Metal MTLPixelFormat, */
-	MTLFormatType getFormatType(MTLPixelFormat mtlFormat);
+	MTLFormatType getFormatType(MTLPixelFormat p_formt);
 
 	/**
 	 * Returns the Metal MTLPixelFormat corresponding to the specified Godot pixel
 	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
 	 */
-	MTLPixelFormat getMTLPixelFormat(DataFormat datFormat);
+	MTLPixelFormat getMTLPixelFormat(DataFormat p_format);
 
 	/**
 	 * Returns the DataFormat corresponding to the specified Metal MTLPixelFormat,
 	 * or returns DATA_FORMAT_MAX if no corresponding DataFormat exists.
 	 */
-	DataFormat getDataFormat(MTLPixelFormat mtlFormat);
+	DataFormat getDataFormat(MTLPixelFormat p_format);
 
 	/**
 	 * Returns the size, in bytes, of a texel block of the specified Godot pixel.
 	 * For uncompressed formats, the returned value corresponds to the size in bytes of a single texel.
 	 */
-	uint32_t getBytesPerBlock(DataFormat datFormat);
+	uint32_t getBytesPerBlock(DataFormat p_format);
 
 	/**
 	 * Returns the size, in bytes, of a texel block of the specified Metal format.
 	 * For uncompressed formats, the returned value corresponds to the size in bytes of a single texel.
 	 */
-	uint32_t getBytesPerBlock(MTLPixelFormat mtlFormat);
+	uint32_t getBytesPerBlock(MTLPixelFormat p_format);
 
 	/** Returns the number of planes of the specified chroma-subsampling (YCbCr) DataFormat */
-	uint8_t getChromaSubsamplingPlaneCount(DataFormat dataFormat);
+	uint8_t getChromaSubsamplingPlaneCount(DataFormat p_format);
 
 	/** Returns the number of bits per channel of the specified chroma-subsampling (YCbCr) DataFormat */
-	uint8_t getChromaSubsamplingComponentBits(DataFormat dataFormat);
+	uint8_t getChromaSubsamplingComponentBits(DataFormat p_format);
 
 	/**
 	 * Returns the size, in bytes, of a texel of the specified Godot format.
 	 * The returned value may be fractional for certain compressed formats.
 	 */
-	float getBytesPerTexel(DataFormat dataFormat);
+	float getBytesPerTexel(DataFormat p_format);
 
 	/**
 	 * Returns the size, in bytes, of a texel of the specified Metal format.
 	 * The returned value may be fractional for certain compressed formats.
 	 */
-	float getBytesPerTexel(MTLPixelFormat mtlFormat);
+	float getBytesPerTexel(MTLPixelFormat p_format);
 
 	/**
 	 * Returns the size, in bytes, of a row of texels of the specified Godot pixel format.
 	 *
 	 * For compressed formats, this takes into consideration the compression block size,
-	 * and texelsPerRow should specify the width in texels, not blocks. The result is rounded
-	 * up if texelsPerRow is not an integer multiple of the compression block width.
+	 * and p_texels_per_row should specify the width in texels, not blocks. The result is rounded
+	 * up if p_texels_per_row is not an integer multiple of the compression block width.
 	 */
-	size_t getBytesPerRow(DataFormat datFormat, uint32_t texelsPerRow);
+	size_t getBytesPerRow(DataFormat p_format, uint32_t p_texels_per_row);
 
 	/**
 	 * Returns the size, in bytes, of a row of texels of the specified Metal format.
@@ -343,36 +334,36 @@ public:
 	 * and texelsPerRow should specify the width in texels, not blocks. The result is rounded
 	 * up if texelsPerRow is not an integer multiple of the compression block width.
 	 */
-	size_t getBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow);
+	size_t getBytesPerRow(MTLPixelFormat p_format, uint32_t p_texels_per_row);
 
 	/**
 	 * Returns the size, in bytes, of a texture layer of the specified Godot pixel format.
 	 *
 	 * For compressed formats, this takes into consideration the compression block size,
-	 * and texelRowsPerLayer should specify the height in texels, not blocks. The result is
-	 * rounded up if texelRowsPerLayer is not an integer multiple of the compression block height.
+	 * and p_texel_rows_per_layer should specify the height in texels, not blocks. The result is
+	 * rounded up if p_texel_rows_per_layer is not an integer multiple of the compression block height.
 	 */
-	size_t getBytesPerLayer(DataFormat datFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
+	size_t getBytesPerLayer(DataFormat p_format, size_t p_bytes_per_row, uint32_t p_texel_rows_per_layer);
 
 	/**
 	 * Returns the size, in bytes, of a texture layer of the specified Metal format.
 	 * For compressed formats, this takes into consideration the compression block size,
-	 * and texelRowsPerLayer should specify the height in texels, not blocks. The result is
-	 * rounded up if texelRowsPerLayer is not an integer multiple of the compression block height.
+	 * and p_texel_rows_per_layer should specify the height in texels, not blocks. The result is
+	 * rounded up if p_texel_rows_per_layer is not an integer multiple of the compression block height.
 	 */
-	size_t getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
+	size_t getBytesPerLayer(MTLPixelFormat p_format, size_t p_bytes_per_row, uint32_t p_texel_rows_per_layer);
 
 	/** Returns the Metal format capabilities supported by the specified Godot format, without substitution. */
-	MTLFmtCaps getCapabilities(DataFormat datformat, bool isExtended = false);
+	MTLFmtCaps getCapabilities(DataFormat p_format, bool p_extended = false);
 
 	/** Returns the Metal format capabilities supported by the specified Metal format. */
-	MTLFmtCaps getCapabilities(MTLPixelFormat mtlFormat, bool isExtended = false);
+	MTLFmtCaps getCapabilities(MTLPixelFormat p_format, bool p_extended = false);
 
 	/**
 	 * Returns the Metal MTLVertexFormat corresponding to the specified
 	 * DataFormat as used as a vertex attribute format.
 	 */
-	MTLVertexFormat getMTLVertexFormat(DataFormat dataFormat);
+	MTLVertexFormat getMTLVertexFormat(DataFormat p_format);
 
 #pragma mark Construction
 
@@ -381,32 +372,32 @@ public:
 protected:
 	id<MTLDevice> device;
 
-	DataFormatDesc &getDataFormatDesc(DataFormat dataFormat);
-	DataFormatDesc &getDataFormatDesc(MTLPixelFormat mtlFormat);
-	MTLFormatDesc &getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
-	MTLFormatDesc &getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
+	DataFormatDesc &getDataFormatDesc(DataFormat p_format);
+	DataFormatDesc &getDataFormatDesc(MTLPixelFormat p_format);
+	MTLFormatDesc &getMTLPixelFormatDesc(MTLPixelFormat p_format);
+	MTLFormatDesc &getMTLVertexFormatDesc(MTLVertexFormat p_format);
 	void initDataFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
 	void buildMTLFormatMaps();
 	void buildDFFormatMaps();
 	void modifyMTLFormatCapabilities();
-	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
-	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
-			MTLFeatureSet mtlFeatSet,
-			MTLPixelFormat mtlPixFmt,
-			MTLFmtCaps mtlFmtCaps);
-	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
-			MTLGPUFamily gpuFamily,
-			MTLPixelFormat mtlPixFmt,
-			MTLFmtCaps mtlFmtCaps);
-	void disableMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt,
-			MTLFmtCaps mtlFmtCaps);
-	void disableAllMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt);
-	void addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
-			MTLFeatureSet mtlFeatSet,
-			MTLVertexFormat mtlVtxFmt,
-			MTLFmtCaps mtlFmtCaps);
+	void modifyMTLFormatCapabilities(id<MTLDevice> p_device);
+	void addMTLPixelFormatCapabilities(id<MTLDevice> p_device,
+			MTLFeatureSet p_feature_set,
+			MTLPixelFormat p_format,
+			MTLFmtCaps p_caps);
+	void addMTLPixelFormatCapabilities(id<MTLDevice> p_device,
+			MTLGPUFamily p_family,
+			MTLPixelFormat p_format,
+			MTLFmtCaps p_caps);
+	void disableMTLPixelFormatCapabilities(MTLPixelFormat p_format,
+			MTLFmtCaps p_caps);
+	void disableAllMTLPixelFormatCapabilities(MTLPixelFormat p_format);
+	void addMTLVertexFormatCapabilities(id<MTLDevice> p_device,
+			MTLFeatureSet p_feature_set,
+			MTLVertexFormat p_format,
+			MTLFmtCaps p_caps);
 
 	DataFormatDesc _dataFormatDescriptions[RD::DATA_FORMAT_MAX];
 	MTLFormatDesc _mtlPixelFormatDescriptions[_mtlPixelFormatCount];

@@ -701,6 +701,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/StandardMaterial3D.xml
         classes/StaticBody2D.xml
         classes/StaticBody3D.xml
+        classes/StatusIndicator.xml
         classes/StreamPeer.xml
         classes/StreamPeerBuffer.xml
         classes/StreamPeerExtension.xml
@@ -750,6 +751,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Thread.xml
         classes/TileData.xml
         classes/TileMap.xml
+        classes/TileMapLayerGroup.xml
         classes/TileMapPattern.xml
         classes/TileSet.xml
         classes/TileSetAtlasSource.xml

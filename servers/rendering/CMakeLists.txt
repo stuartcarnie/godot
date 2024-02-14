@@ -134,6 +134,8 @@ target_sources(godot-server-renderer PRIVATE
         renderer_scene_render.h
         renderer_viewport.cpp
         renderer_viewport.h
+        rendering_context_driver.cpp
+        rendering_context_driver.h
         rendering_device.cpp
         rendering_device.h
         rendering_device_binds.cpp
