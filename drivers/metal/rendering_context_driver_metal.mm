@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_metal.h                                      */
+/*  rendering_context_driver_metal.mm                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -44,19 +44,13 @@ RenderingContextDriverMetal::~RenderingContextDriverMetal() {
 }
 
 Error RenderingContextDriverMetal::initialize() {
-	// setenv("METAL_DEVICE_WRAPPER_TYPE", "1", 1);
-	device.name = MTLCreateSystemDefaultDevice().name.UTF8String;
+	id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
 	device.type = DEVICE_TYPE_INTEGRATED_GPU;
 	device.vendor = VENDOR_APPLE;
 
-	// TODO(sgc): add the GPU family to the device.name
-//	String gpu_family = "Apple1";
-//	MTLGPUFamily family = metal_device_properties->features.highestFamily;
-//	if (family >= MTLGPUFamilyApple1 && family <= MTLGPUFamilyApple9) {
-//		int version = family - MTLGPUFamilyApple1 + 1;
-//		gpu_family = vformat("Apple%d", version);
-//	}
-
+	MetalDeviceProperties props(dev);
+	int version = (int)props.features.highestFamily - (int)MTLGPUFamilyApple1 + 1;
+	device.name = vformat("%s (Apple%d)", dev.name.UTF8String, version);
 
 	return OK;
 }

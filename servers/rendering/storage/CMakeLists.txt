@@ -10,14 +10,20 @@ godot_add_library(godot-server-rendering-storage FOLDER servers STATIC)
 target_sources(godot-server-rendering-storage PRIVATE
         camera_attributes_storage.cpp
         camera_attributes_storage.h
+        compositor_storage.cpp
+        compositor_storage.h
         environment_storage.cpp
         environment_storage.h
         light_storage.h
         material_storage.h
         mesh_storage.h
         particles_storage.h
+        render_data.cpp
+        render_data.h
         render_scene_buffers.cpp
         render_scene_buffers.h
+        render_scene_data.cpp
+        render_scene_data.h
         texture_storage.h
         utilities.cpp
         utilities.h

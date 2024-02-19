@@ -226,7 +226,7 @@ typedef struct MTLFormatDesc {
 	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mtlFmtCaps != kMTLFmtCapsNone); };
 } MTLFormatDesc;
 
-class PixelFormats {
+class API_AVAILABLE(macos(11.0), ios(14.0)) PixelFormats {
 	using DataFormat = RD::DataFormat;
 
 public:

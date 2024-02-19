@@ -41,8 +41,8 @@ target_sources(platform-macos PRIVATE
         godot_window.mm
         godot_window_delegate.h
         godot_window_delegate.mm
-        joypad_macos.cpp
         joypad_macos.h
+        joypad_macos.mm
         key_mapping_macos.h
         key_mapping_macos.mm
         macos_terminal_logger.h
@@ -88,7 +88,8 @@ target_link_libraries(platform-macos PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,CoreAudio.framework>
         $<LINK_LIBRARY:FRAMEWORK,CoreMIDI.framework>
         $<LINK_LIBRARY:FRAMEWORK,IOKit.framework>
-        $<LINK_LIBRARY:FRAMEWORK,ForceFeedback.framework>
+        $<LINK_LIBRARY:FRAMEWORK,GameController.framework>
+        $<LINK_LIBRARY:FRAMEWORK,CoreHaptics.framework>
         $<LINK_LIBRARY:FRAMEWORK,CoreVideo.framework>
         $<LINK_LIBRARY:FRAMEWORK,AVFoundation.framework>
         $<LINK_LIBRARY:FRAMEWORK,CoreMedia.framework>

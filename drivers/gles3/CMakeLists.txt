@@ -2,7 +2,7 @@
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('set_abs(GLES3_GLSL_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}')
-#   for file in list_files(cog, 'shaders', exts=['glsl']):
+#   for file in list_files(cog, ['shaders', 'shaders/effects'], exts=['glsl']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
@@ -11,10 +11,12 @@ set_abs(GLES3_GLSL_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/canvas_occlusion.glsl
         shaders/canvas_sdf.glsl
         shaders/canvas_uniforms_inc.glsl
-        shaders/copy.glsl
         shaders/cube_to_dp.glsl
         shaders/cubemap_filter.glsl
         shaders/effect_blur.glsl
+        shaders/effects/copy.glsl
+        shaders/effects/glow.glsl
+        shaders/effects/post.glsl
         shaders/lens_distorted.glsl
         shaders/particles.glsl
         shaders/particles_copy.glsl
@@ -45,6 +47,10 @@ godot_add_library(driver-gles3 FOLDER drivers STATIC ${GLES3_GLSL_SHADERS_GENERA
 target_sources(driver-gles3 PRIVATE
         effects/copy_effects.cpp
         effects/copy_effects.h
+        effects/glow.cpp
+        effects/glow.h
+        effects/post_effects.cpp
+        effects/post_effects.h
         environment/fog.cpp
         environment/fog.h
         environment/gi.cpp

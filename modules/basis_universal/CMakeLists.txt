@@ -8,6 +8,8 @@ godot_add_library(godot-module-basis-universal FOLDER modules STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-module-basis-universal PRIVATE
+        image_compress_basisu.cpp
+        image_compress_basisu.h
         register_types.cpp
         register_types.h
 )

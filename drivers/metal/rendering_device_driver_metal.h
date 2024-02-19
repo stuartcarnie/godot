@@ -37,6 +37,7 @@
 
 #include <Metal/Metal.h>
 #include <spirv.hpp>
+#include <variant>
 
 #ifdef DEBUG_ENABLED
 #ifndef _DEBUG
@@ -46,7 +47,7 @@
 
 class RenderingContextDriverMetal;
 
-class RenderingDeviceDriverMetal : public RenderingDeviceDriver {
+class API_AVAILABLE(macos(11.0), ios(14.0)) RenderingDeviceDriverMetal : public RenderingDeviceDriver {
 	template <typename T>
 	using Result = std::variant<T, Error>;
 
@@ -177,8 +178,7 @@ public:
 	// ----- QUEUE -----
 public:
 	virtual CommandQueueID command_queue_create(CommandQueueFamilyID p_cmd_queue_family, bool p_identify_as_main_queue = false) override final;
-	virtual Error command_queue_execute(CommandQueueID p_cmd_queue, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_wait_semaphores, VectorView<SemaphoreID> p_signal_semaphores, FenceID p_signal_fence) override final;
-	virtual Error command_queue_present(CommandQueueID p_cmd_queue, VectorView<SwapChainID> p_swap_chains, VectorView<SemaphoreID> p_wait_semaphores) override final;
+	virtual Error command_queue_execute_and_present(CommandQueueID p_cmd_queue, VectorView<SemaphoreID> p_wait_semaphores, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_cmd_semaphores, FenceID p_cmd_fence, VectorView<SwapChainID> p_swap_chains) override final;
 	virtual void command_queue_free(CommandQueueID p_cmd_queue) override final;
 
 	// ----- POOL -----
@@ -206,7 +206,7 @@ private:
 		CAMetalLayer *layer = nil;
 		RenderingContextDriver::SurfaceID surface = RenderingContextDriver::SurfaceID();
 		RenderPassID render_pass;
-		MDScreenFrameBuffer *frame_buffer = nil;
+		MDScreenFrameBuffer frame_buffer;
 		RDD::DataFormat data_format = DATA_FORMAT_MAX;
 		SwapChain() :
 				render_pass(nullptr) {}

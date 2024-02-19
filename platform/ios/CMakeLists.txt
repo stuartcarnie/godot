@@ -34,8 +34,6 @@ target_sources(platform-ios PRIVATE
         keyboard_input_view.h
         keyboard_input_view.mm
         main.m
-        metal_context_ios.h
-        metal_context_ios.mm
         os_ios.h
         os_ios.mm
         platform_config.h

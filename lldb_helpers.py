@@ -102,10 +102,66 @@ class LocalVectorSynthProvider:
         return self.count > 0
 
 
+class VectorSynthProvider:
+    def __init__(self, valobj, dict):
+        logger = lldb.formatters.Logger.Logger()
+        self.valobj = valobj
+        self.uint64_type = valobj.target.GetBasicType(lldb.eBasicTypeUnsignedLongLong)
+        self.count = 0
+        self.ref_count = None
+        self.size = None
+        self.data = None
+        self.data_type = None
+        self.data_size = None
+        self.update()
+
+    def num_children(self):
+        return self.count + 2 if self.count > 0 else 0
+
+    def get_child_index(self, name):
+        if name == "size":
+            return self.count + 0
+        if name == "ref_count":
+            return self.count + 1
+        else:
+            return int(name.lstrip("[").rstrip("]"))
+
+    def get_child_at_index(self, index):
+        if self.count == 0:
+            return None
+        elif index == self.count + 0:
+            return self.size
+        elif index == self.count + 1:
+            return self.ref_count
+        elif index < self.count:
+            offset = index * self.data_size
+            return self.data.CreateChildAtOffset(
+                "[" + str(index) + "]", offset, self.data_type
+            )
+        else:
+            return None
+
+    def update(self):
+        self.data = self.valobj.GetChildMemberWithName("_cowdata").GetChildMemberWithName("_ptr")
+        self.data_type = self.valobj.GetType().GetTemplateArgumentType(0)
+        self.data_size = self.data_type.GetByteSize()
+
+        if self.data.unsigned > 0:
+            self.size = self.valobj.CreateValueFromAddress("size", self.data.unsigned - 8, self.uint64_type)
+            self.ref_count = self.valobj.CreateValueFromAddress("ref_count", self.data.unsigned - 16, self.uint64_type)
+            self.count = self.size.unsigned
+        else:
+            self.count = 0
+
+    def has_children(self):
+        return self.count > 0
+
+
+def VectorSummaryProvider(valobj, dict):
+    return "items=" + str(valobj.num_children - 2 if valobj.num_children > 0 else 0)
+
+
 def __lldb_init_module(debugger: lldb.SBDebugger, dict):
-    debugger.HandleCommand(
-        'type synthetic add -l lldb_helpers.LocalVectorSynthProvider -x "LocalVector<" -x "TightLocalVector<" -w Godot'
-    )
-    debugger.HandleCommand(
-        'type synthetic add -l lldb_helpers.VectorViewSynthProvider -x "VectorView<" -w Godot'
-    )
+    debugger.HandleCommand('type synthetic add -l lldb_helpers.LocalVectorSynthProvider -x "LocalVector<" -w Godot')
+    debugger.HandleCommand('type synthetic add -l lldb_helpers.VectorViewSynthProvider -x "VectorView<" -w Godot')
+    debugger.HandleCommand('type synthetic add -l lldb_helpers.VectorSynthProvider -x "Vector<.+>$" -w Godot')

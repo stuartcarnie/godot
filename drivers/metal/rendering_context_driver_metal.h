@@ -44,7 +44,7 @@
 class PixelFormats;
 class MDResourceCache;
 
-class RenderingContextDriverMetal : public RenderingContextDriver {
+class API_AVAILABLE(macos(11.0), ios(14.0)) RenderingContextDriverMetal : public RenderingContextDriver {
 	Device device; // there is only one device on Apple Silicon (for now)
 
 public:
@@ -69,7 +69,7 @@ public:
 
 	// Platform-specific data for the Windows embedded in this driver.
 	struct WindowPlatformData {
-		CAMetalLayer * __unsafe_unretained layer;
+		CAMetalLayer *__unsafe_unretained layer;
 	};
 
 	struct Surface {

@@ -191,8 +191,7 @@ void ShaderRD::_build_variant_code(StringBuilder &builder, uint32_t p_variant, c
 				for (const KeyValue<StringName, CharString> &E : p_version->code_sections) {
 					builder.append(String("#define ") + String(E.key) + "_CODE_USED\n");
 				}
-#if (defined(MACOS_ENABLED) || defined(IOS_ENABLED)) && defined(__x86_64__)
-				// The features disabled by this flag appear to be x86-specific issues.
+#if (defined(MACOS_ENABLED) || defined(IOS_ENABLED))
 				if (RD::get_singleton()->get_device_capabilities().device_family == RDD::DEVICE_VULKAN) {
 					builder.append("#define MOLTENVK_USED\n");
 				}

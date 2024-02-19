@@ -42,6 +42,8 @@ target_sources(godot-scene-resources PRIVATE
         capsule_shape_3d.h
         circle_shape_2d.cpp
         circle_shape_2d.h
+        compositor.cpp
+        compositor.h
         compressed_texture.cpp
         compressed_texture.h
         concave_polygon_shape_2d.cpp

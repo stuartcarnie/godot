@@ -147,7 +147,7 @@ struct ClearAttKey {
 	}
 };
 
-class MDResourceFactory {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDResourceFactory {
 private:
 	RenderingDeviceDriverMetal *device_driver;
 
@@ -165,7 +165,7 @@ public:
 	~MDResourceFactory() = default;
 };
 
-class MDResourceCache {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDResourceCache {
 private:
 	std::unique_ptr<MDResourceFactory> resource_factory;
 	HashMap<ClearAttKey, id<MTLRenderPipelineState>, HashableHasher<ClearAttKey>> clear_states;
@@ -186,7 +186,7 @@ public:
 	~MDResourceCache() = default;
 };
 
-class MDCommandBuffer {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDCommandBuffer {
 private:
 	RenderingDeviceDriverMetal *device_driver = nullptr;
 	id<MTLCommandQueue> queue = nil;
@@ -244,6 +244,8 @@ public:
 		BitField<DirtyFlag> dirty = DIRTY_NONE;
 
 		LocalVector<MDUniformSet *> uniform_sets;
+		// bit mask of the uniform sets that are dirty, to prevent redundant binding
+		uint64_t uniform_set_mask = 0;
 
 		_FORCE_INLINE_ void reset() {
 			pass = nil;
@@ -258,6 +260,7 @@ public:
 			index_type = MTLIndexTypeUInt16;
 			dirty = DIRTY_NONE;
 			uniform_sets.clear();
+			uniform_set_mask = 0;
 			clear_values.clear();
 			viewports.clear();
 			scissors.clear();
@@ -396,7 +399,14 @@ public:
 	MDCommandBuffer() = default;
 };
 
-struct BindingInfo {
+#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 140000) || (TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 170000)
+#define MTLBindingAccess MTLArgumentAccess
+#define MTLBindingAccessReadOnly MTLArgumentAccessReadOnly
+#define MTLBindingAccessReadWrite MTLArgumentAccessReadWrite
+#define MTLBindingAccessWriteOnly MTLArgumentAccessWriteOnly
+#endif
+
+struct API_AVAILABLE(macos(11.0), ios(14.0)) BindingInfo {
 	MTLDataType dataType = MTLDataTypeNone;
 	uint32_t index = 0;
 	MTLBindingAccess access = MTLBindingAccessReadOnly;
@@ -447,35 +457,35 @@ struct BindingInfo {
 
 using RDC = RenderingDeviceCommons;
 
-struct UniformInfo {
+struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformInfo {
 	uint32_t binding;
 	ShaderStageUsage active_stages = None;
 	HashMap<RDC::ShaderStage, BindingInfo> bindings;
 	HashMap<RDC::ShaderStage, BindingInfo> bindings_secondary;
 };
 
-struct UniformSet {
+struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformSet {
 	LocalVector<UniformInfo> uniforms;
 	uint32_t buffer_size = 0;
 	HashMap<RDC::ShaderStage, uint32_t> offsets;
 	HashMap<RDC::ShaderStage, id<MTLArgumentEncoder>> encoders;
 };
 
-class MDShader {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDShader {
 protected:
 	CharString name;
 
 public:
-	LocalVector<UniformSet> sets;
+	Vector<UniformSet> sets;
 
 	virtual void encode_push_constant_data(VectorView<uint32_t> p_data, MDCommandBuffer *p_cb) = 0;
 
-	MDShader(CharString p_name, LocalVector<UniformSet> p_sets) :
+	MDShader(CharString p_name, Vector<UniformSet> p_sets) :
 			name(p_name), sets(p_sets) {}
 	virtual ~MDShader() = default;
 };
 
-class MDComputeShader final : public MDShader {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDComputeShader final : public MDShader {
 public:
 	struct {
 		uint32_t binding = -1;
@@ -490,11 +500,11 @@ public:
 
 	void encode_push_constant_data(VectorView<uint32_t> p_data, MDCommandBuffer *p_cb) final;
 
-	MDComputeShader(CharString p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_kernel);
+	MDComputeShader(CharString p_name, Vector<UniformSet> p_sets, id<MTLLibrary> p_kernel);
 	~MDComputeShader() override = default;
 };
 
-class MDRenderShader final : public MDShader {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDRenderShader final : public MDShader {
 public:
 	struct {
 		struct {
@@ -516,7 +526,7 @@ public:
 
 	void encode_push_constant_data(VectorView<uint32_t> p_data, MDCommandBuffer *p_cb) final;
 
-	MDRenderShader(CharString p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_vert, id<MTLLibrary> p_frag);
+	MDRenderShader(CharString p_name, Vector<UniformSet> p_sets, id<MTLLibrary> p_vert, id<MTLLibrary> p_frag);
 	~MDRenderShader() override = default;
 };
 
@@ -558,9 +568,9 @@ struct BoundUniformSet {
 	HashMap<id<MTLResource>, StageResourceUsage> bound_resources;
 };
 
-class MDUniformSet {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDUniformSet {
 public:
-	NSUInteger index;
+	uint32_t index;
 	LocalVector<RDD::BoundUniform> uniforms;
 	HashMap<MDShader *, BoundUniformSet> bound_uniforms;
 
@@ -593,7 +603,7 @@ struct MDSubpass {
 	MTLFmtCaps getRequiredFmtCapsForAttachmentAt(uint32_t p_index) const;
 };
 
-struct MDAttachment {
+struct API_AVAILABLE(macos(11.0), ios(14.0)) MDAttachment {
 private:
 	uint32_t index = 0;
 	uint32_t firstUseSubpassIndex = 0;
@@ -645,19 +655,19 @@ public:
 	bool shouldClear(MDSubpass const &p_subpass, bool p_is_stencil) const;
 };
 
-class MDRenderPass {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDRenderPass {
 public:
-	TightLocalVector<MDAttachment> attachments;
-	TightLocalVector<MDSubpass> subpasses;
+	Vector<MDAttachment> attachments;
+	Vector<MDSubpass> subpasses;
 
 	uint32_t get_sample_count() const {
 		return attachments.is_empty() ? 1 : attachments[0].samples;
 	};
 
-	MDRenderPass(TightLocalVector<MDAttachment> &&p_attachments, TightLocalVector<MDSubpass> &&p_subpasses);
+	MDRenderPass(Vector<MDAttachment> &p_attachments, Vector<MDSubpass> &p_subpasses);
 };
 
-class MDPipeline {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDPipeline {
 public:
 	MDPipelineType type;
 
@@ -666,7 +676,7 @@ public:
 	virtual ~MDPipeline() = default;
 };
 
-class MDRenderPipeline final : public MDPipeline {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDRenderPipeline final : public MDPipeline {
 public:
 	id<MTLRenderPipelineState> state = nil;
 	id<MTLDepthStencilState> depth_stencil = nil;
@@ -716,8 +726,8 @@ public:
 			float a = 0.0;
 
 			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
-				if (!enabled)
-					return;
+				//if (!enabled)
+				//	return;
 				[p_enc setBlendColorRed:r green:g blue:b alpha:a];
 			};
 		} blend;
@@ -741,7 +751,7 @@ public:
 	~MDRenderPipeline() final = default;
 };
 
-class MDComputePipeline final : public MDPipeline {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDComputePipeline final : public MDPipeline {
 public:
 	id<MTLComputePipelineState> state = nil;
 	struct {
@@ -755,25 +765,43 @@ public:
 	~MDComputePipeline() final = default;
 };
 
-class MDFrameBuffer {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDFrameBuffer {
 public:
-	LocalVector<MTL::Texture> textures;
+	Vector<MTL::Texture> textures;
 	Size2i size;
-	MDFrameBuffer(LocalVector<MTL::Texture> p_textures, Size2i p_size) :
+	MDFrameBuffer(Vector<MTL::Texture> p_textures, Size2i p_size) :
 			textures(p_textures), size(p_size) {}
+	MDFrameBuffer() {}
 
 	virtual ~MDFrameBuffer() = default;
 };
 
-class MDScreenFrameBuffer final : public MDFrameBuffer {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDScreenFrameBuffer final : public MDFrameBuffer {
 public:
 	id<CAMetalDrawable> drawable;
-	MDScreenFrameBuffer(id<CAMetalDrawable> p_drawable, Size2i p_size) :
-			MDFrameBuffer(LocalVector<MTL::Texture>({ p_drawable.texture }), p_size), drawable(p_drawable) {}
+	MDScreenFrameBuffer() :
+			MDFrameBuffer() {
+		drawable = nil;
+		textures.resize(1);
+	}
+
+	void set_drawable_and_size(id<CAMetalDrawable> p_drawable, Size2i p_size) {
+		DEV_ASSERT(drawable == nil);
+		drawable = p_drawable;
+		size = p_size;
+		textures.write[0] = drawable.texture;
+	}
+
+	/*! reset removes the drawable and clears the textures */
+	void reset() {
+		drawable = nil;
+		textures.write[0] = nil;
+	}
+
 	~MDScreenFrameBuffer() final = default;
 };
 
-class MDQueryPool {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDQueryPool {
 	// GPU counters
 	NSUInteger sampleCount = 0;
 	id<MTLCounterSet> counterSet = nil;

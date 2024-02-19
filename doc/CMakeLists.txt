@@ -245,6 +245,8 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/ColorPicker.xml
         classes/ColorPickerButton.xml
         classes/ColorRect.xml
+        classes/Compositor.xml
+        classes/CompositorEffect.xml
         classes/CompressedCubemap.xml
         classes/CompressedCubemapArray.xml
         classes/CompressedTexture2D.xml
@@ -331,6 +333,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Font.xml
         classes/FontFile.xml
         classes/FontVariation.xml
+        classes/FramebufferCacheRD.xml
         classes/GDExtension.xml
         classes/GDExtensionManager.xml
         classes/GPUParticles2D.xml
@@ -607,10 +610,16 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/ReflectionProbe.xml
         classes/RemoteTransform2D.xml
         classes/RemoteTransform3D.xml
+        classes/RenderData.xml
+        classes/RenderDataExtension.xml
+        classes/RenderDataRD.xml
         classes/RenderSceneBuffers.xml
         classes/RenderSceneBuffersConfiguration.xml
         classes/RenderSceneBuffersExtension.xml
         classes/RenderSceneBuffersRD.xml
+        classes/RenderSceneData.xml
+        classes/RenderSceneDataExtension.xml
+        classes/RenderSceneDataRD.xml
         classes/RenderingDevice.xml
         classes/RenderingServer.xml
         classes/Resource.xml
@@ -773,6 +782,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Tweener.xml
         classes/UDPServer.xml
         classes/UndoRedo.xml
+        classes/UniformSetCacheRD.xml
         classes/VBoxContainer.xml
         classes/VFlowContainer.xml
         classes/VScrollBar.xml
@@ -923,6 +933,8 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/XRAnchor3D.xml
         classes/XRCamera3D.xml
         classes/XRController3D.xml
+        classes/XRFaceModifier3D.xml
+        classes/XRFaceTracker.xml
         classes/XRInterface.xml
         classes/XRInterfaceExtension.xml
         classes/XRNode3D.xml

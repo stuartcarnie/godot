@@ -7,5 +7,6 @@ type summary add "Vector2i" --summary-string "\{ w=${var.width}, h=${var.height}
 type summary add "Rect2i" --summary-string "\{ x=${var.position.x}, y=${var.position.height}, w=${var.size.width}, h=${var.size.height} \}" --category Godot
 
 type summary add -x "VectorView<" -x "LocalVector<" -x "TightLocalVector<" --expand --summary-string "${svar%#} items" --category Godot
+type summary add -F lldb_helpers.VectorSummaryProvider -x "Vector<.+>$" --expand --category Godot
 
 type category enable Godot

@@ -19,6 +19,8 @@ target_sources(godot-server-rendering-renderer_rd-storage_rd PRIVATE
         particles_storage.cpp
         particles_storage.h
         render_buffer_custom_data_rd.h
+        render_data_rd.cpp
+        render_data_rd.h
         render_scene_buffers_rd.cpp
         render_scene_buffers_rd.h
         render_scene_data_rd.cpp

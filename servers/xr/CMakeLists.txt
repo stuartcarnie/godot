@@ -8,6 +8,8 @@ godot_add_library(godot-server-xr FOLDER servers STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-server-xr PRIVATE
+        xr_face_tracker.cpp
+        xr_face_tracker.h
         xr_interface.cpp
         xr_interface.h
         xr_interface_extension.cpp

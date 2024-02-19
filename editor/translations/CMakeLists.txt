@@ -68,6 +68,7 @@ set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         properties/id.po
         properties/it.po
         properties/ja.po
+        properties/ka.po
         properties/ko.po
         properties/pl.po
         properties/pt.po

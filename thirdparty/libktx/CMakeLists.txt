@@ -26,6 +26,7 @@ target_sources(ktx PRIVATE
         lib/ktxint.h
         lib/memstream.c
         lib/memstream.h
+        lib/miniz_wrapper.cpp
         lib/swap.c
         lib/texture.c
         lib/texture.h
@@ -35,6 +36,7 @@ target_sources(ktx PRIVATE
         lib/texture2.h
         lib/uthash.h
         lib/vk_format.h
+        lib/vkformat_check.c
         lib/vkformat_enum.h
 )
 # [[[end]]]
@@ -53,5 +55,5 @@ else ()
     target_compile_definitions(ktx PRIVATE LIBKTX)
 endif ()
 
-target_link_libraries(ktx PRIVATE basis_universal)
+target_link_libraries(ktx PRIVATE basis_universal zstd)
 target_compile_options(ktx PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>) # disable all warnings

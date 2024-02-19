@@ -456,6 +456,9 @@ void PixelFormats::initDataFormatCapabilities() {
 
 	addDataFormatDesc(X8_D24_UNORM_PACK32, Invalid, Depth24Unorm_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunguarded-availability"
+
 	addDataFormatDesc(BC1_RGB_UNORM_BLOCK, BC1_RGBA, Invalid, Invalid, Invalid, 4, 4, 8, Compressed);
 	addDataFormatDesc(BC1_RGB_SRGB_BLOCK, BC1_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed);
 	addDataFormatDesc(BC1_RGBA_UNORM_BLOCK, BC1_RGBA, Invalid, Invalid, Invalid, 4, 4, 8, Compressed);
@@ -478,6 +481,8 @@ void PixelFormats::initDataFormatCapabilities() {
 
 	addDataFormatDesc(BC7_UNORM_BLOCK, BC7_RGBAUnorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed);
 	addDataFormatDesc(BC7_SRGB_BLOCK, BC7_RGBAUnorm_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed);
+
+#pragma clang diagnostic pop
 
 	addDataFormatDesc(ETC2_R8G8B8_UNORM_BLOCK, ETC2_RGB8, Invalid, Invalid, Invalid, 4, 4, 8, Compressed);
 	addDataFormatDesc(ETC2_R8G8B8_SRGB_BLOCK, ETC2_RGB8_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed);
@@ -707,6 +712,9 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDescSRGB(ASTC_12x12_sRGB, ASTC_12x12, None, None, ASTC_12x12_LDR);
 	addMTLPixelFormatDesc(ASTC_12x12_HDR, ASTC_12x12, None, None);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunguarded-availability"
+
 	addMTLPixelFormatDesc(BC1_RGBA, BC1_RGBA, RF, RF);
 	addMTLPixelFormatDescSRGB(BC1_RGBA_sRGB, BC1_RGBA, RF, RF, BC1_RGBA);
 	addMTLPixelFormatDesc(BC2_RGBA, BC2_RGBA, RF, RF);
@@ -721,6 +729,8 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc(BC6H_RGBFloat, BC6H_RGB, RF, RF);
 	addMTLPixelFormatDesc(BC7_RGBAUnorm, BC7_RGBA, RF, RF);
 	addMTLPixelFormatDescSRGB(BC7_RGBAUnorm_sRGB, BC7_RGBA, RF, RF, BC7_RGBAUnorm);
+
+#pragma clang diagnostic pop
 
 	// YUV pixel formats
 	addMTLPixelFormatDesc(GBGR422, None, RF, RF);
@@ -901,11 +911,12 @@ void PixelFormats::modifyMTLFormatCapabilities() {
 
 // If the supportsBCTextureCompression query is available, use it.
 bool supports_bc_texture_compression(id<MTLDevice> p_device) {
+#if (TARGET_OS_OSX || TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED >= 160400)
 	if (@available(macOS 11.0, iOS 16.4, *)) {
 		return p_device.supportsBCTextureCompression;
-	} else {
-		return false;
 	}
+#endif
+	return false;
 }
 
 #define addFeatSetMTLPixFmtCaps(FEAT_SET, MTL_FMT, CAPS) \
@@ -925,6 +936,9 @@ bool supports_bc_texture_compression(id<MTLDevice> p_device) {
 
 void PixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> p_device) {
 	if (!supports_bc_texture_compression(p_device)) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunguarded-availability"
+
 		disableAllMTLPixFmtCaps(BC1_RGBA);
 		disableAllMTLPixFmtCaps(BC1_RGBA_sRGB);
 		disableAllMTLPixFmtCaps(BC2_RGBA);
@@ -939,6 +953,8 @@ void PixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> p_device) {
 		disableAllMTLPixFmtCaps(BC6H_RGBFloat);
 		disableAllMTLPixFmtCaps(BC7_RGBAUnorm);
 		disableAllMTLPixFmtCaps(BC7_RGBAUnorm_sRGB);
+
+#pragma clang diagnostic pop
 	}
 
 	if (!p_device.supports32BitMSAA) {

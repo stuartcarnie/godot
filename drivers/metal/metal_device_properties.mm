@@ -58,6 +58,11 @@
 #define KIBI (1024)
 #define MEBI (KIBI * KIBI)
 
+#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 140000) || (TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 170000)
+#define MTLGPUFamilyApple9 (MTLGPUFamily)1009
+#endif
+
+API_AVAILABLE(macos(11.0), ios(14.0))
 MTLGPUFamily &operator--(MTLGPUFamily &p_family) {
 	p_family = static_cast<MTLGPUFamily>(static_cast<int>(p_family) - 1);
 	if (p_family < MTLGPUFamilyApple1) {
@@ -67,14 +72,8 @@ MTLGPUFamily &operator--(MTLGPUFamily &p_family) {
 	return p_family;
 }
 
-void MetalDeviceProperties::init_gpu_properties(id<MTLDevice> p_device) {
-	device_type = RenderingDevice::DEVICE_TYPE_INTEGRATED_GPU;
-	device_vendor = "Apple";
-	device_name = p_device.name.UTF8String;
-}
-
 void MetalDeviceProperties::init_features(id<MTLDevice> p_device) {
-	features = { };
+	features = {};
 
 	features.highestFamily = MTLGPUFamilyApple1;
 	for (MTLGPUFamily family = MTLGPUFamilyApple9; family >= MTLGPUFamilyApple1; --family) {
@@ -283,7 +282,6 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 }
 
 MetalDeviceProperties::MetalDeviceProperties(id<MTLDevice> p_device) {
-	init_gpu_properties(p_device);
 	init_features(p_device);
 	init_limits(p_device);
 }

@@ -72,7 +72,7 @@ typedef NS_OPTIONS(NSUInteger, SampleCount) {
 	SampleCount64 = (1UL << 6),
 };
 
-struct MetalFeatures {
+struct API_AVAILABLE(macos(11.0), ios(14.0)) MetalFeatures {
 	uint32_t mslVersion;
 	MTLGPUFamily highestFamily;
 	MTLLanguageVersion mslVersionEnum;
@@ -122,16 +122,12 @@ struct MetalLimits {
 	BitField<RD::SubgroupOperations> subgroupSupportedOperations; /**< The subgroup operations supported by the device. */
 };
 
-class MetalDeviceProperties {
+class API_AVAILABLE(macos(11.0), ios(14.0)) MetalDeviceProperties {
 private:
-	void init_gpu_properties(id<MTLDevice> p_device);
 	void init_features(id<MTLDevice> p_device);
 	void init_limits(id<MTLDevice> p_device);
 
 public:
-	RenderingDevice::DeviceType device_type;
-	String device_vendor;
-	String device_name;
 	MetalFeatures features;
 	MetalLimits limits;
 

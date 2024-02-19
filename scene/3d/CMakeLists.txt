@@ -102,6 +102,8 @@ target_sources(godot-scene-3d PRIVATE
         voxelizer.h
         world_environment.cpp
         world_environment.h
+        xr_face_modifier_3d.cpp
+        xr_face_modifier_3d.h
         xr_nodes.cpp
         xr_nodes.h
 )

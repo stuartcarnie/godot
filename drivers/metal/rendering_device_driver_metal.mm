@@ -59,11 +59,10 @@
 #include "core/io/marshalls.h"
 #include "spirv_msl.hpp"
 #include "spirv_parser.hpp"
+#include <CoreGraphics/CGGeometry.h>
 #include <Metal/MTLTexture.h>
 #include <Metal/Metal.h>
 #import <compression.h>
-
-using RDM = RenderingDeviceDriverMetal;
 
 /*****************/
 /**** GENERIC ****/
@@ -165,7 +164,7 @@ const MTLTextureType RenderingDeviceDriverMetal::texture_type[RD::TEXTURE_TYPE_M
 	MTLTextureTypeCubeArray,
 };
 
-RDM::Result<bool> RenderingDeviceDriverMetal::is_valid_linear(TextureFormat const &p_format) const {
+RenderingDeviceDriverMetal::Result<bool> RenderingDeviceDriverMetal::is_valid_linear(TextureFormat const &p_format) const {
 	if (!flags::any(p_format.usage_bits, TEXTURE_USAGE_CPU_READ_BIT)) {
 		return false;
 	}
@@ -687,7 +686,7 @@ RDD::SamplerID RenderingDeviceDriverMetal::sampler_create(const SamplerState &p_
 	desc.normalizedCoordinates = !p_state.unnormalized_uvw;
 
 	if (p_state.lod_bias != 0.0) {
-		WARN_PRINT_ONCE("Metal does not support LOD bias for samplers.");
+		WARN_VERBOSE("Metal does not support LOD bias for samplers.");
 	}
 
 	id<MTLSamplerState> obj = [device newSamplerStateWithDescriptor:desc];
@@ -720,8 +719,8 @@ RDD::VertexFormatID RenderingDeviceDriverMetal::vertex_format_create(VectorView<
 		uint32_t idx = get_metal_buffer_index_for_vertex_attribute_binding(i);
 		desc.attributes[vf.location].bufferIndex = idx;
 		if (vf.stride == 0) {
-			desc.layouts[idx].stepFunction = MTLVertexStepFunctionPerVertex;
-			desc.layouts[idx].stepRate = 1;
+			desc.layouts[idx].stepFunction = MTLVertexStepFunctionConstant;
+			desc.layouts[idx].stepRate = 0;
 			desc.layouts[idx].stride = pixel_formats->getBytesPerBlock(vf.format);
 		} else {
 			desc.layouts[idx].stepFunction = vf.frequency == VERTEX_FREQUENCY_VERTEX ? MTLVertexStepFunctionPerVertex : MTLVertexStepFunctionPerInstance;
@@ -802,7 +801,7 @@ RDD::CommandQueueID RenderingDeviceDriverMetal::command_queue_create(CommandQueu
 	return CommandQueueID(1);
 }
 
-Error RenderingDeviceDriverMetal::command_queue_execute(CommandQueueID p_cmd_queue, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_wait_semaphores, VectorView<SemaphoreID> p_signal_semaphores, FenceID p_signal_fence) {
+Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueueID p_cmd_queue, VectorView<SemaphoreID>, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID>, FenceID p_cmd_fence, VectorView<SwapChainID> p_swap_chains) {
 	uint32_t size = p_cmd_buffers.size();
 	if (size == 0) {
 		return OK;
@@ -815,47 +814,28 @@ Error RenderingDeviceDriverMetal::command_queue_execute(CommandQueueID p_cmd_que
 
 	// The last command buffer will signal the fence and semaphores.
 	MDCommandBuffer *cmd_buffer = (MDCommandBuffer *)(p_cmd_buffers[size - 1].id);
-	Fence *fence = (Fence *)(p_signal_fence.id);
+	Fence *fence = (Fence *)(p_cmd_fence.id);
 	if (fence != nullptr) {
 		[cmd_buffer->get_command_buffer() addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
-		  dispatch_semaphore_signal(fence->semaphore);
+			dispatch_semaphore_signal(fence->semaphore);
 		}];
-	}
-
-	// We're adding the signal semaphores to the scheduled handlers of the last command buffer,
-	// as they are used as a signal we can present the swap chain. This is normally done by
-	// calling [cmd_buffer presentDrawable:drawable], which adds a call to [drawable present] in
-	// the scheduled handlers of the command buffer.
-	for (uint32_t i = 0; i < p_signal_semaphores.size(); i++) {
-		Semaphore *semaphore = (Semaphore *)(p_signal_semaphores[i].id);
-		[cmd_buffer->get_command_buffer() addScheduledHandler:^(id<MTLCommandBuffer> buffer) {
-		  dispatch_semaphore_signal(semaphore->semaphore);
-		}];
-	}
-
-	cmd_buffer->commit();
-
-	return OK;
-}
-
-Error RenderingDeviceDriverMetal::command_queue_present(CommandQueueID p_cmd_queue, VectorView<SwapChainID> p_swap_chains, VectorView<SemaphoreID> p_wait_semaphores) {
-	for (uint32_t i = 0; i < p_wait_semaphores.size(); i++) {
-		Semaphore *semaphore = (Semaphore *)(p_wait_semaphores[i].id);
-		// wait 100 ms, but we'll still present the drawable if the semaphore is not signaled.
-		dispatch_semaphore_wait(semaphore->semaphore, dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC));
 	}
 
 	for (uint32_t i = 0; i < p_swap_chains.size(); i++) {
 		SwapChain *swap_chain = (SwapChain *)(p_swap_chains[i].id);
-		if (swap_chain->frame_buffer) {
-			[swap_chain->frame_buffer->drawable present];
-			memdelete(swap_chain->frame_buffer);
-			swap_chain->frame_buffer = nullptr;
+		if (swap_chain->frame_buffer.drawable != nil) {
+			[cmd_buffer->get_command_buffer() presentDrawable:swap_chain->frame_buffer.drawable];
+			swap_chain->frame_buffer.reset();
 		}
 	}
 
-	[device_scope endScope];
-	[device_scope beginScope];
+	cmd_buffer->commit();
+
+	if (p_swap_chains.size() > 0) {
+		// used as a signal that we're presenting, so this is the end of a frame
+		[device_scope endScope];
+		[device_scope beginScope];
+	}
 
 	return OK;
 }
@@ -992,15 +972,14 @@ RDD::FramebufferID RenderingDeviceDriverMetal::swap_chain_acquire_framebuffer(Co
 		return FramebufferID();
 	}
 
-	if (swap_chain->frame_buffer == nullptr) {
-		// TODO(sgc): don't recreate the MDScreenFrameBuffer every time
+	if (swap_chain->frame_buffer.drawable == nil) {
 		id<CAMetalDrawable> drawable = swap_chain->layer.nextDrawable;
 		ERR_FAIL_NULL_V_MSG(drawable, RDD::FramebufferID(), "no drawable available");
 		CGSize size = swap_chain->layer.drawableSize;
-		swap_chain->frame_buffer = memnew(MDScreenFrameBuffer(drawable, Size2i(size.width, size.height)));
+		swap_chain->frame_buffer.set_drawable_and_size(drawable, Size2i(size.width, size.height));
 	}
 
-	return RDD::FramebufferID(swap_chain->frame_buffer);
+	return RDD::FramebufferID(&swap_chain->frame_buffer);
 }
 
 RDD::RenderPassID RenderingDeviceDriverMetal::swap_chain_get_render_pass(SwapChainID p_swap_chain) {
@@ -1025,7 +1004,7 @@ void RenderingDeviceDriverMetal::swap_chain_free(SwapChainID p_swap_chain) {
 RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p_render_pass, VectorView<TextureID> p_attachments, uint32_t p_width, uint32_t p_height) {
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
 
-	LocalVector<MTL::Texture> textures;
+	Vector<MTL::Texture> textures;
 	textures.resize(p_attachments.size());
 
 	for (uint32_t i = 0; i < p_attachments.size(); i += 1) {
@@ -1039,7 +1018,7 @@ RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p
 				WARN_PRINT("Mismatched sample count for attachment " + itos(i) + "; expected " + itos(a.samples) + ", got " + itos(tex.sampleCount));
 			}
 		}
-		textures[i] = tex;
+		textures.write[i] = tex;
 	}
 
 	MDFrameBuffer *fb = new MDFrameBuffer(textures, Size2i(p_width, p_height));
@@ -1053,305 +1032,7 @@ void RenderingDeviceDriverMetal::framebuffer_free(FramebufferID p_framebuffer) {
 
 #pragma mark - Shader
 
-const uint32_t SHADER_BINARY_VERSION = 3;
-
-String RenderingDeviceDriverMetal::shader_get_binary_cache_key() {
-	return "Metal-SV" + uitos(SHADER_BINARY_VERSION);
-}
-
-Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVData> p_spirv, ShaderReflection &r_reflection) {
-	using namespace spirv_cross;
-
-	r_reflection = {};
-
-	for (uint32_t i = 0; i < p_spirv.size(); i++) {
-		ShaderStageSPIRVData v = p_spirv[i];
-		ShaderStage stage = v.shader_stage;
-		uint32_t const *const ir = reinterpret_cast<uint32_t const *const>(v.spirv.ptr());
-		size_t word_count = v.spirv.size() / sizeof(uint32_t);
-		Parser parser(ir, word_count);
-		try {
-			parser.parse();
-		} catch (CompilerError &e) {
-			ERR_FAIL_V_MSG(ERR_CANT_CREATE, "Failed to parse IR at stage " + String(SHADER_STAGE_NAMES[stage]) + ": " + e.what());
-		}
-
-		ShaderStage stage_flag = (ShaderStage)(1 << p_spirv[i].shader_stage);
-
-		if (p_spirv[i].shader_stage == SHADER_STAGE_COMPUTE) {
-			r_reflection.is_compute = true;
-			ERR_FAIL_COND_V_MSG(p_spirv.size() != 1, FAILED,
-					"Compute shaders can only receive one stage, dedicated to compute.");
-		}
-		ERR_FAIL_COND_V_MSG(r_reflection.stages.has_flag(stage_flag), FAILED,
-				"Stage " + String(SHADER_STAGE_NAMES[p_spirv[i].shader_stage]) + " submitted more than once.");
-
-		ParsedIR &pir = parser.get_parsed_ir();
-		using BT = SPIRType::BaseType;
-
-		Compiler compiler(std::move(pir));
-
-		auto entry_point_stage = compiler.get_entry_points_and_stages().front();
-		auto entry_point = compiler.get_entry_point(entry_point_stage.name, entry_point_stage.execution_model);
-
-		if (r_reflection.is_compute) {
-			r_reflection.compute_local_size[0] = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 0);
-			r_reflection.compute_local_size[1] = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 1);
-			r_reflection.compute_local_size[2] = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 2);
-		}
-
-		// Parse bindings
-
-		auto get_decoration = [&compiler](spirv_cross::ID id, spv::Decoration decoration) {
-			uint32_t res = -1;
-			if (compiler.has_decoration(id, decoration)) {
-				res = compiler.get_decoration(id, decoration);
-			}
-			return res;
-		};
-
-		// Always clearer than a boolean
-		enum class Writable {
-			No,
-			Maybe,
-		};
-
-		// clang-format off
-		enum {
-		  SPIRV_WORD_SIZE      = sizeof(uint32_t),
-		  SPIRV_DATA_ALIGNMENT = 4 * SPIRV_WORD_SIZE, // 16
-		};
-		// clang-format on
-
-		auto process_uniforms = [&r_reflection, &compiler, &get_decoration, stage, stage_flag](spirv_cross::SmallVector<spirv_cross::Resource> &resources, Writable writable, std::function<RDD::UniformType(spirv_cross::SPIRType const &)> uniform_type) {
-			for (spirv_cross::Resource &res : resources) {
-				ShaderUniform uniform;
-
-				std::string const &name = compiler.get_name(res.id);
-				uint32_t set = get_decoration(res.id, spv::DecorationDescriptorSet);
-				ERR_FAIL_COND_V_MSG(set == (uint32_t)-1, FAILED, "No descriptor set found");
-				ERR_FAIL_COND_V_MSG(set >= MAX_UNIFORM_SETS, FAILED, "On shader stage '" + String(SHADER_STAGE_NAMES[stage]) + "', uniform '" + name.c_str() + "' uses a set (" + itos(set) + ") index larger than what is supported (" + itos(MAX_UNIFORM_SETS) + ").");
-
-				uniform.binding = get_decoration(res.id, spv::DecorationBinding);
-				ERR_FAIL_COND_V_MSG(uniform.binding == (uint32_t)-1, FAILED, "No binding found");
-
-				spirv_cross::SPIRType const &a_type = compiler.get_type(res.type_id);
-				uniform.type = uniform_type(a_type);
-
-				// update length
-				switch (a_type.basetype) {
-					case BT::Struct: {
-						if (uniform.type == UNIFORM_TYPE_STORAGE_BUFFER) {
-							// consistent with spirv_reflect
-							uniform.length = 0;
-						} else {
-							uniform.length = round_up_to_alignment(compiler.get_declared_struct_size(a_type), SPIRV_DATA_ALIGNMENT);
-						}
-					} break;
-					case BT::Image:
-					case BT::Sampler:
-					case BT::SampledImage: {
-						uniform.length = 1;
-						for (uint32_t const &a : a_type.array) {
-							uniform.length *= a;
-						}
-					} break;
-					default:
-						break;
-				}
-
-				// update writable
-				if (writable == Writable::Maybe) {
-					if (a_type.basetype == BT::Struct) {
-						Bitset flags = compiler.get_buffer_block_flags(res.id);
-						uniform.writable = !compiler.has_decoration(res.id, spv::DecorationNonWritable) && !flags.get(spv::DecorationNonWritable);
-					} else if (a_type.basetype == BT::Image) {
-						if (a_type.image.access == spv::AccessQualifierMax) {
-							uniform.writable = !compiler.has_decoration(res.id, spv::DecorationNonWritable);
-						} else {
-							uniform.writable = a_type.image.access != spv::AccessQualifierReadOnly;
-						}
-					}
-				}
-
-				if (set < (uint32_t)r_reflection.uniform_sets.size()) {
-					// Check if this already exists.
-					bool exists = false;
-					for (uint32_t k = 0; k < r_reflection.uniform_sets[set].size(); k++) {
-						if (r_reflection.uniform_sets[set][k].binding == uniform.binding) {
-							// Already exists, verify that it's the same type.
-							ERR_FAIL_COND_V_MSG(r_reflection.uniform_sets[set][k].type != uniform.type, FAILED,
-									"On shader stage '" + String(SHADER_STAGE_NAMES[stage]) + "', uniform '" + name.c_str() + "' trying to reuse location for set=" + itos(set) + ", binding=" + itos(uniform.binding) + " with different uniform type.");
-
-							// Also, verify that it's the same size.
-							ERR_FAIL_COND_V_MSG(r_reflection.uniform_sets[set][k].length != uniform.length, FAILED,
-									"On shader stage '" + String(SHADER_STAGE_NAMES[stage]) + "', uniform '" + name.c_str() + "' trying to reuse location for set=" + itos(set) + ", binding=" + itos(uniform.binding) + " with different uniform size.");
-
-							// Also, verify that it has the same writability.
-							ERR_FAIL_COND_V_MSG(r_reflection.uniform_sets[set][k].writable != uniform.writable, FAILED,
-									"On shader stage '" + String(SHADER_STAGE_NAMES[stage]) + "', uniform '" + name.c_str() + "' trying to reuse location for set=" + itos(set) + ", binding=" + itos(uniform.binding) + " with different writability.");
-
-							// Just append stage mask and continue.
-							r_reflection.uniform_sets.write[set].write[k].stages.set_flag(stage_flag);
-							exists = true;
-							break;
-						}
-					}
-
-					if (exists) {
-						continue; // Merged.
-					}
-				}
-
-				uniform.stages.set_flag(stage_flag);
-
-				if (set >= (uint32_t)r_reflection.uniform_sets.size()) {
-					r_reflection.uniform_sets.resize(set + 1);
-				}
-
-				r_reflection.uniform_sets.write[set].push_back(uniform);
-			}
-
-			return OK;
-		};
-
-		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
-
-		process_uniforms(resources.uniform_buffers, Writable::No, [](spirv_cross::SPIRType const &a_type) {
-			DEV_ASSERT(a_type.basetype == BT::Struct);
-			return UNIFORM_TYPE_UNIFORM_BUFFER;
-		});
-
-		process_uniforms(resources.storage_buffers, Writable::Maybe, [](spirv_cross::SPIRType const &a_type) {
-			DEV_ASSERT(a_type.basetype == BT::Struct);
-			return UNIFORM_TYPE_STORAGE_BUFFER;
-		});
-
-		process_uniforms(resources.storage_images, Writable::Maybe, [](spirv_cross::SPIRType const &a_type) {
-			DEV_ASSERT(a_type.basetype == BT::Image);
-			if (a_type.image.dim == spv::DimBuffer) {
-				return UNIFORM_TYPE_IMAGE_BUFFER;
-			} else {
-				return UNIFORM_TYPE_IMAGE;
-			}
-		});
-
-		process_uniforms(resources.sampled_images, Writable::No, [](spirv_cross::SPIRType const &a_type) {
-			DEV_ASSERT(a_type.basetype == BT::SampledImage);
-			return UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
-		});
-
-		process_uniforms(resources.separate_images, Writable::No, [](spirv_cross::SPIRType const &a_type) {
-			DEV_ASSERT(a_type.basetype == BT::Image);
-			if (a_type.image.dim == spv::DimBuffer) {
-				return UNIFORM_TYPE_TEXTURE_BUFFER;
-			} else {
-				return UNIFORM_TYPE_TEXTURE;
-			}
-		});
-
-		process_uniforms(resources.separate_samplers, Writable::No, [](spirv_cross::SPIRType const &a_type) {
-			DEV_ASSERT(a_type.basetype == BT::Sampler);
-			return UNIFORM_TYPE_SAMPLER;
-		});
-
-		process_uniforms(resources.subpass_inputs, Writable::No, [](spirv_cross::SPIRType const &a_type) {
-			DEV_ASSERT(a_type.basetype == BT::Image && a_type.image.dim == spv::DimSubpassData);
-			return UNIFORM_TYPE_INPUT_ATTACHMENT;
-		});
-
-		if (!resources.push_constant_buffers.empty()) {
-			// there can be only one push constant block
-			auto res = resources.push_constant_buffers.front();
-
-			size_t push_constant_size = round_up_to_alignment(compiler.get_declared_struct_size(compiler.get_type(res.base_type_id)), SPIRV_DATA_ALIGNMENT);
-			ERR_FAIL_COND_V_MSG(r_reflection.push_constant_size && r_reflection.push_constant_size != push_constant_size, FAILED,
-					"Reflection of SPIR-V shader stage '" + String(SHADER_STAGE_NAMES[p_spirv[i].shader_stage]) + "': Push constant block must be the same across shader stages.");
-
-			r_reflection.push_constant_size = push_constant_size;
-			r_reflection.push_constant_stages.set_flag(stage_flag);
-		}
-
-		ERR_FAIL_COND_V_MSG(!resources.atomic_counters.empty(), FAILED, "Atomic counters not supported");
-		ERR_FAIL_COND_V_MSG(!resources.acceleration_structures.empty(), FAILED, "Acceleration structures not supported");
-		ERR_FAIL_COND_V_MSG(!resources.shader_record_buffers.empty(), FAILED, "Shader record buffers not supported");
-
-		if (stage == SHADER_STAGE_VERTEX && !resources.stage_inputs.empty()) {
-			for (auto &res : resources.stage_inputs) {
-				SPIRType a_type = compiler.get_type(res.base_type_id);
-				uint32_t loc = get_decoration(res.id, spv::DecorationLocation);
-				if (loc != (uint32_t)-1) {
-					r_reflection.vertex_input_mask |= 1 << loc;
-				}
-			}
-		}
-
-		if (stage == SHADER_STAGE_FRAGMENT && !resources.stage_outputs.empty()) {
-			for (auto &res : resources.stage_outputs) {
-				SPIRType a_type = compiler.get_type(res.base_type_id);
-				uint32_t loc = get_decoration(res.id, spv::DecorationLocation);
-				uint32_t built_in = spv::BuiltIn(get_decoration(res.id, spv::DecorationBuiltIn));
-				if (loc != (uint32_t)-1 && built_in != spv::BuiltInFragDepth) {
-					r_reflection.fragment_output_mask |= 1 << loc;
-				}
-			}
-		}
-
-		// Specialization constants
-		for (auto &constant : compiler.get_specialization_constants()) {
-			int32_t existing = -1;
-			ShaderSpecializationConstant sconst;
-			SPIRConstant &spc = compiler.get_constant(constant.id);
-			SPIRType const &spct = compiler.get_type(spc.constant_type);
-
-			sconst.constant_id = constant.constant_id;
-			sconst.int_value = 0;
-
-			switch (spct.basetype) {
-				case BT::Boolean: {
-					sconst.type = PIPELINE_SPECIALIZATION_CONSTANT_TYPE_BOOL;
-					sconst.bool_value = spc.scalar() != 0;
-				} break;
-				case BT::Int:
-				case BT::UInt: {
-					sconst.type = PIPELINE_SPECIALIZATION_CONSTANT_TYPE_INT;
-					sconst.int_value = spc.scalar();
-				} break;
-				case BT::Float: {
-					sconst.type = PIPELINE_SPECIALIZATION_CONSTANT_TYPE_FLOAT;
-					sconst.float_value = spc.scalar_f32();
-				} break;
-				default:
-					ERR_FAIL_V_MSG(FAILED, "Unsupported specialization constant type");
-			}
-			sconst.stages.set_flag(stage_flag);
-
-			for (uint32_t k = 0; k < r_reflection.specialization_constants.size(); k++) {
-				if (r_reflection.specialization_constants[k].constant_id == sconst.constant_id) {
-					ERR_FAIL_COND_V_MSG(r_reflection.specialization_constants[k].type != sconst.type, FAILED, "More than one specialization constant used for id (" + itos(sconst.constant_id) + "), but their types differ.");
-					ERR_FAIL_COND_V_MSG(r_reflection.specialization_constants[k].int_value != sconst.int_value, FAILED, "More than one specialization constant used for id (" + itos(sconst.constant_id) + "), but their default values differ.");
-					existing = k;
-					break;
-				}
-			}
-
-			if (existing > 0) {
-				r_reflection.specialization_constants.write[existing].stages.set_flag(stage_flag);
-			} else {
-				r_reflection.specialization_constants.push_back(sconst);
-			}
-		}
-
-		r_reflection.stages.set_flag(stage_flag);
-	}
-
-	// sort all uniform_sets
-	for (uint32_t i = 0; i < r_reflection.uniform_sets.size(); i++) {
-		r_reflection.uniform_sets.write[i].sort();
-	}
-
-	return OK;
-}
+const uint32_t SHADER_BINARY_VERSION = 1;
 
 // region Serialisation
 
@@ -1702,7 +1383,7 @@ struct SpecializationConstantData {
 	}
 };
 
-struct UniformData {
+struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformData {
 	RD::UniformType type;
 	uint32_t binding;
 	bool writable;
@@ -1758,7 +1439,7 @@ struct UniformData {
 	}
 };
 
-struct UniformSetData {
+struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformSetData {
 	uint32_t index;
 	LocalVector<UniformData> uniforms;
 
@@ -1813,8 +1494,11 @@ struct PushConstantData {
 	}
 };
 
-struct ShaderBinaryData {
+struct API_AVAILABLE(macos(11.0), ios(14.0)) ShaderBinaryData {
 	CharString shader_name;
+	// msl_version is the Metal language version specified when compiling SPIR-V to MSL.
+	// Format is major * 10000 + minor * 100 + patch.
+	uint32_t msl_version;
 	uint32_t vertex_input_mask;
 	uint32_t fragment_output_mask;
 	uint32_t spirv_specialization_constants_ids_mask;
@@ -1825,9 +1509,16 @@ struct ShaderBinaryData {
 	LocalVector<SpecializationConstantData> constants;
 	LocalVector<UniformSetData> uniforms;
 
+	MTLLanguageVersion get_msl_version() const {
+		uint32_t major = msl_version / 10000;
+		uint32_t minor = (msl_version / 100) % 100;
+		return MTLLanguageVersion((major << 0x10) + minor);
+	}
+
 	size_t serialize_size() const {
 		size_t size = 0;
 		size += sizeof(uint32_t) + shader_name.length(); // shader_name
+		size += sizeof(uint32_t); // msl_version
 		size += sizeof(uint32_t); // vertex_input_mask
 		size += sizeof(uint32_t); // fragment_output_mask
 		size += sizeof(uint32_t); // spirv_specialization_constants_ids_mask
@@ -1851,6 +1542,7 @@ struct ShaderBinaryData {
 
 	void serialize(BufWriter &p_writer) const {
 		p_writer.write(shader_name);
+		p_writer.write(msl_version);
 		p_writer.write(vertex_input_mask);
 		p_writer.write(fragment_output_mask);
 		p_writer.write(spirv_specialization_constants_ids_mask);
@@ -1864,6 +1556,7 @@ struct ShaderBinaryData {
 
 	void deserialize(BufReader &p_reader) {
 		p_reader.read(shader_name);
+		p_reader.read(msl_version);
 		p_reader.read(vertex_input_mask);
 		p_reader.read(fragment_output_mask);
 		p_reader.read(spirv_specialization_constants_ids_mask);
@@ -1877,6 +1570,706 @@ struct ShaderBinaryData {
 };
 
 // endregion
+
+String RenderingDeviceDriverMetal::shader_get_binary_cache_key() {
+	return "Metal-SV" + uitos(SHADER_BINARY_VERSION);
+}
+
+Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVData> p_spirv, ShaderReflection &r_reflection) {
+	using namespace spirv_cross;
+
+	r_reflection = {};
+
+	for (uint32_t i = 0; i < p_spirv.size(); i++) {
+		ShaderStageSPIRVData v = p_spirv[i];
+		ShaderStage stage = v.shader_stage;
+		uint32_t const *const ir = reinterpret_cast<uint32_t const *const>(v.spirv.ptr());
+		size_t word_count = v.spirv.size() / sizeof(uint32_t);
+		Parser parser(ir, word_count);
+		try {
+			parser.parse();
+		} catch (CompilerError &e) {
+			ERR_FAIL_V_MSG(ERR_CANT_CREATE, "Failed to parse IR at stage " + String(SHADER_STAGE_NAMES[stage]) + ": " + e.what());
+		}
+
+		ShaderStage stage_flag = (ShaderStage)(1 << p_spirv[i].shader_stage);
+
+		if (p_spirv[i].shader_stage == SHADER_STAGE_COMPUTE) {
+			r_reflection.is_compute = true;
+			ERR_FAIL_COND_V_MSG(p_spirv.size() != 1, FAILED,
+					"Compute shaders can only receive one stage, dedicated to compute.");
+		}
+		ERR_FAIL_COND_V_MSG(r_reflection.stages.has_flag(stage_flag), FAILED,
+				"Stage " + String(SHADER_STAGE_NAMES[p_spirv[i].shader_stage]) + " submitted more than once.");
+
+		ParsedIR &pir = parser.get_parsed_ir();
+		using BT = SPIRType::BaseType;
+
+		Compiler compiler(std::move(pir));
+
+		auto entry_point_stage = compiler.get_entry_points_and_stages().front();
+		auto entry_point = compiler.get_entry_point(entry_point_stage.name, entry_point_stage.execution_model);
+
+		if (r_reflection.is_compute) {
+			r_reflection.compute_local_size[0] = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 0);
+			r_reflection.compute_local_size[1] = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 1);
+			r_reflection.compute_local_size[2] = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 2);
+		}
+
+		// Parse bindings
+
+		auto get_decoration = [&compiler](spirv_cross::ID id, spv::Decoration decoration) {
+			uint32_t res = -1;
+			if (compiler.has_decoration(id, decoration)) {
+				res = compiler.get_decoration(id, decoration);
+			}
+			return res;
+		};
+
+		// Always clearer than a boolean
+		enum class Writable {
+			No,
+			Maybe,
+		};
+
+		// clang-format off
+		enum {
+		  SPIRV_WORD_SIZE      = sizeof(uint32_t),
+		  SPIRV_DATA_ALIGNMENT = 4 * SPIRV_WORD_SIZE, // 16
+		};
+		// clang-format on
+
+		auto process_uniforms = [&r_reflection, &compiler, &get_decoration, stage, stage_flag](spirv_cross::SmallVector<spirv_cross::Resource> &resources, Writable writable, std::function<RDD::UniformType(spirv_cross::SPIRType const &)> uniform_type) {
+			for (spirv_cross::Resource &res : resources) {
+				ShaderUniform uniform;
+
+				std::string const &name = compiler.get_name(res.id);
+				uint32_t set = get_decoration(res.id, spv::DecorationDescriptorSet);
+				ERR_FAIL_COND_V_MSG(set == (uint32_t)-1, FAILED, "No descriptor set found");
+				ERR_FAIL_COND_V_MSG(set >= MAX_UNIFORM_SETS, FAILED, "On shader stage '" + String(SHADER_STAGE_NAMES[stage]) + "', uniform '" + name.c_str() + "' uses a set (" + itos(set) + ") index larger than what is supported (" + itos(MAX_UNIFORM_SETS) + ").");
+
+				uniform.binding = get_decoration(res.id, spv::DecorationBinding);
+				ERR_FAIL_COND_V_MSG(uniform.binding == (uint32_t)-1, FAILED, "No binding found");
+
+				spirv_cross::SPIRType const &a_type = compiler.get_type(res.type_id);
+				uniform.type = uniform_type(a_type);
+
+				// update length
+				switch (a_type.basetype) {
+					case BT::Struct: {
+						if (uniform.type == UNIFORM_TYPE_STORAGE_BUFFER) {
+							// consistent with spirv_reflect
+							uniform.length = 0;
+						} else {
+							uniform.length = round_up_to_alignment(compiler.get_declared_struct_size(a_type), SPIRV_DATA_ALIGNMENT);
+						}
+					} break;
+					case BT::Image:
+					case BT::Sampler:
+					case BT::SampledImage: {
+						uniform.length = 1;
+						for (uint32_t const &a : a_type.array) {
+							uniform.length *= a;
+						}
+					} break;
+					default:
+						break;
+				}
+
+				// update writable
+				if (writable == Writable::Maybe) {
+					if (a_type.basetype == BT::Struct) {
+						Bitset flags = compiler.get_buffer_block_flags(res.id);
+						uniform.writable = !compiler.has_decoration(res.id, spv::DecorationNonWritable) && !flags.get(spv::DecorationNonWritable);
+					} else if (a_type.basetype == BT::Image) {
+						if (a_type.image.access == spv::AccessQualifierMax) {
+							uniform.writable = !compiler.has_decoration(res.id, spv::DecorationNonWritable);
+						} else {
+							uniform.writable = a_type.image.access != spv::AccessQualifierReadOnly;
+						}
+					}
+				}
+
+				if (set < (uint32_t)r_reflection.uniform_sets.size()) {
+					// Check if this already exists.
+					bool exists = false;
+					for (uint32_t k = 0; k < r_reflection.uniform_sets[set].size(); k++) {
+						if (r_reflection.uniform_sets[set][k].binding == uniform.binding) {
+							// Already exists, verify that it's the same type.
+							ERR_FAIL_COND_V_MSG(r_reflection.uniform_sets[set][k].type != uniform.type, FAILED,
+									"On shader stage '" + String(SHADER_STAGE_NAMES[stage]) + "', uniform '" + name.c_str() + "' trying to reuse location for set=" + itos(set) + ", binding=" + itos(uniform.binding) + " with different uniform type.");
+
+							// Also, verify that it's the same size.
+							ERR_FAIL_COND_V_MSG(r_reflection.uniform_sets[set][k].length != uniform.length, FAILED,
+									"On shader stage '" + String(SHADER_STAGE_NAMES[stage]) + "', uniform '" + name.c_str() + "' trying to reuse location for set=" + itos(set) + ", binding=" + itos(uniform.binding) + " with different uniform size.");
+
+							// Also, verify that it has the same writability.
+							ERR_FAIL_COND_V_MSG(r_reflection.uniform_sets[set][k].writable != uniform.writable, FAILED,
+									"On shader stage '" + String(SHADER_STAGE_NAMES[stage]) + "', uniform '" + name.c_str() + "' trying to reuse location for set=" + itos(set) + ", binding=" + itos(uniform.binding) + " with different writability.");
+
+							// Just append stage mask and continue.
+							r_reflection.uniform_sets.write[set].write[k].stages.set_flag(stage_flag);
+							exists = true;
+							break;
+						}
+					}
+
+					if (exists) {
+						continue; // Merged.
+					}
+				}
+
+				uniform.stages.set_flag(stage_flag);
+
+				if (set >= (uint32_t)r_reflection.uniform_sets.size()) {
+					r_reflection.uniform_sets.resize(set + 1);
+				}
+
+				r_reflection.uniform_sets.write[set].push_back(uniform);
+			}
+
+			return OK;
+		};
+
+		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+
+		process_uniforms(resources.uniform_buffers, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+			DEV_ASSERT(a_type.basetype == BT::Struct);
+			return UNIFORM_TYPE_UNIFORM_BUFFER;
+		});
+
+		process_uniforms(resources.storage_buffers, Writable::Maybe, [](spirv_cross::SPIRType const &a_type) {
+			DEV_ASSERT(a_type.basetype == BT::Struct);
+			return UNIFORM_TYPE_STORAGE_BUFFER;
+		});
+
+		process_uniforms(resources.storage_images, Writable::Maybe, [](spirv_cross::SPIRType const &a_type) {
+			DEV_ASSERT(a_type.basetype == BT::Image);
+			if (a_type.image.dim == spv::DimBuffer) {
+				return UNIFORM_TYPE_IMAGE_BUFFER;
+			} else {
+				return UNIFORM_TYPE_IMAGE;
+			}
+		});
+
+		process_uniforms(resources.sampled_images, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+			DEV_ASSERT(a_type.basetype == BT::SampledImage);
+			return UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
+		});
+
+		process_uniforms(resources.separate_images, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+			DEV_ASSERT(a_type.basetype == BT::Image);
+			if (a_type.image.dim == spv::DimBuffer) {
+				return UNIFORM_TYPE_TEXTURE_BUFFER;
+			} else {
+				return UNIFORM_TYPE_TEXTURE;
+			}
+		});
+
+		process_uniforms(resources.separate_samplers, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+			DEV_ASSERT(a_type.basetype == BT::Sampler);
+			return UNIFORM_TYPE_SAMPLER;
+		});
+
+		process_uniforms(resources.subpass_inputs, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+			DEV_ASSERT(a_type.basetype == BT::Image && a_type.image.dim == spv::DimSubpassData);
+			return UNIFORM_TYPE_INPUT_ATTACHMENT;
+		});
+
+		if (!resources.push_constant_buffers.empty()) {
+			// there can be only one push constant block
+			auto res = resources.push_constant_buffers.front();
+
+			size_t push_constant_size = round_up_to_alignment(compiler.get_declared_struct_size(compiler.get_type(res.base_type_id)), SPIRV_DATA_ALIGNMENT);
+			ERR_FAIL_COND_V_MSG(r_reflection.push_constant_size && r_reflection.push_constant_size != push_constant_size, FAILED,
+					"Reflection of SPIR-V shader stage '" + String(SHADER_STAGE_NAMES[p_spirv[i].shader_stage]) + "': Push constant block must be the same across shader stages.");
+
+			r_reflection.push_constant_size = push_constant_size;
+			r_reflection.push_constant_stages.set_flag(stage_flag);
+		}
+
+		ERR_FAIL_COND_V_MSG(!resources.atomic_counters.empty(), FAILED, "Atomic counters not supported");
+		ERR_FAIL_COND_V_MSG(!resources.acceleration_structures.empty(), FAILED, "Acceleration structures not supported");
+		ERR_FAIL_COND_V_MSG(!resources.shader_record_buffers.empty(), FAILED, "Shader record buffers not supported");
+
+		if (stage == SHADER_STAGE_VERTEX && !resources.stage_inputs.empty()) {
+			for (auto &res : resources.stage_inputs) {
+				SPIRType a_type = compiler.get_type(res.base_type_id);
+				uint32_t loc = get_decoration(res.id, spv::DecorationLocation);
+				if (loc != (uint32_t)-1) {
+					r_reflection.vertex_input_mask |= 1 << loc;
+				}
+			}
+		}
+
+		if (stage == SHADER_STAGE_FRAGMENT && !resources.stage_outputs.empty()) {
+			for (auto &res : resources.stage_outputs) {
+				SPIRType a_type = compiler.get_type(res.base_type_id);
+				uint32_t loc = get_decoration(res.id, spv::DecorationLocation);
+				uint32_t built_in = spv::BuiltIn(get_decoration(res.id, spv::DecorationBuiltIn));
+				if (loc != (uint32_t)-1 && built_in != spv::BuiltInFragDepth) {
+					r_reflection.fragment_output_mask |= 1 << loc;
+				}
+			}
+		}
+
+		// Specialization constants
+		for (auto &constant : compiler.get_specialization_constants()) {
+			int32_t existing = -1;
+			ShaderSpecializationConstant sconst;
+			SPIRConstant &spc = compiler.get_constant(constant.id);
+			SPIRType const &spct = compiler.get_type(spc.constant_type);
+
+			sconst.constant_id = constant.constant_id;
+			sconst.int_value = 0;
+
+			switch (spct.basetype) {
+				case BT::Boolean: {
+					sconst.type = PIPELINE_SPECIALIZATION_CONSTANT_TYPE_BOOL;
+					sconst.bool_value = spc.scalar() != 0;
+				} break;
+				case BT::Int:
+				case BT::UInt: {
+					sconst.type = PIPELINE_SPECIALIZATION_CONSTANT_TYPE_INT;
+					sconst.int_value = spc.scalar();
+				} break;
+				case BT::Float: {
+					sconst.type = PIPELINE_SPECIALIZATION_CONSTANT_TYPE_FLOAT;
+					sconst.float_value = spc.scalar_f32();
+				} break;
+				default:
+					ERR_FAIL_V_MSG(FAILED, "Unsupported specialization constant type");
+			}
+			sconst.stages.set_flag(stage_flag);
+
+			for (uint32_t k = 0; k < r_reflection.specialization_constants.size(); k++) {
+				if (r_reflection.specialization_constants[k].constant_id == sconst.constant_id) {
+					ERR_FAIL_COND_V_MSG(r_reflection.specialization_constants[k].type != sconst.type, FAILED, "More than one specialization constant used for id (" + itos(sconst.constant_id) + "), but their types differ.");
+					ERR_FAIL_COND_V_MSG(r_reflection.specialization_constants[k].int_value != sconst.int_value, FAILED, "More than one specialization constant used for id (" + itos(sconst.constant_id) + "), but their default values differ.");
+					existing = k;
+					break;
+				}
+			}
+
+			if (existing > 0) {
+				r_reflection.specialization_constants.write[existing].stages.set_flag(stage_flag);
+			} else {
+				r_reflection.specialization_constants.push_back(sconst);
+			}
+		}
+
+		r_reflection.stages.set_flag(stage_flag);
+	}
+
+	// sort all uniform_sets
+	for (uint32_t i = 0; i < r_reflection.uniform_sets.size(); i++) {
+		r_reflection.uniform_sets.write[i].sort();
+	}
+
+	return OK;
+}
+
+Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(VectorView<ShaderStageSPIRVData> p_spirv, const String &p_shader_name) {
+	using Result = Vector<uint8_t>;
+
+	ShaderReflection spirv_data;
+	if (_reflect_spirv16(p_spirv, spirv_data) != OK) {
+		return {};
+	}
+
+	ShaderBinaryData bin_data{};
+	if (!p_shader_name.is_empty()) {
+		bin_data.shader_name = p_shader_name.utf8();
+	} else {
+		bin_data.shader_name = "unnamed";
+	}
+
+	bin_data.vertex_input_mask = spirv_data.vertex_input_mask;
+	bin_data.fragment_output_mask = spirv_data.fragment_output_mask;
+	bin_data.compute_local_size = ComputeSize{
+		.x = spirv_data.compute_local_size[0],
+		.y = spirv_data.compute_local_size[1],
+		.z = spirv_data.compute_local_size[2],
+	};
+	bin_data.is_compute = spirv_data.is_compute;
+	bin_data.push_constant.size = spirv_data.push_constant_size;
+	bin_data.push_constant.stages = (ShaderStageUsage)(uint8_t)spirv_data.push_constant_stages;
+
+	for (uint32_t i = 0; i < spirv_data.uniform_sets.size(); i++) {
+		const Vector<ShaderUniform> &spirv_set = spirv_data.uniform_sets[i];
+		UniformSetData set{ .index = i };
+		for (const ShaderUniform &spirv_uniform : spirv_set) {
+			UniformData binding{};
+			binding.type = spirv_uniform.type;
+			binding.binding = spirv_uniform.binding;
+			binding.writable = spirv_uniform.writable;
+			binding.stages = (ShaderStageUsage)(uint8_t)spirv_uniform.stages;
+			binding.length = spirv_uniform.length;
+			set.uniforms.push_back(binding);
+		}
+		bin_data.uniforms.push_back(set);
+	}
+
+	for (const ShaderSpecializationConstant &spirv_sc : spirv_data.specialization_constants) {
+		SpecializationConstantData spec_constant{};
+		spec_constant.type = spirv_sc.type;
+		spec_constant.constant_id = spirv_sc.constant_id;
+		spec_constant.int_value = spirv_sc.int_value;
+		spec_constant.stages = (ShaderStageUsage)(uint8_t)spirv_sc.stages;
+		bin_data.constants.push_back(spec_constant);
+		bin_data.spirv_specialization_constants_ids_mask |= (1 << spirv_sc.constant_id);
+	}
+
+	// Reflection using SPIRV-Cross:
+	// https://github.com/KhronosGroup/SPIRV-Cross/wiki/Reflection-API-user-guide
+
+	using spirv_cross::CompilerMSL;
+
+	spirv_cross::CompilerMSL::Options msl_options{};
+	msl_options.set_msl_version(version_major, version_minor);
+	if (version_major == 3 && version_minor >= 1) {
+		// TODO(sgc): restrict to Metal 3.0 for now, until bugs in SPIRV-cross image atomics are resolved
+		msl_options.set_msl_version(3, 0);
+	}
+	bin_data.msl_version = msl_options.msl_version;
+#if TARGET_OS_OSX
+	msl_options.platform = spirv_cross::CompilerMSL::Options::macOS;
+#else
+	msl_options.platform = spirv_cross::CompilerMSL::Options::iOS;
+#endif
+
+#if TARGET_OS_IOS
+	msl_options.ios_use_simdgroup_functions = (*metal_device_properties).features.simdPermute;
+#endif
+
+	msl_options.argument_buffers = true;
+	msl_options.force_active_argument_buffer_resources = true; // same as MoltenVK when using argument buffers
+	// msl_options.pad_argument_buffer_resources = true; // same as MoltenVK when using argument buffers
+	msl_options.texture_buffer_native = true; // texture_buffer support
+	msl_options.use_framebuffer_fetch_subpasses = false;
+	msl_options.pad_fragment_output_components = true;
+	msl_options.r32ui_alignment_constant_id = R32UI_ALIGNMENT_CONSTANT_ID;
+	msl_options.agx_manual_cube_grad_fixup = true;
+
+	spirv_cross::CompilerGLSL::Options options{};
+	options.vertex.flip_vert_y = true;
+#if DEV_ENABLED
+	options.emit_line_directives = true;
+#endif
+
+	for (uint32_t i = 0; i < p_spirv.size(); i++) {
+		ShaderStageSPIRVData v = p_spirv[i];
+		ShaderStage stage = v.shader_stage;
+		char const *stage_name = SHADER_STAGE_NAMES[stage];
+		uint32_t const *const ir = reinterpret_cast<uint32_t const *const>(v.spirv.ptr());
+		size_t word_count = v.spirv.size() / sizeof(uint32_t);
+		spirv_cross::Parser parser(ir, word_count);
+		try {
+			parser.parse();
+		} catch (spirv_cross::CompilerError &e) {
+			ERR_FAIL_V_MSG(Result(), "Failed to parse IR at stage " + String(SHADER_STAGE_NAMES[stage]) + ": " + e.what());
+		}
+
+		CompilerMSL compiler(std::move(parser.get_parsed_ir()));
+		compiler.set_msl_options(msl_options);
+		compiler.set_common_options(options);
+
+		auto active = compiler.get_active_interface_variables();
+		auto resources = compiler.get_shader_resources();
+
+		std::string source = compiler.compile();
+
+		ERR_FAIL_COND_V_MSG(compiler.get_entry_points_and_stages().size() != 1, Result(), "Expected a single entry point and stage.");
+
+		auto entry_point_stage = compiler.get_entry_points_and_stages().front();
+		auto entry_point = compiler.get_entry_point(entry_point_stage.name, entry_point_stage.execution_model);
+
+		// process specialization constants
+		if (!compiler.get_specialization_constants().empty()) {
+			for (auto &constant : compiler.get_specialization_constants()) {
+				auto res = std::find_if(bin_data.constants.begin(), bin_data.constants.end(), [constant](auto &v) { return v.constant_id == constant.constant_id; });
+				if (res != bin_data.constants.end()) {
+					res->used_stages |= 1 << stage;
+				} else {
+					WARN_PRINT(String(stage_name) + ": unable to find constant_id: " + itos(constant.constant_id));
+				}
+			}
+		}
+
+		// process bindings
+
+		auto &uniform_sets = bin_data.uniforms;
+		using BT = spirv_cross::SPIRType::BaseType;
+
+		// Always clearer than a boolean
+		enum class Writable {
+			No,
+			Maybe,
+		};
+
+		// get_decoration returns a std::optional containing the value of the
+		// decoration, if it exists.
+		auto get_decoration = [&compiler](spirv_cross::ID id, spv::Decoration decoration) {
+			std::optional<uint32_t> res;
+			if (compiler.has_decoration(id, decoration)) {
+				res = compiler.get_decoration(id, decoration);
+			}
+			return res;
+		};
+
+		auto descriptor_bindings = [&compiler, &active, &uniform_sets, stage, &get_decoration](auto &resources, Writable writable) {
+			for (auto &res : resources) {
+				auto dset = get_decoration(res.id, spv::DecorationDescriptorSet);
+				auto dbin = get_decoration(res.id, spv::DecorationBinding);
+				auto name = compiler.get_name(res.id);
+				UniformData *found = nullptr;
+				if (dset.has_value() && dbin.has_value() && dset.value() < uniform_sets.size()) {
+					auto &set = uniform_sets[dset.value()];
+					auto pos = std::find_if(set.uniforms.begin(), set.uniforms.end(), [dbin](auto &v) { return dbin == v.binding; });
+					if (pos != set.uniforms.end()) {
+						found = &(*pos);
+					}
+				}
+
+				ERR_FAIL_NULL_V_MSG(found, ERR_CANT_CREATE, "UniformData not found");
+
+				bool is_active = active.find(res.id) != active.end();
+				if (is_active) {
+					found->active_stages |= 1 << stage;
+				}
+
+				BindingInfo primary{};
+
+				auto a_type = compiler.get_type(res.type_id);
+				auto basetype = a_type.basetype;
+
+				switch (basetype) {
+					case BT::Struct: {
+						primary.dataType = MTLDataTypePointer;
+					} break;
+
+					case BT::Image:
+					case BT::SampledImage: {
+						primary.dataType = MTLDataTypeTexture;
+					} break;
+
+					case BT::Sampler: {
+						primary.dataType = MTLDataTypeSampler;
+					} break;
+
+					default: {
+						ERR_FAIL_V_MSG(ERR_CANT_CREATE, "Unexpected BaseType");
+					} break;
+				}
+
+				// find array length
+				if (basetype == BT::Image || basetype == BT::SampledImage) {
+					primary.arrayLength = 1;
+					for (uint32_t const &a : a_type.array) {
+						primary.arrayLength *= a;
+					}
+					primary.isMultisampled = a_type.image.ms;
+
+					auto image = a_type.image;
+					primary.imageFormat = image.format;
+
+					switch (image.dim) {
+						case spv::Dim1D: {
+							if (image.arrayed) {
+								primary.textureType = MTLTextureType1DArray;
+							} else {
+								primary.textureType = MTLTextureType1D;
+							}
+						} break;
+						case spv::DimSubpassData: {
+							DISPATCH_FALLTHROUGH;
+						}
+						case spv::Dim2D: {
+							if (image.arrayed && image.ms) {
+								primary.textureType = MTLTextureType2DMultisampleArray;
+							} else if (image.arrayed) {
+								primary.textureType = MTLTextureType2DArray;
+							} else if (image.ms) {
+								primary.textureType = MTLTextureType2DMultisample;
+							} else {
+								primary.textureType = MTLTextureType2D;
+							}
+						} break;
+						case spv::Dim3D: {
+							primary.textureType = MTLTextureType3D;
+						} break;
+						case spv::DimCube: {
+							if (image.arrayed) {
+								primary.textureType = MTLTextureTypeCube;
+							}
+						} break;
+						case spv::DimRect: {
+						} break;
+						case spv::DimBuffer: {
+							// VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+							primary.textureType = MTLTextureTypeTextureBuffer;
+						} break;
+						case spv::DimMax: {
+							// Add all enumerations to silence the compiler warning
+							// and generate future warnings, should a new one be
+							// added.
+						} break;
+					}
+				}
+
+				// update writable
+				if (writable == Writable::Maybe) {
+					if (basetype == BT::Struct) {
+						auto flags = compiler.get_buffer_block_flags(res.id);
+						if (!flags.get(spv::DecorationNonWritable)) {
+							if (!flags.get(spv::DecorationNonReadable)) {
+								primary.access = MTLBindingAccessReadWrite;
+							} else {
+								primary.access = MTLBindingAccessWriteOnly;
+							}
+						}
+					} else if (basetype == BT::Image) {
+						switch (a_type.image.access) {
+							case spv::AccessQualifierWriteOnly:
+								primary.access = MTLBindingAccessWriteOnly;
+								break;
+							case spv::AccessQualifierReadWrite:
+								primary.access = MTLBindingAccessReadWrite;
+								break;
+							case spv::AccessQualifierReadOnly:
+								break;
+							case spv::AccessQualifierMax:
+								DISPATCH_FALLTHROUGH;
+							default:
+								if (!compiler.has_decoration(res.id, spv::DecorationNonWritable)) {
+									primary.access = MTLBindingAccessReadWrite;
+								} else if (!compiler.has_decoration(res.id, spv::DecorationNonReadable)) {
+									primary.access = MTLBindingAccessWriteOnly;
+								}
+								break;
+						}
+					}
+				}
+
+				switch (primary.access) {
+					case MTLBindingAccessReadOnly:
+						primary.usage = MTLResourceUsageRead;
+						break;
+					case MTLBindingAccessWriteOnly:
+						primary.usage = MTLResourceUsageWrite;
+						break;
+					case MTLBindingAccessReadWrite:
+						primary.usage = MTLResourceUsageRead | MTLResourceUsageWrite;
+						break;
+				}
+
+				primary.index = compiler.get_automatic_msl_resource_binding(res.id);
+
+				found->bindings[stage] = primary;
+
+				// A sampled image contains two bindings, the primary
+				// is to the image, and the secondary is to the associated
+				// sampler.
+				if (basetype == BT::SampledImage) {
+					uint32_t binding = compiler.get_automatic_msl_resource_binding_secondary(res.id);
+					if (binding != (uint32_t)-1) {
+						found->bindings_secondary[stage] = BindingInfo{
+							.dataType = MTLDataTypeSampler,
+							.index = binding,
+							.access = MTLBindingAccessReadOnly,
+						};
+					}
+				}
+
+				// An image may have a secondary binding if it is used
+				// for atomic operations.
+				if (basetype == BT::Image) {
+					uint32_t binding = compiler.get_automatic_msl_resource_binding_secondary(res.id);
+					if (binding != (uint32_t)-1) {
+						found->bindings_secondary[stage] = BindingInfo{
+							.dataType = MTLDataTypePointer,
+							.index = binding,
+							.access = MTLBindingAccessReadWrite,
+						};
+					}
+				}
+			}
+			return Error::OK;
+		};
+
+		if (!resources.uniform_buffers.empty()) {
+			Error err = descriptor_bindings(resources.uniform_buffers, Writable::No);
+			ERR_FAIL_COND_V(err != OK, Result());
+		}
+		if (!resources.storage_buffers.empty()) {
+			Error err = descriptor_bindings(resources.storage_buffers, Writable::Maybe);
+			ERR_FAIL_COND_V(err != OK, Result());
+		}
+		if (!resources.storage_images.empty()) {
+			Error err = descriptor_bindings(resources.storage_images, Writable::Maybe);
+			ERR_FAIL_COND_V(err != OK, Result());
+		}
+		if (!resources.sampled_images.empty()) {
+			Error err = descriptor_bindings(resources.sampled_images, Writable::No);
+			ERR_FAIL_COND_V(err != OK, Result());
+		}
+		if (!resources.separate_images.empty()) {
+			Error err = descriptor_bindings(resources.separate_images, Writable::No);
+			ERR_FAIL_COND_V(err != OK, Result());
+		}
+		if (!resources.separate_samplers.empty()) {
+			Error err = descriptor_bindings(resources.separate_samplers, Writable::No);
+			ERR_FAIL_COND_V(err != OK, Result());
+		}
+		if (!resources.subpass_inputs.empty()) {
+			Error err = descriptor_bindings(resources.subpass_inputs, Writable::No);
+			ERR_FAIL_COND_V(err != OK, Result());
+		}
+
+		if (!resources.push_constant_buffers.empty()) {
+			for (auto &res : resources.push_constant_buffers) {
+				auto binding = compiler.get_automatic_msl_resource_binding(res.id);
+				if (binding != (uint32_t)-1) {
+					bin_data.push_constant.used_stages |= 1 << stage;
+					bin_data.push_constant.msl_binding[stage] = binding;
+				}
+			}
+		}
+
+		ERR_FAIL_COND_V_MSG(!resources.atomic_counters.empty(), Result(), "Atomic counters not supported");
+		ERR_FAIL_COND_V_MSG(!resources.acceleration_structures.empty(), Result(), "Acceleration structures not supported");
+		ERR_FAIL_COND_V_MSG(!resources.shader_record_buffers.empty(), Result(), "Shader record buffers not supported");
+
+		if (!resources.stage_inputs.empty()) {
+			for (auto &res : resources.stage_inputs) {
+				auto a_base_type = compiler.get_type(res.base_type_id);
+				uint32_t binding = compiler.get_automatic_msl_resource_binding(res.id);
+				if (binding != (uint32_t)-1) {
+					bin_data.vertex_input_mask |= 1 << binding;
+				}
+			}
+		}
+
+		ShaderStageData stage_data;
+		stage_data.stage = v.shader_stage;
+		stage_data.entry_point_name = entry_point.name.c_str();
+		stage_data.source = source.c_str();
+		bin_data.stages.push_back(stage_data);
+	}
+
+	size_t vec_size = bin_data.serialize_size() + 8;
+
+	Vector<uint8_t> ret;
+	ret.resize(vec_size);
+	BufWriter writer(ret.ptrw(), vec_size);
+	const uint8_t HEADER[4] = { 'G', 'M', 'S', 'L' };
+	writer.write(*(uint32_t *)HEADER);
+	writer.write(SHADER_BINARY_VERSION);
+	bin_data.serialize(writer);
+	ret.resize(writer.get_pos());
+
+	return ret;
+}
 
 RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vector<uint8_t> &p_shader_binary, ShaderDescription &r_shader_desc, String &r_name) {
 	r_shader_desc = {}; // Driver-agnostic.
@@ -1904,6 +2297,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 	}
 
 	MTLCompileOptions *options = [MTLCompileOptions new];
+	options.languageVersion = binary_data.get_msl_version();
 	HashMap<ShaderStage, id<MTLLibrary>> libraries;
 	for (ShaderStageData &shader_data : binary_data.stages) {
 		NSString *source = [[NSString alloc] initWithBytesNoCopy:(void *)shader_data.source.ptr()
@@ -1919,14 +2313,14 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 		libraries[shader_data.stage] = library;
 	}
 
-	LocalVector<UniformSet> uniform_sets;
+	Vector<UniformSet> uniform_sets;
 	uniform_sets.resize(binary_data.uniforms.size());
 
 	r_shader_desc.uniform_sets.resize(binary_data.uniforms.size());
 
 	// create sets
 	for (UniformSetData &uniform_set : binary_data.uniforms) {
-		UniformSet &set = uniform_sets[uniform_set.index];
+		UniformSet &set = uniform_sets.write[uniform_set.index];
 		set.uniforms.resize(uniform_set.uniforms.size());
 
 		Vector<ShaderUniform> &uset = r_shader_desc.uniform_sets.write[uniform_set.index];
@@ -1956,7 +2350,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 		}
 	}
 	for (UniformSetData &uniform_set : binary_data.uniforms) {
-		UniformSet &set = uniform_sets[uniform_set.index];
+		UniformSet &set = uniform_sets.write[uniform_set.index];
 
 		// make encoders
 		for (ShaderStageData const &stage_data : binary_data.stages) {
@@ -1981,13 +2375,13 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 			}
 			// sort by index
 			[descriptors sortUsingComparator:^NSComparisonResult(MTLArgumentDescriptor *a, MTLArgumentDescriptor *b) {
-			  if (a.index < b.index) {
-				  return NSOrderedAscending;
-			  } else if (a.index > b.index) {
-				  return NSOrderedDescending;
-			  } else {
-				  return NSOrderedSame;
-			  }
+				if (a.index < b.index) {
+					return NSOrderedAscending;
+				} else if (a.index > b.index) {
+					return NSOrderedDescending;
+				} else {
+					return NSOrderedSame;
+				}
 			}];
 
 			id<MTLArgumentEncoder> enc = [device newArgumentEncoderWithArguments:descriptors];
@@ -2059,419 +2453,6 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 	r_shader_desc.push_constant_size = binary_data.push_constant.size;
 
 	return ShaderID(shader);
-}
-
-Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(VectorView<ShaderStageSPIRVData> p_spirv, const String &p_shader_name) {
-	using Result = Vector<uint8_t>;
-
-	ShaderReflection spirv_data;
-	if (_reflect_spirv16(p_spirv, spirv_data) != OK) {
-		return {};
-	}
-
-	ShaderBinaryData bin_data{};
-	if (!p_shader_name.is_empty()) {
-		bin_data.shader_name = p_shader_name.utf8();
-	} else {
-		bin_data.shader_name = "unnamed";
-	}
-
-	bin_data.vertex_input_mask = spirv_data.vertex_input_mask;
-	bin_data.fragment_output_mask = spirv_data.fragment_output_mask;
-	bin_data.compute_local_size = ComputeSize{
-		.x = spirv_data.compute_local_size[0],
-		.y = spirv_data.compute_local_size[1],
-		.z = spirv_data.compute_local_size[2],
-	};
-	bin_data.is_compute = spirv_data.is_compute;
-	bin_data.push_constant.size = spirv_data.push_constant_size;
-	bin_data.push_constant.stages = (ShaderStageUsage)(uint8_t)spirv_data.push_constant_stages;
-
-	for (uint32_t i = 0; i < spirv_data.uniform_sets.size(); i++) {
-		const Vector<ShaderUniform> &spirv_set = spirv_data.uniform_sets[i];
-		UniformSetData set{ .index = i };
-		for (const ShaderUniform &spirv_uniform : spirv_set) {
-			UniformData binding{};
-			binding.type = spirv_uniform.type;
-			binding.binding = spirv_uniform.binding;
-			binding.writable = spirv_uniform.writable;
-			binding.stages = (ShaderStageUsage)(uint8_t)spirv_uniform.stages;
-			binding.length = spirv_uniform.length;
-			set.uniforms.push_back(binding);
-		}
-		bin_data.uniforms.push_back(set);
-	}
-
-	for (const ShaderSpecializationConstant &spirv_sc : spirv_data.specialization_constants) {
-		SpecializationConstantData spec_constant{};
-		spec_constant.type = spirv_sc.type;
-		spec_constant.constant_id = spirv_sc.constant_id;
-		spec_constant.int_value = spirv_sc.int_value;
-		spec_constant.stages = (ShaderStageUsage)(uint8_t)spirv_sc.stages;
-		bin_data.constants.push_back(spec_constant);
-		bin_data.spirv_specialization_constants_ids_mask |= (1 << spirv_sc.constant_id);
-	}
-
-	// Reflection using SPIRV-Cross:
-	// https://github.com/KhronosGroup/SPIRV-Cross/wiki/Reflection-API-user-guide
-
-	using spirv_cross::CompilerMSL;
-
-	spirv_cross::CompilerMSL::Options msl_options{};
-	msl_options.set_msl_version(version_major, version_minor);
-	if (version_major == 3 && version_minor >= 1) {
-		// TODO(sgc): restrict to Metal 3.0 for now, until bugs in SPIRV-cross image atomics are resolved
-		msl_options.set_msl_version(3, 0);
-	}
-#if TARGET_OS_OSX
-	msl_options.platform = spirv_cross::CompilerMSL::Options::macOS;
-#else
-	msl_options.platform = spirv_cross::CompilerMSL::Options::iOS;
-#endif
-
-#if TARGET_OS_IOS
-	msl_options.ios_use_simdgroup_functions = (*metal_device_properties).features.simdPermute;
-#endif
-
-	msl_options.argument_buffers = true;
-	msl_options.force_active_argument_buffer_resources = true; // same as MoltenVK when using argument buffers
-	// msl_options.pad_argument_buffer_resources = true; // same as MoltenVK when using argument buffers
-	msl_options.texture_buffer_native = true; // texture_buffer support
-	msl_options.use_framebuffer_fetch_subpasses = false;
-	msl_options.pad_fragment_output_components = true;
-	msl_options.r32ui_alignment_constant_id = R32UI_ALIGNMENT_CONSTANT_ID;
-	msl_options.agx_manual_cube_grad_fixup = true;
-
-	spirv_cross::CompilerGLSL::Options options{};
-	options.vertex.flip_vert_y = true;
-#if DEV_ENABLED
-	options.emit_line_directives = true;
-#endif
-
-	for (uint32_t i = 0; i < p_spirv.size(); i++) {
-		ShaderStageSPIRVData v = p_spirv[i];
-		ShaderStage stage = v.shader_stage;
-		char const *stage_name = SHADER_STAGE_NAMES[stage];
-		uint32_t const *const ir = reinterpret_cast<uint32_t const *const>(v.spirv.ptr());
-		size_t word_count = v.spirv.size() / sizeof(uint32_t);
-		spirv_cross::Parser parser(ir, word_count);
-		try {
-			parser.parse();
-		} catch (spirv_cross::CompilerError &e) {
-			ERR_FAIL_V_MSG(Result(), "Failed to parse IR at stage " + String(SHADER_STAGE_NAMES[stage]) + ": " + e.what());
-		}
-
-		CompilerMSL compiler(std::move(parser.get_parsed_ir()));
-		compiler.set_msl_options(msl_options);
-		compiler.set_common_options(options);
-
-		auto active = compiler.get_active_interface_variables();
-		auto resources = compiler.get_shader_resources();
-
-		std::string source = compiler.compile();
-
-		ERR_FAIL_COND_V_MSG(compiler.get_entry_points_and_stages().size() != 1, Result(), "Expected a single entry point and stage.");
-
-		auto entry_point_stage = compiler.get_entry_points_and_stages().front();
-		auto entry_point = compiler.get_entry_point(entry_point_stage.name, entry_point_stage.execution_model);
-
-		// process specialization constants
-		if (!compiler.get_specialization_constants().empty()) {
-			for (auto &constant : compiler.get_specialization_constants()) {
-				auto res = std::find_if(bin_data.constants.begin(), bin_data.constants.end(), [constant](auto &v) { return v.constant_id == constant.constant_id; });
-				if (res != bin_data.constants.end()) {
-					res->used_stages |= 1 << stage;
-				} else {
-					WARN_PRINT(String(stage_name) + ": unable to find constant_id: " + itos(constant.constant_id));
-				}
-			}
-		}
-
-		// process bindings
-
-		auto &uniform_sets = bin_data.uniforms;
-		using BT = spirv_cross::SPIRType::BaseType;
-
-		// get_decoration returns a std::optional containing the value of the
-		// decoration, if it exists.
-		auto get_decoration = [&compiler](spirv_cross::ID id, spv::Decoration decoration) {
-			std::optional<uint32_t> res;
-			if (compiler.has_decoration(id, decoration)) {
-				res = compiler.get_decoration(id, decoration);
-			}
-			return res;
-		};
-
-		auto descriptor_bindings = [&compiler, &active, &uniform_sets, stage, &get_decoration](char const *resource, auto &resources) {
-			for (auto &res : resources) {
-				auto dset = get_decoration(res.id, spv::DecorationDescriptorSet);
-				auto dbin = get_decoration(res.id, spv::DecorationBinding);
-				auto name = compiler.get_name(res.id);
-				UniformData *found = nullptr;
-				if (dset.has_value() && dbin.has_value() && dset.value() < uniform_sets.size()) {
-					auto &set = uniform_sets[dset.value()];
-					auto pos = std::find_if(set.uniforms.begin(), set.uniforms.end(), [dbin](auto &v) { return dbin == v.binding; });
-					if (pos != set.uniforms.end()) {
-						found = &(*pos);
-					}
-				}
-
-				ERR_FAIL_NULL_V_MSG(found, ERR_CANT_CREATE, "UniformData not found");
-
-				bool is_active = active.find(res.id) != active.end();
-				if (is_active) {
-					found->active_stages |= 1 << stage;
-				}
-
-				BindingInfo primary{};
-
-				auto a_base_type = compiler.get_type(res.base_type_id);
-				auto basetype = a_base_type.basetype;
-
-				// potentially contains the MTLBindingAccess after examining
-				// metadata about the basetype
-				std::optional<MTLBindingAccess> opt_access;
-				std::optional<uint32_t> primary_binding;
-
-				switch (basetype) {
-					case BT::Struct: {
-						primary.dataType = MTLDataTypePointer;
-						auto flags = compiler.get_buffer_block_flags(res.id);
-						if (!flags.get(spv::DecorationNonWritable)) {
-							if (!flags.get(spv::DecorationNonReadable)) {
-								opt_access = MTLBindingAccessReadWrite;
-							} else {
-								opt_access = MTLBindingAccessWriteOnly;
-							}
-						} else {
-							opt_access = MTLBindingAccessReadOnly;
-						}
-					} break;
-
-					case BT::Image:
-					case BT::SampledImage: {
-						primary.dataType = MTLDataTypeTexture;
-					} break;
-
-					case BT::Sampler: {
-						primary.dataType = MTLDataTypeSampler;
-					} break;
-
-					default: {
-						ERR_FAIL_V_MSG(ERR_CANT_CREATE, "Unexpected BaseType");
-					} break;
-				}
-
-				// find array length
-				if (basetype == BT::Image || basetype == BT::SampledImage) {
-					auto a_type = compiler.get_type(res.type_id);
-
-					if (a_type.array.size() > 0) {
-						primary.arrayLength = a_type.array[0];
-					}
-					primary.isMultisampled = a_type.image.ms;
-
-					auto image = a_type.image;
-					primary.imageFormat = image.format;
-
-					switch (image.dim) {
-						case spv::Dim1D: {
-							if (image.arrayed) {
-								primary.textureType = MTLTextureType1DArray;
-							} else {
-								primary.textureType = MTLTextureType1D;
-							}
-						} break;
-						case spv::DimSubpassData: {
-							// subpass input
-							primary_binding = get_decoration(res.id, spv::DecorationInputAttachmentIndex);
-						}
-							DISPATCH_FALLTHROUGH;
-						case spv::Dim2D: {
-							if (image.arrayed && image.ms) {
-								primary.textureType = MTLTextureType2DMultisampleArray;
-							} else if (image.arrayed) {
-								primary.textureType = MTLTextureType2DArray;
-							} else if (image.ms) {
-								primary.textureType = MTLTextureType2DMultisample;
-							} else {
-								primary.textureType = MTLTextureType2D;
-							}
-						} break;
-						case spv::Dim3D: {
-							primary.textureType = MTLTextureType3D;
-						} break;
-						case spv::DimCube: {
-							if (image.arrayed) {
-								primary.textureType = MTLTextureTypeCube;
-							}
-						} break;
-						case spv::DimRect: {
-						} break;
-						case spv::DimBuffer: {
-							// VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
-							primary.textureType = MTLTextureTypeTextureBuffer;
-						} break;
-						case spv::DimMax: {
-							// Add all enumerations to silence the compiler warning
-							// and generate future warnings, should a new one be
-							// added.
-						} break;
-					}
-
-					// try to determine the access type from the image
-					switch (image.access) {
-						case spv::AccessQualifierWriteOnly:
-							opt_access = MTLBindingAccessWriteOnly;
-							break;
-						case spv::AccessQualifierReadWrite:
-							opt_access = MTLBindingAccessReadWrite;
-							break;
-						case spv::AccessQualifierReadOnly:
-							opt_access = MTLBindingAccessReadOnly;
-							DISPATCH_FALLTHROUGH;
-						default:
-							break;
-					}
-				}
-
-				if (opt_access.has_value()) {
-					primary.access = opt_access.value();
-				} else {
-					// not an image or the image.access qualifier is not set
-					if (!compiler.has_decoration(res.id, spv::DecorationNonWritable)) {
-						if (!compiler.has_decoration(res.id, spv::DecorationNonReadable)) {
-							primary.access = MTLBindingAccessReadWrite;
-						} else {
-							primary.access = MTLBindingAccessWriteOnly;
-						}
-					} else {
-						primary.access = MTLBindingAccessReadOnly;
-					}
-				}
-
-				switch (primary.access) {
-					case MTLBindingAccessReadOnly:
-						primary.usage = MTLResourceUsageRead;
-						break;
-					case MTLBindingAccessWriteOnly:
-						primary.usage = MTLResourceUsageWrite;
-						break;
-					case MTLBindingAccessReadWrite:
-						primary.usage = MTLResourceUsageRead | MTLResourceUsageWrite;
-						break;
-				}
-
-				if (primary_binding.has_value()) {
-					primary.index = primary_binding.value();
-				} else {
-					primary.index = compiler.get_automatic_msl_resource_binding(res.id);
-				}
-
-				found->bindings[stage] = primary;
-
-				// A sampled image contains two bindings, the primary
-				// is to the image, and the secondary is to the associated
-				// sampler.
-				if (basetype == BT::SampledImage) {
-					uint32_t binding = compiler.get_automatic_msl_resource_binding_secondary(res.id);
-					if (binding != (uint32_t)-1) {
-						found->bindings_secondary[stage] = BindingInfo{
-							.dataType = MTLDataTypeSampler,
-							.index = binding,
-							.access = MTLBindingAccessReadOnly,
-						};
-					}
-				}
-
-				// An image may have a secondary binding if it is used
-				// for atomic operations.
-				if (basetype == BT::Image) {
-					uint32_t binding = compiler.get_automatic_msl_resource_binding_secondary(res.id);
-					if (binding != (uint32_t)-1) {
-						found->bindings_secondary[stage] = BindingInfo{
-							.dataType = MTLDataTypePointer,
-							.index = binding,
-							.access = MTLBindingAccessReadWrite,
-						};
-					}
-				}
-			}
-			return Error::OK;
-		};
-
-		if (!resources.uniform_buffers.empty()) {
-			Error err = descriptor_bindings("uniform buffers", resources.uniform_buffers);
-			ERR_FAIL_COND_V(err != OK, Result());
-		}
-		if (!resources.storage_buffers.empty()) {
-			Error err = descriptor_bindings("storage buffers", resources.storage_buffers);
-			ERR_FAIL_COND_V(err != OK, Result());
-		}
-		if (!resources.storage_images.empty()) {
-			Error err = descriptor_bindings("storage images", resources.storage_images);
-			ERR_FAIL_COND_V(err != OK, Result());
-		}
-		if (!resources.sampled_images.empty()) {
-			Error err = descriptor_bindings("sampled images", resources.sampled_images);
-			ERR_FAIL_COND_V(err != OK, Result());
-		}
-		if (!resources.separate_images.empty()) {
-			Error err = descriptor_bindings("separate images", resources.separate_images);
-			ERR_FAIL_COND_V(err != OK, Result());
-		}
-		if (!resources.separate_samplers.empty()) {
-			Error err = descriptor_bindings("separate samplers", resources.separate_samplers);
-			ERR_FAIL_COND_V(err != OK, Result());
-		}
-		if (!resources.subpass_inputs.empty()) {
-			Error err = descriptor_bindings("subpass inputs", resources.subpass_inputs);
-			ERR_FAIL_COND_V(err != OK, Result());
-		}
-
-		if (!resources.push_constant_buffers.empty()) {
-			for (auto &res : resources.push_constant_buffers) {
-				auto binding = compiler.get_automatic_msl_resource_binding(res.id);
-				if (binding != (uint32_t)-1) {
-					bin_data.push_constant.used_stages |= 1 << stage;
-					bin_data.push_constant.msl_binding[stage] = binding;
-				}
-			}
-		}
-
-		ERR_FAIL_COND_V_MSG(!resources.atomic_counters.empty(), Result(), "Atomic counters not supported");
-		ERR_FAIL_COND_V_MSG(!resources.acceleration_structures.empty(), Result(), "Acceleration structures not supported");
-		ERR_FAIL_COND_V_MSG(!resources.shader_record_buffers.empty(), Result(), "Shader record buffers not supported");
-
-		if (!resources.stage_inputs.empty()) {
-			for (auto &res : resources.stage_inputs) {
-				auto a_base_type = compiler.get_type(res.base_type_id);
-				uint32_t binding = compiler.get_automatic_msl_resource_binding(res.id);
-				if (binding != (uint32_t)-1) {
-					bin_data.vertex_input_mask |= 1 << binding;
-				}
-			}
-		}
-
-		ShaderStageData stage_data;
-		stage_data.stage = v.shader_stage;
-		stage_data.entry_point_name = entry_point.name.c_str();
-		stage_data.source = source.c_str();
-		bin_data.stages.push_back(stage_data);
-	}
-
-	size_t vec_size = bin_data.serialize_size() + 8;
-
-	Vector<uint8_t> ret;
-	ret.resize(vec_size);
-	BufWriter writer(ret.ptrw(), vec_size);
-	const uint8_t HEADER[4] = { 'G', 'M', 'S', 'L' };
-	writer.write(*(uint32_t *)HEADER);
-	writer.write(SHADER_BINARY_VERSION);
-	bin_data.serialize(writer);
-	ret.resize(writer.get_pos());
-
-	return ret;
 }
 
 void RenderingDeviceDriverMetal::shader_free(ShaderID p_shader) {
@@ -2749,6 +2730,7 @@ void RenderingDeviceDriverMetal::command_clear_color_texture(CommandBufferID p_c
 	}
 }
 
+API_AVAILABLE(macos(11.0), ios(14.0))
 bool isArrayTexture(MTLTextureType p_type) {
 	return (p_type == MTLTextureType3D ||
 			p_type == MTLTextureType2DArray ||
@@ -2936,14 +2918,15 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 
 	size_t subpass_count = p_subpasses.size();
 
-	TightLocalVector<MDSubpass> subpasses;
+	Vector<MDSubpass> subpasses;
 	subpasses.resize(subpass_count);
 	for (uint32_t i = 0; i < subpass_count; i++) {
-		subpasses[i].subpass_index = i;
-		subpasses[i].input_references = p_subpasses[i].input_references;
-		subpasses[i].color_references = p_subpasses[i].color_references;
-		subpasses[i].depth_stencil_reference = p_subpasses[i].depth_stencil_reference;
-		subpasses[i].resolve_references = p_subpasses[i].resolve_references;
+		MDSubpass &subpass = subpasses.write[i];
+		subpass.subpass_index = i;
+		subpass.input_references = p_subpasses[i].input_references;
+		subpass.color_references = p_subpasses[i].color_references;
+		subpass.depth_stencil_reference = p_subpasses[i].depth_stencil_reference;
+		subpass.resolve_references = p_subpasses[i].resolve_references;
 	}
 
 	static const MTLLoadAction loadActions[] = {
@@ -2957,34 +2940,34 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 		[ATTACHMENT_STORE_OP_DONT_CARE] = MTLStoreActionDontCare,
 	};
 
-	TightLocalVector<MDAttachment> attachments;
+	Vector<MDAttachment> attachments;
 	attachments.resize(p_attachments.size());
 
 	for (uint32_t i = 0; i < p_attachments.size(); i++) {
 		Attachment const &a = p_attachments[i];
-		MDAttachment *mda = &attachments[i];
+		MDAttachment &mda = attachments.write[i];
 		MTLPixelFormat format = pf.getMTLPixelFormat(a.format);
-		mda->format = format;
+		mda.format = format;
 		if (a.samples > TEXTURE_SAMPLES_1) {
-			mda->samples = (*metal_device_properties).find_nearest_supported_sample_count(a.samples);
+			mda.samples = (*metal_device_properties).find_nearest_supported_sample_count(a.samples);
 		}
-		mda->loadAction = loadActions[a.load_op];
-		mda->storeAction = storeActions[a.store_op];
+		mda.loadAction = loadActions[a.load_op];
+		mda.storeAction = storeActions[a.store_op];
 		bool is_depth = pf.isDepthFormat(format);
 		if (is_depth) {
-			mda->type |= MDAttachmentType::Depth;
+			mda.type |= MDAttachmentType::Depth;
 		}
 		bool is_stencil = pf.isStencilFormat(format);
 		if (is_stencil) {
-			mda->type |= MDAttachmentType::Stencil;
-			mda->stencilLoadAction = loadActions[a.stencil_load_op];
-			mda->stencilStoreAction = storeActions[a.stencil_store_op];
+			mda.type |= MDAttachmentType::Stencil;
+			mda.stencilLoadAction = loadActions[a.stencil_load_op];
+			mda.stencilStoreAction = storeActions[a.stencil_store_op];
 		}
 		if (!is_depth && !is_stencil) {
-			mda->type |= MDAttachmentType::Color;
+			mda.type |= MDAttachmentType::Color;
 		}
 	}
-	MDRenderPass *obj = new MDRenderPass(std::move(attachments), std::move(subpasses));
+	MDRenderPass *obj = new MDRenderPass(attachments, subpasses);
 	return RenderPassID(obj);
 }
 
@@ -3088,7 +3071,7 @@ void RenderingDeviceDriverMetal::command_render_set_line_width(CommandBufferID p
 
 // ----- PIPELINE -----
 
-RDM::Result<id<MTLFunction>> RenderingDeviceDriverMetal::_create_function(id<MTLLibrary> p_library, NSString *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants) {
+RenderingDeviceDriverMetal::Result<id<MTLFunction>> RenderingDeviceDriverMetal::_create_function(id<MTLLibrary> p_library, NSString *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants) {
 	id<MTLFunction> function = [p_library newFunctionWithName:p_name];
 	ERR_FAIL_NULL_V_MSG(function, ERR_CANT_CREATE, "No function named main0");
 
@@ -3107,13 +3090,13 @@ RDM::Result<id<MTLFunction>> RenderingDeviceDriverMetal::_create_function(id<MTL
 
 	if (!is_sorted) {
 		constants = [constants sortedArrayUsingComparator:^NSComparisonResult(MTLFunctionConstant *a, MTLFunctionConstant *b) {
-		  if (a.index < b.index) {
-			  return NSOrderedAscending;
-		  } else if (a.index > b.index) {
-			  return NSOrderedDescending;
-		  } else {
-			  return NSOrderedSame;
-		  }
+			if (a.index < b.index) {
+				return NSOrderedAscending;
+			} else if (a.index > b.index) {
+				return NSOrderedDescending;
+			} else {
+				return NSOrderedSame;
+			}
 		}];
 	}
 

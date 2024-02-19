@@ -11,7 +11,7 @@
 	<key>CFBundleIconFile</key>
 	<string>Godot.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>org.godotengine.godot</string>
+	<string>org.stuartcarnie.godot</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundlePackageType</key>

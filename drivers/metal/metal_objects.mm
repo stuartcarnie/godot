@@ -92,29 +92,35 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 		if (render.pipeline != p || render.dirty.has_flag(RenderState::DIRTY_PIPELINE)) {
 			render.dirty.clear_flag(RenderState::DIRTY_PIPELINE);
 			render.dirty.set_flag(RenderState::DIRTY_UNIFORMS);
+			// set the bits of uniform_set_mask to the render.uniform_sets.size()
+			render.uniform_set_mask = (1ULL << render.uniform_sets.size()) - 1;
 			render.pipeline = (MDRenderPipeline *)p;
 
 			if (render.encoder == nil) {
 				// this condition occurs when there are no attachments when calling render_next_subpass()
+				// and is due to the SUPPORTS_FRAGMENT_SHADER_WITH_ONLY_SIDE_EFFECTS flag
 				render.desc.defaultRasterSampleCount = static_cast<NSUInteger>(render.pipeline->sample_count);
+
+// NOTE(sgc): this is to test rdar://FB13605547 and will be deleted once fix is confirmed
+#if 0
 				if (render.pipeline->sample_count == 4) {
 					static id<MTLTexture> tex = nil;
 					static id<MTLTexture> res_tex = nil;
 					static dispatch_once_t onceToken;
 					dispatch_once(&onceToken, ^{
-					  Size2i sz = render.frameBuffer->size;
-					  MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:sz.width height:sz.height mipmapped:NO];
-					  td.textureType = MTLTextureType2DMultisample;
-					  td.storageMode = MTLStorageModeMemoryless;
-					  td.usage = MTLTextureUsageRenderTarget;
-					  td.sampleCount = render.pipeline->sample_count;
-					  tex = [device_driver->get_device() newTextureWithDescriptor:td];
+						Size2i sz = render.frameBuffer->size;
+						MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:sz.width height:sz.height mipmapped:NO];
+						td.textureType = MTLTextureType2DMultisample;
+						td.storageMode = MTLStorageModeMemoryless;
+						td.usage = MTLTextureUsageRenderTarget;
+						td.sampleCount = render.pipeline->sample_count;
+						tex = [device_driver->get_device() newTextureWithDescriptor:td];
 
-					  td.textureType = MTLTextureType2D;
-					  td.storageMode = MTLStorageModePrivate;
-					  td.usage = MTLTextureUsageShaderWrite;
-					  td.sampleCount = 1;
-					  res_tex = [device_driver->get_device() newTextureWithDescriptor:td];
+						td.textureType = MTLTextureType2D;
+						td.storageMode = MTLStorageModePrivate;
+						td.usage = MTLTextureUsageShaderWrite;
+						td.sampleCount = 1;
+						res_tex = [device_driver->get_device() newTextureWithDescriptor:td];
 					});
 					render.desc.colorAttachments[0].texture = tex;
 					render.desc.colorAttachments[0].loadAction = MTLLoadActionClear;
@@ -122,6 +128,7 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 
 					render.desc.colorAttachments[0].resolveTexture = res_tex;
 				}
+#endif
 				render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:render.desc];
 			}
 
@@ -201,12 +208,14 @@ void MDCommandBuffer::render_bind_uniform_set(RDD::UniformSetID p_uniform_set, R
 		uint32_t s = render.uniform_sets.size();
 		render.uniform_sets.resize(set->index + 1);
 		// null intermediate values
-		std::fill(&render.uniform_sets[s], &render.uniform_sets[set->index], nullptr);
+		std::fill(&render.uniform_sets[s], &render.uniform_sets[set->index] + 1, nullptr);
 	}
-	if (render.uniform_sets[set->index] == nullptr || render.uniform_sets[set->index] != set) {
+
+	if (render.uniform_sets[set->index] != set) {
 		render.dirty.set_flag(RenderState::DIRTY_UNIFORMS);
+		render.uniform_set_mask |= 1ULL << set->index;
+		render.uniform_sets[set->index] = set;
 	}
-	render.uniform_sets[set->index] = set;
 }
 
 void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<Rect2i> p_rects) {
@@ -374,15 +383,20 @@ void MDCommandBuffer::_render_bind_uniform_sets() {
 	}
 
 	render.dirty.clear_flag(RenderState::DIRTY_UNIFORMS);
+	uint64_t set_uniforms = render.uniform_set_mask;
+	render.uniform_set_mask = 0;
 
 	id<MTLRenderCommandEncoder> enc = render.encoder;
-
 	MDRenderShader *shader = render.pipeline->shader;
-
 	id<MTLDevice> device = enc.device;
 
-	for (MDUniformSet *set : render.uniform_sets) {
-		if (set == nullptr || set->index >= shader->sets.size())
+	while (set_uniforms != 0) {
+		// find the index of the next set bit
+		int index = __builtin_ctzll(set_uniforms);
+		// clear the set bit
+		set_uniforms &= ~(1ULL << index);
+		MDUniformSet *set = render.uniform_sets[index];
+		if (set == nullptr || set->index >= (uint32_t)shader->sets.size())
 			continue;
 		UniformSet const &set_info = shader->sets[set->index];
 
@@ -631,7 +645,7 @@ void MDCommandBuffer::render_next_subpass() {
 	desc.renderTargetHeight = MAX((NSUInteger)MIN(render.render_area.position.y + render.render_area.size.height, fb.size.height), 1u);
 
 	if (sample_buffer) {
-		// TODO: should set this on the _last_ pass when the subpass count > 1
+		// TODO(sgc): should set this on the _last_ pass when the subpass count > 1
 		MTLRenderPassSampleBufferAttachmentDescriptor *sba = desc.sampleBufferAttachments[0];
 		sba.sampleBuffer = sample_buffer;
 		sba.startOfVertexSampleIndex = MTLCounterDontSample;
@@ -844,7 +858,7 @@ void MDCommandBuffer::_end_blit() {
 	type = MDCommandBufferStateType::None;
 }
 
-MDComputeShader::MDComputeShader(CharString p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> p_kernel) :
+MDComputeShader::MDComputeShader(CharString p_name, Vector<UniformSet> p_sets, id<MTLLibrary> p_kernel) :
 		MDShader(p_name, p_sets), kernel(p_kernel) {
 }
 
@@ -861,7 +875,7 @@ void MDComputeShader::encode_push_constant_data(VectorView<uint32_t> p_data, MDC
 	[enc setBytes:ptr length:length atIndex:push_constants.binding];
 }
 
-MDRenderShader::MDRenderShader(CharString p_name, LocalVector<UniformSet> p_sets, id<MTLLibrary> _Nonnull p_vert, id<MTLLibrary> _Nonnull p_frag) :
+MDRenderShader::MDRenderShader(CharString p_name, Vector<UniformSet> p_sets, id<MTLLibrary> _Nonnull p_vert, id<MTLLibrary> _Nonnull p_frag) :
 		MDShader(p_name, p_sets), vert(p_vert), frag(p_frag) {
 }
 
@@ -1141,7 +1155,7 @@ bool MDAttachment::shouldClear(const MDSubpass &p_subpass, bool p_is_stencil) co
 	return (p_is_stencil ? stencilLoadAction : loadAction) == MTLLoadActionClear;
 }
 
-MDRenderPass::MDRenderPass(TightLocalVector<MDAttachment> &&p_attachments, TightLocalVector<MDSubpass> &&p_subpasses) :
+MDRenderPass::MDRenderPass(Vector<MDAttachment> &p_attachments, Vector<MDSubpass> &p_subpasses) :
 		attachments(p_attachments), subpasses(p_subpasses) {
 	for (MDAttachment &att : attachments) {
 		att.linkToSubpass(*this);
@@ -1182,7 +1196,7 @@ MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> p_device, uint32_t p_quer
 		}
 
 		pool->_buffer = [p_device newBufferWithLength:sizeof(MTLCounterResultTimestamp) * pool->sampleCount
-											options:MTLResourceStorageModeShared];
+											  options:MTLResourceStorageModeShared];
 	}
 
 	return pool.release();

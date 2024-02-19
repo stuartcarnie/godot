@@ -7,8 +7,8 @@
 #include "zstd.h"
 
 #include <iostream>
-#include <vector>
 #include <set>
+#include <vector>
 
 std::optional<RD::ShaderStage> stage_from_string(std::string s) {
 	if (strncasecmp(s.c_str(), "vert", 4) == 0) {
