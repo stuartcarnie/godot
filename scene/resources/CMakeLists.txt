@@ -2,6 +2,9 @@ set(RESOURCES_DEFAULT_FONT_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/fonts/Open
 set(RESOURCES_DEFAULT_FONT_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme/default_font.gen.h)
 generate_file(resource_scene_make_fonts_header ${RESOURCES_DEFAULT_FONT_SOURCE} ${RESOURCES_DEFAULT_FONT_OUTPUT})
 
+add_subdirectory(2d)
+add_subdirectory(3d)
+
 godot_add_library(godot-scene-resources FOLDER scene STATIC ${RESOURCES_DEFAULT_FONT_OUTPUT})
 # [[[cog
 #   import cog
@@ -28,56 +31,32 @@ target_sources(godot-scene-resources PRIVATE
         bit_map.h
         bone_map.cpp
         bone_map.h
-        box_shape_3d.cpp
-        box_shape_3d.h
         camera_attributes.cpp
         camera_attributes.h
         camera_texture.cpp
         camera_texture.h
         canvas_item_material.cpp
         canvas_item_material.h
-        capsule_shape_2d.cpp
-        capsule_shape_2d.h
-        capsule_shape_3d.cpp
-        capsule_shape_3d.h
-        circle_shape_2d.cpp
-        circle_shape_2d.h
         compositor.cpp
         compositor.h
         compressed_texture.cpp
         compressed_texture.h
-        concave_polygon_shape_2d.cpp
-        concave_polygon_shape_2d.h
-        concave_polygon_shape_3d.cpp
-        concave_polygon_shape_3d.h
-        convex_polygon_shape_2d.cpp
-        convex_polygon_shape_2d.h
-        convex_polygon_shape_3d.cpp
-        convex_polygon_shape_3d.h
         curve.cpp
         curve.h
         curve_texture.cpp
         curve_texture.h
-        cylinder_shape_3d.cpp
-        cylinder_shape_3d.h
         environment.cpp
         environment.h
-        fog_material.cpp
-        fog_material.h
         font.cpp
         font.h
         gradient.cpp
         gradient.h
         gradient_texture.cpp
         gradient_texture.h
-        height_map_shape_3d.cpp
-        height_map_shape_3d.h
         image_texture.cpp
         image_texture.h
         immediate_mesh.cpp
         immediate_mesh.h
-        importer_mesh.cpp
-        importer_mesh.h
         label_settings.cpp
         label_settings.h
         material.cpp
@@ -86,8 +65,6 @@ target_sources(godot-scene-resources PRIVATE
         mesh.h
         mesh_data_tool.cpp
         mesh_data_tool.h
-        mesh_library.cpp
-        mesh_library.h
         mesh_texture.cpp
         mesh_texture.h
         multimesh.cpp
@@ -108,58 +85,18 @@ target_sources(godot-scene-resources PRIVATE
         physics_material.h
         placeholder_textures.cpp
         placeholder_textures.h
-        polygon_path_finder.cpp
-        polygon_path_finder.h
         portable_compressed_texture.cpp
         portable_compressed_texture.h
-        primitive_meshes.cpp
-        primitive_meshes.h
-        rectangle_shape_2d.cpp
-        rectangle_shape_2d.h
         resource_format_text.cpp
         resource_format_text.h
-        segment_shape_2d.cpp
-        segment_shape_2d.h
-        separation_ray_shape_2d.cpp
-        separation_ray_shape_2d.h
-        separation_ray_shape_3d.cpp
-        separation_ray_shape_3d.h
         shader.cpp
         shader.h
         shader_include.cpp
         shader_include.h
-        shape_2d.cpp
-        shape_2d.h
-        shape_3d.cpp
-        shape_3d.h
-        skeleton_modification_2d.cpp
-        skeleton_modification_2d.h
-        skeleton_modification_2d_ccdik.cpp
-        skeleton_modification_2d_ccdik.h
-        skeleton_modification_2d_fabrik.cpp
-        skeleton_modification_2d_fabrik.h
-        skeleton_modification_2d_jiggle.cpp
-        skeleton_modification_2d_jiggle.h
-        skeleton_modification_2d_lookat.cpp
-        skeleton_modification_2d_lookat.h
-        skeleton_modification_2d_physicalbones.cpp
-        skeleton_modification_2d_physicalbones.h
-        skeleton_modification_2d_stackholder.cpp
-        skeleton_modification_2d_stackholder.h
-        skeleton_modification_2d_twoboneik.cpp
-        skeleton_modification_2d_twoboneik.h
-        skeleton_modification_stack_2d.cpp
-        skeleton_modification_stack_2d.h
         skeleton_profile.cpp
         skeleton_profile.h
-        skin.cpp
-        skin.h
         sky.cpp
         sky.h
-        sky_material.cpp
-        sky_material.h
-        sphere_shape_3d.cpp
-        sphere_shape_3d.h
         sprite_frames.cpp
         sprite_frames.h
         style_box.cpp
@@ -186,8 +123,6 @@ target_sources(godot-scene-resources PRIVATE
         texture_rd.h
         theme.cpp
         theme.h
-        tile_set.cpp
-        tile_set.h
         video_stream.cpp
         video_stream.h
         visual_shader.cpp
@@ -200,12 +135,6 @@ target_sources(godot-scene-resources PRIVATE
         visual_shader_sdf_nodes.h
         world_2d.cpp
         world_2d.h
-        world_3d.cpp
-        world_3d.h
-        world_boundary_shape_2d.cpp
-        world_boundary_shape_2d.h
-        world_boundary_shape_3d.cpp
-        world_boundary_shape_3d.h
 )
 # [[[end]]]
 target_link_libraries(godot-scene-resources PUBLIC godot-templates godot-io godot-variant godot-scene-main)
