@@ -159,13 +159,6 @@ public:
 
 #pragma mark - Semaphores
 
-private:
-	struct Semaphore {
-		dispatch_semaphore_t semaphore;
-		Semaphore() :
-				semaphore(dispatch_semaphore_create(0)) {}
-	};
-
 public:
 	virtual SemaphoreID semaphore_create() override final;
 	virtual void semaphore_free(SemaphoreID p_semaphore) override final;

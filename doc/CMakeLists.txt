@@ -11,10 +11,13 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/enet/doc_classes/ENetConnection.xml
         ${CMAKE_SOURCE_DIR}/modules/enet/doc_classes/ENetMultiplayerPeer.xml
         ${CMAKE_SOURCE_DIR}/modules/enet/doc_classes/ENetPacketPeer.xml
+        ${CMAKE_SOURCE_DIR}/modules/fbx/doc_classes/EditorSceneFormatImporterFBX2GLTF.xml
+        ${CMAKE_SOURCE_DIR}/modules/fbx/doc_classes/EditorSceneFormatImporterUFBX.xml
+        ${CMAKE_SOURCE_DIR}/modules/fbx/doc_classes/FBXDocument.xml
+        ${CMAKE_SOURCE_DIR}/modules/fbx/doc_classes/FBXState.xml
         ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/@GDScript.xml
         ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/GDScript.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/EditorSceneFormatImporterBlend.xml
-        ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/EditorSceneFormatImporterFBX.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/EditorSceneFormatImporterGLTF.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFAccessor.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFAnimation.xml
@@ -935,6 +938,8 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/XRController3D.xml
         classes/XRFaceModifier3D.xml
         classes/XRFaceTracker.xml
+        classes/XRHandModifier3D.xml
+        classes/XRHandTracker.xml
         classes/XRInterface.xml
         classes/XRInterfaceExtension.xml
         classes/XRNode3D.xml

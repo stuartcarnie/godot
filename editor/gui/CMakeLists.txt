@@ -8,6 +8,8 @@ godot_add_library(godot-editor-gui FOLDER gui)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-editor-gui PRIVATE
+        editor_bottom_panel.cpp
+        editor_bottom_panel.h
         editor_dir_dialog.cpp
         editor_dir_dialog.h
         editor_file_dialog.cpp

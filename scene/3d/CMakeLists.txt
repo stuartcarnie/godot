@@ -104,6 +104,8 @@ target_sources(godot-scene-3d PRIVATE
         world_environment.h
         xr_face_modifier_3d.cpp
         xr_face_modifier_3d.h
+        xr_hand_modifier_3d.cpp
+        xr_hand_modifier_3d.h
         xr_nodes.cpp
         xr_nodes.h
 )

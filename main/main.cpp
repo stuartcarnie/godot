@@ -1677,7 +1677,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 #endif // TOOLS_ENABLED && MODULE_GDSCRIPT_ENABLED && !GDSCRIPT_NO_LSP
 #ifdef DEV_ENABLED
 		} else if (I->get() == "--os-debug") {
-			int msec = 1000; // wait 5 seconds by default
+			int msec = 5000; // wait 5 second by default
 			if (I->next()) {
 				msec = I->next()->get().to_int();
 			}

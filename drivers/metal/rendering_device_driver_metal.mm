@@ -284,6 +284,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 	}
 
 	if (p_format.usage_bits & TEXTURE_USAGE_STORAGE_ATOMIC_BIT) {
+		desc.usage |= MTLTextureUsageShaderWrite;
 	}
 
 	bool can_be_attachment = flags::any(format_caps, (kMTLFmtCapsColorAtt | kMTLFmtCapsDSAtt));
@@ -353,13 +354,14 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_from_extension(uint64_
 RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared(TextureID p_original_texture, const TextureView &p_view) {
 	id<MTLTexture> src_texture = rid::get(p_original_texture);
 
+#if DEV_ENABLED
 	if (src_texture.sampleCount > 1) {
+		// TODO(sgc): is it ok to create a shared texture from a multi-sample texture?
 		WARN_PRINT("Is it safe to create a shared texture from multi-sample texture?");
 	}
+#endif
 
-	PixelFormats &pf = *pixel_formats;
-
-	MTLPixelFormat format = pf.getMTLPixelFormat(p_view.format);
+	MTLPixelFormat format = pixel_formats->getMTLPixelFormat(p_view.format);
 
 	static const MTLTextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
 		static_cast<MTLTextureSwizzle>(255), // IDENTITY
@@ -390,7 +392,6 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared(TextureID p_ori
 RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared_from_slice(TextureID p_original_texture, const TextureView &p_view, TextureSliceType p_slice_type, uint32_t p_layer, uint32_t p_layers, uint32_t p_mipmap, uint32_t p_mipmaps) {
 	id<MTLTexture> src_texture = rid::get(p_original_texture);
 
-	PixelFormats &pf = *pixel_formats;
 	static const MTLTextureType view_types[] = {
 		MTLTextureType1D, // MTLTextureType1D
 		MTLTextureType1D, // MTLTextureType1DArray
@@ -422,7 +423,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared_from_slice(Text
 		} break;
 	}
 
-	MTLPixelFormat format = pf.getMTLPixelFormat(p_view.format);
+	MTLPixelFormat format = pixel_formats->getMTLPixelFormat(p_view.format);
 
 	static const MTLTextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
 		static_cast<MTLTextureSwizzle>(255), // IDENTITY
@@ -554,6 +555,12 @@ uint8_t *RenderingDeviceDriverMetal::texture_map(TextureID p_texture, const Text
 		size_t bytes_per_layer = pf.getBytesPerLayer(pixel_format, bytes_per_row, mipExtent.height);
 		offset += bytes_per_layer * mipExtent.depth * (p_subresource.layer - 1);
 	}
+
+	// TODO: Confirm with rendering team that there is no other way Godot may attempt to map a texture with multiple mipmaps or array layers.
+
+	// NOTE: It is not possible to create a buffer-backed texture with mipmaps or array layers,
+	//  as noted in the is_valid_linear function, so the offset calculation SHOULD always be zero.
+	//  Given that, this code should be simplified.
 
 	return (uint8_t *)(obj.buffer.contents) + offset;
 }
@@ -699,8 +706,14 @@ void RenderingDeviceDriverMetal::sampler_free(SamplerID p_sampler) {
 }
 
 bool RenderingDeviceDriverMetal::sampler_is_format_supported_for_filter(DataFormat p_format, SamplerFilter p_filter) {
-	// Return true for everything until we dig into feature sets
-	return true;
+	switch (p_filter) {
+		case SAMPLER_FILTER_NEAREST:
+			return true;
+		case SAMPLER_FILTER_LINEAR: {
+			MTLFmtCaps caps = pixel_formats->getCapabilities(p_format);
+			return flags::any(caps, kMTLFmtCapsFilter);
+		}
+	}
 }
 
 #pragma mark - Vertex Array
@@ -758,12 +771,10 @@ RDD::FenceID RenderingDeviceDriverMetal::fence_create() {
 Error RenderingDeviceDriverMetal::fence_wait(FenceID p_fence) {
 	Fence *fence = (Fence *)(p_fence.id);
 
-	intptr_t res = dispatch_semaphore_wait(
-			fence->semaphore,
-			// wait for 100 ms, but perhaps this should be adjustable?
-			dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC));
+	// Wait forever, so this function is infallible
+	dispatch_semaphore_wait(fence->semaphore, DISPATCH_TIME_FOREVER);
 
-	return (res == 0) ? OK : FAILED;
+	return OK;
 }
 
 void RenderingDeviceDriverMetal::fence_free(FenceID p_fence) {
@@ -774,13 +785,11 @@ void RenderingDeviceDriverMetal::fence_free(FenceID p_fence) {
 #pragma mark - Semaphores
 
 RDD::SemaphoreID RenderingDeviceDriverMetal::semaphore_create() {
-	Semaphore *semaphore = memnew(Semaphore);
-	return SemaphoreID(semaphore);
+	// Metal doesn't use semaphores, as their purpose within Godot is to ensure ordering of command buffer execution.
+	return SemaphoreID(1);
 }
 
 void RenderingDeviceDriverMetal::semaphore_free(SemaphoreID p_semaphore) {
-	Semaphore *semaphore = (Semaphore *)(p_semaphore.id);
-	memdelete(semaphore);
 }
 
 #pragma mark - Queues
@@ -1011,11 +1020,15 @@ RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p
 		MDAttachment const &a = pass->attachments[i];
 		id<MTLTexture> tex = rid::get(p_attachments[i]);
 		if (tex == nil) {
+#if DEV_ENABLED
 			WARN_PRINT("Invalid texture for attachment " + itos(i));
+#endif
 		}
 		if (a.samples > 1) {
 			if (tex.sampleCount != a.samples) {
+#if DEV_ENABLED
 				WARN_PRINT("Mismatched sample count for attachment " + itos(i) + "; expected " + itos(a.samples) + ", got " + itos(tex.sampleCount));
+#endif
 			}
 		}
 		textures.write[i] = tex;
@@ -2122,10 +2135,10 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 					if (basetype == BT::Struct) {
 						auto flags = compiler.get_buffer_block_flags(res.id);
 						if (!flags.get(spv::DecorationNonWritable)) {
-							if (!flags.get(spv::DecorationNonReadable)) {
-								primary.access = MTLBindingAccessReadWrite;
-							} else {
+							if (flags.get(spv::DecorationNonReadable)) {
 								primary.access = MTLBindingAccessWriteOnly;
+							} else {
+								primary.access = MTLBindingAccessReadWrite;
 							}
 						}
 					} else if (basetype == BT::Image) {
@@ -2142,9 +2155,11 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 								DISPATCH_FALLTHROUGH;
 							default:
 								if (!compiler.has_decoration(res.id, spv::DecorationNonWritable)) {
-									primary.access = MTLBindingAccessReadWrite;
-								} else if (!compiler.has_decoration(res.id, spv::DecorationNonReadable)) {
-									primary.access = MTLBindingAccessWriteOnly;
+									if (compiler.has_decoration(res.id, spv::DecorationNonReadable)) {
+										primary.access = MTLBindingAccessWriteOnly;
+									} else {
+										primary.access = MTLBindingAccessReadWrite;
+									}
 								}
 								break;
 						}

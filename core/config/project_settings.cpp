@@ -1504,8 +1504,6 @@ ProjectSettings::ProjectSettings() {
 
 	GLOBAL_DEF_RST(PropertyInfo(Variant::INT, "rendering/rendering_device/d3d12/agility_sdk_version"), 610);
 
-	GLOBAL_DEF("rendering/rendering_device/metal/max_things_per_pool", 32);
-
 	GLOBAL_DEF_BASIC(PropertyInfo(Variant::INT, "rendering/textures/canvas_textures/default_texture_filter", PROPERTY_HINT_ENUM, "Nearest,Linear,Linear Mipmap,Nearest Mipmap"), 1);
 	GLOBAL_DEF_BASIC(PropertyInfo(Variant::INT, "rendering/textures/canvas_textures/default_texture_repeat", PROPERTY_HINT_ENUM, "Disable,Enable,Mirror"), 0);
 

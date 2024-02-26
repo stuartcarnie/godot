@@ -34,6 +34,8 @@ target_sources(godot-module-gltf PRIVATE
         gltf_template_convert.h
         register_types.cpp
         register_types.h
+        skin_tool.cpp
+        skin_tool.h
         structures/gltf_accessor.cpp
         structures/gltf_accessor.h
         structures/gltf_animation.cpp
@@ -75,8 +77,6 @@ if (WANT_EDITOR)
 	        editor/editor_scene_exporter_gltf_settings.h
 	        editor/editor_scene_importer_blend.cpp
 	        editor/editor_scene_importer_blend.h
-	        editor/editor_scene_importer_fbx.cpp
-	        editor/editor_scene_importer_fbx.h
 	        editor/editor_scene_importer_gltf.cpp
 	        editor/editor_scene_importer_gltf.h
 	)
