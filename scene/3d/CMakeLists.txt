@@ -1,3 +1,5 @@
+add_subdirectory(physics)
+
 godot_add_library(godot-scene-3d FOLDER scene STATIC)
 # [[[cog
 #   import cog
@@ -8,8 +10,6 @@ godot_add_library(godot-scene-3d FOLDER scene STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-scene-3d PRIVATE
-        area_3d.cpp
-        area_3d.h
         audio_listener_3d.cpp
         audio_listener_3d.h
         audio_stream_player_3d.cpp
@@ -18,12 +18,6 @@ target_sources(godot-scene-3d PRIVATE
         bone_attachment_3d.h
         camera_3d.cpp
         camera_3d.h
-        collision_object_3d.cpp
-        collision_object_3d.h
-        collision_polygon_3d.cpp
-        collision_polygon_3d.h
-        collision_shape_3d.cpp
-        collision_shape_3d.h
         cpu_particles_3d.cpp
         cpu_particles_3d.h
         decal.cpp
@@ -36,8 +30,6 @@ target_sources(godot-scene-3d PRIVATE
         gpu_particles_collision_3d.h
         importer_mesh_instance_3d.cpp
         importer_mesh_instance_3d.h
-        joint_3d.cpp
-        joint_3d.h
         label_3d.cpp
         label_3d.h
         light_3d.cpp
@@ -68,28 +60,18 @@ target_sources(godot-scene-3d PRIVATE
         occluder_instance_3d.h
         path_3d.cpp
         path_3d.h
-        physics_body_3d.cpp
-        physics_body_3d.h
-        ray_cast_3d.cpp
-        ray_cast_3d.h
         reflection_probe.cpp
         reflection_probe.h
         remote_transform_3d.cpp
         remote_transform_3d.h
-        shape_cast_3d.cpp
-        shape_cast_3d.h
         skeleton_3d.cpp
         skeleton_3d.h
         skeleton_ik_3d.cpp
         skeleton_ik_3d.h
         soft_body_3d.cpp
         soft_body_3d.h
-        spring_arm_3d.cpp
-        spring_arm_3d.h
         sprite_3d.cpp
         sprite_3d.h
-        vehicle_body_3d.cpp
-        vehicle_body_3d.h
         velocity_tracker_3d.cpp
         velocity_tracker_3d.h
         visible_on_screen_notifier_3d.cpp

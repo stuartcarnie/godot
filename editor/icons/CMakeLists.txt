@@ -258,6 +258,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         FogVolume.svg
         Folder.svg
         FolderBigThumb.svg
+        FolderCreate.svg
         FolderMediumThumb.svg
         Font.svg
         FontFile.svg

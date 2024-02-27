@@ -24,6 +24,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/error_icon.svg
         icons/file.svg
         icons/folder.svg
+        icons/folder_create.svg
         icons/folder_up.svg
         icons/graph_port.svg
         icons/grid_layout.svg
