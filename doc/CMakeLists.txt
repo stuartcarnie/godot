@@ -934,6 +934,8 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/X509Certificate.xml
         classes/XMLParser.xml
         classes/XRAnchor3D.xml
+        classes/XRBodyModifier3D.xml
+        classes/XRBodyTracker.xml
         classes/XRCamera3D.xml
         classes/XRController3D.xml
         classes/XRFaceModifier3D.xml
