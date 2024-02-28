@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  navigation_polygon_editor_plugin.h                                    */
+/*  xr_body_modifier_3d.h                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,71 +28,75 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef NAVIGATION_POLYGON_EDITOR_PLUGIN_H
-#define NAVIGATION_POLYGON_EDITOR_PLUGIN_H
+#ifndef XR_BODY_MODIFIER_3D_H
+#define XR_BODY_MODIFIER_3D_H
 
-#include "editor/plugins/abstract_polygon_2d_editor.h"
+#include "scene/3d/node_3d.h"
+#include "servers/xr/xr_body_tracker.h"
 
-#include "editor/editor_plugin.h"
+class Skeleton3D;
 
-class AcceptDialog;
-class HBoxContainer;
-class NavigationPolygon;
-class NavigationRegion2D;
+/**
+	The XRBodyModifier3D node drives a body skeleton using body tracking
+	data from an XRBodyTracker instance.
+ */
 
-class NavigationPolygonEditor : public AbstractPolygon2DEditor {
-	friend class NavigationPolygonEditorPlugin;
+class XRBodyModifier3D : public Node3D {
+	GDCLASS(XRBodyModifier3D, Node3D);
 
-	GDCLASS(NavigationPolygonEditor, AbstractPolygon2DEditor);
+public:
+	enum BodyUpdate {
+		BODY_UPDATE_UPPER_BODY = 1,
+		BODY_UPDATE_LOWER_BODY = 2,
+		BODY_UPDATE_HANDS = 4,
+	};
 
-	NavigationRegion2D *node = nullptr;
+	enum BoneUpdate {
+		BONE_UPDATE_FULL,
+		BONE_UPDATE_ROTATION_ONLY,
+		BONE_UPDATE_MAX
+	};
 
-	Ref<NavigationPolygon> _ensure_navpoly() const;
+	void set_body_tracker(const StringName &p_tracker_name);
+	StringName get_body_tracker() const;
 
-	AcceptDialog *err_dialog = nullptr;
+	void set_target(const NodePath &p_target);
+	NodePath get_target() const;
 
-	HBoxContainer *bake_hbox = nullptr;
-	Button *button_bake = nullptr;
-	Button *button_reset = nullptr;
-	Label *bake_info = nullptr;
+	void set_body_update(BitField<BodyUpdate> p_body_update);
+	BitField<BodyUpdate> get_body_update() const;
 
-	Timer *rebake_timer = nullptr;
-	float _rebake_timer_delay = 1.5;
-	void _rebake_timer_timeout();
+	void set_bone_update(BoneUpdate p_bone_update);
+	BoneUpdate get_bone_update() const;
 
-	void _bake_pressed();
-	void _clear_pressed();
+	void set_show_when_tracked(bool p_show_when_tracked);
+	bool get_show_when_tracked() const;
 
-	void _update_polygon_editing_state();
-
-protected:
 	void _notification(int p_what);
 
-	virtual Node2D *_get_node() const override;
-	virtual void _set_node(Node *p_polygon) override;
+protected:
+	static void _bind_methods();
 
-	virtual int _get_polygon_count() const override;
-	virtual Variant _get_polygon(int p_idx) const override;
-	virtual void _set_polygon(int p_idx, const Variant &p_polygon) const override;
+private:
+	struct JointData {
+		int bone = -1;
+		int parent_joint = -1;
+	};
 
-	virtual void _action_add_polygon(const Variant &p_polygon) override;
-	virtual void _action_remove_polygon(int p_idx) override;
-	virtual void _action_set_polygon(int p_idx, const Variant &p_previous, const Variant &p_polygon) override;
+	StringName tracker_name = "/user/body";
+	NodePath target;
+	BitField<BodyUpdate> body_update = BODY_UPDATE_UPPER_BODY | BODY_UPDATE_LOWER_BODY | BODY_UPDATE_HANDS;
+	BoneUpdate bone_update = BONE_UPDATE_FULL;
+	bool show_when_tracked = true;
+	JointData joints[XRBodyTracker::JOINT_MAX];
 
-	virtual bool _has_resource() const override;
-	virtual void _create_resource() override;
-
-public:
-	NavigationPolygonEditor();
+	Skeleton3D *get_skeleton();
+	void _get_joint_data();
+	void _update_skeleton();
+	void _tracker_changed(const StringName &p_tracker_name, const Ref<XRBodyTracker> &p_tracker);
 };
 
-class NavigationPolygonEditorPlugin : public AbstractPolygon2DEditorPlugin {
-	GDCLASS(NavigationPolygonEditorPlugin, AbstractPolygon2DEditorPlugin);
+VARIANT_BITFIELD_CAST(XRBodyModifier3D::BodyUpdate)
+VARIANT_ENUM_CAST(XRBodyModifier3D::BoneUpdate)
 
-	NavigationPolygonEditor *navigation_polygon_editor = nullptr;
-
-public:
-	NavigationPolygonEditorPlugin();
-};
-
-#endif // NAVIGATION_POLYGON_EDITOR_PLUGIN_H
+#endif // XR_BODY_MODIFIER_3D_H
