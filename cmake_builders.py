@@ -375,6 +375,13 @@ def cmd_make_editor_documentation_translations(source: [str], target: str) -> in
 
 @check_output
 @source_target
+def cmd_make_extractable_translations_header(source: [str], target: str) -> int:
+    make_extractable_translations_header(target=[target], source=source, env=None)
+    return 0
+
+
+@check_output
+@source_target
 def cmd_make_editor_themes_fonts(source: str, target: str) -> int:
     source_input = read_lines(source)
     editor.themes.editor_theme_builders.make_fonts_header(target=[target], source=source_input, env=None)
@@ -650,6 +657,8 @@ def _main() -> int:
         func=cmd_make_editor_properties_translations)
     sp.add_parser('make_editor_documentation_translations', parents=[args_inl_out]).set_defaults(
         func=cmd_make_editor_documentation_translations)
+    sp.add_parser('make_extractable_translations_header', parents=[args_inl_out]).set_defaults(
+        func=cmd_make_extractable_translations_header)
     sp.add_parser('make_editor_themes_fonts', parents=[args_in_out]).set_defaults(
         func=cmd_make_editor_themes_fonts)
     sp.add_parser('make_version_data_headers', parents=[args_out2]).set_defaults(func=cmd_make_version_data_headers)

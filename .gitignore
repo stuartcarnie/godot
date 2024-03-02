@@ -111,6 +111,7 @@ platform/web/node_modules/
 
 # CLion
 cmake-build-*/
+build/*
 
 # Code::Blocks
 *.cbp
