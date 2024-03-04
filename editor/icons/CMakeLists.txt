@@ -572,6 +572,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Panels3Alt.svg
         Panels4.svg
         PanoramaSkyMaterial.svg
+        Parallax2D.svg
         ParallaxBackground.svg
         ParallaxLayer.svg
         ParticleProcessMaterial.svg

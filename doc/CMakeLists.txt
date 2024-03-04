@@ -514,6 +514,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Panel.xml
         classes/PanelContainer.xml
         classes/PanoramaSkyMaterial.xml
+        classes/Parallax2D.xml
         classes/ParallaxBackground.xml
         classes/ParallaxLayer.xml
         classes/ParticleProcessMaterial.xml

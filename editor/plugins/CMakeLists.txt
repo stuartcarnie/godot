@@ -116,6 +116,8 @@ target_sources(godot-editor-plugins PRIVATE
         packed_scene_editor_plugin.h
         packed_scene_translation_parser_plugin.cpp
         packed_scene_translation_parser_plugin.h
+        parallax_background_editor_plugin.cpp
+        parallax_background_editor_plugin.h
         particle_process_material_editor_plugin.cpp
         particle_process_material_editor_plugin.h
         path_2d_editor_plugin.cpp

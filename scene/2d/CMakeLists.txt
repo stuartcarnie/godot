@@ -52,6 +52,8 @@ target_sources(godot-scene-2d PRIVATE
         navigation_region_2d.h
         node_2d.cpp
         node_2d.h
+        parallax_2d.cpp
+        parallax_2d.h
         parallax_background.cpp
         parallax_background.h
         parallax_layer.cpp
