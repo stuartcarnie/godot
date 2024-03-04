@@ -89,55 +89,56 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 
 	if (p->type == MDPipelineType::Render) {
 		DEV_ASSERT(type == MDCommandBufferStateType::Render);
-		if (render.pipeline != p || render.dirty.has_flag(RenderState::DIRTY_PIPELINE)) {
-			render.dirty.clear_flag(RenderState::DIRTY_PIPELINE);
-			render.dirty.set_flag(RenderState::DIRTY_UNIFORMS);
-			// set the bits of uniform_set_mask to the render.uniform_sets.size()
-			render.uniform_set_mask = (1ULL << render.uniform_sets.size()) - 1;
-			render.pipeline = (MDRenderPipeline *)p;
+		MDRenderPipeline *rp = (MDRenderPipeline *)p;
 
-			if (render.encoder == nil) {
-				// this condition occurs when there are no attachments when calling render_next_subpass()
-				// and is due to the SUPPORTS_FRAGMENT_SHADER_WITH_ONLY_SIDE_EFFECTS flag
-				render.desc.defaultRasterSampleCount = static_cast<NSUInteger>(render.pipeline->sample_count);
+		if (render.encoder == nil) {
+			// this condition occurs when there are no attachments when calling render_next_subpass()
+			// and is due to the SUPPORTS_FRAGMENT_SHADER_WITH_ONLY_SIDE_EFFECTS flag
+			render.desc.defaultRasterSampleCount = static_cast<NSUInteger>(rp->sample_count);
 
 // NOTE(sgc): this is to test rdar://FB13605547 and will be deleted once fix is confirmed
 #if 0
-				if (render.pipeline->sample_count == 4) {
-					static id<MTLTexture> tex = nil;
-					static id<MTLTexture> res_tex = nil;
-					static dispatch_once_t onceToken;
-					dispatch_once(&onceToken, ^{
-						Size2i sz = render.frameBuffer->size;
-						MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:sz.width height:sz.height mipmapped:NO];
-						td.textureType = MTLTextureType2DMultisample;
-						td.storageMode = MTLStorageModeMemoryless;
-						td.usage = MTLTextureUsageRenderTarget;
-						td.sampleCount = render.pipeline->sample_count;
-						tex = [device_driver->get_device() newTextureWithDescriptor:td];
+			if (render.pipeline->sample_count == 4) {
+				static id<MTLTexture> tex = nil;
+				static id<MTLTexture> res_tex = nil;
+				static dispatch_once_t onceToken;
+				dispatch_once(&onceToken, ^{
+					Size2i sz = render.frameBuffer->size;
+					MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:sz.width height:sz.height mipmapped:NO];
+					td.textureType = MTLTextureType2DMultisample;
+					td.storageMode = MTLStorageModeMemoryless;
+					td.usage = MTLTextureUsageRenderTarget;
+					td.sampleCount = render.pipeline->sample_count;
+					tex = [device_driver->get_device() newTextureWithDescriptor:td];
 
-						td.textureType = MTLTextureType2D;
-						td.storageMode = MTLStorageModePrivate;
-						td.usage = MTLTextureUsageShaderWrite;
-						td.sampleCount = 1;
-						res_tex = [device_driver->get_device() newTextureWithDescriptor:td];
-					});
-					render.desc.colorAttachments[0].texture = tex;
-					render.desc.colorAttachments[0].loadAction = MTLLoadActionClear;
-					render.desc.colorAttachments[0].storeAction = MTLStoreActionMultisampleResolve;
+					td.textureType = MTLTextureType2D;
+					td.storageMode = MTLStorageModePrivate;
+					td.usage = MTLTextureUsageShaderWrite;
+					td.sampleCount = 1;
+					res_tex = [device_driver->get_device() newTextureWithDescriptor:td];
+				});
+				render.desc.colorAttachments[0].texture = tex;
+				render.desc.colorAttachments[0].loadAction = MTLLoadActionClear;
+				render.desc.colorAttachments[0].storeAction = MTLStoreActionMultisampleResolve;
 
-					render.desc.colorAttachments[0].resolveTexture = res_tex;
-				}
+				render.desc.colorAttachments[0].resolveTexture = res_tex;
+			}
 #endif
-				render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:render.desc];
-			}
+			render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:render.desc];
+		}
 
-			[render.encoder setRenderPipelineState:render.pipeline->state];
-			if (render.pipeline->depth_stencil != nil) {
-				[render.encoder setDepthStencilState:render.pipeline->depth_stencil];
-				render.dirty.clear_flag(RenderState::DIRTY_DEPTH);
+		if (render.pipeline != rp) {
+			render.dirty.set_flag((RenderState::DirtyFlag)(RenderState::DIRTY_PIPELINE | RenderState::DIRTY_RASTER));
+			// mark all uniforms as dirty, as variants of a shader pipeline may have a different entry point ABI,
+			// due to setting force_active_argument_buffer_resources = true for spirv_cross::CompilerMSL::Options.
+			// As a result, uniform sets with the same layout will generate redundant binding warnings when
+			// capturing a Metal frame in Xcode.
+			// If we don't mark as dirty, then some bindings will generate a validation error.
+			render.mark_uniforms_dirty();
+			if (render.pipeline != nullptr && render.pipeline->depth_stencil != rp->depth_stencil) {
+				render.dirty.set_flag(RenderState::DIRTY_DEPTH);
 			}
-			render.pipeline->raster_state.apply(render.encoder);
+			render.pipeline = rp;
 		}
 	} else if (p->type == MDPipelineType::Compute) {
 		DEV_ASSERT(type == MDCommandBufferStateType::None);
@@ -298,17 +299,30 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 	[enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertex_count];
 	[enc popDebugGroup];
 
-	render.dirty.set_flag(RenderState::DIRTY_PIPELINE);
-	render.dirty.set_flag(RenderState::DIRTY_DEPTH);
+	render.dirty.set_flag((RenderState::DirtyFlag)(RenderState::DIRTY_PIPELINE | RenderState::DIRTY_DEPTH | RenderState::DIRTY_RASTER));
+	render.mark_uniforms_dirty({ 0 }); // mark index 0 dirty, if there is already a binding for index 0
 	render.mark_viewport_dirty();
 	render.mark_scissors_dirty();
 	render.mark_vertex_dirty();
 }
 
 void MDCommandBuffer::_render_set_dirty_state() {
+	_render_bind_uniform_sets();
+
+	if (render.dirty.has_flag(RenderState::DIRTY_PIPELINE)) {
+		[render.encoder setRenderPipelineState:render.pipeline->state];
+	}
+
 	if (render.dirty.has_flag(RenderState::DIRTY_VIEWPORT)) {
 		[render.encoder setViewports:render.viewports.ptr() count:render.viewports.size()];
-		render.dirty.clear_flag(RenderState::DIRTY_VIEWPORT);
+	}
+
+	if (render.dirty.has_flag(RenderState::DIRTY_DEPTH)) {
+		[render.encoder setDepthStencilState:render.pipeline->depth_stencil];
+	}
+
+	if (render.dirty.has_flag(RenderState::DIRTY_RASTER)) {
+		render.pipeline->raster_state.apply(render.encoder);
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_SCISSOR)) {
@@ -318,12 +332,10 @@ void MDCommandBuffer::_render_set_dirty_state() {
 			rects[i] = render.clip_to_render_area(render.scissors[i]);
 		}
 		[render.encoder setScissorRects:rects count:len];
-		render.dirty.clear_flag(RenderState::DIRTY_SCISSOR);
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_BLEND)) {
 		[render.encoder setBlendColorRed:render.blend_constants->r green:render.blend_constants->g blue:render.blend_constants->b alpha:render.blend_constants->a];
-		render.dirty.clear_flag(RenderState::DIRTY_BLEND);
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_VERTEX)) {
@@ -332,8 +344,9 @@ void MDCommandBuffer::_render_set_dirty_state() {
 		[render.encoder setVertexBuffers:render.vertex_buffers.ptr()
 								 offsets:render.vertex_offsets.ptr()
 							   withRange:NSMakeRange(first, p_binding_count)];
-		render.dirty.clear_flag(RenderState::DIRTY_VERTEX);
 	}
+
+	render.dirty.clear();
 }
 
 void MDCommandBuffer::render_set_viewport(VectorView<Rect2i> p_viewports) {
@@ -665,6 +678,8 @@ void MDCommandBuffer::render_next_subpass() {
 		if (!render.is_rendering_entire_area) {
 			_render_clear_render_area();
 		}
+        // With a new encoder, all state is dirty
+		render.dirty.set_flag(RenderState::DIRTY_ALL);
 	}
 }
 
@@ -674,7 +689,6 @@ void MDCommandBuffer::render_draw(uint32_t p_vertex_count,
 		uint32_t p_first_instance) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
 	_render_set_dirty_state();
-	_render_bind_uniform_sets();
 
 	DEV_ASSERT(render.dirty == 0);
 
@@ -724,8 +738,6 @@ void MDCommandBuffer::render_draw_indexed(uint32_t p_index_count,
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
 	_render_set_dirty_state();
 
-	_render_bind_uniform_sets();
-
 	id<MTLRenderCommandEncoder> enc = render.encoder;
 
 	[enc drawIndexedPrimitives:render.pipeline->raster_state.render_primitive
@@ -741,8 +753,6 @@ void MDCommandBuffer::render_draw_indexed(uint32_t p_index_count,
 void MDCommandBuffer::render_draw_indexed_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
 	_render_set_dirty_state();
-
-	_render_bind_uniform_sets();
 
 	id<MTLRenderCommandEncoder> enc = render.encoder;
 
@@ -767,8 +777,6 @@ void MDCommandBuffer::render_draw_indexed_indirect_count(RDD::BufferID p_indirec
 void MDCommandBuffer::render_draw_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
 	_render_set_dirty_state();
-
-	_render_bind_uniform_sets();
 
 	id<MTLRenderCommandEncoder> enc = render.encoder;
 

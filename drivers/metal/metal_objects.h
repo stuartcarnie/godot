@@ -61,6 +61,7 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <simd/simd.h>
+#import <initializer_list>
 #import <optional>
 
 // These types can be used in Vector and other containers that use
@@ -232,13 +233,16 @@ public:
 		// clang-format off
 		enum DirtyFlag: uint8_t {
 			DIRTY_NONE     = 0b0000'0000,
-			DIRTY_PIPELINE = 0b0000'0001,
-			DIRTY_UNIFORMS = 0b0000'0010,
-			DIRTY_DEPTH    = 0b0000'0100,
-			DIRTY_VERTEX   = 0b0000'1000,
-			DIRTY_VIEWPORT = 0b0001'0000,
-			DIRTY_SCISSOR  = 0b0010'0000,
-			DIRTY_BLEND    = 0b0100'0000,
+			DIRTY_PIPELINE = 0b0000'0001, //! pipeline state
+			DIRTY_UNIFORMS = 0b0000'0010, //! uniform sets
+			DIRTY_DEPTH    = 0b0000'0100, //! depth / stenci state
+			DIRTY_VERTEX   = 0b0000'1000, //! vertex buffers
+			DIRTY_VIEWPORT = 0b0001'0000, //! viewport rectangles
+			DIRTY_SCISSOR  = 0b0010'0000, //! scissor rectangles
+			DIRTY_BLEND    = 0b0100'0000, //! blend state
+			DIRTY_RASTER   = 0b1000'0000, //! encoder state like cull mode
+			
+			DIRTY_ALL      = 0xff,
 		};
 		// clang-format on
 		BitField<DirtyFlag> dirty = DIRTY_NONE;
@@ -285,6 +289,28 @@ public:
 			if (vertex_buffers.is_empty())
 				return;
 			dirty.set_flag(DirtyFlag::DIRTY_VERTEX);
+		}
+
+		_FORCE_INLINE_ void mark_uniforms_dirty(std::initializer_list<int> l) {
+			if (uniform_sets.is_empty())
+				return;
+			for (int i : l) {
+				if (i < uniform_sets.size() && uniform_sets[i] != nullptr) {
+					uniform_set_mask |= 1 << i;
+				}
+			}
+			dirty.set_flag(DirtyFlag::DIRTY_UNIFORMS);
+		}
+
+		_FORCE_INLINE_ void mark_uniforms_dirty(void) {
+			if (uniform_sets.is_empty())
+				return;
+			for (int i = 0; i < uniform_sets.size(); i++) {
+				if (uniform_sets[i] != nullptr) {
+					uniform_set_mask |= 1 << i;
+				}
+			}
+			dirty.set_flag(DirtyFlag::DIRTY_UNIFORMS);
 		}
 
 		MTLScissorRect clip_to_render_area(MTLScissorRect p_rect) const {

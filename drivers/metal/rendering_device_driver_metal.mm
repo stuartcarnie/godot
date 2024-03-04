@@ -3362,6 +3362,9 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 
 		pipeline->depth_stencil = [device newDepthStencilStateWithDescriptor:ds_desc];
 		ERR_FAIL_NULL_V_MSG(pipeline->depth_stencil, PipelineID(), "Failed to create depth stencil state");
+	} else {
+		// TODO(sgc): FB13671991 raised as Apple docs state calling setDepthStencilState:nil is valid, but currently generates an exception
+		pipeline->depth_stencil = get_resource_cache().get_depth_stencil_state(false, false);
 	}
 
 	// Blend state.
