@@ -678,7 +678,7 @@ void MDCommandBuffer::render_next_subpass() {
 		if (!render.is_rendering_entire_area) {
 			_render_clear_render_area();
 		}
-        // With a new encoder, all state is dirty
+		// With a new encoder, all state is dirty
 		render.dirty.set_flag(RenderState::DIRTY_ALL);
 	}
 }

@@ -312,7 +312,9 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 	}
 
 	// create texture views with a different component layout
-	desc.usage |= MTLTextureUsagePixelFormatView;
+	if (!p_format.shareable_formats.is_empty()) {
+		desc.usage |= MTLTextureUsagePixelFormatView;
+	}
 
 	// Allocate memory.
 

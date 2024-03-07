@@ -291,7 +291,7 @@ public:
 			dirty.set_flag(DirtyFlag::DIRTY_VERTEX);
 		}
 
-		_FORCE_INLINE_ void mark_uniforms_dirty(std::initializer_list<int> l) {
+		_FORCE_INLINE_ void mark_uniforms_dirty(std::initializer_list<uint32_t> l) {
 			if (uniform_sets.is_empty())
 				return;
 			for (int i : l) {
@@ -305,7 +305,7 @@ public:
 		_FORCE_INLINE_ void mark_uniforms_dirty(void) {
 			if (uniform_sets.is_empty())
 				return;
-			for (int i = 0; i < uniform_sets.size(); i++) {
+			for (uint32_t i = 0; i < uniform_sets.size(); i++) {
 				if (uniform_sets[i] != nullptr) {
 					uniform_set_mask |= 1 << i;
 				}
