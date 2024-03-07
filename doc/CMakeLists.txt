@@ -458,6 +458,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/MultiplayerPeer.xml
         classes/MultiplayerPeerExtension.xml
         classes/Mutex.xml
+        classes/NativeMenu.xml
         classes/NavigationAgent2D.xml
         classes/NavigationAgent3D.xml
         classes/NavigationLink2D.xml

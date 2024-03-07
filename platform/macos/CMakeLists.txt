@@ -47,6 +47,8 @@ target_sources(platform-macos PRIVATE
         key_mapping_macos.mm
         macos_terminal_logger.h
         macos_terminal_logger.mm
+        native_menu_macos.h
+        native_menu_macos.mm
         os_macos.h
         os_macos.mm
         platform_config.h

@@ -29,6 +29,8 @@ target_sources(godot-servers PRIVATE
         display_server.cpp
         display_server.h
         display_server_headless.h
+        native_menu.cpp
+        native_menu.h
         navigation_server_2d.cpp
         navigation_server_2d.h
         navigation_server_2d_dummy.h
