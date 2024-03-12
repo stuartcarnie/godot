@@ -171,6 +171,7 @@ def __lldb_init_module(debugger: lldb.SBDebugger, dict):
     debugger.HandleCommand('type summary add "Vector4" "Vector4i" --summary-string "\{ x=${var.x}, y=${var.y}, z=${var.z}, w=${var.w} \}" --category Godot')
     debugger.HandleCommand('type summary add "Size2" "Size2i" --summary-string "\{ w=${var.width}, h=${var.height} \}" --category Godot')
     debugger.HandleCommand('type summary add "Rect2" "Rect2i" --summary-string "\{ x=${var.position.x}, y=${var.position.height}, w=${var.size.width}, h=${var.size.height} \}" --category Godot')
+    debugger.HandleCommand('type summary add "Color" --summary-string "\{ r=${var.r}, g=${var.g}, b=${var.b}, a=${var.a} \}" --category Godot')
     debugger.HandleCommand('type summary add -x "VectorView<" -x "LocalVector<" -x "TightLocalVector<" --expand --summary-string "${svar%#} items" --category Godot')
     debugger.HandleCommand('type summary add -F lldb_helpers.VectorSummaryProvider -x "Vector<.+>$" --expand --category Godot')
     debugger.HandleCommand('type category enable Godot')
