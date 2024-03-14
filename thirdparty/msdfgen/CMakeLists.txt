@@ -26,11 +26,10 @@ target_sources(msdfgen PRIVATE
         core/Shape.h
         core/ShapeDistanceFinder.h
         core/ShapeDistanceFinder.hpp
-        core/SignedDistance.cpp
-        core/SignedDistance.h
-        core/Vector2.cpp
-        core/Vector2.h
+        core/SignedDistance.hpp
+        core/Vector2.hpp
         core/arithmetics.hpp
+        core/base.h
         core/bitmap-interpolation.hpp
         core/contour-combiners.cpp
         core/contour-combiners.h
@@ -63,3 +62,4 @@ target_sources(msdfgen PRIVATE
 )
 # [[[end]]]
 target_include_directories(msdfgen PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(msdfgen PUBLIC MSDFGEN_PUBLIC=)

@@ -238,6 +238,10 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ExpandBottomDock.svg
         ExpandTree.svg
         ExternalLink.svg
+        FadeCross.svg
+        FadeDisabled.svg
+        FadeIn.svg
+        FadeOut.svg
         Favorites.svg
         File.svg
         FileAccess.svg

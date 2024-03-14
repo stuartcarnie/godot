@@ -1,3 +1,5 @@
+# run:
+# fd 'modules/.*/doc_classes/.*\.xml$' -p | sed -e 's/^/        ${CMAKE_SOURCE_DIR}\//' | sort | pbcopy
 set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/csg/doc_classes/CSGBox3D.xml
         ${CMAKE_SOURCE_DIR}/modules/csg/doc_classes/CSGCombiner3D.xml
@@ -38,6 +40,12 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFTexture.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFTextureSampler.xml
         ${CMAKE_SOURCE_DIR}/modules/gridmap/doc_classes/GridMap.xml
+        ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamInteractive.xml
+        ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamPlaybackInteractive.xml
+        ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamPlaybackPlaylist.xml
+        ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamPlaybackSynchronized.xml
+        ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamPlaylist.xml
+        ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamSynchronized.xml
         ${CMAKE_SOURCE_DIR}/modules/minimp3/doc_classes/AudioStreamMP3.xml
         ${CMAKE_SOURCE_DIR}/modules/minimp3/doc_classes/ResourceImporterMP3.xml
         ${CMAKE_SOURCE_DIR}/modules/mobile_vr/doc_classes/MobileVRInterface.xml
