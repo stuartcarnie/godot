@@ -294,7 +294,7 @@ public:
 		_FORCE_INLINE_ void mark_uniforms_dirty(std::initializer_list<uint32_t> l) {
 			if (uniform_sets.is_empty())
 				return;
-			for (int i : l) {
+			for (uint32_t i : l) {
 				if (i < uniform_sets.size() && uniform_sets[i] != nullptr) {
 					uniform_set_mask |= 1 << i;
 				}

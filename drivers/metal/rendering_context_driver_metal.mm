@@ -45,6 +45,13 @@ RenderingContextDriverMetal::~RenderingContextDriverMetal() {
 
 Error RenderingContextDriverMetal::initialize() {
 	id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
+#if TARGET_OS_OSX
+	if (@available(macOS 13.3, *)) {
+		if ([dev respondsToSelector:@selector(setShouldMaximizeConcurrentCompilation:)]) {
+			[dev setShouldMaximizeConcurrentCompilation:YES];
+		}
+	}
+#endif
 	device.type = DEVICE_TYPE_INTEGRATED_GPU;
 	device.vendor = VENDOR_APPLE;
 
