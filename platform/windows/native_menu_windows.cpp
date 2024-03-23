@@ -141,7 +141,7 @@ RID NativeMenuWindows::create_menu() {
 	ZeroMemory(&menu_info, sizeof(menu_info));
 	menu_info.cbSize = sizeof(menu_info);
 	menu_info.fMask = MIM_STYLE;
-	menu_info.dwStyle = MNS_NOTIFYBYPOS | MNS_MODELESS;
+	menu_info.dwStyle = MNS_NOTIFYBYPOS;
 	SetMenuInfo(md->menu, &menu_info);
 
 	RID rid = menus.make_rid(md);
@@ -189,7 +189,9 @@ void NativeMenuWindows::popup(const RID &p_rid, const Vector2i &p_position) {
 	if (md->is_rtl) {
 		flags |= TPM_LAYOUTRTL;
 	}
+	SetForegroundWindow(hwnd);
 	TrackPopupMenuEx(md->menu, flags, p_position.x, p_position.y, hwnd, nullptr);
+	PostMessage(hwnd, WM_NULL, 0, 0);
 }
 
 void NativeMenuWindows::set_interface_direction(const RID &p_rid, bool p_is_rtl) {
@@ -256,7 +258,7 @@ int NativeMenuWindows::add_submenu_item(const RID &p_rid, const String &p_label,
 	item.fType = MFT_STRING;
 	item.hSubMenu = md_sub->menu;
 	item.dwItemData = (ULONG_PTR)item_data;
-	item.dwTypeData = (LPWSTR)label.ptrw();
+	item.dwTypeData = (LPWSTR)label.get_data();
 
 	if (!InsertMenuItemW(md->menu, p_index, true, &item)) {
 		memdelete(item_data);
@@ -289,7 +291,7 @@ int NativeMenuWindows::add_item(const RID &p_rid, const String &p_label, const C
 	item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_DATA;
 	item.fType = MFT_STRING;
 	item.dwItemData = (ULONG_PTR)item_data;
-	item.dwTypeData = (LPWSTR)label.ptrw();
+	item.dwTypeData = (LPWSTR)label.get_data();
 
 	if (!InsertMenuItemW(md->menu, p_index, true, &item)) {
 		memdelete(item_data);
@@ -322,7 +324,7 @@ int NativeMenuWindows::add_check_item(const RID &p_rid, const String &p_label, c
 	item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_DATA;
 	item.fType = MFT_STRING;
 	item.dwItemData = (ULONG_PTR)item_data;
-	item.dwTypeData = (LPWSTR)label.ptrw();
+	item.dwTypeData = (LPWSTR)label.get_data();
 
 	if (!InsertMenuItemW(md->menu, p_index, true, &item)) {
 		memdelete(item_data);
@@ -361,7 +363,7 @@ int NativeMenuWindows::add_icon_item(const RID &p_rid, const Ref<Texture2D> &p_i
 	item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_DATA | MIIM_BITMAP;
 	item.fType = MFT_STRING;
 	item.dwItemData = (ULONG_PTR)item_data;
-	item.dwTypeData = (LPWSTR)label.ptrw();
+	item.dwTypeData = (LPWSTR)label.get_data();
 	item.hbmpItem = item_data->bmp;
 
 	if (!InsertMenuItemW(md->menu, p_index, true, &item)) {
@@ -401,7 +403,7 @@ int NativeMenuWindows::add_icon_check_item(const RID &p_rid, const Ref<Texture2D
 	item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_DATA | MIIM_BITMAP;
 	item.fType = MFT_STRING;
 	item.dwItemData = (ULONG_PTR)item_data;
-	item.dwTypeData = (LPWSTR)label.ptrw();
+	item.dwTypeData = (LPWSTR)label.get_data();
 	item.hbmpItem = item_data->bmp;
 
 	if (!InsertMenuItemW(md->menu, p_index, true, &item)) {
@@ -435,7 +437,7 @@ int NativeMenuWindows::add_radio_check_item(const RID &p_rid, const String &p_la
 	item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_DATA;
 	item.fType = MFT_STRING | MFT_RADIOCHECK;
 	item.dwItemData = (ULONG_PTR)item_data;
-	item.dwTypeData = (LPWSTR)label.ptrw();
+	item.dwTypeData = (LPWSTR)label.get_data();
 
 	if (!InsertMenuItemW(md->menu, p_index, true, &item)) {
 		memdelete(item_data);
@@ -474,7 +476,7 @@ int NativeMenuWindows::add_icon_radio_check_item(const RID &p_rid, const Ref<Tex
 	item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_DATA | MIIM_BITMAP;
 	item.fType = MFT_STRING | MFT_RADIOCHECK;
 	item.dwItemData = (ULONG_PTR)item_data;
-	item.dwTypeData = (LPWSTR)label.ptrw();
+	item.dwTypeData = (LPWSTR)label.get_data();
 	item.hbmpItem = item_data->bmp;
 
 	if (!InsertMenuItemW(md->menu, p_index, true, &item)) {
@@ -508,7 +510,7 @@ int NativeMenuWindows::add_multistate_item(const RID &p_rid, const String &p_lab
 	item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_DATA;
 	item.fType = MFT_STRING;
 	item.dwItemData = (ULONG_PTR)item_data;
-	item.dwTypeData = (LPWSTR)label.ptrw();
+	item.dwTypeData = (LPWSTR)label.get_data();
 
 	if (!InsertMenuItemW(md->menu, p_index, true, &item)) {
 		memdelete(item_data);
@@ -556,9 +558,16 @@ int NativeMenuWindows::find_item_index_with_text(const RID &p_rid, const String 
 		ZeroMemory(&item, sizeof(item));
 		item.cbSize = sizeof(item);
 		item.fMask = MIIM_STRING;
+		item.dwTypeData = nullptr;
 		if (GetMenuItemInfoW(md->menu, i, true, &item)) {
-			if (String::utf16((const char16_t *)item.dwTypeData) == p_text) {
-				return i;
+			item.cch++;
+			Char16String str;
+			str.resize(item.cch);
+			item.dwTypeData = (LPWSTR)str.ptrw();
+			if (GetMenuItemInfoW(md->menu, i, true, &item)) {
+				if (String::utf16((const char16_t *)str.get_data()) == p_text) {
+					return i;
+				}
 			}
 		}
 	}
@@ -700,8 +709,15 @@ String NativeMenuWindows::get_item_text(const RID &p_rid, int p_idx) const {
 	ZeroMemory(&item, sizeof(item));
 	item.cbSize = sizeof(item);
 	item.fMask = MIIM_STRING;
+	item.dwTypeData = nullptr;
 	if (GetMenuItemInfoW(md->menu, p_idx, true, &item)) {
-		return String::utf16((const char16_t *)item.dwTypeData);
+		item.cch++;
+		Char16String str;
+		str.resize(item.cch);
+		item.dwTypeData = (LPWSTR)str.ptrw();
+		if (GetMenuItemInfoW(md->menu, p_idx, true, &item)) {
+			return String::utf16((const char16_t *)str.get_data());
+		}
 	}
 	return String();
 }
@@ -949,7 +965,7 @@ void NativeMenuWindows::set_item_text(const RID &p_rid, int p_idx, const String 
 	item.cbSize = sizeof(item);
 	item.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_DATA;
 	if (GetMenuItemInfoW(md->menu, p_idx, true, &item)) {
-		item.dwTypeData = (LPWSTR)label.ptrw();
+		item.dwTypeData = (LPWSTR)label.get_data();
 		SetMenuItemInfoW(md->menu, p_idx, true, &item);
 	}
 }
