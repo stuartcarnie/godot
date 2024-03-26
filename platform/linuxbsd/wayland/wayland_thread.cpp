@@ -1563,7 +1563,7 @@ void WaylandThread::_wl_pointer_on_frame(void *data, struct wl_pointer *wl_point
 	}
 
 	if (old_pd.pressed_button_mask != pd.pressed_button_mask) {
-		BitField<MouseButtonMask> pressed_mask_delta = BitField<MouseButtonMask>((uint32_t)old_pd.pressed_button_mask ^ (uint32_t)pd.pressed_button_mask);
+		BitField<MouseButtonMask> pressed_mask_delta = old_pd.pressed_button_mask ^ pd.pressed_button_mask;
 
 		const MouseButton buttons_to_test[] = {
 			MouseButton::LEFT,
@@ -2454,7 +2454,7 @@ void WaylandThread::_wp_tablet_tool_on_frame(void *data, struct zwp_tablet_tool_
 		mm->set_relative_screen_position(mm->get_relative());
 
 		Vector2i pos_delta = td.position - old_td.position;
-		uint32_t time_delta = td.motion_time - td.motion_time;
+		uint32_t time_delta = td.motion_time - old_td.motion_time;
 		mm->set_velocity((Vector2)pos_delta / time_delta);
 
 		Ref<InputEventMessage> inputev_msg;
