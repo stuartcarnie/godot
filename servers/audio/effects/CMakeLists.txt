@@ -24,6 +24,8 @@ target_sources(godot-server-audio-effects PRIVATE
         audio_effect_eq.h
         audio_effect_filter.cpp
         audio_effect_filter.h
+        audio_effect_hard_limiter.cpp
+        audio_effect_hard_limiter.h
         audio_effect_limiter.cpp
         audio_effect_limiter.h
         audio_effect_panner.cpp

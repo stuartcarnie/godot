@@ -170,6 +170,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/AudioEffectEQ21.xml
         classes/AudioEffectEQ6.xml
         classes/AudioEffectFilter.xml
+        classes/AudioEffectHardLimiter.xml
         classes/AudioEffectHighPassFilter.xml
         classes/AudioEffectHighShelfFilter.xml
         classes/AudioEffectInstance.xml

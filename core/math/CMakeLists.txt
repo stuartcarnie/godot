@@ -64,6 +64,8 @@ target_sources(godot-math PRIVATE
         transform_2d.h
         transform_3d.cpp
         transform_3d.h
+        transform_interpolator.cpp
+        transform_interpolator.h
         triangle_mesh.cpp
         triangle_mesh.h
         triangulate.cpp

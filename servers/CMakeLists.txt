@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.26 FATAL_ERROR)
 add_subdirectory(audio)
 add_subdirectory(camera)
 add_subdirectory(debugger)
+add_subdirectory(display)
 add_subdirectory(extensions)
 add_subdirectory(movie_writer)
 add_subdirectory(navigation)
@@ -29,8 +30,6 @@ target_sources(godot-servers PRIVATE
         display_server.cpp
         display_server.h
         display_server_headless.h
-        native_menu.cpp
-        native_menu.h
         navigation_server_2d.cpp
         navigation_server_2d.h
         navigation_server_2d_dummy.h
