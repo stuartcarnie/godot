@@ -49,6 +49,7 @@
 /**************************************************************************/
 
 #import "metal_objects.h"
+
 #import "pixel_formats.h"
 #import "rendering_device_driver_metal.h"
 
@@ -230,7 +231,7 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 
 	Size2i size = render.frameBuffer->size;
 	Rect2i render_area = render.clip_to_render_area({ { 0, 0 }, size });
-	size = { render_area.position.x + render_area.size.width, render_area.position.y + render_area.size.height };
+	size = Size2i(render_area.position.x + render_area.size.width, render_area.position.y + render_area.size.height);
 	_populate_vertices(vertices, size, p_rects);
 
 	ClearAttKey key;
@@ -409,13 +410,14 @@ void MDCommandBuffer::_render_bind_uniform_sets() {
 		// clear the set bit
 		set_uniforms &= ~(1ULL << index);
 		MDUniformSet *set = render.uniform_sets[index];
-		if (set == nullptr || set->index >= (uint32_t)shader->sets.size())
+		if (set == nullptr || set->index >= (uint32_t)shader->sets.size()) {
 			continue;
+		}
 		UniformSet const &set_info = shader->sets[set->index];
 
 		BoundUniformSet &bus = set->boundUniformSetForShader(shader, device);
 
-		for (auto &keyval : bus.bound_resources) {
+		for (KeyValue<id<MTLResource>, StageResourceUsage> const &keyval : bus.bound_resources) {
 			MTLResourceUsage usage = resource_usage_for_stage(keyval.value, RDD::ShaderStage::SHADER_STAGE_VERTEX);
 			if (usage != 0) {
 				[enc useResource:keyval.key usage:usage stages:MTLRenderStageVertex];
@@ -577,8 +579,9 @@ void MDCommandBuffer::_render_clear_render_area() {
 		clears.push_back({ .aspect = bits, .color_attachment = ds_index, .value = render.clear_values[ds_index] });
 	}
 
-	if (clears.is_empty())
+	if (clears.is_empty()) {
 		return;
+	}
 
 	render_clear_attachments(clears, { render.render_area });
 }
@@ -819,7 +822,7 @@ void MDCommandBuffer::compute_bind_uniform_set(RDD::UniformSetID p_uniform_set, 
 	MDUniformSet *set = (MDUniformSet *)(p_uniform_set.id);
 	BoundUniformSet &bus = set->boundUniformSetForShader(shader, device);
 
-	for (auto &keyval : bus.bound_resources) {
+	for (KeyValue<id<MTLResource>, StageResourceUsage> &keyval : bus.bound_resources) {
 		MTLResourceUsage usage = resource_usage_for_stage(keyval.value, RDD::ShaderStage::SHADER_STAGE_COMPUTE);
 		if (usage != 0) {
 			[enc useResource:keyval.key usage:usage];
@@ -872,8 +875,9 @@ MDComputeShader::MDComputeShader(CharString p_name, Vector<UniformSet> p_sets, i
 
 void MDComputeShader::encode_push_constant_data(VectorView<uint32_t> p_data, MDCommandBuffer *p_cb) {
 	DEV_ASSERT(p_cb->type == MDCommandBufferStateType::Compute);
-	if (push_constants.binding == (uint32_t)-1)
+	if (push_constants.binding == (uint32_t)-1) {
 		return;
+	}
 
 	id<MTLComputeCommandEncoder> enc = p_cb->compute.encoder;
 
@@ -924,7 +928,7 @@ BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<M
 	if (set.buffer_size > 0) {
 		MTLResourceOptions options = MTLResourceStorageModeShared | MTLResourceHazardTrackingModeTracked;
 		enc_buffer = [p_device newBufferWithLength:set.buffer_size options:options];
-		for (auto &kv : set.encoders) {
+		for (KeyValue<RDC::ShaderStage, id<MTLArgumentEncoder>> const &kv : set.encoders) {
 			RDD::ShaderStage const stage = kv.key;
 			ShaderStageUsage const stage_usage = ShaderStageUsage(1 << stage);
 			id<MTLArgumentEncoder> const enc = kv.value;
@@ -936,9 +940,10 @@ BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<M
 				UniformInfo ui = set.uniforms[i];
 
 				BindingInfo *bi = ui.bindings.getptr(stage);
-				if (bi == nullptr)
-					// no binding for this stage
+				if (bi == nullptr) {
+					// No binding for this stage.
 					continue;
+				}
 
 				if ((ui.active_stages & stage_usage) == 0) {
 					// not active for this state, so don't bind anything
@@ -1189,8 +1194,9 @@ MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> p_device, uint32_t p_quer
 		}
 	}
 
-	if (pool->counterSet == nil)
+	if (pool->counterSet == nil) {
 		return nil;
+	}
 
 	@autoreleasepool {
 		MTLCounterSampleBufferDescriptor *desc = [MTLCounterSampleBufferDescriptor new];
@@ -1435,7 +1441,7 @@ id<MTLRenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttK
 }
 
 id<MTLRenderPipelineState> MDResourceCache::get_clear_render_pipeline_state(ClearAttKey &p_key, NSError **p_error) {
-	auto it = clear_states.find(p_key);
+	HashMap::ConstIterator it = clear_states.find(p_key);
 	if (it != clear_states.end()) {
 		return it->value;
 	}

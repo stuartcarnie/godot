@@ -98,19 +98,19 @@
 #endif
 
 /** Selects and returns one of the values, based on the platform OS. */
-_FORCE_INLINE_ constexpr MTLFmtCaps select_platform_caps(MTLFmtCaps macOSVal, MTLFmtCaps iOSVal) {
+_FORCE_INLINE_ constexpr MTLFmtCaps select_platform_caps(MTLFmtCaps p_macOS_val, MTLFmtCaps p_iOS_val) {
 #if (TARGET_OS_IOS || TARGET_OS_TV) && !TARGET_OS_MACCATALYST
-	return iOSVal;
+	return p_iOS_val;
 #elif TARGET_OS_OSX
-	return macOSVal;
+	return p_macOS_val;
 #else
 #error "unsupported platform"
 #endif
 }
 
 template <typename T>
-void clear(T *pVal, size_t count = 1) {
-	memset(pVal, 0, sizeof(T) * count);
+void clear(T *p_val, size_t p_count = 1) {
+	memset(p_val, 0, sizeof(T) * p_count);
 }
 
 #pragma mark -

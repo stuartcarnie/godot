@@ -88,9 +88,9 @@ enum ShaderStageUsage : uint32_t {
 	Compute = RDD::SHADER_STAGE_COMPUTE_BIT,
 };
 
-_FORCE_INLINE_ ShaderStageUsage &operator|=(ShaderStageUsage &a, int b) {
-	a = ShaderStageUsage(uint32_t(a) | uint32_t(b));
-	return a;
+_FORCE_INLINE_ ShaderStageUsage &operator|=(ShaderStageUsage &p_a, int p_b) {
+	p_a = ShaderStageUsage(uint32_t(p_a) | uint32_t(p_b));
+	return p_a;
 }
 
 enum class MDCommandBufferStateType {
@@ -168,8 +168,9 @@ public:
 
 class API_AVAILABLE(macos(11.0), ios(14.0)) MDResourceCache {
 private:
+	typedef HashMap<ClearAttKey, id<MTLRenderPipelineState>, HashableHasher<ClearAttKey>> HashMap;
 	std::unique_ptr<MDResourceFactory> resource_factory;
-	HashMap<ClearAttKey, id<MTLRenderPipelineState>, HashableHasher<ClearAttKey>> clear_states;
+	HashMap clear_states;
 
 	struct {
 		id<MTLDepthStencilState> all;
@@ -274,26 +275,30 @@ public:
 		}
 
 		_FORCE_INLINE_ void mark_viewport_dirty() {
-			if (viewports.is_empty())
+			if (viewports.is_empty()) {
 				return;
+			}
 			dirty.set_flag(DirtyFlag::DIRTY_VIEWPORT);
 		}
 
 		_FORCE_INLINE_ void mark_scissors_dirty() {
-			if (scissors.is_empty())
+			if (scissors.is_empty()) {
 				return;
+			}
 			dirty.set_flag(DirtyFlag::DIRTY_SCISSOR);
 		}
 
 		_FORCE_INLINE_ void mark_vertex_dirty() {
-			if (vertex_buffers.is_empty())
+			if (vertex_buffers.is_empty()) {
 				return;
+			}
 			dirty.set_flag(DirtyFlag::DIRTY_VERTEX);
 		}
 
 		_FORCE_INLINE_ void mark_uniforms_dirty(std::initializer_list<uint32_t> l) {
-			if (uniform_sets.is_empty())
+			if (uniform_sets.is_empty()) {
 				return;
+			}
 			for (uint32_t i : l) {
 				if (i < uniform_sets.size() && uniform_sets[i] != nullptr) {
 					uniform_set_mask |= 1 << i;
@@ -303,8 +308,9 @@ public:
 		}
 
 		_FORCE_INLINE_ void mark_uniforms_dirty(void) {
-			if (uniform_sets.is_empty())
+			if (uniform_sets.is_empty()) {
 				return;
+			}
 			for (uint32_t i = 0; i < uniform_sets.size(); i++) {
 				if (uniform_sets[i] != nullptr) {
 					uniform_set_mask |= 1 << i;
@@ -442,7 +448,7 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) BindingInfo {
 	uint32_t arrayLength = 0;
 	bool isMultisampled = false;
 
-	inline auto new_argument_descriptor() const -> MTLArgumentDescriptor * {
+	inline MTLArgumentDescriptor *new_argument_descriptor() const {
 		MTLArgumentDescriptor *desc = MTLArgumentDescriptor.argumentDescriptor;
 		desc.dataType = dataType;
 		desc.index = index;
@@ -483,11 +489,13 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) BindingInfo {
 
 using RDC = RenderingDeviceCommons;
 
+typedef HashMap<RDC::ShaderStage, BindingInfo> BindingInfoMap;
+
 struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformInfo {
 	uint32_t binding;
 	ShaderStageUsage active_stages = None;
-	HashMap<RDC::ShaderStage, BindingInfo> bindings;
-	HashMap<RDC::ShaderStage, BindingInfo> bindings_secondary;
+	BindingInfoMap bindings;
+	BindingInfoMap bindings_secondary;
 };
 
 struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformSet {
@@ -688,7 +696,7 @@ public:
 
 	uint32_t get_sample_count() const {
 		return attachments.is_empty() ? 1 : attachments[0].samples;
-	};
+	}
 
 	MDRenderPass(Vector<MDAttachment> &p_attachments, Vector<MDSubpass> &p_subpasses);
 };
@@ -727,10 +735,11 @@ public:
 			float slope_scale = 0.0;
 			float clamp = 0.0;
 			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
-				if (!enabled)
+				if (!enabled) {
 					return;
+				}
 				[p_enc setDepthBias:depth_bias slopeScale:slope_scale clamp:clamp];
-			};
+			}
 		} depth_bias;
 
 		struct {
@@ -766,7 +775,7 @@ public:
 			depth_bias.apply(p_enc);
 			stencil.apply(p_enc);
 			blend.apply(p_enc);
-		};
+		}
 
 	} raster_state;
 

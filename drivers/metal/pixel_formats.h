@@ -202,13 +202,13 @@ typedef struct DataFormatDesc {
 	const char *name;
 	bool hasReportedSubstitution;
 
-	inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); };
+	inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); }
 
-	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid || chromaSubsamplingPlaneCount > 1); };
-	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlPixelFormatSubstitute != MTLPixelFormatInvalid); };
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid || chromaSubsamplingPlaneCount > 1); }
+	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlPixelFormatSubstitute != MTLPixelFormatInvalid); }
 
-	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); };
-	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
+	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); }
+	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); }
 } DataFormatDesc;
 
 /** Describes the properties of a MTLPixelFormat or MTLVertexFormat. */
@@ -221,9 +221,9 @@ typedef struct MTLFormatDesc {
 	MTLFmtCaps mtlFmtCaps;
 	MTLViewClass mtlViewClass;
 	MTLPixelFormat mtlPixelFormatLinear;
-	const char *name;
+	const char *name = nullptr;
 
-	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mtlFmtCaps != kMTLFmtCapsNone); };
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mtlFmtCaps != kMTLFmtCapsNone); }
 } MTLFormatDesc;
 
 class API_AVAILABLE(macos(11.0), ios(14.0)) PixelFormats {

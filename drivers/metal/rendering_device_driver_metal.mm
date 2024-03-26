@@ -1141,7 +1141,7 @@ public:
 	template <typename K, typename V>
 	void write(HashMap<K, V> const &p_map) {
 		write(p_map.size());
-		for (auto const &e : p_map) {
+		for (KeyValue<K, V> const &e : p_map) {
 			write(e.key);
 			write(e.value);
 		}
@@ -1407,8 +1407,8 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformData {
 	// active_stages specifies the stages the uniform data is
 	// used by the Metal shader
 	ShaderStageUsage active_stages;
-	HashMap<RD::ShaderStage, BindingInfo> bindings;
-	HashMap<RD::ShaderStage, BindingInfo> bindings_secondary;
+	BindingInfoMap bindings;
+	BindingInfoMap bindings_secondary;
 
 	size_t serialize_size() const {
 		size_t size = 0;
@@ -1420,12 +1420,12 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformData {
 		size += sizeof(uint32_t); // active_stages
 		size += sizeof(uint32_t); // bindings.size()
 		size += sizeof(uint32_t) * bindings.size(); // total size of keys
-		for (auto const &e : bindings) {
+		for (KeyValue<RD::ShaderStage, BindingInfo> const &e : bindings) {
 			size += e.value.serialize_size();
 		}
 		size += sizeof(uint32_t); // bindings_secondary.size()
 		size += sizeof(uint32_t) * bindings_secondary.size(); // total size of keys
-		for (auto const &e : bindings_secondary) {
+		for (KeyValue<RD::ShaderStage, BindingInfo> const &e : bindings_secondary) {
 			size += e.value.serialize_size();
 		}
 		return size;
@@ -1462,7 +1462,7 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformSetData {
 		size_t size = 0;
 		size += sizeof(uint32_t); // index
 		size += sizeof(uint32_t); // uniforms.size()
-		for (auto const &e : uniforms) {
+		for (UniformData const &e : uniforms) {
 			size += e.serialize_size();
 		}
 		return size;
@@ -1541,15 +1541,15 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) ShaderBinaryData {
 		size += compute_local_size.serialize_size(); // compute_local_size
 		size += push_constant.serialize_size(); // push_constant
 		size += sizeof(uint32_t); // stages.size()
-		for (auto const &e : stages) {
+		for (ShaderStageData const &e : stages) {
 			size += e.serialize_size();
 		}
 		size += sizeof(uint32_t); // constants.size()
-		for (auto const &e : constants) {
+		for (SpecializationConstantData const &e : constants) {
 			size += e.serialize_size();
 		}
 		size += sizeof(uint32_t); // uniforms.size()
-		for (auto const &e : uniforms) {
+		for (UniformSetData const &e : uniforms) {
 			size += e.serialize_size();
 		}
 		return size;
@@ -1592,11 +1592,12 @@ String RenderingDeviceDriverMetal::shader_get_binary_cache_key() {
 
 Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVData> p_spirv, ShaderReflection &r_reflection) {
 	using namespace spirv_cross;
+	using spirv_cross::Resource;
 
 	r_reflection = {};
 
 	for (uint32_t i = 0; i < p_spirv.size(); i++) {
-		ShaderStageSPIRVData v = p_spirv[i];
+		ShaderStageSPIRVData const &v = p_spirv[i];
 		ShaderStage stage = v.shader_stage;
 		uint32_t const *const ir = reinterpret_cast<uint32_t const *const>(v.spirv.ptr());
 		size_t word_count = v.spirv.size() / sizeof(uint32_t);
@@ -1621,9 +1622,6 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 		using BT = SPIRType::BaseType;
 
 		Compiler compiler(std::move(pir));
-
-		auto entry_point_stage = compiler.get_entry_points_and_stages().front();
-		auto entry_point = compiler.get_entry_point(entry_point_stage.name, entry_point_stage.execution_model);
 
 		if (r_reflection.is_compute) {
 			r_reflection.compute_local_size[0] = compiler.get_execution_mode_argument(spv::ExecutionModeLocalSize, 0);
@@ -1654,8 +1652,8 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 		};
 		// clang-format on
 
-		auto process_uniforms = [&r_reflection, &compiler, &get_decoration, stage, stage_flag](spirv_cross::SmallVector<spirv_cross::Resource> &resources, Writable writable, std::function<RDD::UniformType(spirv_cross::SPIRType const &)> uniform_type) {
-			for (spirv_cross::Resource &res : resources) {
+		auto process_uniforms = [&r_reflection, &compiler, &get_decoration, stage, stage_flag](SmallVector<Resource> &resources, Writable writable, std::function<RDD::UniformType(SPIRType const &)> uniform_type) {
+			for (Resource const &res : resources) {
 				ShaderUniform uniform;
 
 				std::string const &name = compiler.get_name(res.id);
@@ -1666,7 +1664,7 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 				uniform.binding = get_decoration(res.id, spv::DecorationBinding);
 				ERR_FAIL_COND_V_MSG(uniform.binding == (uint32_t)-1, FAILED, "No binding found");
 
-				spirv_cross::SPIRType const &a_type = compiler.get_type(res.type_id);
+				SPIRType const &a_type = compiler.get_type(res.type_id);
 				uniform.type = uniform_type(a_type);
 
 				// update length
@@ -1746,19 +1744,19 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 			return OK;
 		};
 
-		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+		ShaderResources resources = compiler.get_shader_resources();
 
-		process_uniforms(resources.uniform_buffers, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+		process_uniforms(resources.uniform_buffers, Writable::No, [](SPIRType const &a_type) {
 			DEV_ASSERT(a_type.basetype == BT::Struct);
 			return UNIFORM_TYPE_UNIFORM_BUFFER;
 		});
 
-		process_uniforms(resources.storage_buffers, Writable::Maybe, [](spirv_cross::SPIRType const &a_type) {
+		process_uniforms(resources.storage_buffers, Writable::Maybe, [](SPIRType const &a_type) {
 			DEV_ASSERT(a_type.basetype == BT::Struct);
 			return UNIFORM_TYPE_STORAGE_BUFFER;
 		});
 
-		process_uniforms(resources.storage_images, Writable::Maybe, [](spirv_cross::SPIRType const &a_type) {
+		process_uniforms(resources.storage_images, Writable::Maybe, [](SPIRType const &a_type) {
 			DEV_ASSERT(a_type.basetype == BT::Image);
 			if (a_type.image.dim == spv::DimBuffer) {
 				return UNIFORM_TYPE_IMAGE_BUFFER;
@@ -1767,12 +1765,12 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 			}
 		});
 
-		process_uniforms(resources.sampled_images, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+		process_uniforms(resources.sampled_images, Writable::No, [](SPIRType const &a_type) {
 			DEV_ASSERT(a_type.basetype == BT::SampledImage);
 			return UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
 		});
 
-		process_uniforms(resources.separate_images, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+		process_uniforms(resources.separate_images, Writable::No, [](SPIRType const &a_type) {
 			DEV_ASSERT(a_type.basetype == BT::Image);
 			if (a_type.image.dim == spv::DimBuffer) {
 				return UNIFORM_TYPE_TEXTURE_BUFFER;
@@ -1781,19 +1779,19 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 			}
 		});
 
-		process_uniforms(resources.separate_samplers, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+		process_uniforms(resources.separate_samplers, Writable::No, [](SPIRType const &a_type) {
 			DEV_ASSERT(a_type.basetype == BT::Sampler);
 			return UNIFORM_TYPE_SAMPLER;
 		});
 
-		process_uniforms(resources.subpass_inputs, Writable::No, [](spirv_cross::SPIRType const &a_type) {
+		process_uniforms(resources.subpass_inputs, Writable::No, [](SPIRType const &a_type) {
 			DEV_ASSERT(a_type.basetype == BT::Image && a_type.image.dim == spv::DimSubpassData);
 			return UNIFORM_TYPE_INPUT_ATTACHMENT;
 		});
 
 		if (!resources.push_constant_buffers.empty()) {
 			// there can be only one push constant block
-			auto res = resources.push_constant_buffers.front();
+			Resource const &res = resources.push_constant_buffers.front();
 
 			size_t push_constant_size = round_up_to_alignment(compiler.get_declared_struct_size(compiler.get_type(res.base_type_id)), SPIRV_DATA_ALIGNMENT);
 			ERR_FAIL_COND_V_MSG(r_reflection.push_constant_size && r_reflection.push_constant_size != push_constant_size, FAILED,
@@ -1808,7 +1806,7 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 		ERR_FAIL_COND_V_MSG(!resources.shader_record_buffers.empty(), FAILED, "Shader record buffers not supported");
 
 		if (stage == SHADER_STAGE_VERTEX && !resources.stage_inputs.empty()) {
-			for (auto &res : resources.stage_inputs) {
+			for (Resource const &res : resources.stage_inputs) {
 				SPIRType a_type = compiler.get_type(res.base_type_id);
 				uint32_t loc = get_decoration(res.id, spv::DecorationLocation);
 				if (loc != (uint32_t)-1) {
@@ -1818,7 +1816,7 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 		}
 
 		if (stage == SHADER_STAGE_FRAGMENT && !resources.stage_outputs.empty()) {
-			for (auto &res : resources.stage_outputs) {
+			for (Resource const &res : resources.stage_outputs) {
 				SPIRType a_type = compiler.get_type(res.base_type_id);
 				uint32_t loc = get_decoration(res.id, spv::DecorationLocation);
 				uint32_t built_in = spv::BuiltIn(get_decoration(res.id, spv::DecorationBuiltIn));
@@ -1829,7 +1827,7 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 		}
 
 		// Specialization constants
-		for (auto &constant : compiler.get_specialization_constants()) {
+		for (SpecializationConstant const &constant : compiler.get_specialization_constants()) {
 			int32_t existing = -1;
 			ShaderSpecializationConstant sconst;
 			SPIRConstant &spc = compiler.get_constant(constant.id);
@@ -1885,7 +1883,10 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 }
 
 Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(VectorView<ShaderStageSPIRVData> p_spirv, const String &p_shader_name) {
-	using Result = Vector<uint8_t>;
+	using Result = ::Vector<uint8_t>;
+	using namespace spirv_cross;
+	using spirv_cross::CompilerMSL;
+	using spirv_cross::Resource;
 
 	ShaderReflection spirv_data;
 	if (_reflect_spirv16(p_spirv, spirv_data) != OK) {
@@ -1911,7 +1912,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 	bin_data.push_constant.stages = (ShaderStageUsage)(uint8_t)spirv_data.push_constant_stages;
 
 	for (uint32_t i = 0; i < spirv_data.uniform_sets.size(); i++) {
-		const Vector<ShaderUniform> &spirv_set = spirv_data.uniform_sets[i];
+		const ::Vector<ShaderUniform> &spirv_set = spirv_data.uniform_sets[i];
 		UniformSetData set{ .index = i };
 		for (const ShaderUniform &spirv_uniform : spirv_set) {
 			UniformData binding{};
@@ -1938,9 +1939,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 	// Reflection using SPIRV-Cross:
 	// https://github.com/KhronosGroup/SPIRV-Cross/wiki/Reflection-API-user-guide
 
-	using spirv_cross::CompilerMSL;
-
-	spirv_cross::CompilerMSL::Options msl_options{};
+	CompilerMSL::Options msl_options{};
 	msl_options.set_msl_version(version_major, version_minor);
 	if (version_major == 3 && version_minor >= 1) {
 		// TODO(sgc): restrict to Metal 3.0 for now, until bugs in SPIRV-cross image atomics are resolved
@@ -1948,9 +1947,9 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 	}
 	bin_data.msl_version = msl_options.msl_version;
 #if TARGET_OS_OSX
-	msl_options.platform = spirv_cross::CompilerMSL::Options::macOS;
+	msl_options.platform = CompilerMSL::Options::macOS;
 #else
-	msl_options.platform = spirv_cross::CompilerMSL::Options::iOS;
+	msl_options.platform = CompilerMSL::Options::iOS;
 #endif
 
 #if TARGET_OS_IOS
@@ -1966,22 +1965,22 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 	msl_options.r32ui_alignment_constant_id = R32UI_ALIGNMENT_CONSTANT_ID;
 	msl_options.agx_manual_cube_grad_fixup = true;
 
-	spirv_cross::CompilerGLSL::Options options{};
+	CompilerGLSL::Options options{};
 	options.vertex.flip_vert_y = true;
 #if DEV_ENABLED
 	options.emit_line_directives = true;
 #endif
 
 	for (uint32_t i = 0; i < p_spirv.size(); i++) {
-		ShaderStageSPIRVData v = p_spirv[i];
+		ShaderStageSPIRVData const &v = p_spirv[i];
 		ShaderStage stage = v.shader_stage;
 		char const *stage_name = SHADER_STAGE_NAMES[stage];
 		uint32_t const *const ir = reinterpret_cast<uint32_t const *const>(v.spirv.ptr());
 		size_t word_count = v.spirv.size() / sizeof(uint32_t);
-		spirv_cross::Parser parser(ir, word_count);
+		Parser parser(ir, word_count);
 		try {
 			parser.parse();
-		} catch (spirv_cross::CompilerError &e) {
+		} catch (CompilerError &e) {
 			ERR_FAIL_V_MSG(Result(), "Failed to parse IR at stage " + String(SHADER_STAGE_NAMES[stage]) + ": " + e.what());
 		}
 
@@ -1989,20 +1988,25 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		compiler.set_msl_options(msl_options);
 		compiler.set_common_options(options);
 
-		auto active = compiler.get_active_interface_variables();
-		auto resources = compiler.get_shader_resources();
+		std::unordered_set<VariableID> active = compiler.get_active_interface_variables();
+		ShaderResources resources = compiler.get_shader_resources();
 
 		std::string source = compiler.compile();
 
 		ERR_FAIL_COND_V_MSG(compiler.get_entry_points_and_stages().size() != 1, Result(), "Expected a single entry point and stage.");
 
-		auto entry_point_stage = compiler.get_entry_points_and_stages().front();
-		auto entry_point = compiler.get_entry_point(entry_point_stage.name, entry_point_stage.execution_model);
+		EntryPoint &entry_point_stage = compiler.get_entry_points_and_stages().front();
+		SPIREntryPoint &entry_point = compiler.get_entry_point(entry_point_stage.name, entry_point_stage.execution_model);
 
 		// process specialization constants
 		if (!compiler.get_specialization_constants().empty()) {
-			for (auto &constant : compiler.get_specialization_constants()) {
-				auto res = std::find_if(bin_data.constants.begin(), bin_data.constants.end(), [constant](auto &v) { return v.constant_id == constant.constant_id; });
+			for (SpecializationConstant const &constant : compiler.get_specialization_constants()) {
+				LocalVector<SpecializationConstantData>::Iterator res = std::find_if(
+						bin_data.constants.begin(),
+						bin_data.constants.end(),
+						[constant](SpecializationConstantData &v) {
+							return v.constant_id == constant.constant_id;
+						});
 				if (res != bin_data.constants.end()) {
 					res->used_stages |= 1 << stage;
 				} else {
@@ -2013,8 +2017,8 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 
 		// process bindings
 
-		auto &uniform_sets = bin_data.uniforms;
-		using BT = spirv_cross::SPIRType::BaseType;
+		LocalVector<UniformSetData> &uniform_sets = bin_data.uniforms;
+		using BT = SPIRType::BaseType;
 
 		// Always clearer than a boolean
 		enum class Writable {
@@ -2025,22 +2029,21 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		// get_decoration returns a std::optional containing the value of the
 		// decoration, if it exists.
 		auto get_decoration = [&compiler](spirv_cross::ID id, spv::Decoration decoration) {
-			std::optional<uint32_t> res;
+			uint32_t res = -1;
 			if (compiler.has_decoration(id, decoration)) {
 				res = compiler.get_decoration(id, decoration);
 			}
 			return res;
 		};
 
-		auto descriptor_bindings = [&compiler, &active, &uniform_sets, stage, &get_decoration](auto &resources, Writable writable) {
-			for (auto &res : resources) {
-				auto dset = get_decoration(res.id, spv::DecorationDescriptorSet);
-				auto dbin = get_decoration(res.id, spv::DecorationBinding);
-				auto name = compiler.get_name(res.id);
+		auto descriptor_bindings = [&compiler, &active, &uniform_sets, stage, &get_decoration](SmallVector<Resource> &resources, Writable writable) {
+			for (Resource const &res : resources) {
+				uint32_t dset = get_decoration(res.id, spv::DecorationDescriptorSet);
+				uint32_t dbin = get_decoration(res.id, spv::DecorationBinding);
 				UniformData *found = nullptr;
-				if (dset.has_value() && dbin.has_value() && dset.value() < uniform_sets.size()) {
-					auto &set = uniform_sets[dset.value()];
-					auto pos = std::find_if(set.uniforms.begin(), set.uniforms.end(), [dbin](auto &v) { return dbin == v.binding; });
+				if (dset != (uint32_t)-1 && dbin != (uint32_t)-1 && dset < uniform_sets.size()) {
+					UniformSetData &set = uniform_sets[dset];
+					LocalVector<UniformData>::Iterator pos = std::find_if(set.uniforms.begin(), set.uniforms.end(), [dbin](UniformData &v) { return dbin == v.binding; });
 					if (pos != set.uniforms.end()) {
 						found = &(*pos);
 					}
@@ -2055,8 +2058,8 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 
 				BindingInfo primary{};
 
-				auto a_type = compiler.get_type(res.type_id);
-				auto basetype = a_type.basetype;
+				SPIRType const &a_type = compiler.get_type(res.type_id);
+				BT basetype = a_type.basetype;
 
 				switch (basetype) {
 					case BT::Struct: {
@@ -2085,7 +2088,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 					}
 					primary.isMultisampled = a_type.image.ms;
 
-					auto image = a_type.image;
+					SPIRType::ImageType const &image = a_type.image;
 					primary.imageFormat = image.format;
 
 					switch (image.dim) {
@@ -2135,7 +2138,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 				// update writable
 				if (writable == Writable::Maybe) {
 					if (basetype == BT::Struct) {
-						auto flags = compiler.get_buffer_block_flags(res.id);
+						Bitset flags = compiler.get_buffer_block_flags(res.id);
 						if (!flags.get(spv::DecorationNonWritable)) {
 							if (flags.get(spv::DecorationNonReadable)) {
 								primary.access = MTLBindingAccessWriteOnly;
@@ -2244,8 +2247,8 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		}
 
 		if (!resources.push_constant_buffers.empty()) {
-			for (auto &res : resources.push_constant_buffers) {
-				auto binding = compiler.get_automatic_msl_resource_binding(res.id);
+			for (Resource const &res : resources.push_constant_buffers) {
+				uint32_t binding = compiler.get_automatic_msl_resource_binding(res.id);
 				if (binding != (uint32_t)-1) {
 					bin_data.push_constant.used_stages |= 1 << stage;
 					bin_data.push_constant.msl_binding[stage] = binding;
@@ -2258,8 +2261,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		ERR_FAIL_COND_V_MSG(!resources.shader_record_buffers.empty(), Result(), "Shader record buffers not supported");
 
 		if (!resources.stage_inputs.empty()) {
-			for (auto &res : resources.stage_inputs) {
-				auto a_base_type = compiler.get_type(res.base_type_id);
+			for (Resource const &res : resources.stage_inputs) {
 				uint32_t binding = compiler.get_automatic_msl_resource_binding(res.id);
 				if (binding != (uint32_t)-1) {
 					bin_data.vertex_input_mask |= 1 << binding;
@@ -2276,7 +2278,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 
 	size_t vec_size = bin_data.serialize_size() + 8;
 
-	Vector<uint8_t> ret;
+	::Vector<uint8_t> ret;
 	ret.resize(vec_size);
 	BufWriter writer(ret.ptrw(), vec_size);
 	const uint8_t HEADER[4] = { 'G', 'M', 'S', 'L' };
@@ -2344,7 +2346,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 		uset.resize(uniform_set.uniforms.size());
 
 		for (uint32_t i = 0; i < uniform_set.uniforms.size(); i++) {
-			auto &uniform = uniform_set.uniforms[i];
+			UniformData &uniform = uniform_set.uniforms[i];
 
 			ShaderUniform su;
 			su.type = uniform.type;
@@ -2357,10 +2359,10 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 			UniformInfo ui;
 			ui.binding = uniform.binding;
 			ui.active_stages = uniform.active_stages;
-			for (auto &kv : uniform.bindings) {
+			for (KeyValue<RDC::ShaderStage, BindingInfo> &kv : uniform.bindings) {
 				ui.bindings.insert(kv.key, kv.value);
 			}
-			for (auto &kv : uniform.bindings_secondary) {
+			for (KeyValue<RDC::ShaderStage, BindingInfo> &kv : uniform.bindings_secondary) {
 				ui.bindings_secondary.insert(kv.key, kv.value);
 			}
 			set.uniforms[i] = ui;
@@ -3372,8 +3374,9 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	// Blend state.
 	{
 		for (uint32_t i = 0; i < p_color_attachments.size(); i++) {
-			if (p_color_attachments[i] == ATTACHMENT_UNUSED)
+			if (p_color_attachments[i] == ATTACHMENT_UNUSED) {
 				continue;
+			}
 
 			const PipelineColorBlendState::Attachment &bs = p_blend_state.attachments[i];
 
@@ -3616,7 +3619,7 @@ void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_
 		} break;
 		case OBJECT_TYPE_UNIFORM_SET: {
 			MDUniformSet *set = (MDUniformSet *)(p_driver_id.id);
-			std::for_each(set->bound_uniforms.begin(), set->bound_uniforms.end(), [&](auto &keyval) {
+			std::for_each(set->bound_uniforms.begin(), set->bound_uniforms.end(), [&](KeyValue<MDShader *, BoundUniformSet> &keyval) {
 				keyval.value.buffer.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
 			});
 		} break;

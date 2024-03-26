@@ -102,8 +102,8 @@ void MetalDeviceProperties::init_features(id<MTLDevice> p_device) {
 	MTLCompileOptions *opts = [MTLCompileOptions new];
 	features.mslVersionEnum = opts.languageVersion; // by default, Metal uses the most recent language version
 
-#define setMSLVersion(maj, min) \
-	features.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min)
+#define setMSLVersion(m_maj, m_min) \
+	features.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(m_maj, m_min)
 
 	switch (features.mslVersionEnum) {
 #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 140000 || __IPHONE_OS_VERSION_MAX_ALLOWED >= 170000

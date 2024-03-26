@@ -51,7 +51,7 @@ public:
 	Error initialize() final override;
 	const Device &device_get(uint32_t p_device_index) const final override;
 	uint32_t device_get_count() const final override;
-	bool device_supports_present(uint32_t p_device_index, SurfaceID p_surface) const final override { return true; };
+	bool device_supports_present(uint32_t p_device_index, SurfaceID p_surface) const final override { return true; }
 	RenderingDeviceDriver *driver_create() final override;
 	void driver_free(RenderingDeviceDriver *p_driver) final override;
 	SurfaceID surface_create(const void *p_platform_data) final override;
@@ -63,7 +63,7 @@ public:
 	void surface_set_needs_resize(SurfaceID p_surface, bool p_needs_resize) final override;
 	bool surface_get_needs_resize(SurfaceID p_surface) const final override;
 	void surface_destroy(SurfaceID p_surface) final override;
-	bool is_debug_utils_enabled() const final override { return true; };
+	bool is_debug_utils_enabled() const final override { return true; }
 
 #pragma mark - Metal-specific methods
 
