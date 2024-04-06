@@ -1432,8 +1432,25 @@ _FORCE_INLINE_ bool TextServerAdvanced::_ensure_cache_for_size(FontAdvanced *p_f
 #endif
 
 		if (!p_font_data->face_init) {
-			// Get style flags and name.
-			if (fd->face->family_name != nullptr) {
+			// When a font does not provide a `family_name`, FreeType tries to synthesize one based on other names.
+			// FreeType automatically converts non-ASCII characters to "?" in the synthesized name.
+			// To avoid that behavior, use the format-specific name directly if available.
+			hb_face_t *hb_face = hb_font_get_face(fd->hb_handle);
+			unsigned int num_entries = 0;
+			const hb_ot_name_entry_t *names = hb_ot_name_list_names(hb_face, &num_entries);
+			const hb_language_t english = hb_language_from_string("en", -1);
+			for (unsigned int i = 0; i < num_entries; i++) {
+				if (names[i].name_id != HB_OT_NAME_ID_FONT_FAMILY) {
+					continue;
+				}
+				if (!p_font_data->font_name.is_empty() && names[i].language != english) {
+					continue;
+				}
+				unsigned int text_size = hb_ot_name_get_utf32(hb_face, names[i].name_id, names[i].language, nullptr, nullptr) + 1;
+				p_font_data->font_name.resize(text_size);
+				hb_ot_name_get_utf32(hb_face, names[i].name_id, names[i].language, &text_size, (uint32_t *)p_font_data->font_name.ptrw());
+			}
+			if (p_font_data->font_name.is_empty() && fd->face->family_name != nullptr) {
 				p_font_data->font_name = String::utf8((const char *)fd->face->family_name);
 			}
 			if (fd->face->style_name != nullptr) {
@@ -1452,7 +1469,6 @@ _FORCE_INLINE_ bool TextServerAdvanced::_ensure_cache_for_size(FontAdvanced *p_f
 				p_font_data->style_flags.set_flag(FONT_FIXED_WIDTH);
 			}
 
-			hb_face_t *hb_face = hb_font_get_face(fd->hb_handle);
 			// Get supported scripts from OpenType font data.
 			p_font_data->supported_scripts.clear();
 			unsigned int count = hb_ot_layout_table_get_script_tags(hb_face, HB_OT_TAG_GSUB, 0, nullptr, nullptr);
@@ -6974,6 +6990,34 @@ String TextServerAdvanced::_string_to_lower(const String &p_string, const String
 
 	// Convert back to UTF-32.
 	return String::utf16(lower.ptr(), len);
+}
+
+String TextServerAdvanced::_string_to_title(const String &p_string, const String &p_language) const {
+#ifndef ICU_STATIC_DATA
+	if (!icu_data_loaded) {
+		return p_string.capitalize();
+	}
+#endif
+
+	if (p_string.is_empty()) {
+		return p_string;
+	}
+	const String lang = (p_language.is_empty()) ? TranslationServer::get_singleton()->get_tool_locale() : p_language;
+
+	// Convert to UTF-16.
+	Char16String utf16 = p_string.utf16();
+
+	Vector<char16_t> upper;
+	UErrorCode err = U_ZERO_ERROR;
+	int32_t len = u_strToTitle(nullptr, 0, utf16.get_data(), -1, nullptr, lang.ascii().get_data(), &err);
+	ERR_FAIL_COND_V_MSG(err != U_BUFFER_OVERFLOW_ERROR, p_string, u_errorName(err));
+	upper.resize(len);
+	err = U_ZERO_ERROR;
+	u_strToTitle(upper.ptrw(), len, utf16.get_data(), -1, nullptr, lang.ascii().get_data(), &err);
+	ERR_FAIL_COND_V_MSG(U_FAILURE(err), p_string, u_errorName(err));
+
+	// Convert back to UTF-32.
+	return String::utf16(upper.ptr(), len);
 }
 
 PackedInt32Array TextServerAdvanced::_string_get_word_breaks(const String &p_string, const String &p_language, int64_t p_chars_per_line) const {

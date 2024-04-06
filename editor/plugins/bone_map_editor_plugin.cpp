@@ -196,7 +196,7 @@ void BonePicker::create_bones_tree(Skeleton3D *p_skeleton) {
 
 	items.insert(-1, root);
 
-	Ref<Texture> bone_icon = get_editor_theme_icon(SNAME("BoneAttachment3D"));
+	Ref<Texture> bone_icon = get_editor_theme_icon(SNAME("Bone"));
 
 	Vector<int> bones_to_process = p_skeleton->get_parentless_bones();
 	bool is_first = true;
@@ -421,7 +421,7 @@ void BoneMapper::recreate_editor() {
 
 	for (int i = 0; i < len; i++) {
 		if (profile->get_group(i) == profile->get_group_name(current_group_idx)) {
-			BoneMapperButton *mb = memnew(BoneMapperButton(profile->get_bone_name(i), profile->is_require(i), current_bone_idx == i));
+			BoneMapperButton *mb = memnew(BoneMapperButton(profile->get_bone_name(i), profile->is_required(i), current_bone_idx == i));
 			mb->connect("pressed", callable_mp(this, &BoneMapper::set_current_bone_idx).bind(i), CONNECT_DEFERRED);
 			mb->set_h_grow_direction(GROW_DIRECTION_BOTH);
 			mb->set_v_grow_direction(GROW_DIRECTION_BOTH);

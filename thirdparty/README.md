@@ -87,7 +87,7 @@ Files extracted from upstream source:
 ## certs
 
 - Upstream: Mozilla, via https://github.com/bagder/ca-bundle
-- Version: git (bef37a977ccb45fb4c1b213b79dd6ba438077561, 2023)
+- Version: git (c5a419971b1bec220368c619aaafd0b818aa119f, 2024)
 - License: MPL 2.0
 
 
@@ -194,7 +194,7 @@ commits.
 ## enet
 
 - Upstream: https://github.com/lsalzman/enet
-- Version: git (ea4607a90dbfbcf4da2669ea998585253d8e70b1, 2023)
+- Version: git (c44b7d0f7ff21edb702745e4c019d0537928c373, 2024)
 - License: MIT
 
 Files extracted from upstream source:
@@ -845,11 +845,13 @@ folder.
 
 Files extracted from upstream source:
 
+- `LICENSE.txt`
 - All `.cpp`, `.h` and `.inl` files
 
-Important: Some files have Godot-made changes.
-They are marked with `// -- GODOT start --` and `// -- GODOT end --`
-comments and a patch is provided in the squish/ folder.
+Some downstream changes have been made and are identified by
+`// -- GODOT begin --` and `// -- GODOT end --` comments.
+They can be reapplied using the patches included in the `patches`
+folder.
 
 
 ## tinyexr
