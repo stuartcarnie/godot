@@ -8,6 +8,14 @@ godot_add_library(godot-module-openxr-scene FOLDER modules STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-module-openxr-scene PRIVATE
+        openxr_composition_layer.cpp
+        openxr_composition_layer.h
+        openxr_composition_layer_cylinder.cpp
+        openxr_composition_layer_cylinder.h
+        openxr_composition_layer_equirect.cpp
+        openxr_composition_layer_equirect.h
+        openxr_composition_layer_quad.cpp
+        openxr_composition_layer_quad.h
         openxr_hand.cpp
         openxr_hand.h
 )

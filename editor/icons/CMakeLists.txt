@@ -193,6 +193,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         CurveOut.svg
         CurveOutIn.svg
         CurveTexture.svg
+        CurveTilt.svg
         CurveXYZTexture.svg
         CylinderMesh.svg
         CylinderShape3D.svg
@@ -307,6 +308,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         GradientTexture2D.svg
         GraphEdit.svg
         GraphElement.svg
+        GraphFrame.svg
         GraphNode.svg
         Grid.svg
         GridContainer.svg
@@ -592,6 +594,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Performance.svg
         PhysicalBone2D.svg
         PhysicalBone3D.svg
+        PhysicalBoneSimulator3D.svg
         PhysicalSkyMaterial.svg
         PhysicsMaterial.svg
         PickerCursor.svg
@@ -709,6 +712,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Skeleton2D.svg
         Skeleton3D.svg
         SkeletonIK3D.svg
+        SkeletonModifier3D.svg
         Sky.svg
         SliderJoint3D.svg
         Slot.svg
@@ -900,8 +904,10 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         WorldEnvironment.svg
         X509Certificate.svg
         XRAnchor3D.svg
+        XRBodyModifier3D.svg
         XRCamera3D.svg
         XRController3D.svg
+        XRHandModifier3D.svg
         XROrigin3D.svg
         YSort.svg
         Zoom.svg

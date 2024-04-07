@@ -60,6 +60,8 @@ target_sources(godot-scene-3d PRIVATE
         occluder_instance_3d.h
         path_3d.cpp
         path_3d.h
+        physical_bone_simulator_3d.cpp
+        physical_bone_simulator_3d.h
         reflection_probe.cpp
         reflection_probe.h
         remote_transform_3d.cpp
@@ -68,6 +70,8 @@ target_sources(godot-scene-3d PRIVATE
         skeleton_3d.h
         skeleton_ik_3d.cpp
         skeleton_ik_3d.h
+        skeleton_modifier_3d.cpp
+        skeleton_modifier_3d.h
         soft_body_3d.cpp
         soft_body_3d.h
         sprite_3d.cpp

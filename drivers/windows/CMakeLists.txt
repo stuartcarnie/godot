@@ -12,6 +12,8 @@ target_sources(driver-windows PRIVATE
         dir_access_windows.h
         file_access_windows.cpp
         file_access_windows.h
+        file_access_windows_pipe.cpp
+        file_access_windows_pipe.h
 )
 # [[[end]]]
 target_link_libraries(driver-windows PUBLIC godot-core)

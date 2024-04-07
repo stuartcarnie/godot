@@ -12,6 +12,8 @@ target_sources(driver-unix PRIVATE
         dir_access_unix.h
         file_access_unix.cpp
         file_access_unix.h
+        file_access_unix_pipe.cpp
+        file_access_unix_pipe.h
         ip_unix.cpp
         ip_unix.h
         net_socket_posix.cpp

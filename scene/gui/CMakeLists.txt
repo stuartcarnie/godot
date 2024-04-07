@@ -46,6 +46,8 @@ target_sources(godot-scene-gui PRIVATE
         graph_edit_arranger.h
         graph_element.cpp
         graph_element.h
+        graph_frame.cpp
+        graph_frame.h
         graph_node.cpp
         graph_node.h
         grid_container.cpp

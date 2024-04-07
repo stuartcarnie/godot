@@ -31,23 +31,29 @@ target_sources(embree PRIVATE
         common/math/col3.h
         common/math/col4.h
         common/math/color.h
+        common/math/color_sycl.h
         common/math/constants.cpp
         common/math/constants.h
+        common/math/emath.h
         common/math/interval.h
         common/math/lbbox.h
         common/math/linearspace2.h
         common/math/linearspace3.h
-        common/math/math.h
+        common/math/math_sycl.h
         common/math/obbox.h
         common/math/quaternion.h
         common/math/range.h
         common/math/transcendental.h
         common/math/vec2.h
         common/math/vec2fa.h
+        common/math/vec2fa_sycl.h
         common/math/vec3.h
         common/math/vec3ba.h
+        common/math/vec3ba_sycl.h
         common/math/vec3fa.h
+        common/math/vec3fa_sycl.h
         common/math/vec3ia.h
+        common/math/vec3ia_sycl.h
         common/math/vec4.h
         common/simd/arm/avx2neon.h
         common/simd/arm/emulation.h
@@ -90,6 +96,8 @@ target_sources(embree PRIVATE
         common/sys/barrier.h
         common/sys/condition.cpp
         common/sys/condition.h
+        common/sys/estring.cpp
+        common/sys/estring.h
         common/sys/filename.cpp
         common/sys/filename.h
         common/sys/intrinsics.h
@@ -101,8 +109,7 @@ target_sources(embree PRIVATE
         common/sys/ref.h
         common/sys/regression.cpp
         common/sys/regression.h
-        common/sys/string.cpp
-        common/sys/string.h
+        common/sys/sycl.h
         common/sys/sysinfo.cpp
         common/sys/sysinfo.h
         common/sys/thread.cpp
@@ -113,16 +120,16 @@ target_sources(embree PRIVATE
         common/tasking/taskschedulerinternal.h
         common/tasking/taskschedulerppl.h
         common/tasking/taskschedulertbb.h
-        include/embree3/rtcore.h
-        include/embree3/rtcore_buffer.h
-        include/embree3/rtcore_builder.h
-        include/embree3/rtcore_common.h
-        include/embree3/rtcore_config.h
-        include/embree3/rtcore_device.h
-        include/embree3/rtcore_geometry.h
-        include/embree3/rtcore_quaternion.h
-        include/embree3/rtcore_ray.h
-        include/embree3/rtcore_scene.h
+        include/embree4/rtcore.h
+        include/embree4/rtcore_buffer.h
+        include/embree4/rtcore_builder.h
+        include/embree4/rtcore_common.h
+        include/embree4/rtcore_config.h
+        include/embree4/rtcore_device.h
+        include/embree4/rtcore_geometry.h
+        include/embree4/rtcore_quaternion.h
+        include/embree4/rtcore_ray.h
+        include/embree4/rtcore_scene.h
         kernels/builders/bvh_builder_hair.h
         kernels/builders/bvh_builder_morton.h
         kernels/builders/bvh_builder_msmblur.h
@@ -137,6 +144,9 @@ target_sources(embree PRIVATE
         kernels/builders/heuristic_strand_array.h
         kernels/builders/heuristic_timesplit_array.h
         kernels/builders/priminfo.h
+        kernels/builders/priminfo_mb.h
+        kernels/builders/primref.h
+        kernels/builders/primref_mb.h
         kernels/builders/primrefgen.cpp
         kernels/builders/primrefgen.h
         kernels/builders/primrefgen_presplit.h
@@ -165,11 +175,6 @@ target_sources(embree PRIVATE
         kernels/bvh/bvh_intersector_hybrid.cpp
         kernels/bvh/bvh_intersector_hybrid.h
         kernels/bvh/bvh_intersector_hybrid4_bvh4.cpp
-        kernels/bvh/bvh_intersector_stream.cpp
-        kernels/bvh/bvh_intersector_stream.h
-        kernels/bvh/bvh_intersector_stream_bvh4.cpp
-        kernels/bvh/bvh_intersector_stream_filters.cpp
-        kernels/bvh/bvh_intersector_stream_filters.h
         kernels/bvh/bvh_node_aabb.h
         kernels/bvh/bvh_node_aabb_mb.h
         kernels/bvh/bvh_node_aabb_mb4d.h
@@ -185,12 +190,10 @@ target_sources(embree PRIVATE
         kernels/bvh/bvh_statistics.cpp
         kernels/bvh/bvh_statistics.h
         kernels/bvh/bvh_traverser1.h
-        kernels/bvh/bvh_traverser_stream.h
         kernels/bvh/node_intersector.h
         kernels/bvh/node_intersector1.h
         kernels/bvh/node_intersector_frustum.h
         kernels/bvh/node_intersector_packet.h
-        kernels/bvh/node_intersector_packet_stream.h
         kernels/common/accel.h
         kernels/common/accelinstance.h
         kernels/common/acceln.cpp
@@ -212,8 +215,6 @@ target_sources(embree PRIVATE
         kernels/common/isa.h
         kernels/common/motion_derivative.h
         kernels/common/point_query.h
-        kernels/common/primref.h
-        kernels/common/primref_mb.h
         kernels/common/profile.h
         kernels/common/ray.h
         kernels/common/rtcore.cpp
@@ -224,6 +225,7 @@ target_sources(embree PRIVATE
         kernels/common/scene_curves.h
         kernels/common/scene_grid_mesh.h
         kernels/common/scene_instance.h
+        kernels/common/scene_instance_array.h
         kernels/common/scene_line_segments.h
         kernels/common/scene_points.h
         kernels/common/scene_quad_mesh.h
@@ -231,6 +233,7 @@ target_sources(embree PRIVATE
         kernels/common/scene_triangle_mesh.cpp
         kernels/common/scene_triangle_mesh.h
         kernels/common/scene_user_geometry.h
+        kernels/common/scene_verify.cpp
         kernels/common/stack_item.h
         kernels/common/stat.cpp
         kernels/common/stat.h
@@ -258,13 +261,17 @@ target_sources(embree PRIVATE
         kernels/geometry/disc_intersector.h
         kernels/geometry/disci_intersector.h
         kernels/geometry/filter.h
+        kernels/geometry/filter_sycl.h
         kernels/geometry/grid_intersector.h
         kernels/geometry/grid_soa.h
         kernels/geometry/grid_soa_intersector1.h
         kernels/geometry/grid_soa_intersector_packet.h
         kernels/geometry/instance.h
+        kernels/geometry/instance_array.h
+        kernels/geometry/instance_array_intersector.h
         kernels/geometry/instance_intersector.h
         kernels/geometry/intersector_epilog.h
+        kernels/geometry/intersector_epilog_sycl.h
         kernels/geometry/intersector_iterators.h
         kernels/geometry/line_intersector.h
         kernels/geometry/linei.h

@@ -10,6 +10,8 @@ godot_add_library(godot-module-openxr-extensions FOLDER modules STATIC)
 target_sources(godot-module-openxr-extensions PRIVATE
         openxr_composition_layer_depth_extension.cpp
         openxr_composition_layer_depth_extension.h
+        openxr_composition_layer_extension.cpp
+        openxr_composition_layer_extension.h
         openxr_composition_layer_provider.h
         openxr_extension_wrapper.h
         openxr_extension_wrapper_extension.cpp

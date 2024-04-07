@@ -368,6 +368,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/GradientTexture2D.xml
         classes/GraphEdit.xml
         classes/GraphElement.xml
+        classes/GraphFrame.xml
         classes/GraphNode.xml
         classes/GridContainer.xml
         classes/GrooveJoint2D.xml
@@ -535,6 +536,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Performance.xml
         classes/PhysicalBone2D.xml
         classes/PhysicalBone3D.xml
+        classes/PhysicalBoneSimulator3D.xml
         classes/PhysicalSkyMaterial.xml
         classes/PhysicsBody2D.xml
         classes/PhysicsBody3D.xml
@@ -702,6 +704,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/SkeletonModification2DStackHolder.xml
         classes/SkeletonModification2DTwoBoneIK.xml
         classes/SkeletonModificationStack2D.xml
+        classes/SkeletonModifier3D.xml
         classes/SkeletonProfile.xml
         classes/SkeletonProfileHumanoid.xml
         classes/Skin.xml
@@ -774,7 +777,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Thread.xml
         classes/TileData.xml
         classes/TileMap.xml
-        classes/TileMapLayerGroup.xml
+        classes/TileMapLayer.xml
         classes/TileMapPattern.xml
         classes/TileSet.xml
         classes/TileSetAtlasSource.xml
@@ -832,7 +835,6 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/VisualShaderNodeColorFunc.xml
         classes/VisualShaderNodeColorOp.xml
         classes/VisualShaderNodeColorParameter.xml
-        classes/VisualShaderNodeComment.xml
         classes/VisualShaderNodeCompare.xml
         classes/VisualShaderNodeConstant.xml
         classes/VisualShaderNodeCubemap.xml
@@ -850,6 +852,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/VisualShaderNodeFloatFunc.xml
         classes/VisualShaderNodeFloatOp.xml
         classes/VisualShaderNodeFloatParameter.xml
+        classes/VisualShaderNodeFrame.xml
         classes/VisualShaderNodeFresnel.xml
         classes/VisualShaderNodeGlobalExpression.xml
         classes/VisualShaderNodeGroupBase.xml
