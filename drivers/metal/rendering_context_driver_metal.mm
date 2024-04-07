@@ -37,6 +37,12 @@
 #include "core/version.h"
 #include "servers/rendering/rendering_device.h"
 
+@protocol MTLDeviceEx <MTLDevice>
+#if TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 130300
+- (void)setShouldMaximizeConcurrentCompilation:(BOOL)v;
+#endif
+@end
+
 RenderingContextDriverMetal::RenderingContextDriverMetal() {
 }
 
@@ -47,9 +53,7 @@ Error RenderingContextDriverMetal::initialize() {
 	id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
 #if TARGET_OS_OSX
 	if (@available(macOS 13.3, *)) {
-		if ([dev respondsToSelector:@selector(setShouldMaximizeConcurrentCompilation:)]) {
-			[dev setShouldMaximizeConcurrentCompilation:YES];
-		}
+		[id<MTLDeviceEx>(dev) setShouldMaximizeConcurrentCompilation:YES];
 	}
 #endif
 	device.type = DEVICE_TYPE_INTEGRATED_GPU;

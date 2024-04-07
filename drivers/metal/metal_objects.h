@@ -489,7 +489,7 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) BindingInfo {
 
 using RDC = RenderingDeviceCommons;
 
-typedef HashMap<RDC::ShaderStage, BindingInfo> BindingInfoMap;
+typedef API_AVAILABLE(macos(11.0), ios(14.0)) HashMap<RDC::ShaderStage, BindingInfo> BindingInfoMap;
 
 struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformInfo {
 	uint32_t binding;
