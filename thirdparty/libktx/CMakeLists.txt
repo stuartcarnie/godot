@@ -38,6 +38,7 @@ target_sources(ktx PRIVATE
         lib/vk_format.h
         lib/vkformat_check.c
         lib/vkformat_enum.h
+        lib/vkformat_typesize.c
 )
 # [[[end]]]
 target_compile_definitions(ktx PRIVATE KHRONOS_STATIC=1)

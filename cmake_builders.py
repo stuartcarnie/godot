@@ -755,7 +755,7 @@ def list_files(cog, search_paths: str | list[str], exts: [str] = None, recursive
 
     search_paths = [search_paths] if isinstance(search_paths, str) else search_paths
 
-    exts = ['cpp', 'h', 'hpp', 'mm', 'm', 'c', 'cc', 'cxx'] if exts is None else exts
+    exts = ['cpp', 'h', 'hpp', 'hh', 'mm', 'm', 'c', 'cc', 'cxx'] if exts is None else exts
     exts = [f'{ext}' if ext.startswith('.') else f'.{ext}' for ext in exts]
 
     res = []
