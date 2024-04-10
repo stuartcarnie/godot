@@ -135,6 +135,11 @@ void EditorExportPlatformIOS::_notification(int p_what) {
 }
 
 bool EditorExportPlatformIOS::get_export_option_visibility(const EditorExportPreset *p_preset, const String &p_option) const {
+	// Hide unsupported .NET embedding option.
+	if (p_option == "dotnet/embed_build_outputs") {
+		return false;
+	}
+
 	return true;
 }
 
@@ -1658,7 +1663,7 @@ Error EditorExportPlatformIOS::_export_project_helper(const Ref<EditorExportPres
 	}
 	String pack_path = binary_dir + ".pck";
 	Vector<SharedObject> libraries;
-	Error err = save_pack(true, p_preset, p_debug, pack_path, &libraries);
+	Error err = save_pack(p_preset, p_debug, pack_path, &libraries);
 	if (err) {
 		// Message is supplied by the subroutine method.
 		return err;

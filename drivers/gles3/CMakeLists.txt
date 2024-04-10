@@ -12,9 +12,9 @@ set_abs(GLES3_GLSL_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/canvas_sdf.glsl
         shaders/canvas_uniforms_inc.glsl
         shaders/cube_to_dp.glsl
-        shaders/cubemap_filter.glsl
         shaders/effect_blur.glsl
         shaders/effects/copy.glsl
+        shaders/effects/cubemap_filter.glsl
         shaders/effects/glow.glsl
         shaders/effects/post.glsl
         shaders/lens_distorted.glsl
@@ -47,6 +47,8 @@ godot_add_library(driver-gles3 FOLDER drivers STATIC ${GLES3_GLSL_SHADERS_GENERA
 target_sources(driver-gles3 PRIVATE
         effects/copy_effects.cpp
         effects/copy_effects.h
+        effects/cubemap_filter.cpp
+        effects/cubemap_filter.h
         effects/glow.cpp
         effects/glow.h
         effects/post_effects.cpp

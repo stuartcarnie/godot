@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  node.compat.inc                                                       */
+/*  test_ip.h                                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,14 +28,24 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef DISABLE_DEPRECATED
+#ifndef TEST_IP_H
+#define TEST_IP_H
 
-void Node::_replace_by_bind_compat_89992(Node *p_node, bool p_keep_data) {
-	replace_by(p_node, p_keep_data, true);
+#include "core/io/ip.h"
+
+#include "tests/test_macros.h"
+
+namespace TestIP {
+
+TEST_CASE("[IP] resolve_hostname") {
+	for (int x = 0; x < 1000; x++) {
+		IPAddress IPV4 = IP::get_singleton()->resolve_hostname("localhost", IP::TYPE_IPV4);
+		CHECK("127.0.0.1" == String(IPV4));
+		IPAddress IPV6 = IP::get_singleton()->resolve_hostname("localhost", IP::TYPE_IPV6);
+		CHECK("0:0:0:0:0:0:0:1" == String(IPV6));
+	}
 }
 
-void Node::_bind_compatibility_methods() {
-	ClassDB::bind_compatibility_method(D_METHOD("replace_by", "node", "keep_groups"), &Node::_replace_by_bind_compat_89992, DEFVAL(false));
-}
+} // namespace TestIP
 
-#endif
+#endif // TEST_IP_H
