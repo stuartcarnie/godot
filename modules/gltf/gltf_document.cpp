@@ -3059,7 +3059,17 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> p_state) {
 				array[Mesh::ARRAY_TANGENT] = tangents;
 			}
 
-			if (p_state->force_disable_compression || !a.has("POSITION") || !a.has("NORMAL") || p.has("targets") || (a.has("JOINTS_0") || a.has("JOINTS_1"))) {
+			// Disable compression if all z equals 0 (the mesh is 2D).
+			const Vector<Vector3> &vertices = array[Mesh::ARRAY_VERTEX];
+			bool is_mesh_2d = true;
+			for (int k = 0; k < vertices.size(); k++) {
+				if (!Math::is_zero_approx(vertices[k].z)) {
+					is_mesh_2d = false;
+					break;
+				}
+			}
+
+			if (p_state->force_disable_compression || is_mesh_2d || !a.has("POSITION") || !a.has("NORMAL") || p.has("targets") || (a.has("JOINTS_0") || a.has("JOINTS_1"))) {
 				flags &= ~RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
 			}
 
@@ -7284,6 +7294,7 @@ Node *GLTFDocument::generate_scene(Ref<GLTFState> p_state, float p_bake_fps, boo
 }
 
 Error GLTFDocument::append_from_scene(Node *p_node, Ref<GLTFState> p_state, uint32_t p_flags) {
+	ERR_FAIL_NULL_V(p_node, FAILED);
 	Ref<GLTFState> state = p_state;
 	ERR_FAIL_COND_V(state.is_null(), FAILED);
 	state->use_named_skin_binds = p_flags & GLTF_IMPORT_USE_NAMED_SKIN_BINDS;
