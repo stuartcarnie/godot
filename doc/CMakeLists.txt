@@ -835,6 +835,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/VisualShaderNodeColorFunc.xml
         classes/VisualShaderNodeColorOp.xml
         classes/VisualShaderNodeColorParameter.xml
+        classes/VisualShaderNodeComment.xml
         classes/VisualShaderNodeCompare.xml
         classes/VisualShaderNodeConstant.xml
         classes/VisualShaderNodeCubemap.xml
