@@ -149,6 +149,8 @@ target_sources(godot-editor PRIVATE
         editor_undo_redo_manager.h
         editor_vcs_interface.cpp
         editor_vcs_interface.h
+        engine_update_label.cpp
+        engine_update_label.h
         event_listener_line_edit.cpp
         event_listener_line_edit.h
         fbx_importer_manager.cpp
@@ -224,5 +226,8 @@ target_link_libraries(godot-editor PRIVATE godot-doc godot-editor-icons godot-ed
 target_include_directories(godot-editor PRIVATE
         ${CMAKE_BINARY_INCLUDE_DIR}/editor
         ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(godot-editor PRIVATE
+        $<$<BOOL:${WANT_ENGINE_UPDATE_CHECK}>:ENGINE_UPDATE_CHECK_ENABLED>
+)
 set_property(TARGET godot-editor PROPERTY CXX_STANDARD 17)
 

@@ -26,6 +26,8 @@ target_sources(godot-scene-resources-3d PRIVATE
         importer_mesh.h
         mesh_library.cpp
         mesh_library.h
+        navigation_mesh_source_geometry_data_3d.cpp
+        navigation_mesh_source_geometry_data_3d.h
         primitive_meshes.cpp
         primitive_meshes.h
         separation_ray_shape_3d.cpp

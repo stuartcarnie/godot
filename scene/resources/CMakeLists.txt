@@ -71,12 +71,6 @@ target_sources(godot-scene-resources PRIVATE
         multimesh.h
         navigation_mesh.cpp
         navigation_mesh.h
-        navigation_mesh_source_geometry_data_2d.cpp
-        navigation_mesh_source_geometry_data_2d.h
-        navigation_mesh_source_geometry_data_3d.cpp
-        navigation_mesh_source_geometry_data_3d.h
-        navigation_polygon.cpp
-        navigation_polygon.h
         packed_scene.cpp
         packed_scene.h
         particle_process_material.cpp

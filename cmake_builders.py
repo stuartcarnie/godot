@@ -6,6 +6,8 @@ import pathlib
 import argparse
 import json
 
+sys.path.insert(0, 'cmake/scripts/lib')
+
 # Engine Modules
 from glsl_builders import *
 from gles3_builders import *

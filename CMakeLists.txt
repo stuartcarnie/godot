@@ -41,6 +41,7 @@ set(GODOT_TARGET "editor" CACHE STRING "Compilation target")
 set(GODOT_TARGETS editor template_release template_debug)
 set_property(CACHE GODOT_TARGET PROPERTY STRINGS ${GODOT_TARGETS})
 option(ENABLE_THREADS "Enable threading support" ON)
+option(ENABLE_ENGINE_UPDATE_CHECK "Enable engine update checks in the Project Manager" ON)
 
 # Components
 
@@ -188,6 +189,12 @@ if (GODOT_TARGET STREQUAL "editor")
 else ()
     message(STATUS "Building runtime")
     set(WANT_EDITOR 0)
+endif ()
+
+if (ENABLE_ENGINE_UPDATE_CHECK AND WANT_EDITOR)
+    set(WANT_ENGINE_UPDATE_CHECK 1)
+else ()
+    set(WANT_ENGINE_UPDATE_CHECK 0)
 endif ()
 
 if (GODOT_TARGET MATCHES "^(editor|template_debug)$")

@@ -16,6 +16,10 @@ target_sources(godot-scene-resources-2d PRIVATE
         concave_polygon_shape_2d.h
         convex_polygon_shape_2d.cpp
         convex_polygon_shape_2d.h
+        navigation_mesh_source_geometry_data_2d.cpp
+        navigation_mesh_source_geometry_data_2d.h
+        navigation_polygon.cpp
+        navigation_polygon.h
         polygon_path_finder.cpp
         polygon_path_finder.h
         rectangle_shape_2d.cpp
