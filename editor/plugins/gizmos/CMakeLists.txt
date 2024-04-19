@@ -26,6 +26,8 @@ target_sources(godot-editor-plugins-gizmos PRIVATE
         decal_gizmo_plugin.h
         fog_volume_gizmo_plugin.cpp
         fog_volume_gizmo_plugin.h
+        geometry_instance_3d_gizmo_plugin.cpp
+        geometry_instance_3d_gizmo_plugin.h
         gizmo_3d_helper.cpp
         gizmo_3d_helper.h
         gpu_particles_3d_gizmo_plugin.cpp
