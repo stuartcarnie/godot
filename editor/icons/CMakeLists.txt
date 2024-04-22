@@ -908,7 +908,9 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         XRBodyModifier3D.svg
         XRCamera3D.svg
         XRController3D.svg
+        XRFaceModifier3D.svg
         XRHandModifier3D.svg
+        XRNode3D.svg
         XROrigin3D.svg
         YSort.svg
         Zoom.svg

@@ -18,7 +18,6 @@ target_sources(godot-editor-export PRIVATE
         editor_export_plugin.h
         editor_export_preset.cpp
         editor_export_preset.h
-        editor_export_shared_object.h
         export_template_manager.cpp
         export_template_manager.h
         project_export.cpp

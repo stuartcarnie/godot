@@ -10,6 +10,8 @@ godot_add_library(godot-server-xr FOLDER servers STATIC)
 target_sources(godot-server-xr PRIVATE
         xr_body_tracker.cpp
         xr_body_tracker.h
+        xr_controller_tracker.cpp
+        xr_controller_tracker.h
         xr_face_tracker.cpp
         xr_face_tracker.h
         xr_hand_tracker.cpp
@@ -22,6 +24,8 @@ target_sources(godot-server-xr PRIVATE
         xr_pose.h
         xr_positional_tracker.cpp
         xr_positional_tracker.h
+        xr_tracker.cpp
+        xr_tracker.h
 )
 # [[[end]]]
 target_link_libraries(godot-server-xr PUBLIC godot-math godot-object godot-os godot-server-renderer)

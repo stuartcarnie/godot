@@ -26,6 +26,7 @@ target_sources(godot-os PRIVATE
         rw_lock.h
         safe_binary_mutex.h
         semaphore.h
+        shared_object.h
         spin_lock.h
         thread.cpp
         thread.h

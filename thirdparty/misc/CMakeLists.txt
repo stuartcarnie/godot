@@ -1,7 +1,5 @@
 godot_add_library(godot-thirdparty-misc FOLDER thirdparty STATIC)
 target_sources(godot-thirdparty-misc PRIVATE
-        clipper.cpp
-        clipper.hpp
         cubemap_coeffs.h
         fastlz.c
         fastlz.h

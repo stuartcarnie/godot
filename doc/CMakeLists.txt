@@ -953,6 +953,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/XRBodyTracker.xml
         classes/XRCamera3D.xml
         classes/XRController3D.xml
+        classes/XRControllerTracker.xml
         classes/XRFaceModifier3D.xml
         classes/XRFaceTracker.xml
         classes/XRHandModifier3D.xml
@@ -964,6 +965,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/XRPose.xml
         classes/XRPositionalTracker.xml
         classes/XRServer.xml
+        classes/XRTracker.xml
         classes/bool.xml
         classes/float.xml
         classes/int.xml
