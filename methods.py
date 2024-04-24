@@ -245,14 +245,17 @@ def write_file_if_needed(path, string):
     global _cleanup_bool
 
     if _cleanup_env is None:
-        from SCons.Environment import Environment
+        try:
+            from SCons.Environment import Environment
 
-        _cleanup_env = Environment()
-        _cleanup_bool = _cleanup_env.GetOption("clean")
+            _cleanup_env = Environment()
+            _cleanup_bool = _cleanup_env.GetOption("clean")
 
-    _cleanup_env.Clean("#", path)
-    if _cleanup_bool:
-        return
+            _cleanup_env.Clean("#", path)
+            if _cleanup_bool:
+                return
+        except ImportError:
+            _cleanup_env = False
 
     try:
         with open(path, "r", encoding="utf-8", newline="\n") as f:

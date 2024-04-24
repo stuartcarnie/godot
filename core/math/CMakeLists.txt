@@ -85,7 +85,7 @@ target_sources(godot-math PRIVATE
 )
 # [[[end]]]
 target_include_directories(godot-math PUBLIC ${GODOT_ENGINE_ROOT_DIRECTORY})
-target_link_libraries(godot-math PUBLIC godot-object)
+target_link_libraries(godot-math PUBLIC godot-object clipper2)
 
 target_sources(godot-math PUBLIC
         FILE_SET HEADERS

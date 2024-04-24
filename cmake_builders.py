@@ -6,7 +6,7 @@ import pathlib
 import argparse
 import json
 
-sys.path.insert(0, 'cmake/scripts/lib') # enable fake SCons.Environment
+sys.path.insert(0, 'cmake/scripts/lib')  # enable fake SCons.Environment
 
 # Engine Modules
 from glsl_builders import *
