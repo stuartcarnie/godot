@@ -1,13 +1,13 @@
-godot_add_library(driver-metal FOLDER drivers STATIC)
+godot_add_library(metal FOLDER drivers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(driver-metal PRIVATE')
+#   cog.outl('target_sources(metal PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(driver-metal PRIVATE
+target_sources(metal PRIVATE
         metal_device_properties.h
         metal_device_properties.mm
         metal_objects.h
@@ -21,12 +21,14 @@ target_sources(driver-metal PRIVATE
         rendering_device_driver_metal.mm
 )
 # [[[end]]]
-target_compile_features(driver-metal PRIVATE cxx_std_20)
-set_target_properties(driver-metal PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
-target_link_libraries(driver-metal PUBLIC godot-error godot-os spirv-cross)
-target_compile_definitions(driver-metal PUBLIC METAL_ENABLED=1 RD_ENABLED=1)
-target_compile_options(driver-metal PRIVATE -fexceptions)
+target_compile_features(metal PRIVATE cxx_std_20)
+set_target_properties(metal PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
+target_link_libraries(metal PUBLIC godot-error godot-os spirv-cross)
+target_compile_definitions(metal PUBLIC METAL_ENABLED=1 RD_ENABLED=1)
+target_compile_options(metal PRIVATE -fexceptions)
 set_source_files_properties(pixel_formats.mm PROPERTIES COMPILE_FLAGS -Wno-deprecated-declarations)
-target_include_directories(driver-metal PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(metal PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 add_subdirectory(tools)
+
+group_target_sources(metal)

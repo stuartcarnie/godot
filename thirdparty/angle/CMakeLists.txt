@@ -1,4 +1,4 @@
-godot_add_library(angle FOLDER NO_INCLUDES thirdparty INTERFACE
+godot_add_library(angle FOLDER thirdparty NO_INCLUDES INTERFACE
         include/EGL/egl.h
         include/EGL/eglext.h
         include/EGL/eglext_angle.h

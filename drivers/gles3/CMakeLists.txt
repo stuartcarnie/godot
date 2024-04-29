@@ -24,7 +24,6 @@ set_abs(GLES3_GLSL_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/skeleton.glsl
         shaders/sky.glsl
         shaders/stdlib_inc.glsl
-        shaders/tonemap.glsl
         shaders/tonemap_inc.glsl
 )
 # [[[end]]]

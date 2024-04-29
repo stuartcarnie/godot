@@ -53,6 +53,9 @@
 #import "pixel_formats.h"
 #import "rendering_device_driver_metal.h"
 
+using std::unique_lock;
+using std::lock_guard;
+
 void MDCommandBuffer::begin() {
 	DEV_ASSERT(commandBuffer == nil);
 	commandBuffer = queue.commandBuffer;
@@ -75,6 +78,7 @@ void MDCommandBuffer::commit() {
 	end();
 	[commandBuffer commit];
 	commandBuffer = nil;
+	query_pool = nil;
 }
 
 void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
@@ -146,16 +150,31 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 		type = MDCommandBufferStateType::Compute;
 
 		compute.pipeline = (MDComputePipeline *)p;
+		// TODO(sgc): add sample buffer support
+		// MTLComputePassDescriptor *desc = MTLComputePassDescriptor.computePassDescriptor;
 		compute.encoder = commandBuffer.computeCommandEncoder;
 		[compute.encoder setComputePipelineState:compute.pipeline->state];
 	}
 }
 
-void MDCommandBuffer::mark_timestamp(id<MTLCounterSampleBuffer> p_buffer, uint32_t p_query_index) {
-	DEV_ASSERT(sample_buffer == nil);
+void MDCommandBuffer::timestamp_query_pool_reset(RDD::QueryPoolID p_pool_id, uint32_t p_query_count) {
+	DEV_ASSERT(query_pool == nil);
+	query_pool = (MDQueryPool *)(p_pool_id.id);
+	query_pool->reset(p_query_count);
+}
 
-	sample_buffer = p_buffer;
-	sample_buffer_query_index = p_query_index;
+void MDCommandBuffer::timestamp_write(RDD::QueryPoolID p_pool_id, uint32_t p_index) {
+	MDQueryPool *pool = (MDQueryPool *)(p_pool_id.id);
+	query_pool = pool; // keep track of the pool
+	sample_buffer = pool->get_sample_buffer();
+	sample_buffer_query_index = p_index;
+}
+
+void MDCommandBuffer::timestamp_commit() {
+	if (query_pool) {
+		query_pool->commit(this);
+		query_pool = nil;
+	}
 }
 
 id<MTLBlitCommandEncoder> MDCommandBuffer::blit_command_encoder() {
@@ -664,10 +683,10 @@ void MDCommandBuffer::render_next_subpass() {
 		// TODO(sgc): should set this on the _last_ pass when the subpass count > 1
 		MTLRenderPassSampleBufferAttachmentDescriptor *sba = desc.sampleBufferAttachments[0];
 		sba.sampleBuffer = sample_buffer;
-		sba.startOfVertexSampleIndex = MTLCounterDontSample;
+		sba.startOfVertexSampleIndex = (sample_buffer_query_index * 2);
 		sba.endOfVertexSampleIndex = MTLCounterDontSample;
 		sba.startOfFragmentSampleIndex = MTLCounterDontSample;
-		sba.endOfFragmentSampleIndex = sample_buffer_query_index;
+		sba.endOfFragmentSampleIndex = (sample_buffer_query_index * 2) + 1;
 	}
 
 	if (attachmentCount == 0) {
@@ -1180,7 +1199,7 @@ MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> p_device, uint32_t p_quer
 
 	[p_device sampleTimestamps:&pool->cpuStart gpuTimestamp:&pool->gpuStart];
 
-	pool->sampleCount = p_query_count;
+	pool->sampleCount = p_query_count * 2; // we store the start and end timestamps to calculate the spans
 
 	for (id<MTLCounterSet> cs in p_device.counterSets) {
 		if ([cs.name isEqualToString:MTLCommonCounterSetTimestamp]) {
@@ -1201,7 +1220,7 @@ MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> p_device, uint32_t p_quer
 	@autoreleasepool {
 		MTLCounterSampleBufferDescriptor *desc = [MTLCounterSampleBufferDescriptor new];
 		desc.counterSet = pool->counterSet;
-		desc.storageMode = MTLStorageModePrivate;
+		desc.storageMode = MTLStorageModeShared;
 		desc.sampleCount = pool->sampleCount;
 
 		pool->_counterSampleBuffer = [p_device newCounterSampleBufferWithDescriptor:desc error:p_error];
@@ -1216,35 +1235,38 @@ MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> p_device, uint32_t p_quer
 	return pool.release();
 }
 
-void MDQueryPool::reset_with_command_buffer(RDD::CommandBufferID p_cmd_buffer, uint32_t p_query_count) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	id<MTLBlitCommandEncoder> enc = cb->blit_command_encoder();
+void MDQueryPool::commit(MDCommandBuffer *p_cmd_buffer) {
+	id<MTLBlitCommandEncoder> enc = p_cmd_buffer->blit_command_encoder();
 	[enc resolveCounters:_counterSampleBuffer
-					  inRange:NSMakeRange(0, p_query_count)
+					  inRange:NSMakeRange(0, query_count * 2)
 			destinationBuffer:_buffer
 			destinationOffset:0];
+
+	[p_cmd_buffer->get_command_buffer() addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+		lock_guard lock(_results_lock);
+		_results_ready = true;
+		_results_cond.notify_all();
+	}];
 }
 
 void MDQueryPool::get_results(uint64_t *_Nonnull p_results, NSUInteger p_count) {
-	DEV_ASSERT(p_count <= sampleCount);
+	DEV_ASSERT(p_count <= sampleCount / 2);
+
+	unique_lock lock(_results_lock);
+	_results_cond.wait(lock, [this]{ return _results_ready; });
+
 	MTLCounterResultTimestamp *timestamps = (MTLCounterResultTimestamp *)_buffer.contents;
 	for (uint32_t i = 0; i < p_count; i++) {
-		MTLTimestamp timestamp = timestamps[i].timestamp;
+		MTLTimestamp start = timestamps[(i * 2) + 0].timestamp;
+		MTLTimestamp end   = timestamps[(i * 2) + 1].timestamp;
 
-		if (timestamp == MTLCounterErrorValue) {
+		if (start == MTLCounterErrorValue || end == MTLCounterErrorValue) {
 			return;
 		}
 
-		if (timestamp == 0) {
-			continue;
-		}
-		p_results[i] = timestamp - gpuStart;
+		MTLTimestamp span = end - start;
+		p_results[i] = span;
 	}
-}
-
-void MDQueryPool::write_command_buffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger p_index) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	cb->mark_timestamp(_counterSampleBuffer, p_index);
 }
 
 #pragma mark - Resource Factory

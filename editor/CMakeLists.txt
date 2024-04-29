@@ -109,10 +109,6 @@ target_sources(godot-editor PRIVATE
         editor_node.h
         editor_paths.cpp
         editor_paths.h
-        editor_plugin.cpp
-        editor_plugin.h
-        editor_plugin_settings.cpp
-        editor_plugin_settings.h
         editor_properties.cpp
         editor_properties.h
         editor_properties_array_dict.cpp
@@ -179,8 +175,6 @@ target_sources(godot-editor PRIVATE
         multi_node_edit.h
         node_dock.cpp
         node_dock.h
-        plugin_config_dialog.cpp
-        plugin_config_dialog.h
         pot_generator.cpp
         pot_generator.h
         progress_dialog.cpp
@@ -231,3 +225,4 @@ target_compile_definitions(godot-editor PRIVATE
 )
 set_property(TARGET godot-editor PROPERTY CXX_STANDARD 17)
 
+group_target_sources(godot-editor)

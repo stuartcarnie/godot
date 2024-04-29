@@ -63,6 +63,9 @@
 #import <simd/simd.h>
 #import <initializer_list>
 #import <optional>
+#import <mutex>
+#import <condition_variable>
+
 
 // These types can be used in Vector and other containers that use
 // pointer operations not supported by ARC.
@@ -193,6 +196,7 @@ private:
 	RenderingDeviceDriverMetal *device_driver = nullptr;
 	id<MTLCommandQueue> queue = nil;
 	id<MTLCommandBuffer> commandBuffer = nil;
+	MDQueryPool *query_pool = nil; // if not nil, indicates timer queries are active for the current command buffer
 
 	void _end_compute_dispatch();
 	void _end_blit();
@@ -371,6 +375,10 @@ public:
 		return commandBuffer;
 	}
 
+	_FORCE_INLINE_ MDQueryPool * get_query_pool() const {
+		return query_pool;
+	}
+
 	void begin();
 	void commit();
 	void end();
@@ -382,7 +390,9 @@ public:
 
 #pragma mark - Counters
 
-	void mark_timestamp(id<MTLCounterSampleBuffer> p_buffer, uint32_t p_query_index);
+	void timestamp_query_pool_reset(RDD::QueryPoolID p_pool_id, uint32_t p_query_count);
+	void timestamp_write(RDD::QueryPoolID p_pool_id, uint32_t p_index);
+	void timestamp_commit();
 
 #pragma mark - Render Commands
 
@@ -838,17 +848,32 @@ public:
 
 class API_AVAILABLE(macos(11.0), ios(14.0)) MDQueryPool {
 	// GPU counters
-	NSUInteger sampleCount = 0;
+	NSUInteger sampleCount = 0; // max sample count
+	uint32_t query_count = 0; // current query count
 	id<MTLCounterSet> counterSet = nil;
 	id<MTLCounterSampleBuffer> _counterSampleBuffer = nil;
 	id<MTLBuffer> _buffer = nil;
 	MTLTimestamp cpuStart = 0.0;
 	MTLTimestamp gpuStart = 0.0;
+	
+	std::mutex _results_lock;
+	std::condition_variable _results_cond;
+	bool _results_ready = false;
 
 public:
-	void reset_with_command_buffer(RDD::CommandBufferID p_cmd_buffer, uint32_t p_query_count);
+	void reset(uint32_t p_query_count) {
+		{
+			std::lock_guard lock(_results_lock);
+			_results_ready = false;
+		}
+		query_count = p_query_count;
+	};
+	void commit(MDCommandBuffer *p_cmd_buffer);
 	void get_results(uint64_t *p_results, NSUInteger p_count);
-	void write_command_buffer(RDD::CommandBufferID p_cmd_buffer, NSUInteger p_index);
+
+	id<MTLCounterSampleBuffer> get_sample_buffer() const {
+		return _counterSampleBuffer;
+	}
 
 	static MDQueryPool *new_query_pool(id<MTLDevice> p_device, uint32_t p_query_count, NSError **p_error);
 

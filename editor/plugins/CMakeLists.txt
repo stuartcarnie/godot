@@ -61,6 +61,10 @@ target_sources(godot-editor-plugins PRIVATE
         dedicated_server_export_plugin.h
         editor_debugger_plugin.cpp
         editor_debugger_plugin.h
+        editor_plugin.cpp
+        editor_plugin.h
+        editor_plugin_settings.cpp
+        editor_plugin_settings.h
         editor_preview_plugins.cpp
         editor_preview_plugins.h
         editor_resource_conversion_plugin.cpp
@@ -126,6 +130,8 @@ target_sources(godot-editor-plugins PRIVATE
         path_3d_editor_plugin.h
         physical_bone_3d_editor_plugin.cpp
         physical_bone_3d_editor_plugin.h
+        plugin_config_dialog.cpp
+        plugin_config_dialog.h
         polygon_2d_editor_plugin.cpp
         polygon_2d_editor_plugin.h
         polygon_3d_editor_plugin.cpp

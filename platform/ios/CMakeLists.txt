@@ -61,7 +61,7 @@ endif()
 
 target_link_libraries(platform-ios
         PUBLIC
-        $<$<BOOL:${ENABLE_METAL}>:driver-metal>
+        $<$<BOOL:${ENABLE_METAL}>:metal>
 )
 target_compile_definitions(platform-ios
         PUBLIC

@@ -1,4 +1,4 @@
-godot_add_library(amd-fsr FOLDER NO_INCLUDES thirdparty INTERFACE)
+godot_add_library(amd-fsr FOLDER thirdparty NO_INCLUDES INTERFACE)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files

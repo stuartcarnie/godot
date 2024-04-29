@@ -1,4 +1,4 @@
-godot_add_library(amd-fsr2 FOLDER NO_INCLUDES thirdparty STATIC ${AMD_FSR2_SOURCE})
+godot_add_library(amd-fsr2 FOLDER thirdparty NO_INCLUDES STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files

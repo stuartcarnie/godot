@@ -1,6 +1,6 @@
 add_subdirectory(export)
 
-godot_add_library(platform-macos)
+godot_add_library(platform-macos FOLDER platform)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -74,7 +74,7 @@ endif()
 
 target_link_libraries(platform-macos
         PUBLIC
-        $<$<BOOL:${ENABLE_METAL}>:driver-metal>
+        $<$<BOOL:${ENABLE_METAL}>:metal>
 )
 target_compile_definitions(platform-macos
         PUBLIC
@@ -101,3 +101,5 @@ target_link_libraries(platform-macos PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,MetalKit.framework>
         $<LINK_LIBRARY:FRAMEWORK,IOSurface.framework>
 )
+
+group_target_sources(platform-macos)

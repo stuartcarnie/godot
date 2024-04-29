@@ -63,6 +63,21 @@
 #include <Metal/MTLTexture.h>
 #include <Metal/Metal.h>
 #import <compression.h>
+#import <os/log.h>
+#import <os/signpost.h>
+
+#pragma mark - Logging
+
+static inline void defer_cleanup(void (^*b)(void)) { (*b)(); }
+#define defer_merge(a, b) a##b
+#define defer_varname(a) defer_merge(defer_scopevar_, a)
+#define defer __attribute__((unused, cleanup(defer_cleanup))) void (^defer_varname(__COUNTER__))(void) =
+
+os_log_t LOG_DRIVER;
+
+__attribute__((constructor)) static void InitializeLogging(void) {
+	LOG_DRIVER = os_log_create("org.stuartcarnie.godot.metal", OS_LOG_CATEGORY_POINTS_OF_INTEREST);
+}
 
 /*****************/
 /**** GENERIC ****/
@@ -828,7 +843,7 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 	Fence *fence = (Fence *)(p_cmd_fence.id);
 	if (fence != nullptr) {
 		[cmd_buffer->get_command_buffer() addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
-			dispatch_semaphore_signal(fence->semaphore);
+		  dispatch_semaphore_signal(fence->semaphore);
 		}];
 	}
 
@@ -838,6 +853,11 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 			[cmd_buffer->get_command_buffer() presentDrawable:swap_chain->frame_buffer.drawable];
 			swap_chain->frame_buffer.reset();
 		}
+	}
+
+	// HACK(sgc): we need a better way to determine when to commit the query pool
+	if (p_swap_chains.size() > 0) {
+		cmd_buffer->timestamp_commit();
 	}
 
 	cmd_buffer->commit();
@@ -1889,9 +1909,19 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 	using spirv_cross::Resource;
 
 	ShaderReflection spirv_data;
-	if (_reflect_spirv16(p_spirv, spirv_data) != OK) {
-		return {};
+	os_signpost_id_t reflect_id = os_signpost_id_make_with_pointer(LOG_DRIVER, p_spirv.ptr());
+	os_signpost_interval_begin(LOG_DRIVER, reflect_id, "reflect_spirv16");
+	{
+		defer ^ {
+			os_signpost_interval_end(LOG_DRIVER, reflect_id, "reflect_spirv16");
+		};
+		ERR_FAIL_COND_V(_reflect_spirv16(p_spirv, spirv_data), Result());
 	}
+
+	os_signpost_interval_begin(LOG_DRIVER, reflect_id, "compile_spirv", "shader_name=%{public}s", (char *)p_shader_name.ptr());
+	defer ^ {
+		os_signpost_interval_end(LOG_DRIVER, reflect_id, "compile_spirv");
+	};
 
 	ShaderBinaryData bin_data{};
 	if (!p_shader_name.is_empty()) {
@@ -3206,6 +3236,14 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	MTLVertexDescriptor *vert_desc = rid::get(p_vertex_format);
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
 
+	os_signpost_id_t reflect_id = os_signpost_id_make_with_pointer(LOG_DRIVER, shader);
+	os_signpost_interval_begin(LOG_DRIVER, reflect_id, "render_pipeline_create");
+	defer ^ {
+		os_signpost_interval_end(LOG_DRIVER, reflect_id, "render_pipeline_create");
+	};
+
+	os_signpost_event_emit(LOG_DRIVER, OS_SIGNPOST_ID_EXCLUSIVE, "create_pipeline");
+
 	MTLRenderPipelineDescriptor *desc = [MTLRenderPipelineDescriptor new];
 
 	{
@@ -3561,13 +3599,13 @@ uint64_t RenderingDeviceDriverMetal::timestamp_query_result_to_time(uint64_t p_r
 }
 
 void RenderingDeviceDriverMetal::command_timestamp_query_pool_reset(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_query_count) {
-	MDQueryPool *pool = (MDQueryPool *)(p_pool_id.id);
-	pool->reset_with_command_buffer(p_cmd_buffer, p_query_count);
+	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
+	cb->timestamp_query_pool_reset(p_pool_id, p_query_count);
 }
 
 void RenderingDeviceDriverMetal::command_timestamp_write(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_index) {
-	MDQueryPool *pool = (MDQueryPool *)(p_pool_id.id);
-	pool->write_command_buffer(p_cmd_buffer, p_index);
+	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
+	cb->timestamp_write(p_pool_id, p_index);
 }
 
 #pragma mark - Labels

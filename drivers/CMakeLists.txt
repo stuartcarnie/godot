@@ -31,18 +31,20 @@ endif ()
 
 add_subdirectory(wasapi)
 
-godot_add_library(godot-driver FOLDER drivers STATIC)
+godot_add_library(drivers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-driver PRIVATE')
+#   cog.outl('target_sources(drivers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-driver PRIVATE
+target_sources(drivers PRIVATE
         register_driver_types.cpp
         register_driver_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-driver PUBLIC godot-extension driver-png)
+target_link_libraries(drivers PUBLIC godot-extension driver-png)
+
+group_target_sources(drivers)

@@ -52,3 +52,5 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
 else ()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif ()
+
+group_target_sources(godot-core)

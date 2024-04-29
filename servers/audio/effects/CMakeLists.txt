@@ -1,4 +1,4 @@
-godot_add_library(godot-server-audio-effects FOLDER audio STATIC)
+godot_add_library(godot-server-audio-effects FOLDER servers/audio STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
