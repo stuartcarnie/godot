@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  godot_module_mbedtls_config.h                                         */
+/*  text_edit.compat.inc                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,49 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_MODULE_MBEDTLS_CONFIG_H
-#define GODOT_MODULE_MBEDTLS_CONFIG_H
+#ifndef DISABLE_DEPRECATED
 
-#include "platform_config.h"
+void TextEdit::_set_selection_mode_compat_86978(SelectionMode p_mode, int p_line, int p_column, int p_caret) {
+	set_selection_mode(p_mode);
+}
 
-#ifdef GODOT_MBEDTLS_INCLUDE_H
+void TextEdit::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("set_selection_mode", "mode", "line", "column", "caret_index"), &TextEdit::_set_selection_mode_compat_86978, DEFVAL(-1), DEFVAL(-1), DEFVAL(0));
+}
 
-// Allow platforms to customize the mbedTLS configuration.
-#include GODOT_MBEDTLS_INCLUDE_H
-
-#else
-
-// Include default mbedTLS config.
-#include <mbedtls/mbedtls_config.h>
-
-// Disable weak cryptography.
-#undef MBEDTLS_KEY_EXCHANGE_DHE_PSK_ENABLED
-#undef MBEDTLS_KEY_EXCHANGE_DHE_RSA_ENABLED
-#undef MBEDTLS_DES_C
-#undef MBEDTLS_DHM_C
-
-#if !(defined(__linux__) && defined(__aarch64__))
-// ARMv8 hardware AES operations. Detection only possible on linux.
-// May technically be supported on some ARM32 arches but doesn't seem
-// to be in our current Linux SDK's neon-fp-armv8.
-#undef MBEDTLS_AESCE_C
 #endif
-
-// Disable deprecated
-#define MBEDTLS_DEPRECATED_REMOVED
-
-// mbedTLS 3.6 finally enabled TLSv1.3 by default, but it requires some mobule
-// changes, and to enable PSA crypto (new "standard" API specification).
-// Disable it for now.
-#undef MBEDTLS_SSL_PROTO_TLS1_3
-
-// Disable PSA Crypto.
-#undef MBEDTLS_PSA_CRYPTO_CONFIG
-#undef MBEDTLS_PSA_CRYPTO_C
-#undef MBEDTLS_PSA_CRYPTO_STORAGE_C
-#undef MBEDTLS_PSA_ITS_FILE_C
-#undef MBEDTLS_LMS_C
-
-#endif // GODOT_MBEDTLS_INCLUDE_H
-
-#endif // GODOT_MODULE_MBEDTLS_CONFIG_H

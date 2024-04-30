@@ -856,9 +856,10 @@ void Viewport::_process_picking() {
 
 							if (send_event) {
 								co->_input_event_call(this, ev, res[i].shape);
-								if (physics_object_picking_first_only) {
-									break;
-								}
+							}
+
+							if (physics_object_picking_first_only) {
+								break;
 							}
 						}
 					}
@@ -3576,6 +3577,13 @@ bool Viewport::gui_is_dragging() const {
 bool Viewport::gui_is_drag_successful() const {
 	ERR_READ_THREAD_GUARD_V(false);
 	return gui.drag_successful;
+}
+
+void Viewport::gui_cancel_drag() {
+	ERR_MAIN_THREAD_GUARD;
+	if (gui_is_dragging()) {
+		_perform_drop();
+	}
 }
 
 void Viewport::set_input_as_handled() {
