@@ -688,6 +688,18 @@ void Viewport::_process_picking() {
 		physics_picking_events.clear();
 		return;
 	}
+#ifndef _3D_DISABLED
+	if (use_xr) {
+		if (XRServer::get_singleton() != nullptr) {
+			Ref<XRInterface> xr_interface = XRServer::get_singleton()->get_primary_interface();
+			if (xr_interface.is_valid() && xr_interface->is_initialized() && xr_interface->get_view_count() > 1) {
+				WARN_PRINT_ONCE("Object picking can't be used when stereo rendering, this will be turned off!");
+				physics_object_picking = false; // don't try again.
+				return;
+			}
+		}
+	}
+#endif
 
 	_drop_physics_mouseover(true);
 
@@ -1722,7 +1734,6 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 				gui.mouse_focus_mask.set_flag(button_mask);
 			} else {
 				gui.mouse_focus = gui_find_control(mpos);
-				gui.last_mouse_focus = gui.mouse_focus;
 
 				if (!gui.mouse_focus) {
 					return;
@@ -2378,9 +2389,6 @@ void Viewport::_gui_remove_control(Control *p_control) {
 		gui.mouse_focus = nullptr;
 		gui.forced_mouse_focus = false;
 		gui.mouse_focus_mask.clear();
-	}
-	if (gui.last_mouse_focus == p_control) {
-		gui.last_mouse_focus = nullptr;
 	}
 	if (gui.key_focus == p_control) {
 		gui.key_focus = nullptr;
