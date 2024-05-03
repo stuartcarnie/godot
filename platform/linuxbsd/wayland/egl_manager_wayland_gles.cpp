@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  variant_destruct.cpp                                                  */
+/*  egl_manager_wayland_gles.cpp                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,47 +28,37 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "variant_destruct.h"
+#include "egl_manager_wayland_gles.h"
 
-#include "core/templates/local_vector.h"
+#ifdef WAYLAND_ENABLED
+#ifdef EGL_ENABLED
+#ifdef GLES3_ENABLED
 
-static Variant::PTRDestructor destruct_pointers[Variant::VARIANT_MAX] = { nullptr };
-
-template <typename T>
-static void add_destructor() {
-	destruct_pointers[T::get_base_type()] = T::ptr_destruct;
+const char *EGLManagerWaylandGLES::_get_platform_extension_name() const {
+	return "EGL_KHR_platform_wayland";
 }
 
-void Variant::_register_variant_destructors() {
-	add_destructor<VariantDestruct<String>>();
-	add_destructor<VariantDestruct<StringName>>();
-	add_destructor<VariantDestruct<NodePath>>();
-	add_destructor<VariantDestruct<Callable>>();
-	add_destructor<VariantDestruct<Signal>>();
-	add_destructor<VariantDestruct<Dictionary>>();
-	add_destructor<VariantDestruct<Array>>();
-	add_destructor<VariantDestruct<PackedByteArray>>();
-	add_destructor<VariantDestruct<PackedInt32Array>>();
-	add_destructor<VariantDestruct<PackedInt64Array>>();
-	add_destructor<VariantDestruct<PackedFloat32Array>>();
-	add_destructor<VariantDestruct<PackedFloat64Array>>();
-	add_destructor<VariantDestruct<PackedStringArray>>();
-	add_destructor<VariantDestruct<PackedVector2Array>>();
-	add_destructor<VariantDestruct<PackedVector3Array>>();
-	add_destructor<VariantDestruct<PackedColorArray>>();
-	add_destructor<VariantDestruct<PackedVector4Array>>();
+EGLenum EGLManagerWaylandGLES::_get_platform_extension_enum() const {
+	return EGL_PLATFORM_WAYLAND_KHR;
 }
 
-void Variant::_unregister_variant_destructors() {
-	// Nothing to be done.
+EGLenum EGLManagerWaylandGLES::_get_platform_api_enum() const {
+	return EGL_OPENGL_ES_API;
 }
 
-Variant::PTRDestructor Variant::get_ptr_destructor(Variant::Type p_type) {
-	ERR_FAIL_INDEX_V(p_type, Variant::VARIANT_MAX, nullptr);
-	return destruct_pointers[p_type];
+Vector<EGLAttrib> EGLManagerWaylandGLES::_get_platform_display_attributes() const {
+	return Vector<EGLAttrib>();
 }
 
-bool Variant::has_destructor(Variant::Type p_type) {
-	ERR_FAIL_INDEX_V(p_type, Variant::VARIANT_MAX, false);
-	return destruct_pointers[p_type] != nullptr;
+Vector<EGLint> EGLManagerWaylandGLES::_get_platform_context_attribs() const {
+	Vector<EGLint> ret;
+	ret.push_back(EGL_CONTEXT_MAJOR_VERSION);
+	ret.push_back(3);
+	ret.push_back(EGL_NONE);
+
+	return ret;
 }
+
+#endif // GLES3_ENABLED
+#endif // EGL_ENABLED
+#endif // WAYLAND_ENABLED
