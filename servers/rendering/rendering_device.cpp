@@ -3453,9 +3453,9 @@ RenderingDevice::DrawListID RenderingDevice::draw_list_begin(RID p_framebuffer, 
 	if (p_region != Rect2() && p_region != Rect2(Vector2(), viewport_size)) { // Check custom region.
 		Rect2i viewport(viewport_offset, viewport_size);
 		Rect2i regioni = p_region;
-		if (!(regioni.position.x >= viewport.position.x) && (regioni.position.y >= viewport.position.y) &&
-				((regioni.position.x + regioni.size.x) <= (viewport.position.x + viewport.size.x)) &&
-				((regioni.position.y + regioni.size.y) <= (viewport.position.y + viewport.size.y))) {
+		if (!((regioni.position.x >= viewport.position.x) && (regioni.position.y >= viewport.position.y) &&
+					((regioni.position.x + regioni.size.x) <= (viewport.position.x + viewport.size.x)) &&
+					((regioni.position.y + regioni.size.y) <= (viewport.position.y + viewport.size.y)))) {
 			ERR_FAIL_V_MSG(INVALID_ID, "When supplying a custom region, it must be contained within the framebuffer rectangle");
 		}
 
@@ -3860,6 +3860,8 @@ void RenderingDevice::draw_list_draw(DrawListID p_list, bool p_use_indices, uint
 
 		draw_graph.add_draw_list_draw(to_draw, p_instances);
 	}
+
+	dl->state.draw_count++;
 }
 
 void RenderingDevice::draw_list_enable_scissor(DrawListID p_list, const Rect2 &p_rect) {
@@ -4203,6 +4205,7 @@ void RenderingDevice::compute_list_dispatch(ComputeListID p_list, uint32_t p_x_g
 	}
 
 	draw_graph.add_compute_list_dispatch(p_x_groups, p_y_groups, p_z_groups);
+	cl->state.dispatch_count++;
 }
 
 void RenderingDevice::compute_list_dispatch_threads(ComputeListID p_list, uint32_t p_x_threads, uint32_t p_y_threads, uint32_t p_z_threads) {
@@ -4296,6 +4299,7 @@ void RenderingDevice::compute_list_dispatch_indirect(ComputeListID p_list, RID p
 	}
 
 	draw_graph.add_compute_list_dispatch_indirect(buffer->driver_id, p_offset);
+	cl->state.dispatch_count++;
 
 	if (buffer->draw_tracker != nullptr) {
 		draw_graph.add_compute_list_usage(buffer->draw_tracker, RDG::RESOURCE_USAGE_INDIRECT_BUFFER_READ);
@@ -5208,8 +5212,8 @@ void RenderingDevice::_free_rids(T &p_owner, const char *p_type) {
 }
 
 void RenderingDevice::capture_timestamp(const String &p_name) {
-	ERR_FAIL_COND_MSG(draw_list != nullptr, "Capturing timestamps during draw list creation is not allowed. Offending timestamp was: " + p_name);
-	ERR_FAIL_COND_MSG(compute_list != nullptr, "Capturing timestamps during compute list creation is not allowed. Offending timestamp was: " + p_name);
+	ERR_FAIL_COND_MSG(draw_list != nullptr && draw_list->state.draw_count > 0, "Capturing timestamps during draw list creation is not allowed. Offending timestamp was: " + p_name);
+	ERR_FAIL_COND_MSG(compute_list != nullptr && compute_list->state.dispatch_count > 0, "Capturing timestamps during compute list creation is not allowed. Offending timestamp was: " + p_name);
 	ERR_FAIL_COND(frames[frame].timestamp_count >= max_timestamp_query_elements);
 
 	draw_graph.add_capture_timestamp(frames[frame].timestamp_pool, frames[frame].timestamp_count);
