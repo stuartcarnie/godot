@@ -517,6 +517,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/PackedStringArray.xml
         classes/PackedVector2Array.xml
         classes/PackedVector3Array.xml
+        classes/PackedVector4Array.xml
         classes/PacketPeer.xml
         classes/PacketPeerDTLS.xml
         classes/PacketPeerExtension.xml
@@ -966,6 +967,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/XRPositionalTracker.xml
         classes/XRServer.xml
         classes/XRTracker.xml
+        classes/XRVRS.xml
         classes/bool.xml
         classes/float.xml
         classes/int.xml

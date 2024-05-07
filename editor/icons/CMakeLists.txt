@@ -568,6 +568,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         PackedStringArray.svg
         PackedVector2Array.svg
         PackedVector3Array.svg
+        PackedVector4Array.svg
         PageFirst.svg
         PageLast.svg
         PageNext.svg

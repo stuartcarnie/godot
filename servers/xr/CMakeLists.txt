@@ -26,6 +26,8 @@ target_sources(godot-server-xr PRIVATE
         xr_positional_tracker.h
         xr_tracker.cpp
         xr_tracker.h
+        xr_vrs.cpp
+        xr_vrs.h
 )
 # [[[end]]]
 target_link_libraries(godot-server-xr PUBLIC godot-math godot-object godot-os godot-server-renderer)

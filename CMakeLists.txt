@@ -60,6 +60,8 @@ set_property(CACHE DEV_BUILD_LEVEL PROPERTY STRINGS ${DEV_BUILD_LIST})
 set(WARNINGS "all" CACHE STRING "Set the warning level")
 set_property(CACHE WARNINGS PROPERTY STRINGS extra all moderate no)
 option(ENABLE_WERROR "Treat compiler warnings as errors" OFF)
+option(APPLE_BUNDLE_IDENTIFIER "Set the bundle identifier for macOS/iOS builds" "org.godotengine.godot")
+mark_as_advanced(APPLE_BUNDLE_IDENTIFIER)
 
 # Third party libraries
 
