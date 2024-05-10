@@ -387,7 +387,7 @@ static bool _teststr(const String &p_what, const String &p_str) {
 		what = what.substr(0, what.length() - 1);
 	}
 
-	if (what.findn("$" + p_str) != -1) { //blender and other stuff
+	if (what.containsn("$" + p_str)) { // Blender and other stuff.
 		return true;
 	}
 	if (what.to_lower().ends_with("-" + p_str)) { //collada only supports "_" and "-" besides letters
@@ -410,7 +410,7 @@ static String _fixstr(const String &p_what, const String &p_str) {
 
 	String end = p_what.substr(what.length(), p_what.length() - what.length());
 
-	if (what.findn("$" + p_str) != -1) { //blender and other stuff
+	if (what.containsn("$" + p_str)) { // Blender and other stuff.
 		return what.replace("$" + p_str, "") + end;
 	}
 	if (what.to_lower().ends_with("-" + p_str)) { //collada only supports "_" and "-" besides letters
@@ -2086,12 +2086,12 @@ bool ResourceImporterScene::get_internal_option_visibility(InternalImportCategor
 					p_options.has("generate/physics") &&
 					p_options["generate/physics"].operator bool();
 
-			if (p_option.find("physics/") >= 0) {
+			if (p_option.contains("physics/")) {
 				// Show if need to generate collisions.
 				return generate_physics;
 			}
 
-			if (p_option.find("decomposition/") >= 0) {
+			if (p_option.contains("decomposition/")) {
 				// Show if need to generate collisions.
 				if (generate_physics &&
 						// Show if convex is enabled.
@@ -2285,8 +2285,8 @@ bool ResourceImporterScene::get_internal_option_update_view_required(InternalImp
 			if (
 					p_option == "generate/physics" ||
 					p_option == "physics/shape_type" ||
-					p_option.find("decomposition/") >= 0 ||
-					p_option.find("primitive/") >= 0) {
+					p_option.contains("decomposition/") ||
+					p_option.contains("primitive/")) {
 				return true;
 			}
 		} break;
