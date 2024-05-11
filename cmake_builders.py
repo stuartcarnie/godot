@@ -13,6 +13,7 @@ from glsl_builders import *
 from gles3_builders import *
 from core.core_builders import *
 from methods import *
+import methods
 from core.input.input_builders import *
 import core.extension.make_interface_dumper
 import core.extension.make_wrappers
@@ -25,7 +26,7 @@ import editor.themes.editor_theme_builders
 from scene.theme.default_theme_builders import *
 from editor.icons.editor_icons_builders import *
 import editor.template_builders
-from modules.modules_builders import generate_modules_enabled
+# from modules.modules_builders import generate_modules_enabled
 from modules.text_server_adv.gdextension_build.methods import make_icu_data
 import glob as Glob
 import logging
@@ -51,6 +52,14 @@ class Target:
 
     def srcnode(self):
         return self
+
+
+class Value:
+    def __init__(self, inner):
+        self.inner = inner
+
+    def read(self):
+        return self.inner
 
 
 class Environment:
@@ -92,6 +101,7 @@ env = Environment()
 
 env.disabled_modules = []
 env.module_version_string = ""
+env.version_info = methods.get_version_info(env.module_version_string)
 
 env.__class__.add_module_version_string = add_module_version_string
 env.__class__.module_add_dependencies = module_add_dependencies
@@ -270,7 +280,14 @@ def cmd_license_header(args: argparse.Namespace) -> int:
 @check_output
 @source_target
 def cmd_disabled_classes(target: str) -> int:
-    write_disabled_classes(class_list=[], output_filepath=target)
+    def disabled_class_builder(target, source, env):
+        with methods.generated_wrapper(target) as file:
+            for c in source[0].read():
+                cs = c.strip()
+                if cs != "":
+                    file.write(f"#define ClassDB_Disable_{cs} 1")
+
+    disabled_class_builder(target=target, source=[Value([])], env=env)
     return 0
 
 
@@ -390,11 +407,47 @@ def cmd_make_editor_themes_fonts(source: str, target: str) -> int:
     return 0
 
 
+def version_info_builder(target, source, env: Environment):
+    with methods.generated_wrapper(target) as file:
+        file.write(
+            """\
+#define VERSION_SHORT_NAME "{short_name}"
+#define VERSION_NAME "{name}"
+#define VERSION_MAJOR {major}
+#define VERSION_MINOR {minor}
+#define VERSION_PATCH {patch}
+#define VERSION_STATUS "{status}"
+#define VERSION_BUILD "{build}"
+#define VERSION_MODULE_CONFIG "{module_config}"
+#define VERSION_WEBSITE "{website}"
+#define VERSION_DOCS_BRANCH "{docs_branch}"
+#define VERSION_DOCS_URL "https://docs.godotengine.org/en/" VERSION_DOCS_BRANCH
+""".format(
+                **env.version_info
+            )
+        )
+
+
+# Generate version hash
+def version_hash_builder(target, source, env: Environment):
+    with methods.generated_wrapper(target) as file:
+        file.write(
+            """\
+#include "core/version.h"
+
+const char *const VERSION_HASH = "{git_hash}";
+const uint64_t VERSION_TIMESTAMP = {git_timestamp};
+""".format(
+                **env.version_info
+            )
+        )
+
+
 @check_output
 @source_target
 def cmd_make_version_data_headers(target: str, target2: str) -> int:
-    generate_version_header(module_version_string="", optional_version_outpath=target,
-                            optional_version_hash_output=target2)
+    version_info_builder(target=target, source=[], env=env)
+    version_hash_builder(target=target2, source=[], env=env)
     return 0
 
 
@@ -429,56 +482,96 @@ def cmd_make_editor_gdscript_templates(source: [str], target: str) -> int:
 @check_output
 @source_target
 def cmd_make_register_platform_apis(target: str) -> int:
-    def make_platform_apis(target, platforms):
-        env.platform_sources = []
+    def register_platform_apis_builder(target, source, env):
+        platforms = source[0].read()
+        api_inc = "\n".join([f'#include "{p}/api/api.h"' for p in platforms])
+        api_reg = "\n".join([f"\tregister_{p}_api();" for p in platforms])
+        api_unreg = "\n".join([f"\tunregister_{p}_api();" for p in platforms])
+        with methods.generated_wrapper(target) as file:
+            file.write(
+                f"""\
+    #include "register_platform_apis.h"
+    
+    {api_inc}
+    
+    void register_platform_apis() {{
+    {api_reg}
+    }}
+    
+    void unregister_platform_apis() {{
+    {api_unreg}
+    }}
+    """
+            )
 
-        # Register platform-exclusive APIs
-        reg_apis_inc = '#include "register_platform_apis.h"\n'
-        reg_apis = "void register_platform_apis() {\n"
-        unreg_apis = "void unregister_platform_apis() {\n"
-        for platform in platforms:
-            reg_apis += "\tregister_" + platform + "_api();\n"
-            unreg_apis += "\tunregister_" + platform + "_api();\n"
-            reg_apis_inc += '#include "' + platform + '/api/api.h"\n'
-        reg_apis_inc += "\n"
-        reg_apis += "}\n\n"
-        unreg_apis += "}\n"
-
-        # NOTE: It is safe to generate this file here, since this is still execute serially
-        with open(target, "w", encoding="utf-8") as f:
-            f.write(reg_apis_inc)
-            f.write(reg_apis)
-            f.write(unreg_apis)
-
-    make_platform_apis(target=target, platforms=[])
+    register_platform_apis_builder(target=target, source=[Value([])], env=env)
     return 0
 
 
 @check_output
 @source_target
 def cmd_make_editor_platform_exporters(source: str, target: str) -> int:
-    def make_platform_exporters_register(target, platform_exporters):
-        # Register exporters
-        reg_exporters_inc = '#include "register_exporters.h"\n\n'
-        reg_exporters = "void register_exporters() {\n"
-        for e in platform_exporters:
-            reg_exporters += "\tregister_" + e + "_exporter();\n"
-            reg_exporters_inc += '#include "platform/' + e + '/export/export.h"\n'
-        reg_exporters += "}\n\n"
-        reg_exporters += "void register_exporter_types() {\n"
-        for e in platform_exporters:
-            reg_exporters += "\tregister_" + e + "_exporter_types();\n"
-        reg_exporters += "}\n"
+    def register_exporters_builder(target, source, env):
+        platforms = source[0].read()
+        exp_inc = "\n".join([f'#include "platform/{p}/export/export.h"' for p in platforms])
+        exp_reg = "\n".join([f"\tregister_{p}_exporter();" for p in platforms])
+        exp_type = "\n".join([f"\tregister_{p}_exporter_types();" for p in platforms])
+        with methods.generated_wrapper(target) as file:
+            file.write(
+                f"""\
+#include "register_exporters.h"
 
-        # NOTE: It is safe to generate this file here, since this is still executed serially
-        with open(target, "w", encoding="utf-8") as f:
-            f.write(reg_exporters_inc)
-            f.write(reg_exporters)
+{exp_inc}
+
+void register_exporters() {{
+{exp_reg}
+}}
+
+void register_exporter_types() {{
+{exp_type}
+}}
+"""
+            )
 
     # TODO(sgc): need to handle all exporters
     platform_exporters_input = source.split()
-    make_platform_exporters_register(target=target, platform_exporters=platform_exporters_input)
+    register_exporters_builder(target=target, source=[Value(platform_exporters_input)], env=env)
     return 0
+
+
+def register_module_types_builder(target, source, env):
+    modules = source[0].read()
+    mod_inc = "\n".join([f'#include "{p}/register_types.h"' for p in modules.values()])
+    mod_init = "\n".join(
+        [f"#ifdef MODULE_{n.upper()}_ENABLED\n\tinitialize_{n}_module(p_level);\n#endif" for n in modules.keys()]
+    )
+    mod_uninit = "\n".join(
+        [f"#ifdef MODULE_{n.upper()}_ENABLED\n\tuninitialize_{n}_module(p_level);\n#endif" for n in modules.keys()]
+    )
+    with methods.generated_wrapper(target) as file:
+        file.write(
+            f"""\
+#include "register_module_types.h"
+
+#include "modules/modules_enabled.gen.h"
+
+{mod_inc}
+
+void initialize_modules(ModuleInitializationLevel p_level) {{
+{mod_init}
+}}
+
+void uninitialize_modules(ModuleInitializationLevel p_level) {{
+{mod_uninit}
+}}
+"""
+        )
+
+
+def modules_enabled_builder(target, source, env):
+    with methods.generated_wrapper(target) as file:
+        for module in source[0].read():
+            file.write(f"#define MODULE_{module.upper()}_ENABLED\n")
 
 
 @check_output
@@ -507,8 +600,8 @@ def cmd_make_modules_enabled_and_types(args: argparse.Namespace) -> int:
     sort_module_list(env)
 
     # Write out the results
-    generate_modules_enabled(target=[Target(str(args.output2))], source=modules.keys(), env=env)
-    write_modules(modules, cpp_path=str(args.output))
+    register_module_types_builder(target=str(args.output2), source=[Value(modules)], env=env)
+    modules_enabled_builder(target=str(args.output), source=[Value(modules)], env=env)
 
     os.chdir(original_cwd)
 
@@ -522,7 +615,7 @@ def cmd_make_data_class_path(source: str, target: str) -> int:
 
     # Push the current working directory
     original_cwd = os.getcwd()
-    base_godot_engine_dir = str(pathlib.Path(source).parent) + "/"
+    base_godot_engine_dir = source
     os.chdir(base_godot_engine_dir)
 
     def generate_docs_from_path(base_directory, relative_base_path):
@@ -541,20 +634,25 @@ def cmd_make_data_class_path(source: str, target: str) -> int:
         return found_docs
 
     # source: editor/SCsub
-    def make_doc_data_class_path(to_path, doc_class_path):
-        # NOTE: It is safe to generate this file here, since this is still executed serially
-        g = open(to_path, "w", encoding="utf-8")
-        g.write("static const int _doc_data_class_path_count = " + str(len(doc_class_path)) + ";\n")
-        g.write("struct _DocDataClassPath { const char* name; const char* path; };\n")
+    def doc_data_class_path_builder(target, source, env):
+        paths = dict(sorted(source[0].read().items()))
+        data = "\n".join([f'\t{{"{key}", "{value}"}},' for key, value in paths.items()])
+        with methods.generated_wrapper(target) as file:
+            file.write(
+                f"""\
+static const int _doc_data_class_path_count = {len(paths)};
 
-        g.write(
-            "static const _DocDataClassPath _doc_data_class_paths[" + str(len(doc_class_path) + 1) + "] = {\n")
-        for c in sorted(doc_class_path):
-            g.write('\t{"' + c + '", "' + doc_class_path[c] + '"},\n')
-        g.write("\t{nullptr, nullptr}\n")
-        g.write("};\n")
+struct _DocDataClassPath {{
+	const char *name;
+	const char *path;
+}};
 
-        g.close()
+static const _DocDataClassPath _doc_data_class_paths[{len(env.doc_class_path) + 1}] = {{
+{data}
+	{{nullptr, nullptr}},
+}};
+"""
+            )
 
     docs = {}
     modules_relative_base_directory = source
@@ -563,7 +661,7 @@ def cmd_make_data_class_path(source: str, target: str) -> int:
         new_entries = generate_docs_from_path(modules_base_directory, modules_relative_base_directory)
         docs.update(new_entries)
 
-    make_doc_data_class_path(to_path=target, doc_class_path=docs)
+    doc_data_class_path_builder(target=target, source=[Value(docs)], env=env)
 
     # Pop it back
     os.chdir(original_cwd)
