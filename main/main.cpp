@@ -1715,7 +1715,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 				goto error;
 			}
 #endif // TOOLS_ENABLED && MODULE_GDSCRIPT_ENABLED && !GDSCRIPT_NO_LSP
-#ifdef DEV_ENABLED
+#ifdef TOOLS_ENABLED
 		} else if (arg == "--os-debug") {
 			int msec = 5000; // wait 5 second by default
 			if (N) {

@@ -319,7 +319,7 @@ public:
 	virtual Vector<String> get_granted_permissions() const { return Vector<String>(); }
 	virtual void revoke_granted_permissions() {}
 
-#if DEV_ENABLED
+#if TOOLS_ENABLED
 	virtual void wait_for_debugger(uint32_t p_msec) {}
 #endif
 

@@ -106,7 +106,7 @@ void OS_MacOS::revoke_granted_permissions() {
 	}
 }
 
-#if DEV_ENABLED
+#if TOOLS_ENABLED
 
 // Function to check if a debugger is attached to the current process
 bool is_debugger_attached() {

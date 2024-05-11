@@ -117,7 +117,7 @@ public:
 	virtual Vector<String> get_granted_permissions() const override;
 	virtual void revoke_granted_permissions() override;
 
-#ifdef DEV_ENABLED
+#ifdef TOOLS_ENABLED
 	virtual void wait_for_debugger(uint32_t p_msec) override;
 #endif
 
