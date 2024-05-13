@@ -1,8 +1,8 @@
 godot_add_library(thorvg FOLDER thirdparty STATIC)
 target_sources(thorvg PRIVATE
         # common
-        src/common/tvgBezier.cpp
         src/common/tvgCompressor.cpp
+        src/common/tvgLines.cpp
         src/common/tvgMath.cpp
         src/common/tvgStr.cpp
         # SVG parser
@@ -13,7 +13,9 @@ target_sources(thorvg PRIVATE
         src/loaders/svg/tvgSvgUtil.cpp
         src/loaders/svg/tvgXmlParser.cpp
         src/loaders/raw/tvgRawLoader.cpp
+        # image loaders
         src/loaders/external_png/tvgPngLoader.cpp
+        src/loaders/external_webp/tvgWebpLoader.cpp
         src/loaders/jpg/tvgJpgd.cpp
         src/loaders/jpg/tvgJpgLoader.cpp
         # renderer common
@@ -53,7 +55,8 @@ target_include_directories(thorvg PUBLIC AFTER
         src/renderer/sw_engine
         src/loaders/raw
         src/loaders/external_png
+        src/loaders/external_webp
         src/loaders/jpg
 )
-target_link_libraries(thorvg PUBLIC png)
+target_link_libraries(thorvg PUBLIC png webp)
 target_compile_definitions(thorvg PUBLIC TVG_STATIC)

@@ -886,6 +886,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/VisualShaderNodeProximityFade.xml
         classes/VisualShaderNodeRandomRange.xml
         classes/VisualShaderNodeRemap.xml
+        classes/VisualShaderNodeReroute.xml
         classes/VisualShaderNodeResizableBase.xml
         classes/VisualShaderNodeRotationByAxis.xml
         classes/VisualShaderNodeSDFRaymarch.xml

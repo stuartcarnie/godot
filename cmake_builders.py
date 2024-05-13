@@ -551,7 +551,7 @@ def register_module_types_builder(target, source, env):
     with methods.generated_wrapper(target) as file:
         file.write(
             f"""\
-#include "register_module_types.h"
+#include "modules/register_module_types.h"
 
 #include "modules/modules_enabled.gen.h"
 
@@ -600,8 +600,8 @@ def cmd_make_modules_enabled_and_types(args: argparse.Namespace) -> int:
     sort_module_list(env)
 
     # Write out the results
-    register_module_types_builder(target=str(args.output2), source=[Value(modules)], env=env)
-    modules_enabled_builder(target=str(args.output), source=[Value(modules)], env=env)
+    register_module_types_builder(target=str(args.output), source=[Value(modules)], env=env)
+    modules_enabled_builder(target=str(args.output2), source=[Value(modules)], env=env)
 
     os.chdir(original_cwd)
 
