@@ -2289,11 +2289,14 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 				params.delta_time = float(time_step);
 				params.reset_accumulation = false; // FIXME: The engine does not provide a way to reset the accumulation.
 
+				Projection correction;
+				correction.set_depth_correction(true, true, false);
+
 				const Projection &prev_proj = p_render_data->scene_data->prev_cam_projection;
 				const Projection &cur_proj = p_render_data->scene_data->cam_projection;
 				const Transform3D &prev_transform = p_render_data->scene_data->prev_cam_transform;
 				const Transform3D &cur_transform = p_render_data->scene_data->cam_transform;
-				params.reprojection = prev_proj.flipped_y() * prev_transform.affine_inverse() * cur_transform * cur_proj.flipped_y().inverse();
+				params.reprojection = (correction * prev_proj) * prev_transform.affine_inverse() * cur_transform * (correction * cur_proj).inverse();
 
 				fsr2_effect->upscale(params);
 			}
@@ -3575,11 +3578,11 @@ RID RenderForwardClustered::_setup_sdfgi_render_pass_uniform_set(RID p_albedo_te
 RID RenderForwardClustered::_render_buffers_get_normal_texture(Ref<RenderSceneBuffersRD> p_render_buffers) {
 	Ref<RenderBufferDataForwardClustered> rb_data = p_render_buffers->get_custom_data(RB_SCOPE_FORWARD_CLUSTERED);
 
-	return p_render_buffers->get_msaa_3d() == RS::VIEWPORT_MSAA_DISABLED ? rb_data->get_normal_roughness() : rb_data->get_normal_roughness_msaa();
+	return rb_data->get_normal_roughness();
 }
 
 RID RenderForwardClustered::_render_buffers_get_velocity_texture(Ref<RenderSceneBuffersRD> p_render_buffers) {
-	return p_render_buffers->get_velocity_buffer(p_render_buffers->get_msaa_3d() != RS::VIEWPORT_MSAA_DISABLED);
+	return p_render_buffers->get_velocity_buffer(false);
 }
 
 void RenderForwardClustered::environment_set_ssao_quality(RS::EnvironmentSSAOQuality p_quality, bool p_half_size, float p_adaptive_target, int p_blur_passes, float p_fadeout_from, float p_fadeout_to) {

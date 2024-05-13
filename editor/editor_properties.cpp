@@ -3141,7 +3141,7 @@ void EditorPropertyResource::_resource_changed(const Ref<Resource> &p_resource) 
 	// Changing the value of Script-type exported variables of the main script should not trigger saving/reloading properties.
 	bool is_script = false;
 	Ref<Script> s = p_resource;
-	if (get_edited_object() && s.is_valid() && get_edited_property() == CoreStringNames::get_singleton()->_script) {
+	if (get_edited_object() && s.is_valid() && get_edited_property() == CoreStringName(script)) {
 		is_script = true;
 		InspectorDock::get_singleton()->store_script_properties(get_edited_object());
 		s->call("set_instance_base_type", get_edited_object()->get_class());
@@ -3364,8 +3364,6 @@ void EditorPropertyResource::update_property() {
 					EditorNode::get_singleton()->hide_unused_editors();
 					opened_editor = false;
 				}
-
-				_update_property_bg();
 			}
 		}
 	}
@@ -3422,12 +3420,6 @@ bool EditorPropertyResource::is_colored(ColorationMode p_mode) {
 
 void EditorPropertyResource::_notification(int p_what) {
 	switch (p_what) {
-		case NOTIFICATION_THEME_CHANGED: {
-			if (EditorThemeManager::is_generated_theme_outdated()) {
-				_update_property_bg();
-			}
-		} break;
-
 		case NOTIFICATION_EXIT_TREE: {
 			const EditorInspector *ei = get_parent_inspector();
 			if (ei && !ei->is_main_editor_inspector()) {
@@ -3439,6 +3431,7 @@ void EditorPropertyResource::_notification(int p_what) {
 
 EditorPropertyResource::EditorPropertyResource() {
 	use_sub_inspector = bool(EDITOR_GET("interface/inspector/open_resources_in_current_inspector"));
+	has_borders = true;
 }
 
 ////////////// DEFAULT PLUGIN //////////////////////

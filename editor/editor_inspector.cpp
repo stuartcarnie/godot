@@ -50,6 +50,7 @@
 #include "scene/property_utils.h"
 #include "scene/resources/packed_scene.h"
 #include "scene/resources/style_box_flat.h"
+#include "scene/scene_string_names.h"
 
 bool EditorInspector::_property_path_matches(const String &p_property_path, const String &p_filter, EditorPropertyNameProcessor::Style p_style) {
 	if (p_property_path.containsn(p_filter)) {
@@ -390,6 +391,17 @@ void EditorProperty::_notification(int p_what) {
 				delete_rect = Rect2();
 			}
 		} break;
+		case NOTIFICATION_ENTER_TREE: {
+			if (has_borders) {
+				get_parent()->connect(SceneStringName(theme_changed), callable_mp(this, &EditorProperty::_update_property_bg));
+				_update_property_bg();
+			}
+		} break;
+		case NOTIFICATION_EXIT_TREE: {
+			if (has_borders) {
+				get_parent()->disconnect(SceneStringName(theme_changed), callable_mp(this, &EditorProperty::_update_property_bg));
+			}
+		}
 	}
 }
 
@@ -810,6 +822,9 @@ void EditorProperty::set_label_reference(Control *p_control) {
 
 void EditorProperty::set_bottom_editor(Control *p_control) {
 	bottom_editor = p_control;
+	if (has_borders) {
+		_update_property_bg();
+	}
 }
 
 Variant EditorProperty::_get_cache_value(const StringName &p_prop, bool &r_valid) const {
@@ -1190,19 +1205,27 @@ void EditorInspectorCategory::_notification(int p_what) {
 			if (icon.is_valid()) {
 				w += hs + icon_size;
 			}
+			w = MIN(w, get_size().width - sb->get_minimum_size().width);
 
 			int ofs = (get_size().width - w) / 2;
 
 			if (icon.is_valid()) {
 				Size2 rect_size = Size2(icon_size, icon_size);
 				Point2 rect_pos = Point2(ofs, (get_size().height - icon_size) / 2).floor();
+				if (is_layout_rtl()) {
+					rect_pos.x = get_size().width - rect_pos.x - icon_size;
+				}
 				draw_texture_rect(icon, Rect2(rect_pos, rect_size));
 
 				ofs += hs + icon_size;
+				w -= hs + icon_size;
 			}
 
 			Color color = get_theme_color(SNAME("font_color"), SNAME("Tree"));
-			draw_string(font, Point2(ofs, font->get_ascent(font_size) + (get_size().height - font->get_height(font_size)) / 2).floor(), label, HORIZONTAL_ALIGNMENT_LEFT, get_size().width, font_size, color);
+			if (is_layout_rtl()) {
+				ofs = get_size().width - ofs - w;
+			}
+			draw_string(font, Point2(ofs, font->get_ascent(font_size) + (get_size().height - font->get_height(font_size)) / 2).floor(), label, HORIZONTAL_ALIGNMENT_LEFT, w, font_size, color);
 		} break;
 	}
 }
@@ -4079,6 +4102,9 @@ void EditorInspector::_notification(int p_what) {
 
 		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
 			bool needs_update = false;
+			if (EditorThemeManager::is_generated_theme_outdated() && !sub_inspector) {
+				add_theme_style_override("panel", get_theme_stylebox(SNAME("panel"), SNAME("Tree")));
+			}
 
 			if (use_settings_name_style && EditorSettings::get_singleton()->check_changed_settings_in_group("interface/editor/localize_settings")) {
 				EditorPropertyNameProcessor::Style style = EditorPropertyNameProcessor::get_settings_style();

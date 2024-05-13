@@ -2038,15 +2038,15 @@ void GDScriptInstance::notification(int p_notification, bool p_reversed) {
 }
 
 String GDScriptInstance::to_string(bool *r_valid) {
-	if (has_method(CoreStringNames::get_singleton()->_to_string)) {
+	if (has_method(CoreStringName(_to_string))) {
 		Callable::CallError ce;
-		Variant ret = callp(CoreStringNames::get_singleton()->_to_string, nullptr, 0, ce);
+		Variant ret = callp(CoreStringName(_to_string), nullptr, 0, ce);
 		if (ce.error == Callable::CallError::CALL_OK) {
 			if (ret.get_type() != Variant::STRING) {
 				if (r_valid) {
 					*r_valid = false;
 				}
-				ERR_FAIL_V_MSG(String(), "Wrong type for " + CoreStringNames::get_singleton()->_to_string + ", must be a String.");
+				ERR_FAIL_V_MSG(String(), "Wrong type for " + CoreStringName(_to_string) + ", must be a String.");
 			}
 			if (r_valid) {
 				*r_valid = true;
@@ -2919,7 +2919,7 @@ String ResourceFormatLoaderGDScript::get_resource_type(const String &p_path) con
 	return "";
 }
 
-void ResourceFormatLoaderGDScript::get_dependencies(const String &p_path, List<String> *r_dependencies, bool p_add_types) {
+void ResourceFormatLoaderGDScript::get_dependencies(const String &p_path, List<String> *p_dependencies, bool p_add_types) {
 	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ);
 	ERR_FAIL_COND_MSG(file.is_null(), "Cannot open file '" + p_path + "'.");
 
@@ -2933,13 +2933,8 @@ void ResourceFormatLoaderGDScript::get_dependencies(const String &p_path, List<S
 		return;
 	}
 
-	GDScriptAnalyzer analyzer(&parser);
-	if (OK != analyzer.analyze()) {
-		return;
-	}
-
 	for (const String &E : parser.get_dependencies()) {
-		r_dependencies->push_back(E);
+		p_dependencies->push_back(E);
 	}
 }
 
