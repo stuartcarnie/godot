@@ -58,6 +58,7 @@ Error RenderingContextDriverMetal::initialize() {
 #endif
 	device.type = DEVICE_TYPE_INTEGRATED_GPU;
 	device.vendor = VENDOR_APPLE;
+	device.workarounds = Workarounds();
 
 	MetalDeviceProperties props(dev);
 	int version = (int)props.features.highestFamily - (int)MTLGPUFamilyApple1 + 1;
