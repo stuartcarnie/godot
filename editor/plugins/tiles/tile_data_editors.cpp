@@ -934,8 +934,8 @@ GenericTilePolygonEditor::GenericTilePolygonEditor() {
 	base_control = memnew(Control);
 	base_control->set_texture_filter(CanvasItem::TEXTURE_FILTER_NEAREST);
 	base_control->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-	base_control->connect("draw", callable_mp(this, &GenericTilePolygonEditor::_base_control_draw));
-	base_control->connect("gui_input", callable_mp(this, &GenericTilePolygonEditor::_base_control_gui_input));
+	base_control->connect(SceneStringName(draw), callable_mp(this, &GenericTilePolygonEditor::_base_control_draw));
+	base_control->connect(SceneStringName(gui_input), callable_mp(this, &GenericTilePolygonEditor::_base_control_gui_input));
 	base_control->set_clip_contents(true);
 	base_control->set_focus_mode(Control::FOCUS_CLICK);
 	root->add_child(base_control);
@@ -952,7 +952,7 @@ GenericTilePolygonEditor::GenericTilePolygonEditor() {
 	button_center_view = memnew(Button);
 	button_center_view->set_anchors_and_offsets_preset(Control::PRESET_TOP_RIGHT, Control::PRESET_MODE_MINSIZE, 5);
 	button_center_view->set_grow_direction_preset(Control::PRESET_TOP_RIGHT);
-	button_center_view->connect("pressed", callable_mp(this, &GenericTilePolygonEditor::_center_view));
+	button_center_view->connect(SceneStringName(pressed), callable_mp(this, &GenericTilePolygonEditor::_center_view));
 	button_center_view->set_theme_type_variation("FlatButton");
 	button_center_view->set_tooltip_text(TTR("Center View"));
 	button_center_view->set_disabled(true);

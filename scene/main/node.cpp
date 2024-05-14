@@ -31,7 +31,6 @@
 #include "node.h"
 
 #include "core/config/project_settings.h"
-#include "core/core_string_names.h"
 #include "core/io/resource_loader.h"
 #include "core/object/message_queue.h"
 #include "core/object/script_language.h"
@@ -42,7 +41,6 @@
 #include "scene/main/multiplayer_api.h"
 #include "scene/main/window.h"
 #include "scene/resources/packed_scene.h"
-#include "scene/scene_string_names.h"
 #include "viewport.h"
 
 #include <stdint.h>
@@ -1738,12 +1736,10 @@ Node *Node::get_node_or_null(const NodePath &p_path) const {
 		StringName name = p_path.get_name(i);
 		Node *next = nullptr;
 
-		if (name == SceneStringName(dot)) { // .
-
+		if (name == SNAME(".")) {
 			next = current;
 
-		} else if (name == SceneStringName(doubledot)) { // ..
-
+		} else if (name == SNAME("..")) {
 			if (current == nullptr || !current->data.parent) {
 				return nullptr;
 			}

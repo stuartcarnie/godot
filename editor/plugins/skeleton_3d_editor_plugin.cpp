@@ -50,7 +50,6 @@
 #include "scene/resources/3d/capsule_shape_3d.h"
 #include "scene/resources/skeleton_profile.h"
 #include "scene/resources/surface_tool.h"
-#include "scene/scene_string_names.h"
 
 void BoneTransformEditor::create_editors() {
 	section = memnew(EditorInspectorSection);
@@ -790,7 +789,7 @@ void Skeleton3DEditor::create_editors() {
 	key_insert_button = memnew(Button);
 	key_insert_button->set_theme_type_variation("FlatButton");
 	key_insert_button->set_focus_mode(FOCUS_NONE);
-	key_insert_button->connect("pressed", callable_mp(this, &Skeleton3DEditor::insert_keys).bind(false));
+	key_insert_button->connect(SceneStringName(pressed), callable_mp(this, &Skeleton3DEditor::insert_keys).bind(false));
 	key_insert_button->set_tooltip_text(TTR("Insert key of bone poses already exist track."));
 	key_insert_button->set_shortcut(ED_SHORTCUT("skeleton_3d_editor/insert_key_to_existing_tracks", TTR("Insert Key (Existing Tracks)"), Key::INSERT));
 	animation_hb->add_child(key_insert_button);
@@ -798,7 +797,7 @@ void Skeleton3DEditor::create_editors() {
 	key_insert_all_button = memnew(Button);
 	key_insert_all_button->set_theme_type_variation("FlatButton");
 	key_insert_all_button->set_focus_mode(FOCUS_NONE);
-	key_insert_all_button->connect("pressed", callable_mp(this, &Skeleton3DEditor::insert_keys).bind(true));
+	key_insert_all_button->connect(SceneStringName(pressed), callable_mp(this, &Skeleton3DEditor::insert_keys).bind(true));
 	key_insert_all_button->set_tooltip_text(TTR("Insert key of all bone poses."));
 	key_insert_all_button->set_shortcut(ED_SHORTCUT("skeleton_3d_editor/insert_key_of_all_bones", TTR("Insert Key (All Bones)"), KeyModifierMask::CMD_OR_CTRL + Key::INSERT));
 	animation_hb->add_child(key_insert_all_button);

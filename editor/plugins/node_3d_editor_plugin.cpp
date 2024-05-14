@@ -124,11 +124,11 @@ constexpr real_t MAX_FOV = 179;
 void ViewportNavigationControl::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
-			if (!is_connected("mouse_exited", callable_mp(this, &ViewportNavigationControl::_on_mouse_exited))) {
-				connect("mouse_exited", callable_mp(this, &ViewportNavigationControl::_on_mouse_exited));
+			if (!is_connected(SceneStringName(mouse_exited), callable_mp(this, &ViewportNavigationControl::_on_mouse_exited))) {
+				connect(SceneStringName(mouse_exited), callable_mp(this, &ViewportNavigationControl::_on_mouse_exited));
 			}
-			if (!is_connected("mouse_entered", callable_mp(this, &ViewportNavigationControl::_on_mouse_entered))) {
-				connect("mouse_entered", callable_mp(this, &ViewportNavigationControl::_on_mouse_entered));
+			if (!is_connected(SceneStringName(mouse_entered), callable_mp(this, &ViewportNavigationControl::_on_mouse_entered))) {
+				connect(SceneStringName(mouse_entered), callable_mp(this, &ViewportNavigationControl::_on_mouse_entered));
 			}
 		} break;
 
@@ -309,8 +309,8 @@ void ViewportRotationControl::_notification(int p_what) {
 			axis_colors.push_back(get_theme_color(SNAME("axis_z_color"), EditorStringName(Editor)));
 			queue_redraw();
 
-			if (!is_connected("mouse_exited", callable_mp(this, &ViewportRotationControl::_on_mouse_exited))) {
-				connect("mouse_exited", callable_mp(this, &ViewportRotationControl::_on_mouse_exited));
+			if (!is_connected(SceneStringName(mouse_exited), callable_mp(this, &ViewportRotationControl::_on_mouse_exited))) {
+				connect(SceneStringName(mouse_exited), callable_mp(this, &ViewportRotationControl::_on_mouse_exited));
 			}
 		} break;
 
@@ -2783,10 +2783,10 @@ void Node3DEditorViewport::_notification(int p_what) {
 				if (cam != nullptr && cam != previewing) {
 					//then switch the viewport's camera to the scene's viewport camera
 					if (previewing != nullptr) {
-						previewing->disconnect("tree_exited", callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
+						previewing->disconnect(SceneStringName(tree_exited), callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
 					}
 					previewing = cam;
-					previewing->connect("tree_exited", callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
+					previewing->connect(SceneStringName(tree_exited), callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
 					RS::get_singleton()->viewport_attach_camera(viewport->get_viewport_rid(), cam->get_camera());
 					surface->queue_redraw();
 				}
@@ -2991,12 +2991,12 @@ void Node3DEditorViewport::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_ENTER_TREE: {
-			surface->connect("draw", callable_mp(this, &Node3DEditorViewport::_draw));
-			surface->connect("gui_input", callable_mp(this, &Node3DEditorViewport::_sinput));
-			surface->connect("mouse_entered", callable_mp(this, &Node3DEditorViewport::_surface_mouse_enter));
-			surface->connect("mouse_exited", callable_mp(this, &Node3DEditorViewport::_surface_mouse_exit));
-			surface->connect("focus_entered", callable_mp(this, &Node3DEditorViewport::_surface_focus_enter));
-			surface->connect("focus_exited", callable_mp(this, &Node3DEditorViewport::_surface_focus_exit));
+			surface->connect(SceneStringName(draw), callable_mp(this, &Node3DEditorViewport::_draw));
+			surface->connect(SceneStringName(gui_input), callable_mp(this, &Node3DEditorViewport::_sinput));
+			surface->connect(SceneStringName(mouse_entered), callable_mp(this, &Node3DEditorViewport::_surface_mouse_enter));
+			surface->connect(SceneStringName(mouse_exited), callable_mp(this, &Node3DEditorViewport::_surface_mouse_exit));
+			surface->connect(SceneStringName(focus_entered), callable_mp(this, &Node3DEditorViewport::_surface_focus_enter));
+			surface->connect(SceneStringName(focus_exited), callable_mp(this, &Node3DEditorViewport::_surface_focus_exit));
 
 			_init_gizmo_instance(index);
 		} break;
@@ -3013,7 +3013,7 @@ void Node3DEditorViewport::_notification(int p_what) {
 			view_menu->begin_bulk_theme_override();
 			view_menu->add_theme_style_override("normal", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
 			view_menu->add_theme_style_override("hover", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
-			view_menu->add_theme_style_override("pressed", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
+			view_menu->add_theme_style_override(SceneStringName(pressed), gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
 			view_menu->add_theme_style_override("focus", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
 			view_menu->add_theme_style_override("disabled", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
 			view_menu->end_bulk_theme_override();
@@ -3021,7 +3021,7 @@ void Node3DEditorViewport::_notification(int p_what) {
 			preview_camera->begin_bulk_theme_override();
 			preview_camera->add_theme_style_override("normal", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
 			preview_camera->add_theme_style_override("hover", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
-			preview_camera->add_theme_style_override("pressed", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
+			preview_camera->add_theme_style_override(SceneStringName(pressed), gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
 			preview_camera->add_theme_style_override("focus", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
 			preview_camera->add_theme_style_override("disabled", gui_base->get_theme_stylebox(SNAME("Information3dViewport"), EditorStringName(EditorStyles)));
 			preview_camera->end_bulk_theme_override();
@@ -3705,7 +3705,7 @@ void Node3DEditorViewport::_toggle_camera_preview(bool p_activate) {
 	_update_navigation_controls_visibility();
 
 	if (!p_activate) {
-		previewing->disconnect("tree_exiting", callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
+		previewing->disconnect(SceneStringName(tree_exiting), callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
 		previewing = nullptr;
 		RS::get_singleton()->viewport_attach_camera(viewport->get_viewport_rid(), camera->get_camera()); //restore
 		if (!preview) {
@@ -3715,7 +3715,7 @@ void Node3DEditorViewport::_toggle_camera_preview(bool p_activate) {
 
 	} else {
 		previewing = preview;
-		previewing->connect("tree_exiting", callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
+		previewing->connect(SceneStringName(tree_exiting), callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
 		RS::get_singleton()->viewport_attach_camera(viewport->get_viewport_rid(), preview->get_camera()); //replace
 		surface->queue_redraw();
 	}
@@ -3727,7 +3727,7 @@ void Node3DEditorViewport::_toggle_cinema_preview(bool p_activate) {
 
 	if (!previewing_cinema) {
 		if (previewing != nullptr) {
-			previewing->disconnect("tree_exited", callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
+			previewing->disconnect(SceneStringName(tree_exited), callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
 		}
 
 		previewing = nullptr;
@@ -3972,7 +3972,7 @@ void Node3DEditorViewport::set_state(const Dictionary &p_state) {
 		Node *pv = EditorNode::get_singleton()->get_edited_scene()->get_node(p_state["previewing"]);
 		if (Object::cast_to<Camera3D>(pv)) {
 			previewing = Object::cast_to<Camera3D>(pv);
-			previewing->connect("tree_exiting", callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
+			previewing->connect(SceneStringName(tree_exiting), callable_mp(this, &Node3DEditorViewport::_preview_exited_scene));
 			RS::get_singleton()->viewport_attach_camera(viewport->get_viewport_rid(), previewing->get_camera()); //replace
 			surface->queue_redraw();
 			preview_camera->set_pressed(true);
@@ -7817,7 +7817,7 @@ void Node3DEditor::add_control_to_menu_panel(Control *p_control) {
 	context_toolbar_hbox->add_child(p_control);
 	context_toolbar_separators[p_control] = sep;
 
-	p_control->connect("visibility_changed", callable_mp(this, &Node3DEditor::_update_context_toolbar));
+	p_control->connect(SceneStringName(visibility_changed), callable_mp(this, &Node3DEditor::_update_context_toolbar));
 
 	_update_context_toolbar();
 }
@@ -7826,7 +7826,7 @@ void Node3DEditor::remove_control_from_menu_panel(Control *p_control) {
 	ERR_FAIL_NULL(p_control);
 	ERR_FAIL_COND(p_control->get_parent() != context_toolbar_hbox);
 
-	p_control->disconnect("visibility_changed", callable_mp(this, &Node3DEditor::_update_context_toolbar));
+	p_control->disconnect(SceneStringName(visibility_changed), callable_mp(this, &Node3DEditor::_update_context_toolbar));
 
 	VSeparator *sep = context_toolbar_separators[p_control];
 	context_toolbar_hbox->remove_child(sep);
@@ -8360,7 +8360,7 @@ Node3DEditor::Node3DEditor() {
 	tool_button[TOOL_MODE_SELECT]->set_toggle_mode(true);
 	tool_button[TOOL_MODE_SELECT]->set_theme_type_variation("FlatButton");
 	tool_button[TOOL_MODE_SELECT]->set_pressed(true);
-	tool_button[TOOL_MODE_SELECT]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_SELECT));
+	tool_button[TOOL_MODE_SELECT]->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_SELECT));
 	tool_button[TOOL_MODE_SELECT]->set_shortcut(ED_SHORTCUT("spatial_editor/tool_select", TTR("Select Mode"), Key::Q));
 	tool_button[TOOL_MODE_SELECT]->set_shortcut_context(this);
 	tool_button[TOOL_MODE_SELECT]->set_tooltip_text(keycode_get_string((Key)KeyModifierMask::CMD_OR_CTRL) + TTR("Drag: Rotate selected node around pivot.") + "\n" + TTR("Alt+RMB: Show list of all nodes at position clicked, including locked."));
@@ -8371,7 +8371,7 @@ Node3DEditor::Node3DEditor() {
 	tool_button[TOOL_MODE_MOVE]->set_toggle_mode(true);
 	tool_button[TOOL_MODE_MOVE]->set_theme_type_variation("FlatButton");
 
-	tool_button[TOOL_MODE_MOVE]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_MOVE));
+	tool_button[TOOL_MODE_MOVE]->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_MOVE));
 	tool_button[TOOL_MODE_MOVE]->set_shortcut(ED_SHORTCUT("spatial_editor/tool_move", TTR("Move Mode"), Key::W));
 	tool_button[TOOL_MODE_MOVE]->set_shortcut_context(this);
 	tool_button[TOOL_MODE_MOVE]->set_tooltip_text(keycode_get_string((Key)KeyModifierMask::CMD_OR_CTRL) + TTR("Drag: Use snap.") + "\n" + TTR("Alt+RMB: Show list of all nodes at position clicked, including locked."));
@@ -8380,7 +8380,7 @@ Node3DEditor::Node3DEditor() {
 	main_menu_hbox->add_child(tool_button[TOOL_MODE_ROTATE]);
 	tool_button[TOOL_MODE_ROTATE]->set_toggle_mode(true);
 	tool_button[TOOL_MODE_ROTATE]->set_theme_type_variation("FlatButton");
-	tool_button[TOOL_MODE_ROTATE]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_ROTATE));
+	tool_button[TOOL_MODE_ROTATE]->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_ROTATE));
 	tool_button[TOOL_MODE_ROTATE]->set_shortcut(ED_SHORTCUT("spatial_editor/tool_rotate", TTR("Rotate Mode"), Key::E));
 	tool_button[TOOL_MODE_ROTATE]->set_shortcut_context(this);
 	tool_button[TOOL_MODE_ROTATE]->set_tooltip_text(keycode_get_string((Key)KeyModifierMask::CMD_OR_CTRL) + TTR("Drag: Use snap.") + "\n" + TTR("Alt+RMB: Show list of all nodes at position clicked, including locked."));
@@ -8389,7 +8389,7 @@ Node3DEditor::Node3DEditor() {
 	main_menu_hbox->add_child(tool_button[TOOL_MODE_SCALE]);
 	tool_button[TOOL_MODE_SCALE]->set_toggle_mode(true);
 	tool_button[TOOL_MODE_SCALE]->set_theme_type_variation("FlatButton");
-	tool_button[TOOL_MODE_SCALE]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_SCALE));
+	tool_button[TOOL_MODE_SCALE]->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_SCALE));
 	tool_button[TOOL_MODE_SCALE]->set_shortcut(ED_SHORTCUT("spatial_editor/tool_scale", TTR("Scale Mode"), Key::R));
 	tool_button[TOOL_MODE_SCALE]->set_shortcut_context(this);
 	tool_button[TOOL_MODE_SCALE]->set_tooltip_text(keycode_get_string((Key)KeyModifierMask::CMD_OR_CTRL) + TTR("Drag: Use snap.") + "\n" + TTR("Alt+RMB: Show list of all nodes at position clicked, including locked."));
@@ -8400,13 +8400,13 @@ Node3DEditor::Node3DEditor() {
 	main_menu_hbox->add_child(tool_button[TOOL_MODE_LIST_SELECT]);
 	tool_button[TOOL_MODE_LIST_SELECT]->set_toggle_mode(true);
 	tool_button[TOOL_MODE_LIST_SELECT]->set_theme_type_variation("FlatButton");
-	tool_button[TOOL_MODE_LIST_SELECT]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_LIST_SELECT));
+	tool_button[TOOL_MODE_LIST_SELECT]->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_TOOL_LIST_SELECT));
 	tool_button[TOOL_MODE_LIST_SELECT]->set_tooltip_text(TTR("Show list of selectable nodes at position clicked."));
 
 	tool_button[TOOL_LOCK_SELECTED] = memnew(Button);
 	main_menu_hbox->add_child(tool_button[TOOL_LOCK_SELECTED]);
 	tool_button[TOOL_LOCK_SELECTED]->set_theme_type_variation("FlatButton");
-	tool_button[TOOL_LOCK_SELECTED]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_LOCK_SELECTED));
+	tool_button[TOOL_LOCK_SELECTED]->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_LOCK_SELECTED));
 	tool_button[TOOL_LOCK_SELECTED]->set_tooltip_text(TTR("Lock selected node, preventing selection and movement."));
 	// Define the shortcut globally (without a context) so that it works if the Scene tree dock is currently focused.
 	tool_button[TOOL_LOCK_SELECTED]->set_shortcut(ED_SHORTCUT("editor/lock_selected_nodes", TTR("Lock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::L));
@@ -8414,7 +8414,7 @@ Node3DEditor::Node3DEditor() {
 	tool_button[TOOL_UNLOCK_SELECTED] = memnew(Button);
 	main_menu_hbox->add_child(tool_button[TOOL_UNLOCK_SELECTED]);
 	tool_button[TOOL_UNLOCK_SELECTED]->set_theme_type_variation("FlatButton");
-	tool_button[TOOL_UNLOCK_SELECTED]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_UNLOCK_SELECTED));
+	tool_button[TOOL_UNLOCK_SELECTED]->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_UNLOCK_SELECTED));
 	tool_button[TOOL_UNLOCK_SELECTED]->set_tooltip_text(TTR("Unlock selected node, allowing selection and movement."));
 	// Define the shortcut globally (without a context) so that it works if the Scene tree dock is currently focused.
 	tool_button[TOOL_UNLOCK_SELECTED]->set_shortcut(ED_SHORTCUT("editor/unlock_selected_nodes", TTR("Unlock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::L));
@@ -8422,7 +8422,7 @@ Node3DEditor::Node3DEditor() {
 	tool_button[TOOL_GROUP_SELECTED] = memnew(Button);
 	main_menu_hbox->add_child(tool_button[TOOL_GROUP_SELECTED]);
 	tool_button[TOOL_GROUP_SELECTED]->set_theme_type_variation("FlatButton");
-	tool_button[TOOL_GROUP_SELECTED]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_GROUP_SELECTED));
+	tool_button[TOOL_GROUP_SELECTED]->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_GROUP_SELECTED));
 	tool_button[TOOL_GROUP_SELECTED]->set_tooltip_text(TTR("Groups the selected node with its children. This selects the parent when any child node is clicked in 2D and 3D view."));
 	// Define the shortcut globally (without a context) so that it works if the Scene tree dock is currently focused.
 	tool_button[TOOL_GROUP_SELECTED]->set_shortcut(ED_SHORTCUT("editor/group_selected_nodes", TTR("Group Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::G));
@@ -8430,7 +8430,7 @@ Node3DEditor::Node3DEditor() {
 	tool_button[TOOL_UNGROUP_SELECTED] = memnew(Button);
 	main_menu_hbox->add_child(tool_button[TOOL_UNGROUP_SELECTED]);
 	tool_button[TOOL_UNGROUP_SELECTED]->set_theme_type_variation("FlatButton");
-	tool_button[TOOL_UNGROUP_SELECTED]->connect("pressed", callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_UNGROUP_SELECTED));
+	tool_button[TOOL_UNGROUP_SELECTED]->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_menu_item_pressed).bind(MENU_UNGROUP_SELECTED));
 	tool_button[TOOL_UNGROUP_SELECTED]->set_tooltip_text(TTR("Ungroups the selected node from its children. Child nodes will be individual items in 2D and 3D view."));
 	// Define the shortcut globally (without a context) so that it works if the Scene tree dock is currently focused.
 	tool_button[TOOL_UNGROUP_SELECTED]->set_shortcut(ED_SHORTCUT("editor/ungroup_selected_nodes", TTR("Ungroup Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::G));
@@ -8468,7 +8468,7 @@ Node3DEditor::Node3DEditor() {
 	sun_button->set_tooltip_text(TTR("Toggle preview sunlight.\nIf a DirectionalLight3D node is added to the scene, preview sunlight is disabled."));
 	sun_button->set_toggle_mode(true);
 	sun_button->set_theme_type_variation("FlatButton");
-	sun_button->connect("pressed", callable_mp(this, &Node3DEditor::_update_preview_environment), CONNECT_DEFERRED);
+	sun_button->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_update_preview_environment), CONNECT_DEFERRED);
 	// Preview is enabled by default - ensure this applies on editor startup when there is no state yet.
 	sun_button->set_pressed(true);
 
@@ -8478,7 +8478,7 @@ Node3DEditor::Node3DEditor() {
 	environ_button->set_tooltip_text(TTR("Toggle preview environment.\nIf a WorldEnvironment node is added to the scene, preview environment is disabled."));
 	environ_button->set_toggle_mode(true);
 	environ_button->set_theme_type_variation("FlatButton");
-	environ_button->connect("pressed", callable_mp(this, &Node3DEditor::_update_preview_environment), CONNECT_DEFERRED);
+	environ_button->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_update_preview_environment), CONNECT_DEFERRED);
 	// Preview is enabled by default - ensure this applies on editor startup when there is no state yet.
 	environ_button->set_pressed(true);
 
@@ -8487,7 +8487,7 @@ Node3DEditor::Node3DEditor() {
 	sun_environ_settings = memnew(Button);
 	sun_environ_settings->set_tooltip_text(TTR("Edit Sun and Environment settings."));
 	sun_environ_settings->set_theme_type_variation("FlatButton");
-	sun_environ_settings->connect("pressed", callable_mp(this, &Node3DEditor::_sun_environ_settings_pressed));
+	sun_environ_settings->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_sun_environ_settings_pressed));
 
 	main_menu_hbox->add_child(sun_environ_settings);
 
@@ -8616,7 +8616,7 @@ Node3DEditor::Node3DEditor() {
 	snap_dialog->set_title(TTR("Snap Settings"));
 	add_child(snap_dialog);
 	snap_dialog->connect("confirmed", callable_mp(this, &Node3DEditor::_snap_changed));
-	snap_dialog->get_cancel_button()->connect("pressed", callable_mp(this, &Node3DEditor::_snap_update));
+	snap_dialog->get_cancel_button()->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_snap_update));
 
 	VBoxContainer *snap_dialog_vbc = memnew(VBoxContainer);
 	snap_dialog->add_child(snap_dialog_vbc);
@@ -8737,7 +8737,7 @@ Node3DEditor::Node3DEditor() {
 	selected = nullptr;
 
 	set_process_shortcut_input(true);
-	add_to_group("_spatial_editor_group");
+	add_to_group(SceneStringName(_spatial_editor_group));
 
 	EDITOR_DEF("editors/3d/manipulator_gizmo_size", 80);
 	EditorSettings::get_singleton()->add_property_hint(PropertyInfo(Variant::INT, "editors/3d/manipulator_gizmo_size", PROPERTY_HINT_RANGE, "16,160,1"));
@@ -8774,8 +8774,8 @@ Node3DEditor::Node3DEditor() {
 		sun_direction->set_custom_minimum_size(Size2(128, 128) * EDSCALE);
 		sun_direction_center->add_child(sun_direction);
 		sun_vb->add_margin_child(TTR("Sun Direction"), sun_direction_center);
-		sun_direction->connect("gui_input", callable_mp(this, &Node3DEditor::_sun_direction_input));
-		sun_direction->connect("draw", callable_mp(this, &Node3DEditor::_sun_direction_draw));
+		sun_direction->connect(SceneStringName(gui_input), callable_mp(this, &Node3DEditor::_sun_direction_input));
+		sun_direction->connect(SceneStringName(draw), callable_mp(this, &Node3DEditor::_sun_direction_draw));
 		sun_direction->set_default_cursor_shape(CURSOR_MOVE);
 
 		sun_direction_shader.instantiate();
@@ -8852,7 +8852,7 @@ void fragment() {
 		sun_add_to_scene = memnew(Button);
 		sun_add_to_scene->set_text(TTR("Add Sun to Scene"));
 		sun_add_to_scene->set_tooltip_text(TTR("Adds a DirectionalLight3D node matching the preview sun settings to the current scene.\nHold Shift while clicking to also add the preview environment to the current scene."));
-		sun_add_to_scene->connect("pressed", callable_mp(this, &Node3DEditor::_add_sun_to_scene).bind(false));
+		sun_add_to_scene->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_add_sun_to_scene).bind(false));
 		sun_vb->add_spacer();
 		sun_vb->add_child(sun_add_to_scene);
 
@@ -8901,29 +8901,29 @@ void fragment() {
 		environ_ao_button = memnew(Button);
 		environ_ao_button->set_text(TTR("AO"));
 		environ_ao_button->set_toggle_mode(true);
-		environ_ao_button->connect("pressed", callable_mp(this, &Node3DEditor::_preview_settings_changed), CONNECT_DEFERRED);
+		environ_ao_button->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_preview_settings_changed), CONNECT_DEFERRED);
 		fx_vb->add_child(environ_ao_button);
 		environ_glow_button = memnew(Button);
 		environ_glow_button->set_text(TTR("Glow"));
 		environ_glow_button->set_toggle_mode(true);
-		environ_glow_button->connect("pressed", callable_mp(this, &Node3DEditor::_preview_settings_changed), CONNECT_DEFERRED);
+		environ_glow_button->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_preview_settings_changed), CONNECT_DEFERRED);
 		fx_vb->add_child(environ_glow_button);
 		environ_tonemap_button = memnew(Button);
 		environ_tonemap_button->set_text(TTR("Tonemap"));
 		environ_tonemap_button->set_toggle_mode(true);
-		environ_tonemap_button->connect("pressed", callable_mp(this, &Node3DEditor::_preview_settings_changed), CONNECT_DEFERRED);
+		environ_tonemap_button->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_preview_settings_changed), CONNECT_DEFERRED);
 		fx_vb->add_child(environ_tonemap_button);
 		environ_gi_button = memnew(Button);
 		environ_gi_button->set_text(TTR("GI"));
 		environ_gi_button->set_toggle_mode(true);
-		environ_gi_button->connect("pressed", callable_mp(this, &Node3DEditor::_preview_settings_changed), CONNECT_DEFERRED);
+		environ_gi_button->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_preview_settings_changed), CONNECT_DEFERRED);
 		fx_vb->add_child(environ_gi_button);
 		environ_vb->add_margin_child(TTR("Post Process"), fx_vb);
 
 		environ_add_to_scene = memnew(Button);
 		environ_add_to_scene->set_text(TTR("Add Environment to Scene"));
 		environ_add_to_scene->set_tooltip_text(TTR("Adds a WorldEnvironment node matching the preview environment settings to the current scene.\nHold Shift while clicking to also add the preview sun to the current scene."));
-		environ_add_to_scene->connect("pressed", callable_mp(this, &Node3DEditor::_add_environment_to_scene).bind(false));
+		environ_add_to_scene->connect(SceneStringName(pressed), callable_mp(this, &Node3DEditor::_add_environment_to_scene).bind(false));
 		environ_vb->add_spacer();
 		environ_vb->add_child(environ_add_to_scene);
 

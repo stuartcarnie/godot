@@ -596,8 +596,8 @@ Sprite2DEditor::Sprite2DEditor() {
 	VBoxContainer *vb = memnew(VBoxContainer);
 	debug_uv_dialog->add_child(vb);
 	debug_uv = memnew(Panel);
-	debug_uv->connect("gui_input", callable_mp(this, &Sprite2DEditor::_debug_uv_input));
-	debug_uv->connect("draw", callable_mp(this, &Sprite2DEditor::_debug_uv_draw));
+	debug_uv->connect(SceneStringName(gui_input), callable_mp(this, &Sprite2DEditor::_debug_uv_input));
+	debug_uv->connect(SceneStringName(draw), callable_mp(this, &Sprite2DEditor::_debug_uv_draw));
 	debug_uv->set_custom_minimum_size(Size2(800, 500) * EDSCALE);
 	debug_uv->set_clip_contents(true);
 	vb->add_margin_child(TTR("Preview:"), debug_uv, true);
@@ -647,7 +647,7 @@ Sprite2DEditor::Sprite2DEditor() {
 	hb->add_spacer();
 	update_preview = memnew(Button);
 	update_preview->set_text(TTR("Update Preview"));
-	update_preview->connect("pressed", callable_mp(this, &Sprite2DEditor::_update_mesh_data));
+	update_preview->connect(SceneStringName(pressed), callable_mp(this, &Sprite2DEditor::_update_mesh_data));
 	hb->add_child(update_preview);
 	vb->add_margin_child(TTR("Settings:"), hb);
 

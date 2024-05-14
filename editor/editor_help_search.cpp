@@ -315,7 +315,7 @@ EditorHelpSearch::EditorHelpSearch() {
 	search_box->set_custom_minimum_size(Size2(200, 0) * EDSCALE);
 	search_box->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	search_box->set_clear_button_enabled(true);
-	search_box->connect("gui_input", callable_mp(this, &EditorHelpSearch::_search_box_gui_input));
+	search_box->connect(SceneStringName(gui_input), callable_mp(this, &EditorHelpSearch::_search_box_gui_input));
 	search_box->connect("text_changed", callable_mp(this, &EditorHelpSearch::_search_box_text_changed));
 	register_text_enter(search_box);
 	hbox->add_child(search_box);
@@ -323,7 +323,7 @@ EditorHelpSearch::EditorHelpSearch() {
 	case_sensitive_button = memnew(Button);
 	case_sensitive_button->set_theme_type_variation("FlatButton");
 	case_sensitive_button->set_tooltip_text(TTR("Case Sensitive"));
-	case_sensitive_button->connect("pressed", callable_mp(this, &EditorHelpSearch::_update_results));
+	case_sensitive_button->connect(SceneStringName(pressed), callable_mp(this, &EditorHelpSearch::_update_results));
 	case_sensitive_button->set_toggle_mode(true);
 	case_sensitive_button->set_focus_mode(Control::FOCUS_NONE);
 	hbox->add_child(case_sensitive_button);
@@ -331,7 +331,7 @@ EditorHelpSearch::EditorHelpSearch() {
 	hierarchy_button = memnew(Button);
 	hierarchy_button->set_theme_type_variation("FlatButton");
 	hierarchy_button->set_tooltip_text(TTR("Show Hierarchy"));
-	hierarchy_button->connect("pressed", callable_mp(this, &EditorHelpSearch::_update_results));
+	hierarchy_button->connect(SceneStringName(pressed), callable_mp(this, &EditorHelpSearch::_update_results));
 	hierarchy_button->set_toggle_mode(true);
 	hierarchy_button->set_pressed(true);
 	hierarchy_button->set_focus_mode(Control::FOCUS_NONE);

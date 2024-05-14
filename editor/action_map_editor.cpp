@@ -38,7 +38,6 @@
 #include "scene/gui/check_button.h"
 #include "scene/gui/separator.h"
 #include "scene/gui/tree.h"
-#include "scene/scene_string_names.h"
 
 static bool _is_action_name_valid(const String &p_name) {
 	const char32_t *cstr = p_name.get_data();
@@ -553,8 +552,8 @@ ActionMapEditor::ActionMapEditor() {
 
 	Button *clear_all_search = memnew(Button);
 	clear_all_search->set_text(TTR("Clear All"));
-	clear_all_search->connect("pressed", callable_mp(action_list_search_by_event, &EventListenerLineEdit::clear_event));
-	clear_all_search->connect("pressed", callable_mp(action_list_search, &LineEdit::clear));
+	clear_all_search->connect(SceneStringName(pressed), callable_mp(action_list_search_by_event, &EventListenerLineEdit::clear_event));
+	clear_all_search->connect(SceneStringName(pressed), callable_mp(action_list_search, &LineEdit::clear));
 	top_hbox->add_child(clear_all_search);
 
 	// Adding Action line edit + button
@@ -571,7 +570,7 @@ ActionMapEditor::ActionMapEditor() {
 
 	add_button = memnew(Button);
 	add_button->set_text(TTR("Add"));
-	add_button->connect("pressed", callable_mp(this, &ActionMapEditor::_add_action_pressed));
+	add_button->connect(SceneStringName(pressed), callable_mp(this, &ActionMapEditor::_add_action_pressed));
 	add_hbox->add_child(add_button);
 	// Disable the button and set its tooltip.
 	_add_edit_text_changed(add_edit->get_text());

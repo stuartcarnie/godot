@@ -52,7 +52,6 @@
 #include "scene/main/window.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/image_texture.h"
-#include "scene/scene_string_names.h"
 #include "servers/rendering_server.h"
 
 ///////////////////////////////////
@@ -173,8 +172,8 @@ void AnimationPlayerEditor::_notification(int p_what) {
 
 			pin->set_icon(get_editor_theme_icon(SNAME("Pin")));
 
-			tool_anim->add_theme_style_override("normal", get_theme_stylebox(SNAME("normal"), SNAME("Button")));
-			track_editor->get_edit_menu()->add_theme_style_override("normal", get_theme_stylebox(SNAME("normal"), SNAME("Button")));
+			tool_anim->add_theme_style_override("normal", get_theme_stylebox(CoreStringName(normal), SNAME("Button")));
+			track_editor->get_edit_menu()->add_theme_style_override("normal", get_theme_stylebox(CoreStringName(normal), SNAME("Button")));
 
 #define ITEM_ICON(m_item, m_icon) tool_anim->get_popup()->set_item_icon(tool_anim->get_popup()->get_item_index(m_item), get_editor_theme_icon(SNAME(m_icon)))
 
@@ -1988,7 +1987,7 @@ AnimationPlayerEditor::AnimationPlayerEditor(AnimationPlayerEditorPlugin *p_plug
 	onion_toggle->set_theme_type_variation("FlatButton");
 	onion_toggle->set_toggle_mode(true);
 	onion_toggle->set_tooltip_text(TTR("Enable Onion Skinning"));
-	onion_toggle->connect(SNAME("pressed"), callable_mp(this, &AnimationPlayerEditor::_onion_skinning_menu).bind(ONION_SKINNING_ENABLE));
+	onion_toggle->connect(SceneStringName(pressed), callable_mp(this, &AnimationPlayerEditor::_onion_skinning_menu).bind(ONION_SKINNING_ENABLE));
 	hb->add_child(onion_toggle);
 
 	onion_skinning = memnew(MenuButton);
@@ -2019,7 +2018,7 @@ AnimationPlayerEditor::AnimationPlayerEditor(AnimationPlayerEditorPlugin *p_plug
 	pin->set_toggle_mode(true);
 	pin->set_tooltip_text(TTR("Pin AnimationPlayer"));
 	hb->add_child(pin);
-	pin->connect(SNAME("pressed"), callable_mp(this, &AnimationPlayerEditor::_pin_pressed));
+	pin->connect(SceneStringName(pressed), callable_mp(this, &AnimationPlayerEditor::_pin_pressed));
 
 	file = memnew(EditorFileDialog);
 	add_child(file);
@@ -2075,13 +2074,13 @@ AnimationPlayerEditor::AnimationPlayerEditor(AnimationPlayerEditorPlugin *p_plug
 	blend_editor.next->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	blend_vb->add_margin_child(TTR("Next (Auto Queue):"), blend_editor.next);
 
-	autoplay->connect(SNAME("pressed"), callable_mp(this, &AnimationPlayerEditor::_autoplay_pressed));
+	autoplay->connect(SceneStringName(pressed), callable_mp(this, &AnimationPlayerEditor::_autoplay_pressed));
 	autoplay->set_toggle_mode(true);
-	play->connect(SNAME("pressed"), callable_mp(this, &AnimationPlayerEditor::_play_pressed));
-	play_from->connect(SNAME("pressed"), callable_mp(this, &AnimationPlayerEditor::_play_from_pressed));
-	play_bw->connect(SNAME("pressed"), callable_mp(this, &AnimationPlayerEditor::_play_bw_pressed));
-	play_bw_from->connect(SNAME("pressed"), callable_mp(this, &AnimationPlayerEditor::_play_bw_from_pressed));
-	stop->connect(SNAME("pressed"), callable_mp(this, &AnimationPlayerEditor::_stop_pressed));
+	play->connect(SceneStringName(pressed), callable_mp(this, &AnimationPlayerEditor::_play_pressed));
+	play_from->connect(SceneStringName(pressed), callable_mp(this, &AnimationPlayerEditor::_play_from_pressed));
+	play_bw->connect(SceneStringName(pressed), callable_mp(this, &AnimationPlayerEditor::_play_bw_pressed));
+	play_bw_from->connect(SceneStringName(pressed), callable_mp(this, &AnimationPlayerEditor::_play_bw_from_pressed));
+	stop->connect(SceneStringName(pressed), callable_mp(this, &AnimationPlayerEditor::_stop_pressed));
 
 	animation->connect(SNAME("item_selected"), callable_mp(this, &AnimationPlayerEditor::_animation_selected));
 
@@ -2101,7 +2100,7 @@ AnimationPlayerEditor::AnimationPlayerEditor(AnimationPlayerEditorPlugin *p_plug
 
 	// Onion skinning.
 
-	track_editor->connect(SNAME("visibility_changed"), callable_mp(this, &AnimationPlayerEditor::_editor_visibility_changed));
+	track_editor->connect(SceneStringName(visibility_changed), callable_mp(this, &AnimationPlayerEditor::_editor_visibility_changed));
 
 	onion.capture.canvas = RS::get_singleton()->canvas_create();
 	onion.capture.canvas_item = RS::get_singleton()->canvas_item_create();

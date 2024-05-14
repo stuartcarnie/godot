@@ -47,7 +47,7 @@ Files extracted from upstream source:
 ## astcenc
 
 - Upstream: https://github.com/ARM-software/astc-encoder
-- Version: 4.7.0 (1a51f2915121275038677317c8bf61f1a78b590c, 2024)
+- Version: 4.8.0 (0d6c9047c5ad19640e2d60fdb8f11a16675e7938, 2024)
 - License: Apache 2.0
 
 Files extracted from upstream source:
@@ -194,7 +194,7 @@ commits.
 ## enet
 
 - Upstream: https://github.com/lsalzman/enet
-- Version: git (c44b7d0f7ff21edb702745e4c019d0537928c373, 2024)
+- Version: 1.3.18 (2662c0de09e36f2a2030ccc2c528a3e4c9e8138a, 2024)
 - License: MIT
 
 Files extracted from upstream source:
@@ -391,7 +391,7 @@ Files extracted from upstream source:
 ## icu4c
 
 - Upstream: https://github.com/unicode-org/icu
-- Version: 74.2 (2d029329c82c7792b985024b2bdab5fc7278fbc8, 2023)
+- Version: 75.1 (7750081bda4b3bc1768ae03849ec70f67ea10625, 2024)
 - License: Unicode
 
 Files extracted from upstream source:
@@ -403,7 +403,7 @@ Files extracted from upstream source:
 
 Files generated from upstream source:
 
-- The `icudt74l.dat` built with the provided `godot_data.json` config file (see
+- The `icudt75l.dat` built with the provided `godot_data.json` config file (see
   https://github.com/unicode-org/icu/blob/master/docs/userguide/icu_data/buildtool.md
   for instructions).
 
@@ -413,7 +413,7 @@ Files generated from upstream source:
 3. Reconfigure ICU with custom data config:
    `ICU_DATA_FILTER_FILE={GODOT_SOURCE}/thirdparty/icu4c/godot_data.json ./runConfigureICU {PLATFORM} --with-data-packaging=common`
 4. Delete `data/out` folder and rebuild data: `cd data && rm -rf ./out && make`
-5. Copy `source/data/out/icudt74l.dat` to the `{GODOT_SOURCE}/thirdparty/icu4c/icudt74l.dat`
+5. Copy `source/data/out/icudt75l.dat` to the `{GODOT_SOURCE}/thirdparty/icu4c/icudt75l.dat`
 
 
 ## jpeg-compressor

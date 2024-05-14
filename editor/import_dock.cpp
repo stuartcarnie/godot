@@ -708,7 +708,7 @@ void ImportDock::_notification(int p_what) {
 	switch (p_what) {
 		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
 			if (EditorThemeManager::is_generated_theme_outdated()) {
-				imported->add_theme_style_override("normal", get_theme_stylebox(SNAME("normal"), SNAME("LineEdit")));
+				imported->add_theme_style_override("normal", get_theme_stylebox(CoreStringName(normal), SNAME("LineEdit")));
 			}
 		} break;
 
@@ -765,7 +765,7 @@ ImportDock::ImportDock() {
 	content->hide();
 
 	imported = memnew(Label);
-	imported->add_theme_style_override("normal", EditorNode::get_singleton()->get_editor_theme()->get_stylebox(SNAME("normal"), SNAME("LineEdit")));
+	imported->add_theme_style_override("normal", EditorNode::get_singleton()->get_editor_theme()->get_stylebox(CoreStringName(normal), SNAME("LineEdit")));
 	imported->set_clip_text(true);
 	content->add_child(imported);
 	HBoxContainer *hb = memnew(HBoxContainer);
@@ -798,7 +798,7 @@ ImportDock::ImportDock() {
 	import = memnew(Button);
 	import->set_text(TTR("Reimport"));
 	import->set_disabled(true);
-	import->connect("pressed", callable_mp(this, &ImportDock::_reimport_pressed));
+	import->connect(SceneStringName(pressed), callable_mp(this, &ImportDock::_reimport_pressed));
 	if (!DisplayServer::get_singleton()->get_swap_cancel_ok()) {
 		advanced_spacer = hb->add_spacer();
 		advanced = memnew(Button);
@@ -818,7 +818,7 @@ ImportDock::ImportDock() {
 
 	advanced->hide();
 	advanced_spacer->hide();
-	advanced->connect("pressed", callable_mp(this, &ImportDock::_advanced_options));
+	advanced->connect(SceneStringName(pressed), callable_mp(this, &ImportDock::_advanced_options));
 
 	reimport_confirm = memnew(ConfirmationDialog);
 	content->add_child(reimport_confirm);

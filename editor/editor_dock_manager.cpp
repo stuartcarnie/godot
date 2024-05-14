@@ -59,12 +59,13 @@ void DockSplitContainer::_update_visibility() {
 	}
 	is_updating = true;
 	bool any_visible = false;
-	for (int i = 0; i < 2; i++) {
-		Control *split = get_containable_child(i);
-		if (split && split->is_visible()) {
-			any_visible = true;
-			break;
+	for (int i = 0; i < get_child_count(false); i++) {
+		Control *c = Object::cast_to<Control>(get_child(i, false));
+		if (!c || !c->is_visible() || c->is_set_as_top_level()) {
+			continue;
 		}
+		any_visible = c;
+		break;
 	}
 	set_visible(any_visible);
 	is_updating = false;
@@ -74,10 +75,13 @@ void DockSplitContainer::add_child_notify(Node *p_child) {
 	SplitContainer::add_child_notify(p_child);
 
 	Control *child_control = nullptr;
-	for (int i = 0; i < 2; i++) {
-		Control *split = get_containable_child(i);
-		if (p_child == split) {
-			child_control = split;
+	for (int i = 0; i < get_child_count(false); i++) {
+		Control *c = Object::cast_to<Control>(get_child(i, false));
+		if (!c || c->is_set_as_top_level()) {
+			continue;
+		}
+		if (p_child == c) {
+			child_control = c;
 			break;
 		}
 	}
@@ -85,7 +89,7 @@ void DockSplitContainer::add_child_notify(Node *p_child) {
 		return;
 	}
 
-	child_control->connect("visibility_changed", callable_mp(this, &DockSplitContainer::_update_visibility));
+	child_control->connect(SceneStringName(visibility_changed), callable_mp(this, &DockSplitContainer::_update_visibility));
 	_update_visibility();
 }
 
@@ -93,10 +97,13 @@ void DockSplitContainer::remove_child_notify(Node *p_child) {
 	SplitContainer::remove_child_notify(p_child);
 
 	Control *child_control = nullptr;
-	for (int i = 0; i < 2; i++) {
-		Control *split = get_containable_child(i);
-		if (p_child == split) {
-			child_control = split;
+	for (int i = 0; i < get_child_count(false); i++) {
+		Control *c = Object::cast_to<Control>(get_child(i, false));
+		if (!c || c->is_set_as_top_level()) {
+			continue;
+		}
+		if (p_child == c) {
+			child_control = c;
 			break;
 		}
 	}
@@ -104,7 +111,7 @@ void DockSplitContainer::remove_child_notify(Node *p_child) {
 		return;
 	}
 
-	child_control->disconnect("visibility_changed", callable_mp(this, &DockSplitContainer::_update_visibility));
+	child_control->disconnect(SceneStringName(visibility_changed), callable_mp(this, &DockSplitContainer::_update_visibility));
 	_update_visibility();
 }
 
@@ -280,7 +287,7 @@ void EditorDockManager::_dock_move_to_bottom(Control *p_dock) {
 
 	// Force docks moved to the bottom to appear first in the list, and give them their associated shortcut to toggle their bottom panel.
 	Button *bottom_button = EditorNode::get_bottom_panel()->add_item(all_docks[p_dock].title, p_dock, all_docks[p_dock].shortcut, true);
-	bottom_button->connect("gui_input", callable_mp(this, &EditorDockManager::_bottom_dock_button_gui_input).bind(bottom_button).bind(p_dock));
+	bottom_button->connect(SceneStringName(gui_input), callable_mp(this, &EditorDockManager::_bottom_dock_button_gui_input).bind(bottom_button).bind(p_dock));
 	EditorNode::get_bottom_panel()->make_item_visible(p_dock);
 }
 
@@ -809,7 +816,7 @@ void EditorDockManager::register_dock_slot(DockSlot p_dock_slot, TabContainer *p
 	p_tab_container->connect("active_tab_rearranged", callable_mp(this, &EditorDockManager::_update_layout).unbind(1));
 	p_tab_container->connect("child_order_changed", callable_mp(this, &EditorDockManager::_dock_container_update_visibility).bind(p_tab_container));
 	p_tab_container->set_use_hidden_tabs_for_min_size(true);
-	p_tab_container->get_tab_bar()->connect("gui_input", callable_mp(this, &EditorDockManager::_dock_container_gui_input).bind(p_tab_container));
+	p_tab_container->get_tab_bar()->connect(SceneStringName(gui_input), callable_mp(this, &EditorDockManager::_dock_container_gui_input).bind(p_tab_container));
 	p_tab_container->hide();
 }
 
@@ -832,7 +839,7 @@ EditorDockManager::EditorDockManager() {
 	docks_menu = memnew(PopupMenu);
 	docks_menu->set_hide_on_item_selection(false);
 	docks_menu->connect("id_pressed", callable_mp(this, &EditorDockManager::_docks_menu_option));
-	EditorNode::get_singleton()->get_gui_base()->connect("theme_changed", callable_mp(this, &EditorDockManager::_update_docks_menu));
+	EditorNode::get_singleton()->get_gui_base()->connect(SceneStringName(theme_changed), callable_mp(this, &EditorDockManager::_update_docks_menu));
 }
 
 void DockContextPopup::_notification(int p_what) {
@@ -1073,7 +1080,7 @@ DockContextPopup::DockContextPopup() {
 	tab_move_left_button = memnew(Button);
 	tab_move_left_button->set_flat(true);
 	tab_move_left_button->set_focus_mode(Control::FOCUS_NONE);
-	tab_move_left_button->connect("pressed", callable_mp(this, &DockContextPopup::_tab_move_left));
+	tab_move_left_button->connect(SceneStringName(pressed), callable_mp(this, &DockContextPopup::_tab_move_left));
 	header_hb->add_child(tab_move_left_button);
 
 	Label *position_label = memnew(Label);
@@ -1085,16 +1092,16 @@ DockContextPopup::DockContextPopup() {
 	tab_move_right_button = memnew(Button);
 	tab_move_right_button->set_flat(true);
 	tab_move_right_button->set_focus_mode(Control::FOCUS_NONE);
-	tab_move_right_button->connect("pressed", callable_mp(this, &DockContextPopup::_tab_move_right));
+	tab_move_right_button->connect(SceneStringName(pressed), callable_mp(this, &DockContextPopup::_tab_move_right));
 
 	header_hb->add_child(tab_move_right_button);
 	dock_select_popup_vb->add_child(header_hb);
 
 	dock_select = memnew(Control);
 	dock_select->set_custom_minimum_size(Size2(128, 64) * EDSCALE);
-	dock_select->connect("gui_input", callable_mp(this, &DockContextPopup::_dock_select_input));
-	dock_select->connect("draw", callable_mp(this, &DockContextPopup::_dock_select_draw));
-	dock_select->connect("mouse_exited", callable_mp(this, &DockContextPopup::_dock_select_mouse_exited));
+	dock_select->connect(SceneStringName(gui_input), callable_mp(this, &DockContextPopup::_dock_select_input));
+	dock_select->connect(SceneStringName(draw), callable_mp(this, &DockContextPopup::_dock_select_draw));
+	dock_select->connect(SceneStringName(mouse_exited), callable_mp(this, &DockContextPopup::_dock_select_mouse_exited));
 	dock_select->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	dock_select_popup_vb->add_child(dock_select);
 
@@ -1108,7 +1115,7 @@ DockContextPopup::DockContextPopup() {
 	}
 	make_float_button->set_focus_mode(Control::FOCUS_NONE);
 	make_float_button->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	make_float_button->connect("pressed", callable_mp(this, &DockContextPopup::_float_dock));
+	make_float_button->connect(SceneStringName(pressed), callable_mp(this, &DockContextPopup::_float_dock));
 	dock_select_popup_vb->add_child(make_float_button);
 
 	dock_to_bottom_button = memnew(Button);
@@ -1116,7 +1123,7 @@ DockContextPopup::DockContextPopup() {
 	dock_to_bottom_button->set_tooltip_text(TTR("Move this dock to the bottom panel."));
 	dock_to_bottom_button->set_focus_mode(Control::FOCUS_NONE);
 	dock_to_bottom_button->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	dock_to_bottom_button->connect("pressed", callable_mp(this, &DockContextPopup::_move_dock_to_bottom));
+	dock_to_bottom_button->connect(SceneStringName(pressed), callable_mp(this, &DockContextPopup::_move_dock_to_bottom));
 	dock_to_bottom_button->hide();
 	dock_select_popup_vb->add_child(dock_to_bottom_button);
 
@@ -1125,6 +1132,6 @@ DockContextPopup::DockContextPopup() {
 	close_button->set_tooltip_text(TTR("Close this dock."));
 	close_button->set_focus_mode(Control::FOCUS_NONE);
 	close_button->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-	close_button->connect("pressed", callable_mp(this, &DockContextPopup::_close_dock));
+	close_button->connect(SceneStringName(pressed), callable_mp(this, &DockContextPopup::_close_dock));
 	dock_select_popup_vb->add_child(close_button);
 }

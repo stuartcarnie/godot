@@ -196,7 +196,7 @@ void EditorHelp::_update_theme_item_cache() {
 	class_desc->add_theme_font_override("normal_font", theme_cache.doc_font);
 	class_desc->add_theme_font_size_override("normal_font_size", theme_cache.doc_font_size);
 
-	class_desc->add_theme_constant_override("line_separation", get_theme_constant(SNAME("line_separation"), SNAME("EditorHelp")));
+	class_desc->add_theme_constant_override(SceneStringName(line_separation), get_theme_constant(SceneStringName(line_separation), SNAME("EditorHelp")));
 	class_desc->add_theme_constant_override("table_h_separation", get_theme_constant(SNAME("table_h_separation"), SNAME("EditorHelp")));
 	class_desc->add_theme_constant_override("table_v_separation", get_theme_constant(SNAME("table_v_separation"), SNAME("EditorHelp")));
 	class_desc->add_theme_constant_override("text_highlight_h_padding", get_theme_constant(SNAME("text_highlight_h_padding"), SNAME("EditorHelp")));
@@ -2340,7 +2340,7 @@ void EditorHelp::_help_callback(const String &p_topic) {
 
 	if (class_desc->is_ready()) {
 		// call_deferred() is not enough.
-		class_desc->connect("draw", callable_mp(class_desc, &RichTextLabel::scroll_to_paragraph).bind(line), CONNECT_ONE_SHOT | CONNECT_DEFERRED);
+		class_desc->connect(SceneStringName(draw), callable_mp(class_desc, &RichTextLabel::scroll_to_paragraph).bind(line), CONNECT_ONE_SHOT | CONNECT_DEFERRED);
 	} else {
 		scroll_to = line;
 	}
@@ -3099,10 +3099,10 @@ EditorHelp::EditorHelp() {
 	class_desc->set_threaded(true);
 	class_desc->set_v_size_flags(SIZE_EXPAND_FILL);
 
-	class_desc->connect("finished", callable_mp(this, &EditorHelp::_class_desc_finished));
+	class_desc->connect(SceneStringName(finished), callable_mp(this, &EditorHelp::_class_desc_finished));
 	class_desc->connect("meta_clicked", callable_mp(this, &EditorHelp::_class_desc_select));
-	class_desc->connect("gui_input", callable_mp(this, &EditorHelp::_class_desc_input));
-	class_desc->connect("resized", callable_mp(this, &EditorHelp::_class_desc_resized).bind(false));
+	class_desc->connect(SceneStringName(gui_input), callable_mp(this, &EditorHelp::_class_desc_input));
+	class_desc->connect(SceneStringName(resized), callable_mp(this, &EditorHelp::_class_desc_resized).bind(false));
 
 	// Added second so it opens at the bottom so it won't offset the entire widget.
 	find_bar = memnew(FindBar);
@@ -3117,7 +3117,7 @@ EditorHelp::EditorHelp() {
 
 	toggle_scripts_button = memnew(Button);
 	toggle_scripts_button->set_flat(true);
-	toggle_scripts_button->connect("pressed", callable_mp(this, &EditorHelp::_toggle_scripts_pressed));
+	toggle_scripts_button->connect(SceneStringName(pressed), callable_mp(this, &EditorHelp::_toggle_scripts_pressed));
 	status_bar->add_child(toggle_scripts_button);
 
 	class_desc->set_selection_enabled(true);
@@ -3699,12 +3699,8 @@ void EditorHelpBit::set_custom_text(const String &p_type, const String &p_name, 
 	}
 }
 
-void EditorHelpBit::prepend_description(const String &p_text) {
-	if (help_data.description.is_empty()) {
-		help_data.description = p_text;
-	} else {
-		help_data.description = p_text + "\n" + help_data.description;
-	}
+void EditorHelpBit::set_description(const String &p_text) {
+	help_data.description = p_text;
 
 	if (is_inside_tree()) {
 		_update_labels();
@@ -3857,8 +3853,8 @@ EditorHelpBitTooltip::EditorHelpBitTooltip(Control *p_target) {
 	add_child(timer);
 
 	ERR_FAIL_NULL(p_target);
-	p_target->connect("mouse_entered", callable_mp(timer, &Timer::stop));
-	p_target->connect("mouse_exited", callable_mp(timer, &Timer::start).bind(-1));
+	p_target->connect(SceneStringName(mouse_entered), callable_mp(timer, &Timer::stop));
+	p_target->connect(SceneStringName(mouse_exited), callable_mp(timer, &Timer::start).bind(-1));
 }
 
 #if defined(MODULE_GDSCRIPT_ENABLED) || defined(MODULE_MONO_ENABLED)
@@ -4047,13 +4043,13 @@ FindBar::FindBar() {
 	find_prev->set_flat(true);
 	add_child(find_prev);
 	find_prev->set_focus_mode(FOCUS_NONE);
-	find_prev->connect("pressed", callable_mp(this, &FindBar::search_prev));
+	find_prev->connect(SceneStringName(pressed), callable_mp(this, &FindBar::search_prev));
 
 	find_next = memnew(Button);
 	find_next->set_flat(true);
 	add_child(find_next);
 	find_next->set_focus_mode(FOCUS_NONE);
-	find_next->connect("pressed", callable_mp(this, &FindBar::search_next));
+	find_next->connect(SceneStringName(pressed), callable_mp(this, &FindBar::search_next));
 
 	Control *space = memnew(Control);
 	add_child(space);
@@ -4064,7 +4060,7 @@ FindBar::FindBar() {
 	hide_button->set_focus_mode(FOCUS_NONE);
 	hide_button->set_ignore_texture_size(true);
 	hide_button->set_stretch_mode(TextureButton::STRETCH_KEEP_CENTERED);
-	hide_button->connect("pressed", callable_mp(this, &FindBar::_hide_bar));
+	hide_button->connect(SceneStringName(pressed), callable_mp(this, &FindBar::_hide_bar));
 }
 
 void FindBar::popup_search() {

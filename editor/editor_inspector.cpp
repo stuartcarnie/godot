@@ -647,7 +647,7 @@ void EditorProperty::_focusable_focused(int p_index) {
 }
 
 void EditorProperty::add_focusable(Control *p_control) {
-	p_control->connect("focus_entered", callable_mp(this, &EditorProperty::_focusable_focused).bind(focusables.size()));
+	p_control->connect(SceneStringName(focus_entered), callable_mp(this, &EditorProperty::_focusable_focused).bind(focusables.size()));
 	focusables.push_back(p_control);
 }
 
@@ -975,13 +975,17 @@ Control *EditorProperty::make_custom_tooltip(const String &p_text) const {
 			if (inspector) {
 				const String custom_description = inspector->get_custom_property_description(p_text);
 				if (!custom_description.is_empty()) {
-					help_bit->prepend_description(custom_description);
+					help_bit->set_description(custom_description);
 				}
 			}
 		}
 
 		if (!custom_warning.is_empty()) {
-			help_bit->prepend_description("[b][color=" + get_theme_color(SNAME("warning_color")).to_html(false) + "]" + custom_warning + "[/color][/b]");
+			String description = "[b][color=" + get_theme_color(SNAME("warning_color")).to_html(false) + "]" + custom_warning + "[/color][/b]";
+			if (!help_bit->get_description().is_empty()) {
+				description += "\n" + help_bit->get_description();
+			}
+			help_bit->set_description(description);
 		}
 
 		EditorHelpBitTooltip::show_tooltip(help_bit, const_cast<EditorProperty *>(this));
@@ -2164,10 +2168,10 @@ void EditorInspectorArray::_setup() {
 		int element_position = begin_array_index + i;
 		ae.panel->set_meta("index", element_position);
 		ae.panel->set_tooltip_text(vformat(TTR("Element %d: %s%d*"), element_position, array_element_prefix, element_position));
-		ae.panel->connect("focus_entered", callable_mp((CanvasItem *)ae.panel, &PanelContainer::queue_redraw));
-		ae.panel->connect("focus_exited", callable_mp((CanvasItem *)ae.panel, &PanelContainer::queue_redraw));
-		ae.panel->connect("draw", callable_mp(this, &EditorInspectorArray::_panel_draw).bind(i));
-		ae.panel->connect("gui_input", callable_mp(this, &EditorInspectorArray::_panel_gui_input).bind(i));
+		ae.panel->connect(SceneStringName(focus_entered), callable_mp((CanvasItem *)ae.panel, &PanelContainer::queue_redraw));
+		ae.panel->connect(SceneStringName(focus_exited), callable_mp((CanvasItem *)ae.panel, &PanelContainer::queue_redraw));
+		ae.panel->connect(SceneStringName(draw), callable_mp(this, &EditorInspectorArray::_panel_draw).bind(i));
+		ae.panel->connect(SceneStringName(gui_input), callable_mp(this, &EditorInspectorArray::_panel_gui_input).bind(i));
 		ae.panel->add_theme_style_override(SNAME("panel"), i % 2 ? odd_style : even_style);
 		elements_vbox->add_child(ae.panel);
 
@@ -2199,7 +2203,7 @@ void EditorInspectorArray::_setup() {
 			if (element_position > 0) {
 				ae.move_up = memnew(Button);
 				ae.move_up->set_icon(get_editor_theme_icon(SNAME("MoveUp")));
-				ae.move_up->connect("pressed", callable_mp(this, &EditorInspectorArray::_move_element).bind(element_position, element_position - 1));
+				ae.move_up->connect(SceneStringName(pressed), callable_mp(this, &EditorInspectorArray::_move_element).bind(element_position, element_position - 1));
 				move_vbox->add_child(ae.move_up);
 			}
 
@@ -2215,7 +2219,7 @@ void EditorInspectorArray::_setup() {
 			if (element_position < _get_array_count() - 1) {
 				ae.move_down = memnew(Button);
 				ae.move_down->set_icon(get_editor_theme_icon(SNAME("MoveDown")));
-				ae.move_down->connect("pressed", callable_mp(this, &EditorInspectorArray::_move_element).bind(element_position, element_position + 2));
+				ae.move_down->connect(SceneStringName(pressed), callable_mp(this, &EditorInspectorArray::_move_element).bind(element_position, element_position + 2));
 				move_vbox->add_child(ae.move_down);
 			}
 		}
@@ -2239,7 +2243,7 @@ void EditorInspectorArray::_setup() {
 		ae.erase = memnew(Button);
 		ae.erase->set_icon(get_editor_theme_icon(SNAME("Remove")));
 		ae.erase->set_v_size_flags(SIZE_SHRINK_CENTER);
-		ae.erase->connect("pressed", callable_mp(this, &EditorInspectorArray::_remove_item).bind(element_position));
+		ae.erase->connect(SceneStringName(pressed), callable_mp(this, &EditorInspectorArray::_remove_item).bind(element_position));
 		ae.hbox->add_child(ae.erase);
 	}
 
@@ -2429,12 +2433,12 @@ EditorInspectorArray::EditorInspectorArray(bool p_read_only) {
 	vbox->add_child(elements_vbox);
 
 	add_button = EditorInspector::create_inspector_action_button(TTR("Add Element"));
-	add_button->connect("pressed", callable_mp(this, &EditorInspectorArray::_add_button_pressed));
+	add_button->connect(SceneStringName(pressed), callable_mp(this, &EditorInspectorArray::_add_button_pressed));
 	add_button->set_disabled(read_only);
 	vbox->add_child(add_button);
 
 	control_dropping = memnew(Control);
-	control_dropping->connect("draw", callable_mp(this, &EditorInspectorArray::_control_dropping_draw));
+	control_dropping->connect(SceneStringName(draw), callable_mp(this, &EditorInspectorArray::_control_dropping_draw));
 	control_dropping->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
 	add_child(control_dropping);
 
@@ -2454,7 +2458,7 @@ EditorInspectorArray::EditorInspectorArray(bool p_read_only) {
 	new_size_spin_box->set_editable(!read_only);
 	resize_dialog_vbox->add_margin_child(TTRC("New Size:"), new_size_spin_box);
 
-	vbox->connect("visibility_changed", callable_mp(this, &EditorInspectorArray::_vbox_visibility_changed));
+	vbox->connect(SceneStringName(visibility_changed), callable_mp(this, &EditorInspectorArray::_vbox_visibility_changed));
 }
 
 ////////////////////////////////////////////////
@@ -2524,12 +2528,12 @@ EditorPaginator::EditorPaginator() {
 
 	first_page_button = memnew(Button);
 	first_page_button->set_flat(true);
-	first_page_button->connect("pressed", callable_mp(this, &EditorPaginator::_first_page_button_pressed));
+	first_page_button->connect(SceneStringName(pressed), callable_mp(this, &EditorPaginator::_first_page_button_pressed));
 	add_child(first_page_button);
 
 	prev_page_button = memnew(Button);
 	prev_page_button->set_flat(true);
-	prev_page_button->connect("pressed", callable_mp(this, &EditorPaginator::_prev_page_button_pressed));
+	prev_page_button->connect(SceneStringName(pressed), callable_mp(this, &EditorPaginator::_prev_page_button_pressed));
 	add_child(prev_page_button);
 
 	page_line_edit = memnew(LineEdit);
@@ -2542,12 +2546,12 @@ EditorPaginator::EditorPaginator() {
 
 	next_page_button = memnew(Button);
 	next_page_button->set_flat(true);
-	next_page_button->connect("pressed", callable_mp(this, &EditorPaginator::_next_page_button_pressed));
+	next_page_button->connect(SceneStringName(pressed), callable_mp(this, &EditorPaginator::_next_page_button_pressed));
 	add_child(next_page_button);
 
 	last_page_button = memnew(Button);
 	last_page_button->set_flat(true);
-	last_page_button->connect("pressed", callable_mp(this, &EditorPaginator::_last_page_button_pressed));
+	last_page_button->connect(SceneStringName(pressed), callable_mp(this, &EditorPaginator::_last_page_button_pressed));
 	add_child(last_page_button);
 }
 
@@ -2857,7 +2861,11 @@ void EditorInspector::update_tree() {
 			vbox_per_path.clear();
 			editor_inspector_array_per_prefix.clear();
 
-			if (!show_categories) {
+			// `hint_script` should contain a native class name or a script path.
+			// Otherwise the category was probably added via `@export_category` or `_get_property_list()`.
+			const bool is_custom_category = p.hint_string.is_empty();
+
+			if ((is_custom_category && !show_custom_categories) || (!is_custom_category && !show_standard_categories)) {
 				continue;
 			}
 
@@ -2876,7 +2884,7 @@ void EditorInspector::update_tree() {
 				}
 				// Treat custom categories as second-level ones. Do not skip a normal category if it is followed by a custom one.
 				// Skip in the other 3 cases (normal -> normal, custom -> custom, custom -> normal).
-				if ((N->get().usage & PROPERTY_USAGE_CATEGORY) && (p.hint_string.is_empty() || !N->get().hint_string.is_empty())) {
+				if ((N->get().usage & PROPERTY_USAGE_CATEGORY) && (is_custom_category || !N->get().hint_string.is_empty())) {
 					valid = false;
 					break;
 				}
@@ -2891,10 +2899,8 @@ void EditorInspector::update_tree() {
 			main_vbox->add_child(category);
 			category_vbox = nullptr; //reset
 
-			// `hint_script` should contain a native class name or a script path.
-			// Otherwise the category was probably added via `@export_category` or `_get_property_list()`.
 			// Do not add an icon, do not change the current class (`doc_name`) for custom categories.
-			if (p.hint_string.is_empty()) {
+			if (is_custom_category) {
 				category->label = p.name;
 				category->set_tooltip_text(p.name);
 			} else {
@@ -3459,7 +3465,7 @@ void EditorInspector::update_tree() {
 
 		Button *add_md = EditorInspector::create_inspector_action_button(TTR("Add Metadata"));
 		add_md->set_icon(get_editor_theme_icon(SNAME("Add")));
-		add_md->connect(SNAME("pressed"), callable_mp(this, &EditorInspector::_show_add_meta_dialog));
+		add_md->connect(SceneStringName(pressed), callable_mp(this, &EditorInspector::_show_add_meta_dialog));
 		main_vbox->add_child(add_md);
 		if (all_read_only) {
 			add_md->set_disabled(true);
@@ -3522,7 +3528,7 @@ void EditorInspector::edit(Object *p_object) {
 
 	next_object = p_object; // Some plugins need to know the next edited object when clearing the inspector.
 	if (object) {
-		object->disconnect("property_list_changed", callable_mp(this, &EditorInspector::_changed_callback));
+		object->disconnect(CoreStringName(property_list_changed), callable_mp(this, &EditorInspector::_changed_callback));
 		_clear();
 	}
 	per_array_page.clear();
@@ -3534,7 +3540,7 @@ void EditorInspector::edit(Object *p_object) {
 		if (scroll_cache.has(object->get_instance_id())) { //if exists, set something else
 			update_scroll_request = scroll_cache[object->get_instance_id()]; //done this way because wait until full size is accommodated
 		}
-		object->connect("property_list_changed", callable_mp(this, &EditorInspector::_changed_callback));
+		object->connect(CoreStringName(property_list_changed), callable_mp(this, &EditorInspector::_changed_callback));
 		update_tree();
 	}
 
@@ -3596,8 +3602,9 @@ void EditorInspector::set_autoclear(bool p_enable) {
 	autoclear = p_enable;
 }
 
-void EditorInspector::set_show_categories(bool p_show) {
-	show_categories = p_show;
+void EditorInspector::set_show_categories(bool p_show_standard, bool p_show_custom) {
+	show_standard_categories = p_show_standard;
+	show_custom_categories = p_show_custom;
 	update_tree();
 }
 
@@ -4151,7 +4158,7 @@ String EditorInspector::get_property_prefix() const {
 }
 
 void EditorInspector::add_custom_property_description(const String &p_class, const String &p_property, const String &p_description) {
-	const String key = vformat("property|%s|%s|", p_class, p_property);
+	const String key = vformat("property|%s|%s", p_class, p_property);
 	custom_property_descriptions[key] = p_description;
 }
 
