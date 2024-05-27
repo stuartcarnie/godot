@@ -117,10 +117,6 @@ _FORCE_INLINE_ static bool operator==(MTLSize p_a, MTLSize p_b) {
 	return p_a.width == p_b.width && p_a.height == p_b.height && p_a.depth == p_b.depth;
 }
 
-/****************/
-/**** MEMORY ****/
-/****************/
-
 /*****************/
 /**** BUFFERS ****/
 /*****************/
@@ -843,7 +839,7 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 	Fence *fence = (Fence *)(p_cmd_fence.id);
 	if (fence != nullptr) {
 		[cmd_buffer->get_command_buffer() addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
-		  dispatch_semaphore_signal(fence->semaphore);
+			dispatch_semaphore_signal(fence->semaphore);
 		}];
 	}
 
@@ -3870,6 +3866,11 @@ String RenderingDeviceDriverMetal::get_pipeline_cache_uuid() const {
 
 const RDD::Capabilities &RenderingDeviceDriverMetal::get_capabilities() const {
 	return capabilities;
+}
+
+bool RenderingDeviceDriverMetal::is_composite_alpha_supported(CommandQueueID p_queue) const {
+	// the CAMetalLayer.opaque property is configured according to this global setting
+	return OS::get_singleton()->is_layered_allowed();
 }
 
 size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const {
