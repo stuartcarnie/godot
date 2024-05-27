@@ -61,7 +61,6 @@ set(GODOT_MODULE_MONO_SCRIPT_DOTNET_SDK_CSHARP
         Directory.Build.props
         Directory.Build.targets
         doc_classes/CSharpScript.xml
-        doc_classes/GodotSharp.xml
         editor/GodotTools/GodotTools/ExternalEditorId.cs
         editor/GodotTools/GodotTools/Export/ExportPlugin.cs
         editor/GodotTools/GodotTools/Export/AotBuilder.cs

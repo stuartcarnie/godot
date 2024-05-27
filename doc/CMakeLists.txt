@@ -50,7 +50,6 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/minimp3/doc_classes/ResourceImporterMP3.xml
         ${CMAKE_SOURCE_DIR}/modules/mobile_vr/doc_classes/MobileVRInterface.xml
         ${CMAKE_SOURCE_DIR}/modules/mono/doc_classes/CSharpScript.xml
-        ${CMAKE_SOURCE_DIR}/modules/mono/doc_classes/GodotSharp.xml
         ${CMAKE_SOURCE_DIR}/modules/multiplayer/doc_classes/MultiplayerSpawner.xml
         ${CMAKE_SOURCE_DIR}/modules/multiplayer/doc_classes/MultiplayerSynchronizer.xml
         ${CMAKE_SOURCE_DIR}/modules/multiplayer/doc_classes/SceneMultiplayer.xml
