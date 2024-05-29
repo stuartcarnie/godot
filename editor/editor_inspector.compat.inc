@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  openxr_composition_layer_quad.h                                       */
+/*  editor_inspector.compat.inc                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,37 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OPENXR_COMPOSITION_LAYER_QUAD_H
-#define OPENXR_COMPOSITION_LAYER_QUAD_H
+#ifndef DISABLE_DEPRECATED
 
-#include <openxr/openxr.h>
+void EditorInspectorPlugin::_add_property_editor_bind_compat_92322(const String &p_for_property, Control *p_prop, bool p_add_to_end) {
+	add_property_editor(p_for_property, p_prop, p_add_to_end, "");
+}
 
-#include "openxr_composition_layer.h"
+void EditorInspectorPlugin::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("add_property_editor", "property", "editor", "add_to_end"), &EditorInspectorPlugin::_add_property_editor_bind_compat_92322, DEFVAL(false));
+}
 
-class OpenXRCompositionLayerQuad : public OpenXRCompositionLayer {
-	GDCLASS(OpenXRCompositionLayerQuad, OpenXRCompositionLayer);
-
-	XrCompositionLayerQuad composition_layer;
-
-	Size2 quad_size = Size2(1.0, 1.0);
-
-protected:
-	static void _bind_methods();
-
-	void _notification(int p_what);
-
-	void update_transform();
-
-	virtual Ref<Mesh> _create_fallback_mesh() override;
-
-public:
-	void set_quad_size(const Size2 &p_size);
-	Size2 get_quad_size() const;
-
-	virtual Vector2 intersects_ray(const Vector3 &p_origin, const Vector3 &p_direction) const override;
-
-	OpenXRCompositionLayerQuad();
-	~OpenXRCompositionLayerQuad();
-};
-
-#endif // OPENXR_COMPOSITION_LAYER_QUAD_H
+#endif // DISABLE_DEPRECATED
