@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  debug_adapter_server.h                                                */
+/*  gdextension.compat.inc                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,22 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef DEBUG_ADAPTER_SERVER_H
-#define DEBUG_ADAPTER_SERVER_H
+#ifndef DISABLE_DEPRECATED
 
-#include "debug_adapter_protocol.h"
-#include "editor/plugins/editor_plugin.h"
+Error GDExtension::_open_library_bind_compat_88418(const String &p_path, const String &p_entry_symbol) {
+	return ERR_UNAVAILABLE;
+}
 
-class DebugAdapterServer : public EditorPlugin {
-	GDCLASS(DebugAdapterServer, EditorPlugin);
+void GDExtension::_close_library_bind_compat_88418() {
+}
 
-	DebugAdapterProtocol protocol;
+void GDExtension::_initialize_library_bind_compat_88418(InitializationLevel p_level) {
+}
 
-	int remote_port = 6006;
-	bool thread_running = false;
-	bool started = false;
-	bool polling = false;
-	static void thread_func(void *p_userdata);
+void GDExtension::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("open_library", "path", "entry_symbol"), &GDExtension::_open_library_bind_compat_88418);
+	ClassDB::bind_compatibility_method(D_METHOD("close_library"), &GDExtension::_close_library_bind_compat_88418);
+	ClassDB::bind_compatibility_method(D_METHOD("initialize_library", "level"), &GDExtension::_initialize_library_bind_compat_88418);
+}
 
-private:
-	void _notification(int p_what);
-
-public:
-	static int port_override;
-	DebugAdapterServer();
-	void start();
-	void stop();
-};
-
-#endif // DEBUG_ADAPTER_SERVER_H
+#endif
