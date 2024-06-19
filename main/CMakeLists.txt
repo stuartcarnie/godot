@@ -70,6 +70,8 @@ target_sources(Godot PRIVATE
         main_timer_sync.h
         performance.cpp
         performance.h
+        steam_tracker.cpp
+        steam_tracker.h
 )
 # [[[end]]]
 
