@@ -8,6 +8,8 @@ godot_add_library(godot-editor-export FOLDER export)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-editor-export PRIVATE
+        codesign.cpp
+        codesign.h
         editor_export.cpp
         editor_export.h
         editor_export_platform.cpp
@@ -20,6 +22,10 @@ target_sources(godot-editor-export PRIVATE
         editor_export_preset.h
         export_template_manager.cpp
         export_template_manager.h
+        lipo.cpp
+        lipo.h
+        macho.cpp
+        macho.h
         project_export.cpp
         project_export.h
 )

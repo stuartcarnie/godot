@@ -187,6 +187,8 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/AudioEffectStereoEnhance.xml
         classes/AudioListener2D.xml
         classes/AudioListener3D.xml
+        classes/AudioSample.xml
+        classes/AudioSamplePlayback.xml
         classes/AudioServer.xml
         classes/AudioStream.xml
         classes/AudioStreamGenerator.xml
