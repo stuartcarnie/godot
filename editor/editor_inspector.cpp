@@ -2598,6 +2598,10 @@ int EditorInspector::inspector_plugin_count = 0;
 
 EditorProperty *EditorInspector::instantiate_property_editor(Object *p_object, const Variant::Type p_type, const String &p_path, PropertyHint p_hint, const String &p_hint_text, const uint32_t p_usage, const bool p_wide) {
 	for (int i = inspector_plugin_count - 1; i >= 0; i--) {
+		if (!inspector_plugins[i]->can_handle(p_object)) {
+			continue;
+		}
+
 		inspector_plugins[i]->parse_property(p_object, p_type, p_path, p_hint, p_hint_text, p_usage, p_wide);
 		if (inspector_plugins[i]->added_editors.size()) {
 			for (List<EditorInspectorPlugin::AddedEditor>::Element *E = inspector_plugins[i]->added_editors.front()->next(); E; E = E->next()) { //only keep first one
@@ -3133,6 +3137,7 @@ void EditorInspector::update_tree() {
 		// Recreate the category vbox if it was reset.
 		if (category_vbox == nullptr) {
 			category_vbox = memnew(VBoxContainer);
+			category_vbox->hide();
 			main_vbox->add_child(category_vbox);
 		}
 
@@ -3205,6 +3210,7 @@ void EditorInspector::update_tree() {
 
 		// If we did not find a section to add the property to, add it to the category vbox instead (the category vbox handles margins correctly).
 		if (current_vbox == main_vbox) {
+			category_vbox->show();
 			current_vbox = category_vbox;
 		}
 
