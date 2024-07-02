@@ -46,7 +46,7 @@ public:
 		int group = 0;
 		CharString text;
 		bool default_enabled = true;
-		VariantDefine(){};
+		VariantDefine() {};
 		VariantDefine(int p_group, const String &p_text, bool p_default_enabled) {
 			group = p_group;
 			default_enabled = p_default_enabled;
@@ -151,6 +151,12 @@ private:
 protected:
 	ShaderRD();
 	void setup(const char *p_vertex_code, const char *p_fragment_code, const char *p_compute_code, const char *p_name);
+#ifdef DYNAMIC_CORE_SHADERS
+	virtual char const *rel_shader_path() const { return ""; };
+
+public:
+	static String shader_source_root;
+#endif
 
 public:
 	RID version_create();

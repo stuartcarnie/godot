@@ -33,3 +33,8 @@ target_sources(godot-server-rendering-renderer_rd PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-server-rendering-renderer_rd PUBLIC godot-templates godot-os godot-glslang spirv-reflect)
+
+target_compile_definitions(godot-server-rendering-renderer_rd
+        PRIVATE
+        $<$<BOOL:${WANT_DYNAMIC_CORE_SHADERS}>:DYNAMIC_CORE_SHADERS GODOT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}">
+)

@@ -62,6 +62,13 @@ set_property(CACHE WARNINGS PROPERTY STRINGS extra all moderate no)
 option(ENABLE_WERROR "Treat compiler warnings as errors" OFF)
 option(APPLE_BUNDLE_IDENTIFIER "Set the bundle identifier for macOS/iOS builds" "org.godotengine.godot")
 mark_as_advanced(APPLE_BUNDLE_IDENTIFIER)
+option(ENABLE_DYNAMIC_CORE_SHADERS "Load core shaders from disk instead of embedding them" OFF)
+
+if (ENABLE_DYNAMIC_CORE_SHADERS)
+    set(WANT_DYNAMIC_CORE_SHADERS 1)
+else ()
+    set(WANT_DYNAMIC_CORE_SHADERS 0)
+endif ()
 
 # Third party libraries
 

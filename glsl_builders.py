@@ -137,6 +137,15 @@ def build_rd_header(
             f'setup(_vertex_code, _fragment_code, nullptr, "{out_file_class}");',
         ]
 
+    rel_shader_path = os.path.relpath(filename)
+
+    protected_parts = [
+        "#ifdef DYNAMIC_CORE_SHADERS",
+        f'\tchar const * rel_shader_path() const override {{ return "{rel_shader_path}"; }}',
+        "#endif"
+    ]
+    protected_content = "\n".join(protected_parts)
+
     body_content = "\n\t\t".join(body_parts)
 
     # Intended curly brackets are doubled so f-string doesn't eat them up.
@@ -147,6 +156,10 @@ def build_rd_header(
 #include "servers/rendering/renderer_rd/shader_rd.h"
 
 class {out_file_class} : public ShaderRD {{
+
+protected:
+
+{protected_content}
 
 public:
 

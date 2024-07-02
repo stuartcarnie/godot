@@ -73,3 +73,7 @@ target_link_libraries(godot-servers PUBLIC
         godot-server-extensions
         godot-server-text)
 
+target_compile_definitions(godot-servers
+        PRIVATE
+        $<$<BOOL:${WANT_DYNAMIC_CORE_SHADERS}>:DYNAMIC_CORE_SHADERS GODOT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}">
+)
