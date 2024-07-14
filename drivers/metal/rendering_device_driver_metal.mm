@@ -856,11 +856,6 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 		}
 	}
 
-	// HACK(sgc): we need a better way to determine when to commit the query pool
-	if (p_swap_chains.size() > 0) {
-		cmd_buffer->timestamp_commit();
-	}
-
 	cmd_buffer->commit();
 
 	if (p_swap_chains.size() > 0) {
@@ -3584,20 +3579,15 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 // ----- TIMESTAMP -----
 
 RDD::QueryPoolID RenderingDeviceDriverMetal::timestamp_query_pool_create(uint32_t p_query_count) {
-	NSError *error = nil;
-	MDQueryPool *pool = MDQueryPool::new_query_pool(device, p_query_count, &error);
-	ERR_FAIL_COND_V_MSG(error != nil || pool == nil, RDD::QueryPoolID(), ([NSString stringWithFormat:@"error creating query pool: %@", error.localizedDescription].UTF8String));
-	return QueryPoolID(pool);
+	return QueryPoolID(1);
 }
 
 void RenderingDeviceDriverMetal::timestamp_query_pool_free(QueryPoolID p_pool_id) {
-	MDQueryPool *pool = (MDQueryPool *)(p_pool_id.id);
-	delete pool;
 }
 
 void RenderingDeviceDriverMetal::timestamp_query_pool_get_results(QueryPoolID p_pool_id, uint32_t p_query_count, uint64_t *r_results) {
-	MDQueryPool *pool = (MDQueryPool *)(p_pool_id.id);
-	pool->get_results(r_results, p_query_count);
+	// Metal doesn't support timestamp queries, so we just clear the buffer.
+	bzero(r_results, p_query_count * sizeof(uint64_t));
 }
 
 uint64_t RenderingDeviceDriverMetal::timestamp_query_result_to_time(uint64_t p_result) {
@@ -3605,13 +3595,9 @@ uint64_t RenderingDeviceDriverMetal::timestamp_query_result_to_time(uint64_t p_r
 }
 
 void RenderingDeviceDriverMetal::command_timestamp_query_pool_reset(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_query_count) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	cb->timestamp_query_pool_reset(p_pool_id, p_query_count);
 }
 
 void RenderingDeviceDriverMetal::command_timestamp_write(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_index) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	cb->timestamp_write(p_pool_id, p_index);
 }
 
 #pragma mark - Labels
