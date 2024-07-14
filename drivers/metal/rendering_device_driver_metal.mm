@@ -165,7 +165,7 @@ void RenderingDeviceDriverMetal::buffer_unmap(BufferID p_buffer) {
 
 #pragma mark - Format Conversions
 
-const MTLTextureType RenderingDeviceDriverMetal::texture_type[RD::TEXTURE_TYPE_MAX] = {
+static const MTLTextureType TEXTURE_TYPE[RD::TEXTURE_TYPE_MAX] = {
 	MTLTextureType1D,
 	MTLTextureType2D,
 	MTLTextureType3D,
@@ -198,7 +198,7 @@ RenderingDeviceDriverMetal::Result<bool> RenderingDeviceDriverMetal::is_valid_li
 
 RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p_format, const TextureView &p_view) {
 	MTLTextureDescriptor *desc = [MTLTextureDescriptor new];
-	desc.textureType = texture_type[p_format.texture_type];
+	desc.textureType = TEXTURE_TYPE[p_format.texture_type];
 
 	PixelFormats &formats = *pixel_formats;
 	desc.pixelFormat = formats.getMTLPixelFormat(p_format.format);
@@ -248,7 +248,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 		}
 	}
 
-	static const MTLTextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
+	static const MTLTextureSwizzle COMPONENT_SWIZZLE[TEXTURE_SWIZZLE_MAX] = {
 		static_cast<MTLTextureSwizzle>(255), // IDENTITY
 		MTLTextureSwizzleZero,
 		MTLTextureSwizzleOne,
@@ -259,10 +259,10 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 	};
 
 	MTLTextureSwizzleChannels swizzle = MTLTextureSwizzleChannelsMake(
-			p_view.swizzle_r != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_r] : MTLTextureSwizzleRed,
-			p_view.swizzle_g != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_g] : MTLTextureSwizzleGreen,
-			p_view.swizzle_b != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_b] : MTLTextureSwizzleBlue,
-			p_view.swizzle_a != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_a] : MTLTextureSwizzleAlpha);
+			p_view.swizzle_r != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_r] : MTLTextureSwizzleRed,
+			p_view.swizzle_g != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_g] : MTLTextureSwizzleGreen,
+			p_view.swizzle_b != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_b] : MTLTextureSwizzleBlue,
+			p_view.swizzle_a != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_a] : MTLTextureSwizzleAlpha);
 
 	// represents a swizzle operation that is a no-op.
 	static MTLTextureSwizzleChannels IDENTITY_SWIZZLE = {
@@ -405,7 +405,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared(TextureID p_ori
 RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared_from_slice(TextureID p_original_texture, const TextureView &p_view, TextureSliceType p_slice_type, uint32_t p_layer, uint32_t p_layers, uint32_t p_mipmap, uint32_t p_mipmaps) {
 	id<MTLTexture> src_texture = rid::get(p_original_texture);
 
-	static const MTLTextureType view_types[] = {
+	static const MTLTextureType VIEW_TYPES[] = {
 		MTLTextureType1D, // MTLTextureType1D
 		MTLTextureType1D, // MTLTextureType1DArray
 		MTLTextureType2D, // MTLTextureType2D
@@ -417,7 +417,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared_from_slice(Text
 		MTLTextureType2D, // MTLTextureType2DMultisampleArray
 	};
 
-	MTLTextureType textureType = view_types[src_texture.textureType];
+	MTLTextureType textureType = VIEW_TYPES[src_texture.textureType];
 	switch (p_slice_type) {
 		case TEXTURE_SLICE_2D: {
 			textureType = MTLTextureType2D;
@@ -610,9 +610,14 @@ BitField<RDD::TextureUsageBits> RenderingDeviceDriverMetal::texture_get_usages_s
 	return supported;
 }
 
+bool RenderingDeviceDriverMetal::texture_can_make_shared_with_format(TextureID p_texture, DataFormat p_format, bool &r_raw_reinterpretation) {
+	r_raw_reinterpretation = false;
+	return true;
+}
+
 #pragma mark - Sampler
 
-const MTLCompareFunction RenderingDeviceDriverMetal::compare_operators[RD::COMPARE_OP_MAX] = {
+static const MTLCompareFunction COMPARE_OPERATORS[RD::COMPARE_OP_MAX] = {
 	MTLCompareFunctionNever,
 	MTLCompareFunctionLess,
 	MTLCompareFunctionEqual,
@@ -623,7 +628,7 @@ const MTLCompareFunction RenderingDeviceDriverMetal::compare_operators[RD::COMPA
 	MTLCompareFunctionAlways,
 };
 
-const MTLStencilOperation RenderingDeviceDriverMetal::stencil_operations[RD::STENCIL_OP_MAX] = {
+static const MTLStencilOperation STENCIL_OPERATIONS[RD::STENCIL_OP_MAX] = {
 	MTLStencilOperationKeep,
 	MTLStencilOperationZero,
 	MTLStencilOperationReplace,
@@ -634,7 +639,7 @@ const MTLStencilOperation RenderingDeviceDriverMetal::stencil_operations[RD::STE
 	MTLStencilOperationDecrementWrap,
 };
 
-const MTLBlendFactor RenderingDeviceDriverMetal::blend_factors[RD::BLEND_FACTOR_MAX] = {
+static const MTLBlendFactor BLEND_FACTORS[RD::BLEND_FACTOR_MAX] = {
 	MTLBlendFactorZero,
 	MTLBlendFactorOne,
 	MTLBlendFactorSourceColor,
@@ -655,7 +660,7 @@ const MTLBlendFactor RenderingDeviceDriverMetal::blend_factors[RD::BLEND_FACTOR_
 	MTLBlendFactorSource1Alpha,
 	MTLBlendFactorOneMinusSource1Alpha,
 };
-const MTLBlendOperation RenderingDeviceDriverMetal::blend_operations[RD::BLEND_OP_MAX] = {
+static const MTLBlendOperation BLEND_OPERATIONS[RD::BLEND_OP_MAX] = {
 	MTLBlendOperationAdd,
 	MTLBlendOperationSubtract,
 	MTLBlendOperationReverseSubtract,
@@ -663,7 +668,7 @@ const MTLBlendOperation RenderingDeviceDriverMetal::blend_operations[RD::BLEND_O
 	MTLBlendOperationMax,
 };
 
-const MTLSamplerAddressMode RenderingDeviceDriverMetal::address_modes[RD::SAMPLER_REPEAT_MODE_MAX] = {
+static const API_AVAILABLE(macos(11.0), ios(14.0)) MTLSamplerAddressMode ADDRESS_MODES[RD::SAMPLER_REPEAT_MODE_MAX] = {
 	MTLSamplerAddressModeRepeat,
 	MTLSamplerAddressModeMirrorRepeat,
 	MTLSamplerAddressModeClampToEdge,
@@ -671,7 +676,7 @@ const MTLSamplerAddressMode RenderingDeviceDriverMetal::address_modes[RD::SAMPLE
 	MTLSamplerAddressModeMirrorClampToEdge,
 };
 
-const MTLSamplerBorderColor RenderingDeviceDriverMetal::sampler_border_colors[RD::SAMPLER_BORDER_COLOR_MAX] = {
+static const API_AVAILABLE(macos(11.0), ios(14.0)) MTLSamplerBorderColor SAMPLER_BORDER_COLORS[RD::SAMPLER_BORDER_COLOR_MAX] = {
 	MTLSamplerBorderColorTransparentBlack,
 	MTLSamplerBorderColorTransparentBlack,
 	MTLSamplerBorderColorOpaqueBlack,
@@ -688,20 +693,20 @@ RDD::SamplerID RenderingDeviceDriverMetal::sampler_create(const SamplerState &p_
 	desc.minFilter = p_state.min_filter == SAMPLER_FILTER_LINEAR ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
 	desc.mipFilter = p_state.mip_filter == SAMPLER_FILTER_LINEAR ? MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
 
-	desc.sAddressMode = address_modes[p_state.repeat_u];
-	desc.tAddressMode = address_modes[p_state.repeat_v];
-	desc.rAddressMode = address_modes[p_state.repeat_w];
+	desc.sAddressMode = ADDRESS_MODES[p_state.repeat_u];
+	desc.tAddressMode = ADDRESS_MODES[p_state.repeat_v];
+	desc.rAddressMode = ADDRESS_MODES[p_state.repeat_w];
 
 	if (p_state.use_anisotropy) {
 		desc.maxAnisotropy = p_state.anisotropy_max;
 	}
 
-	desc.compareFunction = compare_operators[p_state.compare_op];
+	desc.compareFunction = COMPARE_OPERATORS[p_state.compare_op];
 
 	desc.lodMinClamp = p_state.min_lod;
 	desc.lodMaxClamp = p_state.max_lod;
 
-	desc.borderColor = sampler_border_colors[p_state.border_color];
+	desc.borderColor = SAMPLER_BORDER_COLORS[p_state.border_color];
 
 	desc.normalizedCoordinates = !p_state.unnormalized_uvw;
 
@@ -849,11 +854,6 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 			[cmd_buffer->get_command_buffer() presentDrawable:swap_chain->frame_buffer.drawable];
 			swap_chain->frame_buffer.reset();
 		}
-	}
-
-	// HACK(sgc): we need a better way to determine when to commit the query pool
-	if (p_swap_chains.size() > 0) {
-		cmd_buffer->timestamp_commit();
 	}
 
 	cmd_buffer->commit();
@@ -1065,7 +1065,7 @@ void RenderingDeviceDriverMetal::framebuffer_free(FramebufferID p_framebuffer) {
 
 const uint32_t SHADER_BINARY_VERSION = 1;
 
-// region Serialisation
+// region Serialization
 
 class BufWriter;
 
@@ -1336,9 +1336,9 @@ public:
 const uint32_t R32UI_ALIGNMENT_CONSTANT_ID = 65535;
 
 struct ComputeSize {
-	uint32_t x;
-	uint32_t y;
-	uint32_t z;
+	uint32_t x = 0;
+	uint32_t y = 0;
+	uint32_t z = 0;
 
 	size_t serialize_size() const {
 		return sizeof(uint32_t) * 3;
@@ -1358,7 +1358,7 @@ struct ComputeSize {
 };
 
 struct ShaderStageData {
-	RD::ShaderStage stage;
+	RD::ShaderStage stage = RD::ShaderStage::SHADER_STAGE_MAX;
 	CharString entry_point_name;
 	CharString source;
 
@@ -1382,12 +1382,12 @@ struct ShaderStageData {
 };
 
 struct SpecializationConstantData {
-	uint32_t constant_id;
-	RD::PipelineSpecializationConstantType type;
-	ShaderStageUsage stages;
+	uint32_t constant_id = UINT32_MAX;
+	RD::PipelineSpecializationConstantType type = RD::PIPELINE_SPECIALIZATION_CONSTANT_TYPE_FLOAT;
+	ShaderStageUsage stages = ShaderStageUsage::None;
 	// used_stages specifies the stages the constant is used by Metal
-	ShaderStageUsage used_stages;
-	uint32_t int_value;
+	ShaderStageUsage used_stages = ShaderStageUsage::None;
+	uint32_t int_value = UINT32_MAX;
 
 	size_t serialize_size() const {
 		return sizeof(constant_id) // constant_id
@@ -1415,14 +1415,14 @@ struct SpecializationConstantData {
 };
 
 struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformData {
-	RD::UniformType type;
-	uint32_t binding;
-	bool writable;
-	uint32_t length;
-	ShaderStageUsage stages;
+	RD::UniformType type = RD::UniformType::UNIFORM_TYPE_MAX;
+	uint32_t binding = UINT32_MAX;
+	bool writable = false;
+	uint32_t length = UINT32_MAX;
+	ShaderStageUsage stages = ShaderStageUsage::None;
 	// active_stages specifies the stages the uniform data is
 	// used by the Metal shader
-	ShaderStageUsage active_stages;
+	ShaderStageUsage active_stages = ShaderStageUsage::None;
 	BindingInfoMap bindings;
 	BindingInfoMap bindings_secondary;
 
@@ -1471,7 +1471,7 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformData {
 };
 
 struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformSetData {
-	uint32_t index;
+	uint32_t index = UINT32_MAX;
 	LocalVector<UniformData> uniforms;
 
 	size_t serialize_size() const {
@@ -1496,9 +1496,9 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformSetData {
 };
 
 struct PushConstantData {
-	uint32_t size;
-	ShaderStageUsage stages;
-	ShaderStageUsage used_stages;
+	uint32_t size = UINT32_MAX;
+	ShaderStageUsage stages = ShaderStageUsage::None;
+	ShaderStageUsage used_stages = ShaderStageUsage::None;
 	HashMap<RD::ShaderStage, uint32_t> msl_binding;
 
 	size_t serialize_size() const {
@@ -1529,11 +1529,11 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) ShaderBinaryData {
 	CharString shader_name;
 	// msl_version is the Metal language version specified when compiling SPIR-V to MSL.
 	// Format is major * 10000 + minor * 100 + patch.
-	uint32_t msl_version;
-	uint32_t vertex_input_mask;
-	uint32_t fragment_output_mask;
-	uint32_t spirv_specialization_constants_ids_mask;
-	uint32_t is_compute;
+	uint32_t msl_version = UINT32_MAX;
+	uint32_t vertex_input_mask = UINT32_MAX;
+	uint32_t fragment_output_mask = UINT32_MAX;
+	uint32_t spirv_specialization_constants_ids_mask = UINT32_MAX;
+	uint32_t is_compute = UINT32_MAX;
 	ComputeSize compute_local_size;
 	PushConstantData push_constant;
 	LocalVector<ShaderStageData> stages;
@@ -2027,15 +2027,15 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		// process specialization constants
 		if (!compiler.get_specialization_constants().empty()) {
 			for (SpecializationConstant const &constant : compiler.get_specialization_constants()) {
-				LocalVector<SpecializationConstantData>::Iterator res = std::find_if(
-						bin_data.constants.begin(),
-						bin_data.constants.end(),
-						[constant](SpecializationConstantData &v) {
-							return v.constant_id == constant.constant_id;
-						});
-				if (res != bin_data.constants.end()) {
-					res->used_stages |= 1 << stage;
-				} else {
+				LocalVector<SpecializationConstantData>::Iterator res = bin_data.constants.begin();
+				while (res != bin_data.constants.end()) {
+					if (res->constant_id == constant.constant_id) {
+						res->used_stages |= 1 << stage;
+						break;
+					}
+					++res;
+				}
+				if (res == bin_data.constants.end()) {
 					WARN_PRINT(String(stage_name) + ": unable to find constant_id: " + itos(constant.constant_id));
 				}
 			}
@@ -2069,9 +2069,13 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 				UniformData *found = nullptr;
 				if (dset != (uint32_t)-1 && dbin != (uint32_t)-1 && dset < uniform_sets.size()) {
 					UniformSetData &set = uniform_sets[dset];
-					LocalVector<UniformData>::Iterator pos = std::find_if(set.uniforms.begin(), set.uniforms.end(), [dbin](UniformData &v) { return dbin == v.binding; });
-					if (pos != set.uniforms.end()) {
-						found = &(*pos);
+					LocalVector<UniformData>::Iterator pos = set.uniforms.begin();
+					while (pos != set.uniforms.end()) {
+						if (dbin == pos->binding) {
+							found = &(*pos);
+							break;
+						}
+						++pos;
 					}
 				}
 
@@ -2631,7 +2635,7 @@ void RenderingDeviceDriverMetal::command_copy_texture(CommandBufferID p_cmd_buff
 		} else {
 			MTLOrigin src_origin = MTLOriginFromVector3i(region.src_offset);
 			MTLSize src_size = clampMTLSize(extent, src_origin, src_extent);
-			uint32_t layer_count;
+			uint32_t layer_count = 0;
 			if ((src.textureType == MTLTextureType3D) != (dst.textureType == MTLTextureType3D)) {
 				// In the case, the number of layers to copy is in extent.depth. Use that value,
 				// then clamp the depth, so we don't try to copy more than Metal will allow.
@@ -2935,7 +2939,7 @@ size_t RenderingDeviceDriverMetal::pipeline_cache_query_size() {
 
 Vector<uint8_t> RenderingDeviceDriverMetal::pipeline_cache_serialize() {
 	if (!archive) {
-		return {};
+		return Vector<uint8_t>();
 	}
 
 	CharString path = _pipeline_get_cache_path().utf8();
@@ -2947,10 +2951,10 @@ Vector<uint8_t> RenderingDeviceDriverMetal::pipeline_cache_serialize() {
 	NSURL *target = [NSURL fileURLWithPath:nPath];
 	NSError *error = nil;
 	if ([archive serializeToURL:target error:&error]) {
-		return {};
+		return Vector<uint8_t>();
 	} else {
 		print_line(error.localizedDescription.UTF8String);
-		return {};
+		return Vector<uint8_t>();
 	}
 }
 
@@ -2974,13 +2978,13 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 		subpass.resolve_references = p_subpasses[i].resolve_references;
 	}
 
-	static const MTLLoadAction loadActions[] = {
+	static const MTLLoadAction LOAD_ACTIONS[] = {
 		[ATTACHMENT_LOAD_OP_LOAD] = MTLLoadActionLoad,
 		[ATTACHMENT_LOAD_OP_CLEAR] = MTLLoadActionClear,
 		[ATTACHMENT_LOAD_OP_DONT_CARE] = MTLLoadActionDontCare,
 	};
 
-	static const MTLStoreAction storeActions[] = {
+	static const MTLStoreAction STORE_ACTIONS[] = {
 		[ATTACHMENT_STORE_OP_STORE] = MTLStoreActionStore,
 		[ATTACHMENT_STORE_OP_DONT_CARE] = MTLStoreActionDontCare,
 	};
@@ -2996,8 +3000,8 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 		if (a.samples > TEXTURE_SAMPLES_1) {
 			mda.samples = (*metal_device_properties).find_nearest_supported_sample_count(a.samples);
 		}
-		mda.loadAction = loadActions[a.load_op];
-		mda.storeAction = storeActions[a.store_op];
+		mda.loadAction = LOAD_ACTIONS[a.load_op];
+		mda.storeAction = STORE_ACTIONS[a.store_op];
 		bool is_depth = pf.isDepthFormat(format);
 		if (is_depth) {
 			mda.type |= MDAttachmentType::Depth;
@@ -3005,8 +3009,8 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 		bool is_stencil = pf.isStencilFormat(format);
 		if (is_stencil) {
 			mda.type |= MDAttachmentType::Stencil;
-			mda.stencilLoadAction = loadActions[a.stencil_load_op];
-			mda.stencilStoreAction = storeActions[a.stencil_store_op];
+			mda.stencilLoadAction = LOAD_ACTIONS[a.stencil_load_op];
+			mda.stencilStoreAction = STORE_ACTIONS[a.stencil_store_op];
 		}
 		if (!is_depth && !is_stencil) {
 			mda.type |= MDAttachmentType::Color;
@@ -3267,6 +3271,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	}
 
 	desc.vertexDescriptor = vert_desc;
+	desc.label = [NSString stringWithUTF8String:shader->name.get_data()];
 
 	// Input assembly & tessellation.
 
@@ -3332,12 +3337,12 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	pipeline->raster_state.clip_mode = p_rasterization_state.enable_depth_clamp ? MTLDepthClipModeClamp : MTLDepthClipModeClip;
 	pipeline->raster_state.fill_mode = p_rasterization_state.wireframe ? MTLTriangleFillModeLines : MTLTriangleFillModeFill;
 
-	static const MTLCullMode cull_mode[3] = {
+	static const MTLCullMode CULL_MODE[3] = {
 		MTLCullModeNone,
 		MTLCullModeFront,
 		MTLCullModeBack,
 	};
-	pipeline->raster_state.cull_mode = cull_mode[p_rasterization_state.cull_mode];
+	pipeline->raster_state.cull_mode = CULL_MODE[p_rasterization_state.cull_mode];
 	pipeline->raster_state.winding = (p_rasterization_state.front_face == POLYGON_FRONT_FACE_CLOCKWISE) ? MTLWindingClockwise : MTLWindingCounterClockwise;
 	pipeline->raster_state.depth_bias.enabled = p_rasterization_state.depth_bias_enabled;
 	pipeline->raster_state.depth_bias.depth_bias = p_rasterization_state.depth_bias_constant_factor;
@@ -3365,7 +3370,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 		pipeline->raster_state.depth_test.enabled = true;
 		MTLDepthStencilDescriptor *ds_desc = [MTLDepthStencilDescriptor new];
 		ds_desc.depthWriteEnabled = p_depth_stencil_state.enable_depth_write;
-		ds_desc.depthCompareFunction = compare_operators[p_depth_stencil_state.depth_compare_operator];
+		ds_desc.depthCompareFunction = COMPARE_OPERATORS[p_depth_stencil_state.depth_compare_operator];
 		if (p_depth_stencil_state.enable_depth_range) {
 			WARN_PRINT("unsupported: depth range");
 		}
@@ -3377,10 +3382,10 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 			{
 				// Front
 				MTLStencilDescriptor *sd = [MTLStencilDescriptor new];
-				sd.stencilFailureOperation = stencil_operations[p_depth_stencil_state.front_op.fail];
-				sd.depthStencilPassOperation = stencil_operations[p_depth_stencil_state.front_op.pass];
-				sd.depthFailureOperation = stencil_operations[p_depth_stencil_state.front_op.depth_fail];
-				sd.stencilCompareFunction = compare_operators[p_depth_stencil_state.front_op.compare];
+				sd.stencilFailureOperation = STENCIL_OPERATIONS[p_depth_stencil_state.front_op.fail];
+				sd.depthStencilPassOperation = STENCIL_OPERATIONS[p_depth_stencil_state.front_op.pass];
+				sd.depthFailureOperation = STENCIL_OPERATIONS[p_depth_stencil_state.front_op.depth_fail];
+				sd.stencilCompareFunction = COMPARE_OPERATORS[p_depth_stencil_state.front_op.compare];
 				sd.readMask = p_depth_stencil_state.front_op.compare_mask;
 				sd.writeMask = p_depth_stencil_state.front_op.write_mask;
 				ds_desc.frontFaceStencil = sd;
@@ -3388,10 +3393,10 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 			{
 				// Back
 				MTLStencilDescriptor *sd = [MTLStencilDescriptor new];
-				sd.stencilFailureOperation = stencil_operations[p_depth_stencil_state.back_op.fail];
-				sd.depthStencilPassOperation = stencil_operations[p_depth_stencil_state.back_op.pass];
-				sd.depthFailureOperation = stencil_operations[p_depth_stencil_state.back_op.depth_fail];
-				sd.stencilCompareFunction = compare_operators[p_depth_stencil_state.back_op.compare];
+				sd.stencilFailureOperation = STENCIL_OPERATIONS[p_depth_stencil_state.back_op.fail];
+				sd.depthStencilPassOperation = STENCIL_OPERATIONS[p_depth_stencil_state.back_op.pass];
+				sd.depthFailureOperation = STENCIL_OPERATIONS[p_depth_stencil_state.back_op.depth_fail];
+				sd.stencilCompareFunction = COMPARE_OPERATORS[p_depth_stencil_state.back_op.compare];
 				sd.readMask = p_depth_stencil_state.back_op.compare_mask;
 				sd.writeMask = p_depth_stencil_state.back_op.write_mask;
 				ds_desc.backFaceStencil = sd;
@@ -3417,13 +3422,13 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 			MTLRenderPipelineColorAttachmentDescriptor *ca_desc = desc.colorAttachments[p_color_attachments[i]];
 			ca_desc.blendingEnabled = bs.enable_blend;
 
-			ca_desc.sourceRGBBlendFactor = blend_factors[bs.src_color_blend_factor];
-			ca_desc.destinationRGBBlendFactor = blend_factors[bs.dst_color_blend_factor];
-			ca_desc.rgbBlendOperation = blend_operations[bs.color_blend_op];
+			ca_desc.sourceRGBBlendFactor = BLEND_FACTORS[bs.src_color_blend_factor];
+			ca_desc.destinationRGBBlendFactor = BLEND_FACTORS[bs.dst_color_blend_factor];
+			ca_desc.rgbBlendOperation = BLEND_OPERATIONS[bs.color_blend_op];
 
-			ca_desc.sourceAlphaBlendFactor = blend_factors[bs.src_alpha_blend_factor];
-			ca_desc.destinationAlphaBlendFactor = blend_factors[bs.dst_alpha_blend_factor];
-			ca_desc.alphaBlendOperation = blend_operations[bs.alpha_blend_op];
+			ca_desc.sourceAlphaBlendFactor = BLEND_FACTORS[bs.src_alpha_blend_factor];
+			ca_desc.destinationAlphaBlendFactor = BLEND_FACTORS[bs.dst_alpha_blend_factor];
+			ca_desc.alphaBlendOperation = BLEND_OPERATIONS[bs.alpha_blend_op];
 
 			ca_desc.writeMask = MTLColorWriteMaskNone;
 			if (bs.write_r) {
@@ -3574,20 +3579,15 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 // ----- TIMESTAMP -----
 
 RDD::QueryPoolID RenderingDeviceDriverMetal::timestamp_query_pool_create(uint32_t p_query_count) {
-	NSError *error = nil;
-	MDQueryPool *pool = MDQueryPool::new_query_pool(device, p_query_count, &error);
-	ERR_FAIL_COND_V_MSG(error != nil || pool == nil, RDD::QueryPoolID(), ([NSString stringWithFormat:@"error creating query pool: %@", error.localizedDescription].UTF8String));
-	return QueryPoolID(pool);
+	return QueryPoolID(1);
 }
 
 void RenderingDeviceDriverMetal::timestamp_query_pool_free(QueryPoolID p_pool_id) {
-	MDQueryPool *pool = (MDQueryPool *)(p_pool_id.id);
-	delete pool;
 }
 
 void RenderingDeviceDriverMetal::timestamp_query_pool_get_results(QueryPoolID p_pool_id, uint32_t p_query_count, uint64_t *r_results) {
-	MDQueryPool *pool = (MDQueryPool *)(p_pool_id.id);
-	pool->get_results(r_results, p_query_count);
+	// Metal doesn't support timestamp queries, so we just clear the buffer.
+	bzero(r_results, p_query_count * sizeof(uint64_t));
 }
 
 uint64_t RenderingDeviceDriverMetal::timestamp_query_result_to_time(uint64_t p_result) {
@@ -3595,13 +3595,9 @@ uint64_t RenderingDeviceDriverMetal::timestamp_query_result_to_time(uint64_t p_r
 }
 
 void RenderingDeviceDriverMetal::command_timestamp_query_pool_reset(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_query_count) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	cb->timestamp_query_pool_reset(p_pool_id, p_query_count);
 }
 
 void RenderingDeviceDriverMetal::command_timestamp_write(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_index) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
-	cb->timestamp_write(p_pool_id, p_index);
 }
 
 #pragma mark - Labels
@@ -3653,9 +3649,9 @@ void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_
 		} break;
 		case OBJECT_TYPE_UNIFORM_SET: {
 			MDUniformSet *set = (MDUniformSet *)(p_driver_id.id);
-			std::for_each(set->bound_uniforms.begin(), set->bound_uniforms.end(), [&](KeyValue<MDShader *, BoundUniformSet> &keyval) {
+			for (KeyValue<MDShader *, BoundUniformSet> &keyval : set->bound_uniforms) {
 				keyval.value.buffer.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
-			});
+			}
 		} break;
 		case OBJECT_TYPE_PIPELINE: {
 			// can't set label after creation
@@ -3894,7 +3890,7 @@ RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 	}
 }
 
-#pragma mark - Initialisation
+#pragma mark - Initialization
 
 Error RenderingDeviceDriverMetal::_create_device() {
 	device = MTLCreateSystemDefaultDevice();

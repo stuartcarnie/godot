@@ -231,7 +231,7 @@ MTLVertexFormat PixelFormats::getMTLVertexFormat(DataFormat p_format) {
 	MTLVertexFormat format = dfDesc.mtlVertexFormat;
 
 	if (format == MTLVertexFormatInvalid) {
-		std::string errMsg;
+		String errMsg;
 		errMsg += "DataFormat ";
 		errMsg += dfDesc.name;
 		errMsg += " is not supported for vertex buffers on this device.";
@@ -244,7 +244,7 @@ MTLVertexFormat PixelFormats::getMTLVertexFormat(DataFormat p_format) {
 			errMsg += dfDescSubs.name;
 			errMsg += " instead.";
 		}
-		WARN_PRINT(errMsg.c_str());
+		WARN_PRINT(errMsg);
 	}
 
 	return format;

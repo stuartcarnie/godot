@@ -51,14 +51,6 @@ class API_AVAILABLE(macos(11.0), ios(14.0)) RenderingDeviceDriverMetal : public 
 	template <typename T>
 	using Result = std::variant<T, Error>;
 
-	static const MTLTextureType texture_type[TEXTURE_TYPE_MAX];
-	static const MTLCompareFunction compare_operators[COMPARE_OP_MAX];
-	static const MTLStencilOperation stencil_operations[STENCIL_OP_MAX];
-	static const MTLBlendFactor blend_factors[BLEND_FACTOR_MAX];
-	static const MTLBlendOperation blend_operations[BLEND_OP_MAX];
-	static const MTLSamplerAddressMode address_modes[SAMPLER_REPEAT_MODE_MAX];
-	static const MTLSamplerBorderColor sampler_border_colors[SAMPLER_BORDER_COLOR_MAX];
-
 #pragma mark - Generic
 
 	RenderingContextDriverMetal *context_driver = nullptr;
@@ -118,6 +110,7 @@ public:
 	virtual uint8_t *texture_map(TextureID p_texture, const TextureSubresource &p_subresource) override final;
 	virtual void texture_unmap(TextureID p_texture) override final;
 	virtual BitField<TextureUsageBits> texture_get_usages_supported_by_format(DataFormat p_format, bool p_cpu_readable) override final;
+	virtual bool texture_can_make_shared_with_format(TextureID p_texture, DataFormat p_format, bool &r_raw_reinterpretation) override final;
 
 #pragma mark - Sampler
 

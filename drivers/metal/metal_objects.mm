@@ -53,9 +53,6 @@
 #import "pixel_formats.h"
 #import "rendering_device_driver_metal.h"
 
-using std::unique_lock;
-using std::lock_guard;
-
 void MDCommandBuffer::begin() {
 	DEV_ASSERT(commandBuffer == nil);
 	commandBuffer = queue.commandBuffer;
@@ -78,7 +75,6 @@ void MDCommandBuffer::commit() {
 	end();
 	[commandBuffer commit];
 	commandBuffer = nil;
-	query_pool = nil;
 }
 
 void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
@@ -150,30 +146,8 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 		type = MDCommandBufferStateType::Compute;
 
 		compute.pipeline = (MDComputePipeline *)p;
-		// TODO(sgc): add sample buffer support
-		// MTLComputePassDescriptor *desc = MTLComputePassDescriptor.computePassDescriptor;
 		compute.encoder = commandBuffer.computeCommandEncoder;
 		[compute.encoder setComputePipelineState:compute.pipeline->state];
-	}
-}
-
-void MDCommandBuffer::timestamp_query_pool_reset(RDD::QueryPoolID p_pool_id, uint32_t p_query_count) {
-	DEV_ASSERT(query_pool == nil);
-	query_pool = (MDQueryPool *)(p_pool_id.id);
-	query_pool->reset(p_query_count);
-}
-
-void MDCommandBuffer::timestamp_write(RDD::QueryPoolID p_pool_id, uint32_t p_index) {
-	MDQueryPool *pool = (MDQueryPool *)(p_pool_id.id);
-	query_pool = pool; // keep track of the pool
-	sample_buffer = pool->get_sample_buffer();
-	sample_buffer_query_index = p_index;
-}
-
-void MDCommandBuffer::timestamp_commit() {
-	if (query_pool) {
-		query_pool->commit(this);
-		query_pool = nil;
 	}
 }
 
@@ -345,7 +319,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 		render.pipeline->raster_state.apply(render.encoder);
 	}
 
-	if (render.dirty.has_flag(RenderState::DIRTY_SCISSOR)) {
+	if (render.dirty.has_flag(RenderState::DIRTY_SCISSOR) && !render.scissors.is_empty()) {
 		size_t len = render.scissors.size();
 		MTLScissorRect rects[len];
 		for (size_t i = 0; i < len; i++) {
@@ -354,7 +328,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 		[render.encoder setScissorRects:rects count:len];
 	}
 
-	if (render.dirty.has_flag(RenderState::DIRTY_BLEND)) {
+	if (render.dirty.has_flag(RenderState::DIRTY_BLEND) && render.blend_constants.has_value()) {
 		[render.encoder setBlendColorRed:render.blend_constants->r green:render.blend_constants->g blue:render.blend_constants->b alpha:render.blend_constants->a];
 	}
 
@@ -679,16 +653,6 @@ void MDCommandBuffer::render_next_subpass() {
 	desc.renderTargetWidth = MAX((NSUInteger)MIN(render.render_area.position.x + render.render_area.size.width, fb.size.width), 1u);
 	desc.renderTargetHeight = MAX((NSUInteger)MIN(render.render_area.position.y + render.render_area.size.height, fb.size.height), 1u);
 
-	if (sample_buffer) {
-		// TODO(sgc): should set this on the _last_ pass when the subpass count > 1
-		MTLRenderPassSampleBufferAttachmentDescriptor *sba = desc.sampleBufferAttachments[0];
-		sba.sampleBuffer = sample_buffer;
-		sba.startOfVertexSampleIndex = (sample_buffer_query_index * 2);
-		sba.endOfVertexSampleIndex = MTLCounterDontSample;
-		sba.startOfFragmentSampleIndex = MTLCounterDontSample;
-		sba.endOfFragmentSampleIndex = (sample_buffer_query_index * 2) + 1;
-	}
-
 	if (attachmentCount == 0) {
 		// If there are no attachments, delay the creation of the encoder,
 		// so we can use a matching sample count for the pipeline, by setting
@@ -822,8 +786,6 @@ void MDCommandBuffer::render_end_pass() {
 
 	[render.encoder endEncoding];
 	render.reset();
-	sample_buffer = nil;
-	sample_buffer_query_index = UINT32_MAX;
 	type = MDCommandBufferStateType::None;
 }
 
@@ -1191,81 +1153,6 @@ MDRenderPass::MDRenderPass(Vector<MDAttachment> &p_attachments, Vector<MDSubpass
 		attachments(p_attachments), subpasses(p_subpasses) {
 	for (MDAttachment &att : attachments) {
 		att.linkToSubpass(*this);
-	}
-}
-
-MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> p_device, uint32_t p_query_count, NSError **p_error) {
-	std::unique_ptr<MDQueryPool> pool(new MDQueryPool());
-
-	[p_device sampleTimestamps:&pool->cpuStart gpuTimestamp:&pool->gpuStart];
-
-	pool->sampleCount = p_query_count * 2; // we store the start and end timestamps to calculate the spans
-
-	for (id<MTLCounterSet> cs in p_device.counterSets) {
-		if ([cs.name isEqualToString:MTLCommonCounterSetTimestamp]) {
-			for (id<MTLCounter> ctr in cs.counters) {
-				if ([ctr.name isEqualToString:MTLCommonCounterTimestamp]) {
-					pool->counterSet = cs;
-					break;
-				}
-			}
-			break;
-		}
-	}
-
-	if (pool->counterSet == nil) {
-		return nil;
-	}
-
-	@autoreleasepool {
-		MTLCounterSampleBufferDescriptor *desc = [MTLCounterSampleBufferDescriptor new];
-		desc.counterSet = pool->counterSet;
-		desc.storageMode = MTLStorageModeShared;
-		desc.sampleCount = pool->sampleCount;
-
-		pool->_counterSampleBuffer = [p_device newCounterSampleBufferWithDescriptor:desc error:p_error];
-		if (*p_error) {
-			return nil;
-		}
-
-		pool->_buffer = [p_device newBufferWithLength:sizeof(MTLCounterResultTimestamp) * pool->sampleCount
-											  options:MTLResourceStorageModeShared];
-	}
-
-	return pool.release();
-}
-
-void MDQueryPool::commit(MDCommandBuffer *p_cmd_buffer) {
-	id<MTLBlitCommandEncoder> enc = p_cmd_buffer->blit_command_encoder();
-	[enc resolveCounters:_counterSampleBuffer
-					  inRange:NSMakeRange(0, query_count * 2)
-			destinationBuffer:_buffer
-			destinationOffset:0];
-
-	[p_cmd_buffer->get_command_buffer() addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
-		lock_guard lock(_results_lock);
-		_results_ready = true;
-		_results_cond.notify_all();
-	}];
-}
-
-void MDQueryPool::get_results(uint64_t *_Nonnull p_results, NSUInteger p_count) {
-	DEV_ASSERT(p_count <= sampleCount / 2);
-
-	unique_lock lock(_results_lock);
-	_results_cond.wait(lock, [this]{ return _results_ready; });
-
-	MTLCounterResultTimestamp *timestamps = (MTLCounterResultTimestamp *)_buffer.contents;
-	for (uint32_t i = 0; i < p_count; i++) {
-		MTLTimestamp start = timestamps[(i * 2) + 0].timestamp;
-		MTLTimestamp end   = timestamps[(i * 2) + 1].timestamp;
-
-		if (start == MTLCounterErrorValue || end == MTLCounterErrorValue) {
-			return;
-		}
-
-		MTLTimestamp span = end - start;
-		p_results[i] = span;
 	}
 }
 
