@@ -61,7 +61,9 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <simd/simd.h>
+#import <condition_variable>
 #import <initializer_list>
+#import <mutex>
 #import <optional>
 
 // These types can be used in Vector and other containers that use
@@ -111,6 +113,7 @@ class MDPipeline;
 class MDRenderPipeline;
 class MDComputePipeline;
 class MDFrameBuffer;
+class MDQueryPool;
 class RenderingDeviceDriverMetal;
 class MDUniformSet;
 class MDShader;
@@ -192,9 +195,18 @@ private:
 	RenderingDeviceDriverMetal *device_driver = nullptr;
 	id<MTLCommandQueue> queue = nil;
 	id<MTLCommandBuffer> commandBuffer = nil;
+	MDQueryPool *query_pool = nil; // if not nil, indicates timer queries are active for the current command buffer
+	id<MTLFence> __unsafe_unretained fence = nil; // if not nil, next encoder must wait for this fence to be signaled
 
 	void _end_compute_dispatch();
 	void _end_blit();
+
+	id<MTLCounterSampleBuffer> sample_buffer = nil;
+	uint32_t sample_buffer_query_index = 0;
+
+#pragma mark - Common
+
+	void _on_new_encoder();
 
 #pragma mark - Render
 
@@ -375,6 +387,12 @@ public:
 	void encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDescriptor *p_desc, NSString *p_label);
 
 	void bind_pipeline(RDD::PipelineID p_pipeline);
+
+#pragma mark - Counters
+
+	void timestamp_query_pool_reset(RDD::QueryPoolID p_pool_id, uint32_t p_query_count);
+	void timestamp_write(RDD::QueryPoolID p_pool_id, uint32_t p_index);
+	void timestamp_commit();
 
 #pragma mark - Render Commands
 
@@ -824,6 +842,47 @@ public:
 	}
 
 	~MDScreenFrameBuffer() final = default;
+};
+
+class API_AVAILABLE(macos(11.0), ios(14.0)) MDQueryPool {
+	friend class MDCommandBuffer;
+	// GPU counters
+	NSUInteger sampleCount = 0; // max sample count
+	uint32_t query_count = 0; // current query count
+	id<MTLCounterSet> counterSet = nil;
+	id<MTLCounterSampleBuffer> _counterSampleBuffer = nil;
+	id<MTLBuffer> _buffer = nil;
+	MTLTimestamp cpuStart = 0.0;
+	MTLTimestamp gpuStart = 0.0;
+	id<MTLBuffer> _dummy_buffer = nil;
+
+	LocalVector<id<MTLFence>> fences;
+
+	std::mutex _results_lock;
+	std::condition_variable _results_cond;
+	bool _results_ready = false;
+
+public:
+	void reset(uint32_t p_query_count) {
+		{
+			std::lock_guard lock(_results_lock);
+			_results_ready = false;
+		}
+		query_count = p_query_count;
+	};
+	void commit(MDCommandBuffer *p_cmd_buffer);
+	void get_results(uint64_t *p_results, NSUInteger p_count);
+
+	id<MTLCounterSampleBuffer> get_sample_buffer() const {
+		return _counterSampleBuffer;
+	}
+
+	static MDQueryPool *new_query_pool(id<MTLDevice> p_device, uint32_t p_query_count, NSError **p_error);
+
+	~MDQueryPool() = default;
+
+private:
+	MDQueryPool() = default;
 };
 
 /// These functions are used to convert between Objective-C objects and

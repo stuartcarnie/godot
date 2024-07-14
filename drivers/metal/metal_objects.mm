@@ -53,6 +53,9 @@
 #import "pixel_formats.h"
 #import "rendering_device_driver_metal.h"
 
+using std::lock_guard;
+using std::unique_lock;
+
 void MDCommandBuffer::begin() {
 	DEV_ASSERT(commandBuffer == nil);
 	commandBuffer = queue.commandBuffer;
@@ -75,6 +78,7 @@ void MDCommandBuffer::commit() {
 	end();
 	[commandBuffer commit];
 	commandBuffer = nil;
+	query_pool = nil;
 }
 
 void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
@@ -126,6 +130,7 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 			}
 #endif
 			render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:render.desc];
+			_on_new_encoder();
 		}
 
 		if (render.pipeline != rp) {
@@ -147,7 +152,66 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 
 		compute.pipeline = (MDComputePipeline *)p;
 		compute.encoder = commandBuffer.computeCommandEncoder;
+		_on_new_encoder();
 		[compute.encoder setComputePipelineState:compute.pipeline->state];
+	}
+}
+
+void MDCommandBuffer::timestamp_query_pool_reset(RDD::QueryPoolID p_pool_id, uint32_t p_query_count) {
+	query_pool = (MDQueryPool *)(p_pool_id.id);
+	query_pool->reset(p_query_count);
+}
+
+void MDCommandBuffer::timestamp_write(RDD::QueryPoolID p_pool_id, uint32_t p_index) {
+	MDQueryPool *pool = (MDQueryPool *)(p_pool_id.id);
+	query_pool = pool; // keep track of the pool
+	sample_buffer = pool->get_sample_buffer();
+	sample_buffer_query_index = p_index;
+	end();
+	MTLBlitPassDescriptor *desc = MTLBlitPassDescriptor.blitPassDescriptor;
+	MTLBlitPassSampleBufferAttachmentDescriptor *sba = desc.sampleBufferAttachments[0];
+	sba.startOfEncoderSampleIndex = MTLCounterDontSample;
+	sba.endOfEncoderSampleIndex = p_index;
+	sba.sampleBuffer = pool->get_sample_buffer();
+	id<MTLBlitCommandEncoder> enc = [commandBuffer blitCommandEncoderWithDescriptor:desc];
+	enc.label = [NSString stringWithFormat:@"Timestamp: %03d", p_index];
+	type = MDCommandBufferStateType::Blit;
+	blit.encoder = enc;
+	_on_new_encoder();
+	[enc fillBuffer:pool->_dummy_buffer range:NSMakeRange(0, 1) value:0];
+	[enc updateFence:pool->fences[p_index]];
+	[enc endEncoding];
+	type = MDCommandBufferStateType::None;
+	blit.encoder = nil;
+	fence = pool->fences[p_index];
+}
+
+void MDCommandBuffer::_on_new_encoder() {
+	if (fence == nil) {
+		return;
+	}
+
+	switch (type) {
+		case MDCommandBufferStateType::None:
+			break;
+		case MDCommandBufferStateType::Render:
+			[render.encoder waitForFence:fence beforeStages:MTLRenderStageVertex];
+			break;
+		case MDCommandBufferStateType::Compute:
+			[compute.encoder waitForFence:fence];
+			break;
+		case MDCommandBufferStateType::Blit:
+			[blit.encoder waitForFence:fence];
+			break;
+	}
+
+	fence = nil;
+}
+
+void MDCommandBuffer::timestamp_commit() {
+	if (query_pool) {
+		query_pool->commit(this);
+		query_pool = nil;
 	}
 }
 
@@ -167,6 +231,7 @@ id<MTLBlitCommandEncoder> MDCommandBuffer::blit_command_encoder() {
 
 	type = MDCommandBufferStateType::Blit;
 	blit.encoder = commandBuffer.blitCommandEncoder;
+	_on_new_encoder();
 	return blit.encoder;
 }
 
@@ -660,6 +725,7 @@ void MDCommandBuffer::render_next_subpass() {
 		render.desc = desc;
 	} else {
 		render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:desc];
+		_on_new_encoder();
 
 		if (!render.is_rendering_entire_area) {
 			_render_clear_render_area();
@@ -786,6 +852,8 @@ void MDCommandBuffer::render_end_pass() {
 
 	[render.encoder endEncoding];
 	render.reset();
+	sample_buffer = nil;
+	sample_buffer_query_index = UINT32_MAX;
 	type = MDCommandBufferStateType::None;
 }
 
@@ -1153,6 +1221,86 @@ MDRenderPass::MDRenderPass(Vector<MDAttachment> &p_attachments, Vector<MDSubpass
 		attachments(p_attachments), subpasses(p_subpasses) {
 	for (MDAttachment &att : attachments) {
 		att.linkToSubpass(*this);
+	}
+}
+
+MDQueryPool *MDQueryPool::new_query_pool(id<MTLDevice> p_device, uint32_t p_query_count, NSError **p_error) {
+	std::unique_ptr<MDQueryPool> pool(new MDQueryPool());
+
+	[p_device sampleTimestamps:&pool->cpuStart gpuTimestamp:&pool->gpuStart];
+
+	pool->sampleCount = p_query_count; // we store the start and end timestamps to calculate the spans
+	pool->fences.resize(p_query_count);
+	for (int i = 0; i < p_query_count; ++i) {
+		pool->fences[i] = [p_device newFence];
+		[pool->fences[i] setLabel:[NSString stringWithFormat:@"Timestamp fence: %03d", i]];
+	}
+
+	pool->_dummy_buffer = [p_device newBufferWithLength:1 options:MTLResourceHazardTrackingModeUntracked | MTLResourceStorageModePrivate];
+
+	for (id<MTLCounterSet> cs in p_device.counterSets) {
+		if ([cs.name isEqualToString:MTLCommonCounterSetTimestamp]) {
+			for (id<MTLCounter> ctr in cs.counters) {
+				if ([ctr.name isEqualToString:MTLCommonCounterTimestamp]) {
+					pool->counterSet = cs;
+					break;
+				}
+			}
+			break;
+		}
+	}
+
+	if (pool->counterSet == nil) {
+		return nil;
+	}
+
+	@autoreleasepool {
+		MTLCounterSampleBufferDescriptor *desc = [MTLCounterSampleBufferDescriptor new];
+		desc.counterSet = pool->counterSet;
+		desc.storageMode = MTLStorageModeShared;
+		desc.sampleCount = pool->sampleCount;
+
+		pool->_counterSampleBuffer = [p_device newCounterSampleBufferWithDescriptor:desc error:p_error];
+		if (*p_error) {
+			return nil;
+		}
+
+		pool->_buffer = [p_device newBufferWithLength:sizeof(MTLCounterResultTimestamp) * pool->sampleCount
+											  options:MTLResourceStorageModeShared];
+	}
+
+	return pool.release();
+}
+
+void MDQueryPool::commit(MDCommandBuffer *p_cmd_buffer) {
+	id<MTLBlitCommandEncoder> enc = p_cmd_buffer->blit_command_encoder();
+	[enc resolveCounters:_counterSampleBuffer
+					  inRange:NSMakeRange(0, query_count)
+			destinationBuffer:_buffer
+			destinationOffset:0];
+	//
+	//	[p_cmd_buffer->get_command_buffer() addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+	//		lock_guard lock(_results_lock);
+	//		_results_ready = true;
+	//		_results_cond.notify_all();
+	//	}];
+}
+
+void MDQueryPool::get_results(uint64_t *_Nonnull p_results, NSUInteger p_count) {
+	DEV_ASSERT(p_count <= sampleCount);
+
+	//	unique_lock lock(_results_lock);
+	//	_results_cond.wait(lock, [this]{ return _results_ready; });
+
+	MTLCounterResultTimestamp *timestamps = (MTLCounterResultTimestamp *)_buffer.contents;
+	for (uint32_t i = 0; i < p_count; i++) {
+		MTLTimestamp start = timestamps[i].timestamp;
+
+		if (start == MTLCounterErrorValue) {
+			return;
+		}
+
+		p_results[i] = start;
 	}
 }
 
