@@ -4208,7 +4208,13 @@ bool Main::iteration() {
 		movie_writer->add_frame();
 	}
 
+#ifdef TOOLS_ENABLED
+	bool quit_after_timeout = false;
+#endif
 	if ((quit_after > 0) && (Engine::get_singleton()->_process_frames >= quit_after)) {
+#ifdef TOOLS_ENABLED
+		quit_after_timeout = true;
+#endif
 		exit = true;
 	}
 
@@ -4238,6 +4244,12 @@ bool Main::iteration() {
 			ERR_FAIL_V_MSG(true,
 					"Command line option --build-solutions was passed, but the build callback failed. Aborting.");
 		}
+	}
+#endif
+
+#ifdef TOOLS_ENABLED
+	if (exit && quit_after_timeout && EditorNode::get_singleton()) {
+		EditorNode::get_singleton()->unload_editor_addons();
 	}
 #endif
 
