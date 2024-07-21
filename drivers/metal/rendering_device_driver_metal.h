@@ -189,10 +189,8 @@ public:
 
 private:
 	struct SwapChain {
-		CAMetalLayer *layer = nil;
 		RenderingContextDriver::SurfaceID surface = RenderingContextDriver::SurfaceID();
 		RenderPassID render_pass;
-		MDScreenFrameBuffer frame_buffer;
 		RDD::DataFormat data_format = DATA_FORMAT_MAX;
 		SwapChain() :
 				render_pass(nullptr) {}

@@ -50,19 +50,19 @@ RenderingContextDriverMetal::~RenderingContextDriverMetal() {
 }
 
 Error RenderingContextDriverMetal::initialize() {
-	id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
+	metal_device = MTLCreateSystemDefaultDevice();
 #if TARGET_OS_OSX
 	if (@available(macOS 13.3, *)) {
-		[id<MTLDeviceEx>(dev) setShouldMaximizeConcurrentCompilation:YES];
+		[id<MTLDeviceEx>(metal_device) setShouldMaximizeConcurrentCompilation:YES];
 	}
 #endif
 	device.type = DEVICE_TYPE_INTEGRATED_GPU;
 	device.vendor = VENDOR_APPLE;
 	device.workarounds = Workarounds();
 
-	MetalDeviceProperties props(dev);
+	MetalDeviceProperties props(metal_device);
 	int version = (int)props.features.highestFamily - (int)MTLGPUFamilyApple1 + 1;
-	device.name = vformat("%s (Apple%d)", dev.name.UTF8String, version);
+	device.name = vformat("%s (Apple%d)", metal_device.name.UTF8String, version);
 
 	return OK;
 }
@@ -86,13 +86,13 @@ void RenderingContextDriverMetal::driver_free(RenderingDeviceDriver *p_driver) {
 
 RenderingContextDriver::SurfaceID RenderingContextDriverMetal::surface_create(const void *p_platform_data) {
 	const WindowPlatformData *wpd = (const WindowPlatformData *)(p_platform_data);
-	Surface *surface = memnew(Surface);
-	surface->layer = wpd->layer;
-	CAMetalLayer *metal_layer = surface->layer;
-	metal_layer.allowsNextDrawableTimeout = YES;
-	metal_layer.framebufferOnly = YES;
-	metal_layer.opaque = OS::get_singleton()->is_layered_allowed() ? NO : YES;
-	metal_layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+	Surface *surface;
+	String off_screen = OS::get_singleton()->get_environment("GODOT_OFF_SCREEN");
+	if (off_screen == "1") {
+		surface = memnew(SurfaceOffscreen(wpd->layer, metal_device));
+	} else {
+		surface = memnew(SurfaceLayer(wpd->layer, metal_device));
+	}
 
 	return SurfaceID(surface);
 }

@@ -801,31 +801,6 @@ public:
 	virtual ~MDFrameBuffer() = default;
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0)) MDScreenFrameBuffer final : public MDFrameBuffer {
-public:
-	id<CAMetalDrawable> drawable;
-	MDScreenFrameBuffer() :
-			MDFrameBuffer() {
-		drawable = nil;
-		textures.resize(1);
-	}
-
-	void set_drawable_and_size(id<CAMetalDrawable> p_drawable, Size2i p_size) {
-		DEV_ASSERT(drawable == nil);
-		drawable = p_drawable;
-		size = p_size;
-		textures.write[0] = drawable.texture;
-	}
-
-	/*! reset removes the drawable and clears the textures */
-	void reset() {
-		drawable = nil;
-		textures.write[0] = nil;
-	}
-
-	~MDScreenFrameBuffer() final = default;
-};
-
 /// These functions are used to convert between Objective-C objects and
 /// the RIDs used by Godot, respecting automatic reference counting.
 namespace rid {

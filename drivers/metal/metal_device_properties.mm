@@ -106,6 +106,11 @@ void MetalDeviceProperties::init_features(id<MTLDevice> p_device) {
 	features.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(m_maj, m_min)
 
 	switch (features.mslVersionEnum) {
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000 || __IPHONE_OS_VERSION_MAX_ALLOWED >= 180000
+		case MTLLanguageVersion3_2:
+			setMSLVersion(3, 2);
+			break;
+#endif
 #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 140000 || __IPHONE_OS_VERSION_MAX_ALLOWED >= 170000
 		case MTLLanguageVersion3_1:
 			setMSLVersion(3, 1);

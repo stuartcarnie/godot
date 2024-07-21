@@ -59,7 +59,6 @@
 #include "core/io/marshalls.h"
 #include "spirv_msl.hpp"
 #include "spirv_parser.hpp"
-#include <CoreGraphics/CGGeometry.h>
 #include <Metal/MTLTexture.h>
 #include <Metal/Metal.h>
 #import <compression.h>
@@ -68,15 +67,25 @@
 
 #pragma mark - Logging
 
-static inline void defer_cleanup(void (^*b)(void)) { (*b)(); }
-#define defer_merge(a, b) a##b
-#define defer_varname(a) defer_merge(defer_scopevar_, a)
-#define defer __attribute__((unused, cleanup(defer_cleanup))) void (^defer_varname(__COUNTER__))(void) =
+class Defer {
+public:
+	Defer(std::function<void()> func) : func_(func) {}
+	~Defer() { func_(); }
+
+private:
+	std::function<void()> func_;
+};
+
+#define CONCAT_INTERNAL(x,y) x##y
+#define CONCAT(x,y) CONCAT_INTERNAL(x,y)
+#define defer const Defer& CONCAT(defer__, __LINE__) = Defer
 
 os_log_t LOG_DRIVER;
+os_log_t LOG_INTERVALS;
 
 __attribute__((constructor)) static void InitializeLogging(void) {
 	LOG_DRIVER = os_log_create("org.stuartcarnie.godot.metal", OS_LOG_CATEGORY_POINTS_OF_INTEREST);
+	LOG_INTERVALS = os_log_create("org.stuartcarnie.godot.metal", "events");
 }
 
 /*****************/
@@ -850,10 +859,8 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 
 	for (uint32_t i = 0; i < p_swap_chains.size(); i++) {
 		SwapChain *swap_chain = (SwapChain *)(p_swap_chains[i].id);
-		if (swap_chain->frame_buffer.drawable != nil) {
-			[cmd_buffer->get_command_buffer() presentDrawable:swap_chain->frame_buffer.drawable];
-			swap_chain->frame_buffer.reset();
-		}
+		RenderingContextDriverMetal::Surface *metal_surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
+		metal_surface->present(cmd_buffer);
 	}
 
 	cmd_buffer->commit();
@@ -925,7 +932,7 @@ RDD::SwapChainID RenderingDeviceDriverMetal::swap_chain_create(RenderingContextD
 
 	// Create the render pass that will be used to draw to the swap chain's framebuffers.
 	RDD::Attachment attachment;
-	attachment.format = pixel_formats->getDataFormat(surface->layer.pixelFormat);
+	attachment.format = pixel_formats->getDataFormat(surface->get_pixel_format());
 	attachment.samples = RDD::TEXTURE_SAMPLES_1;
 	attachment.load_op = RDD::ATTACHMENT_LOAD_OP_CLEAR;
 	attachment.store_op = RDD::ATTACHMENT_STORE_OP_STORE;
@@ -941,8 +948,6 @@ RDD::SwapChainID RenderingDeviceDriverMetal::swap_chain_create(RenderingContextD
 
 	// Create the empty swap chain until it is resized.
 	SwapChain *swap_chain = memnew(SwapChain);
-	swap_chain->layer = surface->layer;
-	swap_chain->layer.device = device;
 	swap_chain->surface = p_surface;
 	swap_chain->data_format = attachment.format;
 	swap_chain->render_pass = render_pass;
@@ -955,33 +960,7 @@ Error RenderingDeviceDriverMetal::swap_chain_resize(CommandQueueID p_cmd_queue, 
 
 	SwapChain *swap_chain = (SwapChain *)(p_swap_chain.id);
 	RenderingContextDriverMetal::Surface *surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
-	if (surface->width == 0 || surface->height == 0) {
-		// Very likely the window is minimized, don't create a swap chain.
-		return ERR_SKIP;
-	}
-
-	CGSize drawableSize = CGSizeMake(surface->width, surface->height);
-	CGSize current = surface->layer.drawableSize;
-	if (!CGSizeEqualToSize(current, drawableSize)) {
-		surface->layer.drawableSize = drawableSize;
-	}
-
-	// Metal supports a maximum of 3 drawables
-	surface->layer.maximumDrawableCount = MAX(3, p_desired_framebuffer_count);
-
-#if TARGET_OS_OSX
-	// display sync is only supported on macOS
-	switch (surface->vsync_mode) {
-		case DisplayServer::VSYNC_MAILBOX:
-		case DisplayServer::VSYNC_ADAPTIVE:
-		case DisplayServer::VSYNC_ENABLED:
-			surface->layer.displaySyncEnabled = YES;
-			break;
-		case DisplayServer::VSYNC_DISABLED:
-			surface->layer.displaySyncEnabled = NO;
-			break;
-	}
-#endif
+	surface->resize(p_desired_framebuffer_count);
 
 	// Once everything's been created correctly, indicate the surface no longer needs to be resized.
 	context_driver->surface_set_needs_resize(swap_chain->surface, false);
@@ -999,14 +978,8 @@ RDD::FramebufferID RenderingDeviceDriverMetal::swap_chain_acquire_framebuffer(Co
 		return FramebufferID();
 	}
 
-	if (swap_chain->frame_buffer.drawable == nil) {
-		id<CAMetalDrawable> drawable = swap_chain->layer.nextDrawable;
-		ERR_FAIL_NULL_V_MSG(drawable, RDD::FramebufferID(), "no drawable available");
-		CGSize size = swap_chain->layer.drawableSize;
-		swap_chain->frame_buffer.set_drawable_and_size(drawable, Size2i(size.width, size.height));
-	}
-
-	return RDD::FramebufferID(&swap_chain->frame_buffer);
+	RenderingContextDriverMetal::Surface *metal_surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
+	return metal_surface->acquire_next_frame_buffer();
 }
 
 RDD::RenderPassID RenderingDeviceDriverMetal::swap_chain_get_render_pass(SwapChainID p_swap_chain) {
@@ -1905,19 +1878,19 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 	using spirv_cross::Resource;
 
 	ShaderReflection spirv_data;
-	os_signpost_id_t reflect_id = os_signpost_id_make_with_pointer(LOG_DRIVER, p_spirv.ptr());
-	os_signpost_interval_begin(LOG_DRIVER, reflect_id, "reflect_spirv16");
+	os_signpost_id_t reflect_id = os_signpost_id_make_with_pointer(LOG_INTERVALS, p_spirv.ptr());
+	os_signpost_interval_begin(LOG_INTERVALS, reflect_id, "reflect_spirv16");
 	{
-		defer ^ {
-			os_signpost_interval_end(LOG_DRIVER, reflect_id, "reflect_spirv16");
-		};
+		defer ([=](){
+			os_signpost_interval_end(LOG_INTERVALS, reflect_id, "reflect_spirv16");
+		});
 		ERR_FAIL_COND_V(_reflect_spirv16(p_spirv, spirv_data), Result());
 	}
 
-	os_signpost_interval_begin(LOG_DRIVER, reflect_id, "compile_spirv", "shader_name=%{public}s", (char *)p_shader_name.ptr());
-	defer ^ {
-		os_signpost_interval_end(LOG_DRIVER, reflect_id, "compile_spirv");
-	};
+	os_signpost_interval_begin(LOG_INTERVALS, reflect_id, "compile_spirv", "shader_name=%{public}s", (char *)p_shader_name.ptr());
+	defer ([=]() {
+		os_signpost_interval_end(LOG_INTERVALS, reflect_id, "compile_spirv");
+	});
 
 	ShaderBinaryData bin_data{};
 	if (!p_shader_name.is_empty()) {
@@ -3236,11 +3209,11 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	MTLVertexDescriptor *vert_desc = rid::get(p_vertex_format);
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
 
-	os_signpost_id_t reflect_id = os_signpost_id_make_with_pointer(LOG_DRIVER, shader);
-	os_signpost_interval_begin(LOG_DRIVER, reflect_id, "render_pipeline_create");
-	defer ^ {
-		os_signpost_interval_end(LOG_DRIVER, reflect_id, "render_pipeline_create");
-	};
+	os_signpost_id_t reflect_id = os_signpost_id_make_with_pointer(LOG_INTERVALS, shader);
+	os_signpost_interval_begin(LOG_INTERVALS, reflect_id, "render_pipeline_create", "shader_name=%{public}s", shader->name.get_data());
+	defer ([=]() {
+		os_signpost_interval_end(LOG_INTERVALS, reflect_id, "render_pipeline_create");
+	});
 
 	os_signpost_event_emit(LOG_DRIVER, OS_SIGNPOST_ID_EXCLUSIVE, "create_pipeline");
 
@@ -3893,14 +3866,13 @@ RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 #pragma mark - Initialization
 
 Error RenderingDeviceDriverMetal::_create_device() {
-	device = MTLCreateSystemDefaultDevice();
-	ERR_FAIL_NULL_V(device, ERR_CANT_CREATE);
+	device = context_driver->get_metal_device();
 
 	device_queue = [device newCommandQueue];
 	ERR_FAIL_NULL_V(device_queue, ERR_CANT_CREATE);
 
 	device_scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithCommandQueue:device_queue];
-	device_scope.label = @"Metal Device";
+	device_scope.label = @"Godot Frame";
 	[device_scope beginScope]; // Allow Xcode to capture the first frame, if desired
 
 	resource_cache = std::make_unique<MDResourceCache>(this);
