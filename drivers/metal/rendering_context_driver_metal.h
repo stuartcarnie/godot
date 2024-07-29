@@ -295,7 +295,7 @@ public:
 
 	id<MTLDevice> get_metal_device() const { return metal_device; }
 
-#pragma mark - Initialisation
+#pragma mark - Initialization
 
 	RenderingContextDriverMetal();
 	~RenderingContextDriverMetal() override;

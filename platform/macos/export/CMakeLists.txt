@@ -19,16 +19,10 @@ godot_add_library(platform-macos-export FOLDER macos
 #   cog.outl(')')
 # ]]]
 target_sources(platform-macos-export PRIVATE
-        codesign.cpp
-        codesign.h
         export.cpp
         export.h
         export_plugin.cpp
         export_plugin.h
-        lipo.cpp
-        lipo.h
-        macho.cpp
-        macho.h
 )
 # [[[end]]]
 target_link_libraries(platform-macos-export PRIVATE godot-config)
