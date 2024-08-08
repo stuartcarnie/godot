@@ -351,15 +351,19 @@ void ProjectDialog::_install_path_changed() {
 }
 
 void ProjectDialog::_browse_project_path() {
+	String path = project_path->get_text();
+	if (path.is_empty()) {
+		path = EDITOR_GET("filesystem/directories/default_project_path");
+	}
 	if (mode == MODE_IMPORT && install_path->is_visible_in_tree()) {
 		// Select last ZIP file.
-		fdialog_project->set_current_path(project_path->get_text());
+		fdialog_project->set_current_path(path);
 	} else if ((mode == MODE_NEW || mode == MODE_INSTALL) && create_dir->is_pressed()) {
 		// Select parent directory of project path.
-		fdialog_project->set_current_dir(project_path->get_text().get_base_dir());
+		fdialog_project->set_current_dir(path.get_base_dir());
 	} else {
 		// Select project path.
-		fdialog_project->set_current_dir(project_path->get_text());
+		fdialog_project->set_current_dir(path);
 	}
 
 	if (mode == MODE_IMPORT) {
@@ -423,6 +427,10 @@ void ProjectDialog::_install_path_selected(const String &p_path) {
 	_install_path_changed();
 
 	get_ok_button()->grab_focus();
+}
+
+void ProjectDialog::_reset_name() {
+	project_name->set_text(TTR("New Game Project"));
 }
 
 void ProjectDialog::_renderer_selected() {
@@ -690,6 +698,7 @@ void ProjectDialog::set_project_path(const String &p_path) {
 }
 
 void ProjectDialog::ask_for_path_and_show() {
+	_reset_name();
 	_browse_project_path();
 }
 
@@ -714,8 +723,7 @@ void ProjectDialog::show_dialog(bool p_reset_name) {
 		callable_mp(project_name, &LineEdit::select_all).call_deferred();
 	} else {
 		if (p_reset_name) {
-			String proj = TTR("New Game Project");
-			project_name->set_text(proj);
+			_reset_name();
 		}
 		project_path->set_editable(true);
 
