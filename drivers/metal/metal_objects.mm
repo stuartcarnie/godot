@@ -49,7 +49,6 @@
 /**************************************************************************/
 
 #import "metal_objects.h"
-
 #import "pixel_formats.h"
 #import "rendering_device_driver_metal.h"
 
@@ -80,8 +79,8 @@ void MDCommandBuffer::commit() {
 void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 	MDPipeline *p = (MDPipeline *)(p_pipeline.id);
 
-	// end current encoder if it is a compute encoder or blit encoder,
-	// as they do not have a defined end boundary in the RDD like render
+	// End current encoder if it is a compute encoder or blit encoder,
+	// as they do not have a defined end boundary in the RDD like render.
 	if (type == MDCommandBufferStateType::Compute) {
 		_end_compute_dispatch();
 	} else if (type == MDCommandBufferStateType::Blit) {
@@ -93,11 +92,11 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 		MDRenderPipeline *rp = (MDRenderPipeline *)p;
 
 		if (render.encoder == nil) {
-			// this condition occurs when there are no attachments when calling render_next_subpass()
-			// and is due to the SUPPORTS_FRAGMENT_SHADER_WITH_ONLY_SIDE_EFFECTS flag
+			// This condition occurs when there are no attachments when calling render_next_subpass()
+			// and is due to the SUPPORTS_FRAGMENT_SHADER_WITH_ONLY_SIDE_EFFECTS flag.
 			render.desc.defaultRasterSampleCount = static_cast<NSUInteger>(rp->sample_count);
 
-// NOTE(sgc): this is to test rdar://FB13605547 and will be deleted once fix is confirmed
+// NOTE(sgc): This is to test rdar://FB13605547 and will be deleted once fix is confirmed.
 #if 0
 			if (render.pipeline->sample_count == 4) {
 				static id<MTLTexture> tex = nil;
@@ -130,10 +129,11 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 
 		if (render.pipeline != rp) {
 			render.dirty.set_flag((RenderState::DirtyFlag)(RenderState::DIRTY_PIPELINE | RenderState::DIRTY_RASTER));
-			// mark all uniforms as dirty, as variants of a shader pipeline may have a different entry point ABI,
+			// Mark all uniforms as dirty, as variants of a shader pipeline may have a different entry point ABI,
 			// due to setting force_active_argument_buffer_resources = true for spirv_cross::CompilerMSL::Options.
 			// As a result, uniform sets with the same layout will generate redundant binding warnings when
 			// capturing a Metal frame in Xcode.
+			//
 			// If we don't mark as dirty, then some bindings will generate a validation error.
 			render.mark_uniforms_dirty();
 			if (render.pipeline != nullptr && render.pipeline->depth_stencil != rp->depth_stencil) {
@@ -202,7 +202,7 @@ void MDCommandBuffer::render_bind_uniform_set(RDD::UniformSetID p_uniform_set, R
 	if (render.uniform_sets.size() <= set->index) {
 		uint32_t s = render.uniform_sets.size();
 		render.uniform_sets.resize(set->index + 1);
-		// null intermediate values
+		// Set intermediate values to null.
 		std::fill(&render.uniform_sets[s], &render.uniform_sets[set->index] + 1, nullptr);
 	}
 
@@ -216,7 +216,6 @@ void MDCommandBuffer::render_bind_uniform_set(RDD::UniformSetID p_uniform_set, R
 void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<Rect2i> p_rects) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
 
-	// vertex count
 	uint32_t vertex_count = p_rects.size() * 6;
 
 	simd::float4 vertices[vertex_count];
@@ -294,7 +293,7 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 	[enc popDebugGroup];
 
 	render.dirty.set_flag((RenderState::DirtyFlag)(RenderState::DIRTY_PIPELINE | RenderState::DIRTY_DEPTH | RenderState::DIRTY_RASTER));
-	render.mark_uniforms_dirty({ 0 }); // mark index 0 dirty, if there is already a binding for index 0
+	render.mark_uniforms_dirty({ 0 }); // Mark index 0 dirty, if there is already a binding for index 0.
 	render.mark_viewport_dirty();
 	render.mark_scissors_dirty();
 	render.mark_vertex_dirty();
@@ -398,9 +397,9 @@ void MDCommandBuffer::_render_bind_uniform_sets() {
 	id<MTLDevice> device = enc.device;
 
 	while (set_uniforms != 0) {
-		// find the index of the next set bit
+		// Find the index of the next set bit.
 		int index = __builtin_ctzll(set_uniforms);
-		// clear the set bit
+		// Clear the set bit.
 		set_uniforms &= ~(1ULL << index);
 		MDUniformSet *set = render.uniform_sets[index];
 		if (set == nullptr || set->index >= (uint32_t)shader->sets.size()) {
@@ -421,14 +420,14 @@ void MDCommandBuffer::_render_bind_uniform_sets() {
 			}
 		}
 
-		// vertex
+		// Set the buffer for the vertex stage.
 		{
 			uint32_t const *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_VERTEX);
 			if (offset) {
 				[enc setVertexBuffer:bus.buffer offset:*offset atIndex:set->index];
 			}
 		}
-		// fragment
+		// Set the buffer for the fragment stage.
 		{
 			uint32_t const *offset = set_info.offsets.getptr(RDD::SHADER_STAGE_FRAGMENT);
 			if (offset) {
@@ -466,30 +465,30 @@ uint32_t MDCommandBuffer::_populate_vertices(simd::float4 *p_vertices, uint32_t 
 	vtx.z = 0.0;
 	vtx.w = (float)1;
 
-	// Top left vertex	- First triangle
+	// Top left vertex - First triangle.
 	vtx.y = topPos;
 	vtx.x = leftPos;
 	p_vertices[idx++] = vtx;
 
-	// Bottom left vertex
+	// Bottom left vertex.
 	vtx.y = bottomPos;
 	vtx.x = leftPos;
 	p_vertices[idx++] = vtx;
 
-	// Bottom right vertex
+	// Bottom right vertex.
 	vtx.y = bottomPos;
 	vtx.x = rightPos;
 	p_vertices[idx++] = vtx;
 
-	// Bottom right vertex	- Second triangle
+	// Bottom right vertex - Second triangle.
 	p_vertices[idx++] = vtx;
 
-	// Top right vertex
+	// Top right vertex.
 	vtx.y = topPos;
 	vtx.x = rightPos;
 	p_vertices[idx++] = vtx;
 
-	// Top left vertex
+	// Top left vertex.
 	vtx.y = topPos;
 	vtx.x = leftPos;
 	p_vertices[idx++] = vtx;
@@ -546,7 +545,7 @@ void MDCommandBuffer::_render_clear_render_area() {
 	MDRenderPass const &pass = *render.pass;
 	MDSubpass const &subpass = pass.subpasses[render.current_subpass];
 
-	// first determine attachments that should be cleared
+	// First determine attachments that should be cleared.
 	LocalVector<RDD::AttachmentClear> clears;
 	clears.reserve(subpass.color_references.size() + /* possible depth stencil clear */ 1);
 
@@ -656,7 +655,7 @@ void MDCommandBuffer::render_next_subpass() {
 	if (attachmentCount == 0) {
 		// If there are no attachments, delay the creation of the encoder,
 		// so we can use a matching sample count for the pipeline, by setting
-		// the defaultRasterSampleCount from the pipeline's sample count
+		// the defaultRasterSampleCount from the pipeline's sample count.
 		render.desc = desc;
 	} else {
 		render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:desc];
@@ -664,7 +663,7 @@ void MDCommandBuffer::render_next_subpass() {
 		if (!render.is_rendering_entire_area) {
 			_render_clear_render_area();
 		}
-		// With a new encoder, all state is dirty
+		// With a new encoder, all state is dirty.
 		render.dirty.set_flag(RenderState::DIRTY_ALL);
 	}
 }
@@ -693,7 +692,7 @@ void MDCommandBuffer::render_bind_vertex_buffers(uint32_t p_binding_count, const
 	render.vertex_buffers.resize(p_binding_count);
 	render.vertex_offsets.resize(p_binding_count);
 
-	// reverse the buffers, as their bindings are assigned in descending order
+	// Reverse the buffers, as their bindings are assigned in descending order.
 	for (uint32_t i = 0; i < p_binding_count; i += 1) {
 		render.vertex_buffers[i] = rid::get(p_buffers[p_binding_count - i - 1]);
 		render.vertex_offsets[i] = p_offsets[p_binding_count - i - 1];
@@ -927,7 +926,7 @@ BoundUniformSet &MDUniformSet::boundUniformSetForShader(MDShader *p_shader, id<M
 				}
 
 				if ((ui.active_stages & stage_usage) == 0) {
-					// not active for this state, so don't bind anything
+					// Not active for this state, so don't bind anything.
 					continue;
 				}
 
@@ -1165,7 +1164,7 @@ id<MTLFunction> MDResourceFactory::new_func(NSString *p_source, NSString *p_name
 		id<MTLDevice> device = device_driver->get_device();
 		id<MTLLibrary> mtlLib = [device newLibraryWithSource:p_source
 													 options:options
-													   error:&err]; // temp retain
+													   error:&err];
 		if (err) {
 			if (p_error != nil) {
 				*p_error = err;
@@ -1326,13 +1325,13 @@ id<MTLRenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttK
 
 	MTLVertexDescriptor *vtxDesc = plDesc.vertexDescriptor;
 
-	// Vertex attribute descriptors
+	// Vertex attribute descriptors.
 	MTLVertexAttributeDescriptorArray *vaDescArray = vtxDesc.attributes;
 	MTLVertexAttributeDescriptor *vaDesc;
 	NSUInteger vtxBuffIdx = device_driver->get_metal_buffer_index_for_vertex_attribute_binding(VERT_CONTENT_BUFFER_INDEX);
 	NSUInteger vtxStride = 0;
 
-	// Vertex location
+	// Vertex location.
 	vaDesc = vaDescArray[0];
 	vaDesc.format = MTLVertexFormatFloat4;
 	vaDesc.bufferIndex = vtxBuffIdx;

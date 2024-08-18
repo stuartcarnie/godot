@@ -48,9 +48,8 @@
 /* permissions and limitations under the License.                         */
 /**************************************************************************/
 
-#include "pixel_formats.h"
-
-#include "metal_utils.h"
+#import "pixel_formats.h"
+#import "metal_utils.h"
 
 #if TARGET_OS_IPHONE || TARGET_OS_TV
 #if !(__IPHONE_OS_VERSION_MAX_ALLOWED >= 160400) // iOS/tvOS 16.4
@@ -578,12 +577,12 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 
 	uint32_t fmtIdx = 0;
 
-	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
+	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count.
 
 	// MTLPixelFormatInvalid must come first.
 	addMTLPixelFormatDesc(Invalid, None, None, None);
 
-	// Ordinary 8-bit pixel formats
+	// Ordinary 8-bit pixel formats.
 	addMTLPixelFormatDesc(A8Unorm, Color8, RF, RF);
 	addMTLPixelFormatDesc(R8Unorm, Color8, All, All);
 	addMTLPixelFormatDescSRGB(R8Unorm_sRGB, Color8, RFCMRB, None, R8Unorm);
@@ -591,7 +590,7 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc(R8Uint, Color8, RWCM, RWCM);
 	addMTLPixelFormatDesc(R8Sint, Color8, RWCM, RWCM);
 
-	// Ordinary 16-bit pixel formats
+	// Ordinary 16-bit pixel formats.
 	addMTLPixelFormatDesc(R16Unorm, Color16, RFWCMB, All);
 	addMTLPixelFormatDesc(R16Snorm, Color16, RFWCMB, All);
 	addMTLPixelFormatDesc(R16Uint, Color16, RWCM, RWCM);
@@ -604,13 +603,13 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc(RG8Uint, Color16, RWCM, RWCM);
 	addMTLPixelFormatDesc(RG8Sint, Color16, RWCM, RWCM);
 
-	// Packed 16-bit pixel formats
+	// Packed 16-bit pixel formats.
 	addMTLPixelFormatDesc(B5G6R5Unorm, Color16, RFCMRB, None);
 	addMTLPixelFormatDesc(A1BGR5Unorm, Color16, RFCMRB, None);
 	addMTLPixelFormatDesc(ABGR4Unorm, Color16, RFCMRB, None);
 	addMTLPixelFormatDesc(BGR5A1Unorm, Color16, RFCMRB, None);
 
-	// Ordinary 32-bit pixel formats
+	// Ordinary 32-bit pixel formats.
 	addMTLPixelFormatDesc(R32Uint, Color32, RC, RWCM);
 	addMTLPixelFormatDesc(R32Sint, Color32, RC, RWCM);
 	addMTLPixelFormatDesc(R32Float, Color32, RCMB, All);
@@ -630,13 +629,13 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc(BGRA8Unorm, Color32, All, All);
 	addMTLPixelFormatDescSRGB(BGRA8Unorm_sRGB, Color32, RFCMRB, RFCMRB, BGRA8Unorm);
 
-	// Packed 32-bit pixel formats
+	// Packed 32-bit pixel formats.
 	addMTLPixelFormatDesc(RGB10A2Unorm, Color32, RFCMRB, All);
 	addMTLPixelFormatDesc(RGB10A2Uint, Color32, RCM, RWCM);
 	addMTLPixelFormatDesc(RG11B10Float, Color32, RFCMRB, All);
 	addMTLPixelFormatDesc(RGB9E5Float, Color32, RFCMRB, RF);
 
-	// Ordinary 64-bit pixel formats
+	// Ordinary 64-bit pixel formats.
 	addMTLPixelFormatDesc(RG32Uint, Color64, RC, RWCM);
 	addMTLPixelFormatDesc(RG32Sint, Color64, RC, RWCM);
 	addMTLPixelFormatDesc(RG32Float, Color64, RCB, All);
@@ -647,12 +646,12 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc(RGBA16Sint, Color64, RWCM, RWCM);
 	addMTLPixelFormatDesc(RGBA16Float, Color64, All, All);
 
-	// Ordinary 128-bit pixel formats
+	// Ordinary 128-bit pixel formats.
 	addMTLPixelFormatDesc(RGBA32Uint, Color128, RC, RWCM);
 	addMTLPixelFormatDesc(RGBA32Sint, Color128, RC, RWCM);
 	addMTLPixelFormatDesc(RGBA32Float, Color128, RC, All);
 
-	// Compressed pixel formats
+	// Compressed pixel formats.
 	addMTLPixelFormatDesc(PVRTC_RGBA_2BPP, PVRTC_RGBA_2BPP, RF, None);
 	addMTLPixelFormatDescSRGB(PVRTC_RGBA_2BPP_sRGB, PVRTC_RGBA_2BPP, RF, None, PVRTC_RGBA_2BPP);
 	addMTLPixelFormatDesc(PVRTC_RGBA_4BPP, PVRTC_RGBA_4BPP, RF, None);
@@ -732,18 +731,18 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 
 #pragma clang diagnostic pop
 
-	// YUV pixel formats
+	// YUV pixel formats.
 	addMTLPixelFormatDesc(GBGR422, None, RF, RF);
 	addMTLPixelFormatDesc(BGRG422, None, RF, RF);
 
-	// Extended range and wide color pixel formats
+	// Extended range and wide color pixel formats.
 	addMTLPixelFormatDesc(BGRA10_XR, BGRA10_XR, None, None);
 	addMTLPixelFormatDescSRGB(BGRA10_XR_sRGB, BGRA10_XR, None, None, BGRA10_XR);
 	addMTLPixelFormatDesc(BGR10_XR, BGR10_XR, None, None);
 	addMTLPixelFormatDescSRGB(BGR10_XR_sRGB, BGR10_XR, None, None, BGR10_XR);
 	addMTLPixelFormatDesc(BGR10A2Unorm, Color32, None, None);
 
-	// Depth and stencil pixel formats
+	// Depth and stencil pixel formats.
 	addMTLPixelFormatDesc(Depth16Unorm, None, None, None);
 	addMTLPixelFormatDesc(Depth32Float, None, DRM, DRFMR);
 	addMTLPixelFormatDesc(Stencil8, None, DRM, DRMR);
@@ -752,7 +751,7 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc(X24_Stencil8, Depth24_Stencil8, None, DRMR);
 	addMTLPixelFormatDesc(X32_Stencil8, Depth32_Stencil8, DRM, DRMR);
 
-	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
+	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count.
 }
 
 #define addMTLVertexFormatDesc(MTL_VTX_FMT, IOS_CAPS, MACOS_CAPS)                                           \
@@ -764,7 +763,7 @@ void PixelFormats::initMTLVertexFormatCapabilities() {
 
 	uint32_t fmtIdx = 0;
 
-	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
+	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count.
 
 	// MTLVertexFormatInvalid must come first.
 	addMTLVertexFormatDesc(Invalid, None, None);
@@ -834,11 +833,11 @@ void PixelFormats::initMTLVertexFormatCapabilities() {
 
 	addMTLVertexFormatDesc(UChar4Normalized_BGRA, None, None);
 
-	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
+	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count.
 }
 
 void PixelFormats::buildMTLFormatMaps() {
-	// Set all MTLPixelFormats and MTLVertexFormats to undefined/invalid
+	// Set all MTLPixelFormats and MTLVertexFormats to undefined/invalid.
 	clear(_mtlFormatDescIndicesByMTLPixelFormatsCore, _mtlPixelFormatCoreCount);
 	clear(_mtlFormatDescIndicesByMTLVertexFormats, _mtlVertexFormatCount);
 
@@ -856,7 +855,7 @@ void PixelFormats::buildMTLFormatMaps() {
 		}
 	}
 
-	// Build lookup table for MTLVertexFormat specs
+	// Build lookup table for MTLVertexFormat specs.
 	for (uint32_t fmtIdx = 0; fmtIdx < _mtlVertexFormatCount; fmtIdx++) {
 		MTLVertexFormat fmt = _mtlVertexFormatDescriptions[fmtIdx].mtlVertexFormat;
 		if (fmt) {
@@ -865,7 +864,7 @@ void PixelFormats::buildMTLFormatMaps() {
 	}
 }
 
-// If the device supports the feature set, add additional capabilities to a MTLPixelFormat
+// If the device supports the feature set, add additional capabilities to a MTLPixelFormat.
 void PixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> p_device,
 		MTLFeatureSet p_feature_set,
 		MTLPixelFormat p_format,
@@ -875,7 +874,7 @@ void PixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> p_device,
 	}
 }
 
-// If the device supports the GPU family, add additional capabilities to a MTLPixelFormat
+// If the device supports the GPU family, add additional capabilities to a MTLPixelFormat.
 void PixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> p_device,
 		MTLGPUFamily p_family,
 		MTLPixelFormat p_format,
@@ -895,7 +894,7 @@ void PixelFormats::disableAllMTLPixelFormatCapabilities(MTLPixelFormat p_format)
 	getMTLPixelFormatDesc(p_format).mtlFmtCaps = kMTLFmtCapsNone;
 }
 
-// If the device supports the feature set, add additional capabilities to a MTLVertexFormat
+// If the device supports the feature set, add additional capabilities to a MTLVertexFormat.
 void PixelFormats::addMTLVertexFormatCapabilities(id<MTLDevice> p_device,
 		MTLFeatureSet p_feature_set,
 		MTLVertexFormat p_format,
@@ -1186,7 +1185,7 @@ void PixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> p_device) {
 	addGPUMTLPixFmtCaps(Apple1, Depth16Unorm, DRFM);
 	addGPUMTLPixFmtCaps(Apple3, Depth16Unorm, DRFMR);
 
-	// Vertex formats
+	// Vertex formats.
 	addFeatSetMTLVtxFmtCaps(iOS_GPUFamily1_v4, UCharNormalized, Vertex);
 	addFeatSetMTLVtxFmtCaps(iOS_GPUFamily1_v4, CharNormalized, Vertex);
 	addFeatSetMTLVtxFmtCaps(iOS_GPUFamily1_v4, UChar, Vertex);

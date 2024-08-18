@@ -150,6 +150,7 @@ target_sources(godot-server-renderer PRIVATE
         rendering_light_culler.h
         rendering_method.cpp
         rendering_method.h
+        rendering_server_constants.h
         rendering_server_default.cpp
         rendering_server_default.h
         rendering_server_globals.cpp

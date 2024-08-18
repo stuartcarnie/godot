@@ -20,6 +20,7 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         editor/fa.po
         editor/fi.po
         editor/fr.po
+        editor/ga.po
         editor/gl.po
         editor/he.po
         editor/hu.po
@@ -65,6 +66,7 @@ set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         properties/es.po
         properties/et.po
         properties/fr.po
+        properties/ga.po
         properties/id.po
         properties/it.po
         properties/ja.po

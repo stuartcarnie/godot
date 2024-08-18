@@ -51,9 +51,9 @@
 #ifndef METAL_DEVICE_PROPERTIES_H
 #define METAL_DEVICE_PROPERTIES_H
 
-#include "core/string/ustring.h"
-#include "core/templates/hash_map.h"
-#include "servers/rendering/rendering_device.h"
+#import "core/string/ustring.h"
+#import "core/templates/hash_map.h"
+#import "servers/rendering/rendering_device.h"
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>

@@ -54,15 +54,16 @@
 #import "metal_device_properties.h"
 #import "metal_utils.h"
 #import "pixel_formats.h"
+
 #import "servers/rendering/rendering_device_driver.h"
 
-#import "spirv.hpp"
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <simd/simd.h>
 #import <initializer_list>
 #import <optional>
+#import <spirv.hpp>
 
 // These types can be used in Vector and other containers that use
 // pointer operations not supported by ARC.
@@ -209,7 +210,6 @@ private:
 public:
 	MDCommandBufferStateType type = MDCommandBufferStateType::None;
 
-	// state
 	struct RenderState {
 		MDRenderPass *pass = nullptr;
 		MDFrameBuffer *frameBuffer = nullptr;
@@ -223,7 +223,7 @@ public:
 		bool is_rendering_entire_area = false;
 		MTLRenderPassDescriptor *desc = nil;
 		id<MTLRenderCommandEncoder> encoder = nil;
-		id<MTLBuffer> __unsafe_unretained index_buffer = nil; // buffer is owned by RDD
+		id<MTLBuffer> __unsafe_unretained index_buffer = nil; // Buffer is owned by RDD.
 		MTLIndexType index_type = MTLIndexTypeUInt16;
 		LocalVector<id<MTLBuffer> __unsafe_unretained> vertex_buffers;
 		LocalVector<NSUInteger> vertex_offsets;
@@ -245,7 +245,7 @@ public:
 		BitField<DirtyFlag> dirty = DIRTY_NONE;
 
 		LocalVector<MDUniformSet *> uniform_sets;
-		// bit mask of the uniform sets that are dirty, to prevent redundant binding
+		// Bit mask of the uniform sets that are dirty, to prevent redundant binding.
 		uint64_t uniform_set_mask = 0;
 
 		_FORCE_INLINE_ void reset() {
@@ -345,7 +345,7 @@ public:
 
 	} render;
 
-	// state specific for a compute pass
+	// State specific for a compute pass.
 	struct {
 		MDComputePipeline *pipeline = nullptr;
 		id<MTLComputeCommandEncoder> encoder = nil;
@@ -355,7 +355,7 @@ public:
 		}
 	} compute;
 
-	// state specific to a blit pass
+	// State specific to a blit pass.
 	struct {
 		id<MTLBlitCommandEncoder> encoder = nil;
 		_FORCE_INLINE_ void reset() {
@@ -801,12 +801,12 @@ public:
 	virtual ~MDFrameBuffer() = default;
 };
 
-/// These functions are used to convert between Objective-C objects and
-/// the RIDs used by Godot, respecting automatic reference counting.
+// These functions are used to convert between Objective-C objects and
+// the RIDs used by Godot, respecting automatic reference counting.
 namespace rid {
 
-/// owned converts an Objective C object to a pointer, and incrementing the
-/// reference count.
+// Converts an Objective-C object to a pointer, and incrementing the
+// reference count.
 _FORCE_INLINE_
 void *owned(id p_id) {
 	return (__bridge_retained void *)p_id;
@@ -821,13 +821,13 @@ MAKE_ID(id<MTLSamplerState>, RDD::SamplerID)
 MAKE_ID(MTLVertexDescriptor *, RDD::VertexFormatID)
 MAKE_ID(id<MTLCommandQueue>, RDD::CommandPoolID)
 
-/// get converts a pointer to an Objective C object without changing the reference count.
+// Converts a pointer to an Objective-C object without changing the reference count.
 _FORCE_INLINE_
 auto get(RDD::ID p_id) {
 	return (p_id.id) ? (__bridge ::id)(void *)p_id.id : nil;
 }
 
-/// release converts a pointer to an Objective C object, and decrements the reference count.
+// Converts a pointer to an Objective-C object, and decrements the reference count.
 _FORCE_INLINE_
 auto release(RDD::ID p_id) {
 	return (__bridge_transfer ::id)(void *)p_id.id;

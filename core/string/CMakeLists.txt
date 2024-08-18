@@ -25,6 +25,8 @@ target_sources(godot-string PRIVATE
         translation.h
         translation_po.cpp
         translation_po.h
+        translation_server.cpp
+        translation_server.h
         ucaps.h
         ustring.cpp
         ustring.h

@@ -48,13 +48,13 @@
 /* permissions and limitations under the License.                         */
 /**************************************************************************/
 
-#include "metal_device_properties.h"
+#import "metal_device_properties.h"
 
 #import <Metal/Metal.h>
 #import <spirv_cross.hpp>
 #import <spirv_msl.hpp>
 
-// Common scaling multipliers
+// Common scaling multipliers.
 #define KIBI (1024)
 #define MEBI (KIBI * KIBI)
 
@@ -100,7 +100,7 @@ void MetalDeviceProperties::init_features(id<MTLDevice> p_device) {
 	features.simdReduction = [p_device supportsFamily:MTLGPUFamilyApple7];
 
 	MTLCompileOptions *opts = [MTLCompileOptions new];
-	features.mslVersionEnum = opts.languageVersion; // by default, Metal uses the most recent language version
+	features.mslVersionEnum = opts.languageVersion; // By default, Metal uses the most recent language version.
 
 #define setMSLVersion(m_maj, m_min) \
 	features.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(m_maj, m_min)
@@ -154,45 +154,45 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 
 	// FST: https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
 
-	// FST: Maximum number of layers per 1D texture array, 2D texture array, or 3D texture
+	// FST: Maximum number of layers per 1D texture array, 2D texture array, or 3D texture.
 	limits.maxImageArrayLayers = 2048;
 	if ([p_device supportsFamily:MTLGPUFamilyApple3]) {
-		// FST: Maximum 2D texture width and height
+		// FST: Maximum 2D texture width and height.
 		limits.maxFramebufferWidth = 16384;
 		limits.maxFramebufferHeight = 16384;
 		limits.maxViewportDimensionX = 16384;
 		limits.maxViewportDimensionY = 16384;
-		// FST: Maximum 1D texture width
+		// FST: Maximum 1D texture width.
 		limits.maxImageDimension1D = 16384;
-		// FST: Maximum 2D texture width and height
+		// FST: Maximum 2D texture width and height.
 		limits.maxImageDimension2D = 16384;
-		// FST: Maximum cube map texture width and height
+		// FST: Maximum cube map texture width and height.
 		limits.maxImageDimensionCube = 16384;
 	} else {
-		// FST: Maximum 2D texture width and height
+		// FST: Maximum 2D texture width and height.
 		limits.maxFramebufferWidth = 8192;
 		limits.maxFramebufferHeight = 8192;
 		limits.maxViewportDimensionX = 8192;
 		limits.maxViewportDimensionY = 8192;
-		// FST: Maximum 1D texture width
+		// FST: Maximum 1D texture width.
 		limits.maxImageDimension1D = 8192;
-		// FST: Maximum 2D texture width and height
+		// FST: Maximum 2D texture width and height.
 		limits.maxImageDimension2D = 8192;
-		// FST: Maximum cube map texture width and height
+		// FST: Maximum cube map texture width and height.
 		limits.maxImageDimensionCube = 8192;
 	}
-	// FST: Maximum 3D texture width, height, and depth
+	// FST: Maximum 3D texture width, height, and depth.
 	limits.maxImageDimension3D = 2048;
 
 	limits.maxThreadsPerThreadGroup = p_device.maxThreadsPerThreadgroup;
-	// no effective limits
+	// No effective limits.
 	limits.maxComputeWorkGroupCount = { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 	// https://github.com/KhronosGroup/MoltenVK/blob/568cc3acc0e2299931fdaecaaa1fc3ec5b4af281/MoltenVK/MoltenVK/GPUObjects/MVKDevice.h#L85
 	limits.maxBoundDescriptorSets = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
-	// FST: Maximum number of color render targets per render pass descriptor
+	// FST: Maximum number of color render targets per render pass descriptor.
 	limits.maxColorAttachments = 8;
 
-	// Maximum number of textures the device can access, per stage, from an argument buffer
+	// Maximum number of textures the device can access, per stage, from an argument buffer.
 	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxTexturesPerArgumentBuffer = 1'000'000;
 	} else if ([p_device supportsFamily:MTLGPUFamilyApple4]) {
@@ -201,14 +201,14 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 		limits.maxTexturesPerArgumentBuffer = 31;
 	}
 
-	// Maximum number of samplers the device can access, per stage, from an argument buffer
+	// Maximum number of samplers the device can access, per stage, from an argument buffer.
 	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxSamplersPerArgumentBuffer = 1024;
 	} else {
 		limits.maxSamplersPerArgumentBuffer = 16;
 	}
 
-	// Maximum number of buffers the device can access, per stage, from an argument buffer
+	// Maximum number of buffers the device can access, per stage, from an argument buffer.
 	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxBuffersPerArgumentBuffer = std::numeric_limits<uint64_t>::max();
 	} else if ([p_device supportsFamily:MTLGPUFamilyApple4]) {
@@ -218,7 +218,7 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 	}
 
 	limits.minSubgroupSize = limits.maxSubgroupSize = 1;
-	// These values were taken from MoltenVK
+	// These values were taken from MoltenVK.
 	if (features.simdPermute) {
 		limits.minSubgroupSize = 4;
 		limits.maxSubgroupSize = 32;
@@ -250,10 +250,10 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 
 	limits.maxBufferLength = p_device.maxBufferLength;
 
-	// FST: Maximum size of vertex descriptor layout stride
+	// FST: Maximum size of vertex descriptor layout stride.
 	limits.maxVertexDescriptorLayoutStride = std::numeric_limits<uint64_t>::max();
 
-	// Maximum number of viewports
+	// Maximum number of viewports.
 	if ([p_device supportsFamily:MTLGPUFamilyApple5]) {
 		limits.maxViewports = 16;
 	} else {
@@ -279,7 +279,7 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 #endif
 
 #if TARGET_OS_OSX
-	// this is Apple Silicon specific
+	// This is Apple Silicon specific.
 	limits.minUniformBufferOffsetAlignment = 16;
 #endif
 
@@ -301,7 +301,7 @@ SampleCount MetalDeviceProperties::find_nearest_supported_sample_count(Rendering
 	}
 
 	SampleCount requested_sample_count = sample_count[p_samples];
-	// Find the nearest supported sample count
+	// Find the nearest supported sample count.
 	while (requested_sample_count > SampleCount1) {
 		if (supported & requested_sample_count) {
 			return requested_sample_count;

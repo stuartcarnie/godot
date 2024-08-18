@@ -26,7 +26,6 @@ set_target_properties(metal PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDA
 target_link_libraries(metal PUBLIC godot-error godot-os spirv-cross)
 target_compile_definitions(metal PUBLIC METAL_ENABLED=1 RD_ENABLED=1)
 target_compile_options(metal PRIVATE -fexceptions)
-set_source_files_properties(pixel_formats.mm PROPERTIES COMPILE_FLAGS -Wno-deprecated-declarations)
 target_include_directories(metal PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 add_subdirectory(tools)

@@ -54,12 +54,12 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
-#include "servers/rendering/rendering_device.h"
+#import "servers/rendering/rendering_device.h"
 
 #import <Metal/Metal.h>
 
 static const uint32_t _mtlPixelFormatCount = 256;
-static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2; // The actual last enum value is not available on iOS
+static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2; // The actual last enum value is not available on iOS.
 static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 
 #pragma mark -

@@ -31,13 +31,14 @@
 #ifndef RENDERING_DEVICE_DRIVER_METAL_H
 #define RENDERING_DEVICE_DRIVER_METAL_H
 
-#include "core/templates/hash_map.h"
-#include "metal_objects.h"
-#include "servers/rendering/rendering_device_driver.h"
+#import "metal_objects.h"
 
-#include <Metal/Metal.h>
-#include <spirv.hpp>
-#include <variant>
+#import "core/templates/hash_map.h"
+#import "servers/rendering/rendering_device_driver.h"
+
+#import <Metal/Metal.h>
+#import <spirv.hpp>
+#import <variant>
 
 #ifdef DEBUG_ENABLED
 #ifndef _DEBUG
@@ -95,7 +96,7 @@ public:
 #pragma mark - Texture
 
 private:
-	/// Returns true if the texture is a valid linear format.
+	// Returns true if the texture is a valid linear format.
 	Result<bool> is_valid_linear(TextureFormat const &p_format) const;
 	void _get_sub_resource(TextureID p_texture, const TextureSubresource &p_subresource, TextureCopyableLayout *r_layout) const;
 
@@ -175,7 +176,7 @@ public:
 	// ----- BUFFER -----
 
 private:
-	// used to maintain references
+	// Used to maintain references.
 	Vector<MDCommandBuffer *> command_buffers;
 
 public:
@@ -215,7 +216,7 @@ public:
 #pragma mark - Shader
 
 private:
-	// Serialization types need access to private state
+	// Serialization types need access to private state.
 
 	friend struct ShaderStageData;
 	friend struct SpecializationConstantData;
@@ -396,7 +397,7 @@ public:
 	virtual const Capabilities &get_capabilities() const override final;
 	virtual bool is_composite_alpha_supported(CommandQueueID p_queue) const override final;
 
-	// Metal-specific
+	// Metal-specific.
 	id<MTLDevice> get_device() const { return device; }
 	PixelFormats &get_pixel_formats() const { return *pixel_formats; }
 	MDResourceCache &get_resource_cache() const { return *resource_cache; }

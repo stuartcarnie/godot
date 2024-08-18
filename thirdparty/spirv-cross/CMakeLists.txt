@@ -7,13 +7,10 @@ target_sources(spirv-cross PRIVATE
 		include/spirv_cross/internal_interface.hpp
 		include/spirv_cross/sampler.hpp
 		include/spirv_cross/thread_group.hpp
-		spirv.h
 		spirv.hpp
 		spirv_cfg.cpp
 		spirv_cfg.hpp
 		spirv_common.hpp
-		spirv_cpp.cpp
-		spirv_cpp.hpp
 		spirv_cross.cpp
 		spirv_cross.hpp
 		spirv_cross_containers.hpp

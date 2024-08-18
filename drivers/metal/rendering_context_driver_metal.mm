@@ -30,12 +30,11 @@
 
 #import "rendering_context_driver_metal.h"
 
-#include "core/config/engine.h"
-#include "core/config/project_settings.h"
-#include "core/string/ustring.h"
-#include "core/templates/local_vector.h"
-#include "core/version.h"
-#include "servers/rendering/rendering_device.h"
+#import "core/config/project_settings.h"
+#import "core/string/ustring.h"
+#import "core/templates/local_vector.h"
+#import "core/version.h"
+#import "servers/rendering/rendering_device.h"
 
 @protocol MTLDeviceEx <MTLDevice>
 #if TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 130300
@@ -68,7 +67,7 @@ Error RenderingContextDriverMetal::initialize() {
 }
 
 const RenderingContextDriver::Device &RenderingContextDriverMetal::device_get(uint32_t p_device_index) const {
-	CRASH_BAD_INDEX(p_device_index, 1);
+	DEV_ASSERT(p_device_index < 1);
 	return device;
 }
 

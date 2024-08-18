@@ -6,7 +6,7 @@ This document aims to describe the Metal rendering device implementation in Godo
 
 * Use placement heaps
 * Explicit hazard tracking
-* [MetalFX][] upscaling support?
+* [MetalFX] upscaling support?
 
 ## Acknowledgments
 

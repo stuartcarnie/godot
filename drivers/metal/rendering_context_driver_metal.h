@@ -34,6 +34,7 @@
 #ifdef METAL_ENABLED
 
 #import "rendering_device_driver_metal.h"
+
 #import "servers/rendering/rendering_context_driver.h"
 
 #import <CoreGraphics/CGGeometry.h>
@@ -48,7 +49,7 @@ class MDResourceCache;
 class API_AVAILABLE(macos(11.0), ios(14.0)) RenderingContextDriverMetal : public RenderingContextDriver {
 protected:
 	id<MTLDevice> metal_device = nil;
-	Device device; // there is only one device on Apple Silicon (for now)
+	Device device; // There is only one device on Apple Silicon.
 
 public:
 	Error initialize() final override;
@@ -129,12 +130,12 @@ public:
 				layer.drawableSize = drawableSize;
 			}
 
-			// Metal supports a maximum of 3 drawables
+			// Metal supports a maximum of 3 drawables.
 			p_desired_framebuffer_count = MIN(3U, p_desired_framebuffer_count);
 			layer.maximumDrawableCount = p_desired_framebuffer_count;
 
 #if TARGET_OS_OSX
-			// display sync is only supported on macOS
+			// Display sync is only supported on macOS.
 			switch (vsync_mode) {
 				case DisplayServer::VSYNC_MAILBOX:
 				case DisplayServer::VSYNC_ADAPTIVE:
@@ -149,7 +150,7 @@ public:
 			drawables.resize(p_desired_framebuffer_count);
 			frame_buffers.resize(p_desired_framebuffer_count);
 			for (uint32_t i = 0; i < p_desired_framebuffer_count; i++) {
-				// reserve space for the drawable texture
+				// Reserve space for the drawable texture.
 				frame_buffers[i].textures.resize(1);
 			}
 
@@ -180,7 +181,7 @@ public:
 				return;
 			}
 
-			// release texture and drawable
+			// Release texture and drawable.
 			frame_buffers[front].textures.write[0] = nil;
 			id<MTLDrawable> drawable = drawables[front];
 			drawables[front] = nil;
@@ -266,7 +267,7 @@ public:
 			frame_buffer.size = Size2i(width, height);
 			uint64_t now = OS::get_singleton()->get_ticks_usec();
 			if (now >= target_time) {
-				target_time = now + 1'000'000; // 1 second into the future
+				target_time = now + 1'000'000; // 1 second into the future.
 				id<CAMetalDrawable> drawable = layer.nextDrawable;
 				ERR_FAIL_NULL_V_MSG(drawable, RDD::FramebufferID(), "no drawable available");
 				drawables[rear] = drawable;
