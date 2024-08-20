@@ -10,12 +10,15 @@ add_subdirectory(project_manager)
 add_subdirectory(themes)
 add_subdirectory(translations)
 
+# platform exporters
+
 set(GENERATED_PLATFORM_EXPORTERS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/register_exporters.gen.cpp)
 set(EXPORT_PLATFORM_SOURCE_PLATFORMS)
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND EXPORT_PLATFORM_SOURCE_PLATFORMS "windows")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     list(APPEND EXPORT_PLATFORM_SOURCE_PLATFORMS "macos")
+    list(APPEND EXPORT_PLATFORM_SOURCE_PLATFORMS "ios")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
     list(APPEND EXPORT_PLATFORM_SOURCE_PLATFORMS "ios")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")

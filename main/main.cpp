@@ -1977,7 +1977,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 			driver_hints_with_d3d12 = String(",").join(driver_hints_arr);
 
 #ifdef METAL_ENABLED
-			// make metal the preferred and default driver
+			// Make metal the preferred and default driver.
 			driver_hints_arr.insert(0, "metal");
 #endif
 			driver_hints_with_metal = String(",").join(driver_hints_arr);

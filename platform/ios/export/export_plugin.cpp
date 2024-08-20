@@ -2657,6 +2657,13 @@ bool EditorExportPlatformIOS::has_valid_export_configuration(const Ref<EditorExp
 		}
 	}
 
+	if (GLOBAL_GET("rendering/rendering_device/driver.ios") == "metal") {
+		float version = p_preset->get("application/min_ios_version").operator String().to_float();
+		if (version < 14.0) {
+			err += TTR("Metal renderer require iOS 14+.") + "\n";
+		}
+	}
+
 	if (!err.is_empty()) {
 		r_error = err;
 	}

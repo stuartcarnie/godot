@@ -10,6 +10,7 @@ godot_add_library(platform-macos-export FOLDER macos
         ${LOGO_SVG_OUTPUT}
         ${RUN_SVG_OUTPUT}
 )
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files

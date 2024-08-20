@@ -75,6 +75,9 @@ class Environment:
     def __setitem__(self, key, value):
         self.__dict__[key] = value
 
+    def __contains__(self, item):
+        return item in self.__dict__
+
     def module_check_dependencies(self, name: str) -> bool:
         return True
 
@@ -148,7 +151,10 @@ def detect_modules_within_searchpath(path: str, env: Environment, selected_platf
         sys.path.remove(path)
         sys.modules.pop("config")
 
-        env[f"module_{name}_enabled"] = enabled
+        # check if env has key and only set it if None, which allows
+        # us to override which modules are enabled
+        if f"module_{name}_enabled" not in env:
+            env[f"module_{name}_enabled"] = enabled
 
     modules_enabled = OrderedDict()
 

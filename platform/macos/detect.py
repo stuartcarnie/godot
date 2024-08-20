@@ -240,17 +240,21 @@ def configure(env: "SConsEnvironment"):
     env.Append(LINKFLAGS=["-rpath", "@executable_path/../Frameworks", "-rpath", "@executable_path"])
 
     if env["metal"] and env["arch"] != "arm64":
-        print("Metal is only supported on arm64.")
-        sys.exit(255)
+        print("Metal is only supported on arm64, so it will be skipped for x86 builds.")
+        env["metal"] = False
+
+    extra_frameworks = set()
 
     if env["metal"]:
         env.AppendUnique(CPPDEFINES=["METAL_ENABLED", "RD_ENABLED"])
-        env.Append(LINKFLAGS=["-framework", "Metal", "-framework", "MetalKit"])
+        extra_frameworks.add("Metal")
+        extra_frameworks.add("MetalKit")
         env.Prepend(CPPPATH=["#thirdparty/spirv-cross"])
 
     if env["vulkan"]:
         env.AppendUnique(CPPDEFINES=["VULKAN_ENABLED", "RD_ENABLED"])
-        env.Append(LINKFLAGS=["-framework", "Metal", "-framework", "IOSurface"])
+        extra_frameworks.add("Metal")
+        extra_frameworks.add("IOSurface")
         if not env["use_volk"]:
             env.Append(LINKFLAGS=["-lMoltenVK"])
 
@@ -269,3 +273,7 @@ def configure(env: "SConsEnvironment"):
                     "MoltenVK SDK installation directory not found, use 'vulkan_sdk_path' SCons parameter to specify SDK path."
                 )
                 sys.exit(255)
+
+    if len(extra_frameworks) > 0:
+        frameworks = [item for key in extra_frameworks for item in ["-framework", key]]
+        env.Append(LINKFLAGS=frameworks)

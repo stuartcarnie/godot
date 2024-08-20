@@ -26,6 +26,9 @@ set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development")
 set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "6N425KH923")
 set(CMAKE_XCODE_ATTRIBUTE_GCC_WARN_64_TO_32_BIT_CONVERSION[arch=*64] "NO")
 set(CMAKE_XCODE_LINK_BUILD_PHASE_MODE KNOWN_LOCATION)
+set(CMAKE_XCODE_ATTRIBUTE_DEAD_CODE_STRIPPING "YES")
+set(CMAKE_XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_WEAK "YES")
+set(CMAKE_XCODE_XCCONFIG godot.xcconfig)
 
 include(CMakeDependentOption)
 
@@ -366,6 +369,8 @@ add_subdirectory(scene)
 add_subdirectory(modules)
 if (WANT_EDITOR)
     add_subdirectory(editor)
+    add_subdirectory(platform/ios/export)
+    add_subdirectory(platform/macos/export)
 endif ()
 add_subdirectory(main)
 

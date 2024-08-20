@@ -13,6 +13,7 @@ target_sources(godot-server-rendering-dummy PRIVATE
         rasterizer_canvas_dummy.h
         rasterizer_dummy.h
         rasterizer_scene_dummy.h
+        storage/light_storage.cpp
         storage/light_storage.h
         storage/material_storage.cpp
         storage/material_storage.h
