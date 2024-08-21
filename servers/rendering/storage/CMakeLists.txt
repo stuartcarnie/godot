@@ -16,6 +16,7 @@ target_sources(godot-server-rendering-storage PRIVATE
         environment_storage.h
         light_storage.h
         material_storage.h
+        mesh_storage.cpp
         mesh_storage.h
         particles_storage.h
         render_data.cpp

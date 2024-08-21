@@ -18,6 +18,8 @@ target_sources(godot-module-openxr-scene PRIVATE
         openxr_composition_layer_quad.h
         openxr_hand.cpp
         openxr_hand.h
+        openxr_visibility_mask.cpp
+        openxr_visibility_mask.h
 )
 # [[[end]]]
 target_link_libraries(godot-module-openxr-scene PUBLIC godot-object openxr)
