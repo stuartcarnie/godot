@@ -49,17 +49,17 @@
 /**************************************************************************/
 
 #import "rendering_device_driver_metal.h"
+
 #import "pixel_formats.h"
 #import "rendering_context_driver_metal.h"
 
-#import "core/config/project_settings.h"
 #import "core/io/compression.h"
 #import "core/io/marshalls.h"
 #import "core/string/ustring.h"
+#import "core/templates/hash_map.h"
 
 #import <Metal/MTLTexture.h>
 #import <Metal/Metal.h>
-#import <compression.h>
 #import <spirv_msl.hpp>
 #import <spirv_parser.hpp>
 

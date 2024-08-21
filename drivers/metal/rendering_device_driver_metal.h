@@ -33,7 +33,6 @@
 
 #import "metal_objects.h"
 
-#import "core/templates/hash_map.h"
 #import "servers/rendering/rendering_device_driver.h"
 
 #import <Metal/Metal.h>

@@ -4,9 +4,10 @@ Import("env")
 
 env_metal = env.Clone()
 
-# SPIRV-Cross
-env_thirdparty = env.Clone()
-env_thirdparty.disable_warnings()
+# Thirdparty source files
+
+thirdparty_obj = []
+
 thirdparty_dir = "#thirdparty/spirv-cross/"
 thirdparty_sources = [
     "spirv_cfg.cpp",
@@ -20,35 +21,29 @@ thirdparty_sources = [
 ]
 thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
 
-# Must enable exceptions for SPIRV-Cross; otherwise, it will abort the process on errors
-if "-fno-exceptions" in env_thirdparty["CXXFLAGS"]:
-    env_thirdparty["CXXFLAGS"].remove("-fno-exceptions")
-env_thirdparty.Append(CXXFLAGS=["-fexceptions"])
-thirdparty_obj = []
+env_metal.Prepend(CPPPATH=[thirdparty_dir, thirdparty_dir + "/include"])
+
+# Must enable exceptions for SPIRV-Cross; otherwise, it will abort the process on errors.
+if "-fno-exceptions" in env_metal["CXXFLAGS"]:
+    env_metal["CXXFLAGS"].remove("-fno-exceptions")
+env_metal.Append(CXXFLAGS=["-fexceptions"])
+
+env_thirdparty = env_metal.Clone()
+env_thirdparty.disable_warnings()
 env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
 env_metal.drivers_sources += thirdparty_obj
 
-if "-fno-exceptions" in env_metal["CXXFLAGS"]:
-    env_metal["CXXFLAGS"].remove("-fno-exceptions")
+# Enable C++20 for the Objective-C++ Metal code, which uses C++20 concepts.
 if "-std=gnu++17" in env_metal["CXXFLAGS"]:
     env_metal["CXXFLAGS"].remove("-std=gnu++17")
-
-# Changes to the compiler flags for the Metal driver.
-#
-# * enable exceptions for spirv-cross
-# * enable C++20 for the Objective-C++ Metal code, which uses C++20 concepts
-env_metal.Append(CXXFLAGS=["-fexceptions", "-std=c++20"])
-
-env_metal.Prepend(CPPPATH=[thirdparty_dir, thirdparty_dir + "/include"])
+env_metal.Append(CXXFLAGS=["-std=c++20"])
 
 # Driver source files
 
 driver_obj = []
 
-# Driver source files
 env_metal.add_source_files(driver_obj, "*.mm")
-
-env_metal.drivers_sources += driver_obj
+env.drivers_sources += driver_obj
 
 # Needed to force rebuilding the driver files when the thirdparty library is updated.
 env.Depends(driver_obj, thirdparty_obj)

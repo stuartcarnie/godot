@@ -76,7 +76,7 @@ DisplayServerIOS::DisplayServerIOS(const String &p_rendering_driver, WindowMode 
 #ifdef METAL_ENABLED
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunguarded-availability"
-		// eliminate "RenderingContextDriverMetal is only available on iOS 14.0 or newer
+		// Eliminate "RenderingContextDriverMetal is only available on iOS 14.0 or newer".
 		RenderingContextDriverMetal::WindowPlatformData metal;
 #pragma clang diagnostic pop
 #endif

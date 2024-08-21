@@ -56,6 +56,7 @@ def get_flags():
     return {
         "arch": detect_arch(),
         "use_volk": False,
+        "metal": True,
         "supported": ["mono"],
     }
 
@@ -240,7 +241,7 @@ def configure(env: "SConsEnvironment"):
     env.Append(LINKFLAGS=["-rpath", "@executable_path/../Frameworks", "-rpath", "@executable_path"])
 
     if env["metal"] and env["arch"] != "arm64":
-        print("Metal is only supported on arm64, so it will be skipped for x86 builds.")
+        # Only supported on arm64, so skip it for x86_64 builds.
         env["metal"] = False
 
     extra_frameworks = set()

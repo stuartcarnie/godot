@@ -30,12 +30,6 @@
 
 #import "rendering_context_driver_metal.h"
 
-#import "core/config/project_settings.h"
-#import "core/string/ustring.h"
-#import "core/templates/local_vector.h"
-#import "core/version.h"
-#import "servers/rendering/rendering_device.h"
-
 @protocol MTLDeviceEx <MTLDevice>
 #if TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 130300
 - (void)setShouldMaximizeConcurrentCompilation:(BOOL)v;

@@ -49,6 +49,7 @@
 /**************************************************************************/
 
 #import "metal_objects.h"
+
 #import "pixel_formats.h"
 #import "rendering_device_driver_metal.h"
 
