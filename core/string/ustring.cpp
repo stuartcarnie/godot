@@ -5466,7 +5466,9 @@ String String::sprintf(const Array &values, bool *error) const {
 	static const String MINUS("-");
 	static const String PLUS("+");
 
-	String formatted;
+	LocalVector<char32_t> buffer;
+	buffer.reserve(length());
+
 	char32_t *self = (char32_t *)get_data();
 	bool in_format = false;
 	int value_index = 0;
@@ -5488,7 +5490,8 @@ String String::sprintf(const Array &values, bool *error) const {
 		if (in_format) { // We have % - let's see what else we get.
 			switch (c) {
 				case '%': { // Replace %% with %
-					formatted += c;
+					// formatted += c;
+					buffer.push_back(c);
 					in_format = false;
 					break;
 				}
@@ -5555,7 +5558,12 @@ String String::sprintf(const Array &values, bool *error) const {
 						}
 					}
 
-					formatted += str;
+					char32_t const *ptr = str.ptr();
+					for (int i = 0; i < str.length(); i++) {
+						buffer.push_back(*ptr);
+						ptr++;
+					}
+					// formatted += str;
 					++value_index;
 					in_format = false;
 
@@ -5601,7 +5609,12 @@ String String::sprintf(const Array &values, bool *error) const {
 						}
 					}
 
-					formatted += str;
+					char32_t const *ptr = str.ptr();
+					for (int i = 0; i < str.length(); i++) {
+						buffer.push_back(*ptr);
+						ptr++;
+					}
+					//formatted += str;
 					++value_index;
 					in_format = false;
 					break;
@@ -5671,7 +5684,12 @@ String String::sprintf(const Array &values, bool *error) const {
 					}
 					str += ")";
 
-					formatted += str;
+					char32_t const *ptr = str.ptr();
+					for (int i = 0; i < str.length(); i++) {
+						buffer.push_back(*ptr);
+						ptr++;
+					}
+					// formatted += str;
 					++value_index;
 					in_format = false;
 					break;
@@ -5689,7 +5707,12 @@ String String::sprintf(const Array &values, bool *error) const {
 						str = str.lpad(min_chars);
 					}
 
-					formatted += str;
+					char32_t const *ptr = str.ptr();
+					for (int i = 0; i < str.length(); i++) {
+						buffer.push_back(*ptr);
+						ptr++;
+					}
+					// formatted += str;
 					++value_index;
 					in_format = false;
 					break;
@@ -5727,7 +5750,12 @@ String String::sprintf(const Array &values, bool *error) const {
 						str = str.lpad(min_chars);
 					}
 
-					formatted += str;
+					char32_t const *ptr = str.ptr();
+					for (int i = 0; i < str.length(); i++) {
+						buffer.push_back(*ptr);
+						ptr++;
+					}
+					// formatted += str;
 					++value_index;
 					in_format = false;
 					break;
@@ -5823,7 +5851,8 @@ String String::sprintf(const Array &values, bool *error) const {
 					in_decimals = false;
 					break;
 				default:
-					formatted += c;
+					buffer.push_back(c);
+					// formatted += c;
 			}
 		}
 	}
@@ -5839,6 +5868,8 @@ String String::sprintf(const Array &values, bool *error) const {
 	if (error) {
 		*error = false;
 	}
+	String formatted;
+	formatted.copy_from_unchecked(buffer.ptr(), buffer.size());
 	return formatted;
 }
 
