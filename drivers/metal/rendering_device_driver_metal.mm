@@ -2327,7 +2327,11 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 		cd->short_sha = sha_hex.substr(0, 8).utf8();
 		cd->stage = shader_data.stage;
 
-		MDLibrary *library = [[MDLibrary alloc] initWithCacheEntry:cd device:device source:source options:options];
+		MDLibrary *library = [MDLibrary newLibraryWithCacheEntry:cd
+														  device:device
+														  source:source
+														 options:options
+														strategy:_shader_load_strategy];
 		_shader_cache[key] = cd;
 		libraries[shader_data.stage] = library;
 	}
@@ -3882,6 +3886,10 @@ size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(MTLPixe
 RenderingDeviceDriverMetal::RenderingDeviceDriverMetal(RenderingContextDriverMetal *p_context_driver) :
 		context_driver(p_context_driver) {
 	DEV_ASSERT(p_context_driver != nullptr);
+
+	if (String res = OS::get_singleton()->get_environment("GODOT_MTL_SHADER_LOAD_STRATEGY"); res == U"lazy") {
+		_shader_load_strategy = ShaderLoadStrategy::LAZY;
+	}
 }
 
 RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {

@@ -1394,24 +1394,96 @@ void ShaderCacheEntry::notify_free() const {
 	owner.shader_cache_free_entry(key);
 }
 
-@implementation MDLibrary {
-	ShaderCacheEntry *_entry;
+@interface MDLibrary ()
+- (instancetype)initWithCacheEntry:(ShaderCacheEntry *)entry;
+- (ShaderCacheEntry *)entry;
+@end
+
+@interface MDLazyLibrary : MDLibrary {
 	id<MTLLibrary> _library;
 	NSError *_error;
+	std::shared_mutex _mu;
+	bool _loaded;
+	id<MTLDevice> _device;
+	NSString *_source;
+	MTLCompileOptions *_options;
+}
+- (instancetype)initWithCacheEntry:(ShaderCacheEntry *)entry
+							device:(id<MTLDevice>)device
+							source:(NSString *)source
+						   options:(MTLCompileOptions *)options;
+@end
 
+@interface MDImmediateLibrary : MDLibrary {
+	id<MTLLibrary> _library;
+	NSError *_error;
 	std::mutex _cv_mutex;
 	std::condition_variable _cv;
 	std::atomic<bool> _complete;
 	bool _ready;
 }
+- (instancetype)initWithCacheEntry:(ShaderCacheEntry *)entry
+							device:(id<MTLDevice>)device
+							source:(NSString *)source
+						   options:(MTLCompileOptions *)options;
+@end
+
+@implementation MDLibrary {
+	ShaderCacheEntry *_entry;
+}
+
++ (instancetype)newLibraryWithCacheEntry:(ShaderCacheEntry *)entry
+								  device:(id<MTLDevice>)device
+								  source:(NSString *)source
+								 options:(MTLCompileOptions *)options
+								strategy:(ShaderLoadStrategy)strategy {
+	switch (strategy) {
+		case ShaderLoadStrategy::DEFAULT:
+			[[fallthrough]];
+		default:
+			return [[MDImmediateLibrary alloc] initWithCacheEntry:entry device:device source:source options:options];
+		case ShaderLoadStrategy::LAZY:
+			return [[MDLazyLibrary alloc] initWithCacheEntry:entry device:device source:source options:options];
+	}
+}
+
+- (ShaderCacheEntry *)entry {
+	return _entry;
+}
+
+- (id<MTLLibrary>)library {
+	CRASH_NOW_MSG("Not implemented");
+	return nil;
+}
+
+- (NSError *)error {
+	CRASH_NOW_MSG("Not implemented");
+	return nil;
+}
+
+- (void)setLabel:(NSString *)label {
+}
+
+- (instancetype)initWithCacheEntry:(ShaderCacheEntry *)entry {
+	self = [super init];
+	_entry = entry;
+	_entry->library = self;
+	return self;
+}
+
+- (void)dealloc {
+	_entry->notify_free();
+}
+
+@end
+
+@implementation MDImmediateLibrary
 
 - (instancetype)initWithCacheEntry:(ShaderCacheEntry *)entry
 							device:(id<MTLDevice>)device
 							source:(NSString *)source
 						   options:(MTLCompileOptions *)options {
-	self = [super init];
-	_entry = entry;
-	_entry->library = self;
+	self = [super initWithCacheEntry:entry];
 	_complete = false;
 	_ready = false;
 
@@ -1456,8 +1528,57 @@ void ShaderCacheEntry::notify_free() const {
 	return _error;
 }
 
-- (void)dealloc {
-	_entry->notify_free();
+@end
+
+@implementation MDLazyLibrary
+- (instancetype)initWithCacheEntry:(ShaderCacheEntry *)entry
+							device:(id<MTLDevice>)device
+							source:(NSString *)source
+						   options:(MTLCompileOptions *)options {
+	self = [super initWithCacheEntry:entry];
+	_device = device;
+	_source = source;
+	_options = options;
+
+	return self;
+}
+
+- (void)load {
+	{
+		std::shared_lock<std::shared_mutex> lock(_mu);
+		if (_loaded) {
+			return;
+		}
+	}
+
+	std::unique_lock<std::shared_mutex> lock(_mu);
+	if (_loaded) {
+		return;
+	}
+
+	ShaderCacheEntry *entry = [self entry];
+
+	__block os_signpost_id_t compile_id = (os_signpost_id_t)(uintptr_t)self;
+	os_signpost_interval_begin(LOG_INTERVALS, compile_id, "shader_compile",
+			"shader_name=%{public}s stage=%{public}s hash=%{public}s",
+			entry->name.get_data(), SHADER_STAGE_NAMES[entry->stage], entry->short_sha.get_data());
+	NSError *error;
+	_library = [_device newLibraryWithSource:_source options:_options error:&error];
+	os_signpost_interval_end(LOG_INTERVALS, compile_id, "shader_compile");
+	_device = nil;
+	_source = nil;
+	_options = nil;
+	_loaded = true;
+}
+
+- (id<MTLLibrary>)library {
+	[self load];
+	return _library;
+}
+
+- (NSError *)error {
+	[self load];
+	return _error;
 }
 
 @end

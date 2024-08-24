@@ -81,6 +81,8 @@ class API_AVAILABLE(macos(11.0), ios(14.0)) RenderingDeviceDriverMetal : public 
 
 #pragma mark - Shader Cache
 
+	ShaderLoadStrategy _shader_load_strategy = ShaderLoadStrategy::DEFAULT;
+
 	/**
 	 * The shader cache is a map of hashes of the Metal source to shader cache entries.
 	 *

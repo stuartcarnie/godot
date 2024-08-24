@@ -501,14 +501,24 @@ struct API_AVAILABLE(macos(11.0), ios(14.0)) UniformSet {
 
 struct ShaderCacheEntry;
 
+enum class ShaderLoadStrategy {
+	DEFAULT,
+	LAZY,
+};
+
 /**
  * A Metal shader library.
  */
 @interface MDLibrary : NSObject
-@property(nonatomic, readonly) id<MTLLibrary> library;
-@property(nonatomic, readonly) NSError *error;
-@property(nonatomic) NSString *label;
-- (instancetype)initWithCacheEntry:(ShaderCacheEntry *)entry device:(id<MTLDevice>)device source:(NSString *)source options:(MTLCompileOptions *)options;
+- (id<MTLLibrary>)library;
+- (NSError *)error;
+- (void)setLabel:(NSString *)label;
+
++ (instancetype)newLibraryWithCacheEntry:(ShaderCacheEntry *)entry
+								  device:(id<MTLDevice>)device
+								  source:(NSString *)source
+								 options:(MTLCompileOptions *)options
+								strategy:(ShaderLoadStrategy)strategy;
 @end
 
 struct SHA256Digest {
