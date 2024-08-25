@@ -2323,8 +2323,6 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 
 		ShaderCacheEntry *cd = memnew(ShaderCacheEntry(*this, key));
 		cd->name = binary_data.shader_name;
-		String sha_hex = String::hex_encode_buffer(key.data, CC_SHA256_DIGEST_LENGTH);
-		cd->short_sha = sha_hex.substr(0, 8).utf8();
 		cd->stage = shader_data.stage;
 
 		MDLibrary *library = [MDLibrary newLibraryWithCacheEntry:cd
