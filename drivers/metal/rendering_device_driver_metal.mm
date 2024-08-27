@@ -72,8 +72,8 @@ os_log_t LOG_DRIVER;
 os_log_t LOG_INTERVALS;
 
 __attribute__((constructor)) static void InitializeLogging(void) {
-	LOG_DRIVER = os_log_create("org.stuartcarnie.godot.metal", OS_LOG_CATEGORY_POINTS_OF_INTEREST);
-	LOG_INTERVALS = os_log_create("org.stuartcarnie.godot.metal", "events");
+	LOG_DRIVER = os_log_create("org.godotengine.godot.metal", OS_LOG_CATEGORY_POINTS_OF_INTEREST);
+	LOG_INTERVALS = os_log_create("org.godotengine.godot.metal", "events");
 }
 
 /*****************/
@@ -3112,7 +3112,7 @@ RenderingDeviceDriverMetal::Result<id<MTLFunction>> RenderingDeviceDriverMetal::
 	NSArray<MTLFunctionConstant *> *constants = function.functionConstantsDictionary.allValues;
 	bool is_sorted = true;
 	for (uint32_t i = 1; i < constants.count; i++) {
-		if (constants[i - 1].index < constants[i].index) {
+		if (constants[i - 1].index > constants[i].index) {
 			is_sorted = false;
 			break;
 		}
