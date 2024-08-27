@@ -884,6 +884,10 @@ void Viewport::_process_picking() {
 		}
 
 #ifndef _3D_DISABLED
+		if (physics_object_picking_first_only && is_input_handled()) {
+			continue;
+		}
+
 		CollisionObject3D *capture_object = nullptr;
 		if (physics_object_capture.is_valid()) {
 			capture_object = Object::cast_to<CollisionObject3D>(ObjectDB::get_instance(physics_object_capture));
@@ -1933,7 +1937,12 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 					}
 				}
 
-				if (!is_tooltip_shown && over->can_process()) {
+				// If the tooltip timer isn't running, start it.
+				// Otherwise, only reset the timer if the mouse has moved more than 5 pixels.
+				if (!is_tooltip_shown && over->can_process() &&
+						(gui.tooltip_timer.is_null() ||
+								Math::is_zero_approx(gui.tooltip_timer->get_time_left()) ||
+								mm->get_relative().length() > 5.0)) {
 					if (gui.tooltip_timer.is_valid()) {
 						gui.tooltip_timer->release_connections();
 						gui.tooltip_timer = Ref<SceneTreeTimer>();

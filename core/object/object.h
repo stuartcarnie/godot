@@ -350,7 +350,10 @@ struct ObjectGDExtension {
 	}
 	void *class_userdata = nullptr;
 
+#ifndef DISABLE_DEPRECATED
 	GDExtensionClassCreateInstance create_instance;
+#endif // DISABLE_DEPRECATED
+	GDExtensionClassCreateInstance2 create_instance2;
 	GDExtensionClassFreeInstance free_instance;
 	GDExtensionClassGetVirtual get_virtual;
 	GDExtensionClassGetVirtualCallData get_virtual_call_data;
@@ -383,18 +386,6 @@ struct ObjectGDExtension {
  * compensate for many of the fallacies in C++. As a plus, this macro pretty
  * much alone defines the object model.
  */
-
-#define REVERSE_GET_PROPERTY_LIST                                  \
-public:                                                            \
-	_FORCE_INLINE_ bool _is_gpl_reversed() const { return true; }; \
-                                                                   \
-private:
-
-#define UNREVERSE_GET_PROPERTY_LIST                                 \
-public:                                                             \
-	_FORCE_INLINE_ bool _is_gpl_reversed() const { return false; }; \
-                                                                    \
-private:
 
 #define GDCLASS(m_class, m_inherits)                                                                                                             \
 private:                                                                                                                                         \
@@ -507,14 +498,9 @@ protected:                                                                      
 			m_inherits::_get_property_listv(p_list, p_reversed);                                                                                 \
 		}                                                                                                                                        \
 		p_list->push_back(PropertyInfo(Variant::NIL, get_class_static(), PROPERTY_HINT_NONE, get_class_static(), PROPERTY_USAGE_CATEGORY));      \
-		if (!_is_gpl_reversed()) {                                                                                                               \
-			::ClassDB::get_property_list(#m_class, p_list, true, this);                                                                          \
-		}                                                                                                                                        \
+		::ClassDB::get_property_list(#m_class, p_list, true, this);                                                                              \
 		if (m_class::_get_get_property_list() != m_inherits::_get_get_property_list()) {                                                         \
 			_get_property_list(p_list);                                                                                                          \
-		}                                                                                                                                        \
-		if (_is_gpl_reversed()) {                                                                                                                \
-			::ClassDB::get_property_list(#m_class, p_list, true, this);                                                                          \
 		}                                                                                                                                        \
 		if (p_reversed) {                                                                                                                        \
 			m_inherits::_get_property_listv(p_list, p_reversed);                                                                                 \
@@ -632,6 +618,7 @@ private:
 	int _predelete_ok = 0;
 	ObjectID _instance_id;
 	bool _predelete();
+	void _initialize();
 	void _postinitialize();
 	bool _can_translate = true;
 	bool _emitting = false;
@@ -794,8 +781,6 @@ public:
 		static int ptr;
 		return &ptr;
 	}
-
-	bool _is_gpl_reversed() const { return false; }
 
 	void detach_from_objectdb();
 	_FORCE_INLINE_ ObjectID get_instance_id() const { return _instance_id; }

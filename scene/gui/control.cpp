@@ -682,12 +682,10 @@ Size2 Control::get_parent_area_size() const {
 // Positioning and sizing.
 
 Transform2D Control::_get_internal_transform() const {
-	Transform2D rot_scale;
-	rot_scale.set_rotation_and_scale(data.rotation, data.scale);
-	Transform2D offset;
-	offset.set_origin(-data.pivot_offset);
-
-	return offset.affine_inverse() * (rot_scale * offset);
+	// T(pivot_offset) * R(rotation) * S(scale) * T(-pivot_offset)
+	Transform2D xform(data.rotation, data.scale, 0.0f, data.pivot_offset);
+	xform.translate_local(-data.pivot_offset);
+	return xform;
 }
 
 void Control::_update_canvas_item_transform() {
@@ -1748,10 +1746,10 @@ void Control::_size_changed() {
 			// so an up to date global transform could be obtained when handling these.
 			_notify_transform();
 
+			item_rect_changed(size_changed);
 			if (size_changed) {
 				notification(NOTIFICATION_RESIZED);
 			}
-			item_rect_changed(size_changed);
 		}
 
 		if (pos_changed && !size_changed) {
@@ -3608,7 +3606,7 @@ void Control::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "focus_mode", PROPERTY_HINT_ENUM, "None,Click,All"), "set_focus_mode", "get_focus_mode");
 
 	ADD_GROUP("Mouse", "mouse_");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "mouse_filter", PROPERTY_HINT_ENUM, "Stop,Pass,Ignore"), "set_mouse_filter", "get_mouse_filter");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "mouse_filter", PROPERTY_HINT_ENUM, "Stop,Pass (Propagate Up),Ignore"), "set_mouse_filter", "get_mouse_filter");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "mouse_force_pass_scroll_events"), "set_force_pass_scroll_events", "is_force_pass_scroll_events");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "mouse_default_cursor_shape", PROPERTY_HINT_ENUM, "Arrow,I-Beam,Pointing Hand,Cross,Wait,Busy,Drag,Can Drop,Forbidden,Vertical Resize,Horizontal Resize,Secondary Diagonal Resize,Main Diagonal Resize,Move,Vertical Split,Horizontal Split,Help"), "set_default_cursor_shape", "get_default_cursor_shape");
 

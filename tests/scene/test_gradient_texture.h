@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  FileErrors.kt                                                         */
+/*  test_gradient_texture.h                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,26 +28,60 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-package org.godotengine.godot.io.file
+#ifndef TEST_GRADIENT_TEXTURE_H
+#define TEST_GRADIENT_TEXTURE_H
 
-/**
- * Set of errors that may occur when performing data access.
- */
-internal enum class FileErrors(val nativeValue: Int) {
-	OK(0),
-	FAILED(-1),
-	FILE_NOT_FOUND(-2),
-	FILE_CANT_OPEN(-3),
-	INVALID_PARAMETER(-4);
+#include "scene/resources/gradient_texture.h"
 
-	companion object {
-		fun fromNativeError(error: Int): FileErrors? {
-			for (fileError in entries) {
-				if (fileError.nativeValue == error) {
-					return fileError
-				}
-			}
-			return null
-		}
-	}
+#include "tests/test_macros.h"
+
+namespace TestGradientTexture {
+
+// [SceneTree] in a test case name enables initializing a mock render server,
+// which ImageTexture is dependent on.
+TEST_CASE("[SceneTree][GradientTexture1D] Create GradientTexture1D") {
+	Ref<GradientTexture1D> gradient_texture = memnew(GradientTexture1D);
+
+	Ref<Gradient> test_gradient = memnew(Gradient);
+	gradient_texture->set_gradient(test_gradient);
+	CHECK(gradient_texture->get_gradient() == test_gradient);
+
+	gradient_texture->set_width(83);
+	CHECK(gradient_texture->get_width() == 83);
+
+	gradient_texture->set_use_hdr(true);
+	CHECK(gradient_texture->is_using_hdr());
 }
+
+TEST_CASE("[SceneTree][GradientTexture2D] Create GradientTexture2D") {
+	Ref<GradientTexture2D> gradient_texture = memnew(GradientTexture2D);
+
+	Ref<Gradient> test_gradient = memnew(Gradient);
+	gradient_texture->set_gradient(test_gradient);
+	CHECK(gradient_texture->get_gradient() == test_gradient);
+
+	gradient_texture->set_width(82);
+	CHECK(gradient_texture->get_width() == 82);
+
+	gradient_texture->set_height(81);
+	CHECK(gradient_texture->get_height() == 81);
+
+	gradient_texture->set_use_hdr(true);
+	CHECK(gradient_texture->is_using_hdr());
+
+	gradient_texture->set_fill(GradientTexture2D::Fill::FILL_SQUARE);
+	CHECK(gradient_texture->get_fill() == GradientTexture2D::Fill::FILL_SQUARE);
+
+	gradient_texture->set_fill_from(Vector2(0.2, 0.25));
+	CHECK(gradient_texture->get_fill_from() == Vector2(0.2, 0.25));
+
+	gradient_texture->set_fill_to(Vector2(0.35, 0.5));
+	CHECK(gradient_texture->get_fill_to() == Vector2(0.35, 0.5));
+
+	gradient_texture->set_repeat(GradientTexture2D::Repeat::REPEAT);
+	CHECK(gradient_texture->get_repeat() == GradientTexture2D::Repeat::REPEAT);
+}
+
+} //namespace TestGradientTexture
+
+#endif // TEST_GRADIENT_TEXTURE_H

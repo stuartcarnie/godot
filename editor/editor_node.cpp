@@ -702,6 +702,8 @@ void EditorNode::_notification(int p_what) {
 			last_system_base_color = DisplayServer::get_singleton()->get_base_color();
 			DisplayServer::get_singleton()->set_system_theme_change_callback(callable_mp(this, &EditorNode::_check_system_theme_changed));
 
+			get_viewport()->connect("size_changed", callable_mp(this, &EditorNode::_viewport_resized));
+
 			/* DO NOT LOAD SCENES HERE, WAIT FOR FILE SCANNING AND REIMPORT TO COMPLETE */
 		} break;
 
@@ -730,6 +732,7 @@ void EditorNode::_notification(int p_what) {
 			FileAccess::set_file_close_fail_notify_callback(nullptr);
 			log->deinit(); // Do not get messages anymore.
 			editor_data.clear_edited_scenes();
+			get_viewport()->disconnect("size_changed", callable_mp(this, &EditorNode::_viewport_resized));
 		} break;
 
 		case NOTIFICATION_READY: {
@@ -737,6 +740,7 @@ void EditorNode::_notification(int p_what) {
 
 			RenderingServer::get_singleton()->viewport_set_disable_2d(get_scene_root()->get_viewport_rid(), true);
 			RenderingServer::get_singleton()->viewport_set_environment_mode(get_viewport()->get_viewport_rid(), RenderingServer::VIEWPORT_ENVIRONMENT_DISABLED);
+			DisplayServer::get_singleton()->screen_set_keep_on(EDITOR_GET("interface/editor/keep_screen_on"));
 
 			feature_profile_manager->notify_changed();
 
@@ -835,6 +839,7 @@ void EditorNode::_notification(int p_what) {
 			if (EditorSettings::get_singleton()->check_changed_settings_in_group("interface/editor")) {
 				_update_update_spinner();
 				_update_vsync_mode();
+				DisplayServer::get_singleton()->screen_set_keep_on(EDITOR_GET("interface/editor/keep_screen_on"));
 			}
 
 #if defined(MODULE_GDSCRIPT_ENABLED) || defined(MODULE_MONO_ENABLED)
@@ -1073,30 +1078,32 @@ void EditorNode::_resources_reimporting(const Vector<String> &p_resources) {
 	// the inherited scene. Then, get_modified_properties_for_node will return the mesh property,
 	// which will trigger a recopy of the previous mesh, preventing the reload.
 	scenes_modification_table.clear();
-	List<String> scenes;
+	scenes_reimported.clear();
+	resources_reimported.clear();
+	EditorFileSystem *editor_file_system = EditorFileSystem::get_singleton();
 	for (const String &res_path : p_resources) {
-		if (ResourceLoader::get_resource_type(res_path) == "PackedScene") {
-			scenes.push_back(res_path);
+		// It's faster to use EditorFileSystem::get_file_type than fetching the resource type from disk.
+		// This makes a big difference when reimporting many resources.
+		String file_type = editor_file_system->get_file_type(res_path);
+		if (file_type.is_empty()) {
+			file_type = ResourceLoader::get_resource_type(res_path);
+		}
+		if (file_type == "PackedScene") {
+			scenes_reimported.push_back(res_path);
+		} else {
+			resources_reimported.push_back(res_path);
 		}
 	}
 
-	if (scenes.size() > 0) {
-		preload_reimporting_with_path_in_edited_scenes(scenes);
+	if (scenes_reimported.size() > 0) {
+		preload_reimporting_with_path_in_edited_scenes(scenes_reimported);
 	}
 }
 
 void EditorNode::_resources_reimported(const Vector<String> &p_resources) {
-	List<String> scenes;
 	int current_tab = scene_tabs->get_current_tab();
 
-	for (const String &res_path : p_resources) {
-		String file_type = ResourceLoader::get_resource_type(res_path);
-		if (file_type == "PackedScene") {
-			scenes.push_back(res_path);
-			// Reload later if needed, first go with normal resources.
-			continue;
-		}
-
+	for (const String &res_path : resources_reimported) {
 		if (!ResourceCache::has(res_path)) {
 			// Not loaded, no need to reload.
 			continue;
@@ -1110,15 +1117,19 @@ void EditorNode::_resources_reimported(const Vector<String> &p_resources) {
 
 	// Editor may crash when related animation is playing while re-importing GLTF scene, stop it in advance.
 	AnimationPlayer *ap = AnimationPlayerEditor::get_singleton()->get_player();
-	if (ap && scenes.size() > 0) {
+	if (ap && scenes_reimported.size() > 0) {
 		ap->stop(true);
 	}
 
-	for (const String &E : scenes) {
+	for (const String &E : scenes_reimported) {
 		reload_scene(E);
 	}
 
 	reload_instances_with_path_in_edited_scenes();
+
+	scenes_modification_table.clear();
+	scenes_reimported.clear();
+	resources_reimported.clear();
 
 	_set_current_scene_nocheck(current_tab);
 }
@@ -1232,6 +1243,13 @@ void EditorNode::_reload_project_settings() {
 }
 
 void EditorNode::_vp_resized() {
+}
+
+void EditorNode::_viewport_resized() {
+	Window *w = get_window();
+	if (w) {
+		was_window_windowed_last = w->get_mode() == Window::MODE_WINDOWED;
+	}
 }
 
 void EditorNode::_titlebar_resized() {
@@ -5214,6 +5232,7 @@ void EditorNode::_save_editor_layout() {
 	editor_dock_manager->save_docks_to_config(config, "docks");
 	_save_open_scenes_to_config(config);
 	_save_central_editor_layout_to_config(config);
+	_save_window_settings_to_config(config, "EditorWindow");
 	editor_data.get_plugin_window_layout(config);
 
 	config->save(EditorPaths::get_singleton()->get_project_settings_dir().path_join("editor_layout.cfg"));
@@ -5239,6 +5258,8 @@ void EditorNode::save_editor_layout_delayed() {
 }
 
 void EditorNode::_load_editor_layout() {
+	EditorProgress ep("loading_editor_layout", TTR("Loading editor"), 5);
+	ep.step(TTR("Loading editor layout..."), 0, true);
 	Ref<ConfigFile> config;
 	config.instantiate();
 	Error err = config->load(EditorPaths::get_singleton()->get_project_settings_dir().path_join("editor_layout.cfg"));
@@ -5260,11 +5281,19 @@ void EditorNode::_load_editor_layout() {
 		return;
 	}
 
+	ep.step(TTR("Loading docks..."), 1, true);
 	editor_dock_manager->load_docks_from_config(config, "docks");
+
+	ep.step(TTR("Reopening scenes..."), 2, true);
 	_load_open_scenes_from_config(config);
+
+	ep.step(TTR("Loading central editor layout..."), 3, true);
 	_load_central_editor_layout_from_config(config);
 
+	ep.step(TTR("Loading plugin window layout..."), 4, true);
 	editor_data.set_plugin_window_layout(config);
+
+	ep.step(TTR("Editor layout ready."), 5, true);
 }
 
 void EditorNode::_save_central_editor_layout_to_config(Ref<ConfigFile> p_config_file) {
@@ -5320,6 +5349,38 @@ void EditorNode::_load_central_editor_layout_from_config(Ref<ConfigFile> p_confi
 		if (selected_main_editor_idx >= 0 && selected_main_editor_idx < main_editor_buttons.size()) {
 			callable_mp(this, &EditorNode::editor_select).call_deferred(selected_main_editor_idx);
 		}
+	}
+}
+
+void EditorNode::_save_window_settings_to_config(Ref<ConfigFile> p_layout, const String &p_section) {
+	Window *w = get_window();
+	if (w) {
+		p_layout->set_value(p_section, "screen", w->get_current_screen());
+
+		Window::Mode mode = w->get_mode();
+		switch (mode) {
+			case Window::MODE_WINDOWED:
+				p_layout->set_value(p_section, "mode", "windowed");
+				p_layout->set_value(p_section, "size", w->get_size());
+				break;
+			case Window::MODE_FULLSCREEN:
+			case Window::MODE_EXCLUSIVE_FULLSCREEN:
+				p_layout->set_value(p_section, "mode", "fullscreen");
+				break;
+			case Window::MODE_MINIMIZED:
+				if (was_window_windowed_last) {
+					p_layout->set_value(p_section, "mode", "windowed");
+					p_layout->set_value(p_section, "size", w->get_size());
+				} else {
+					p_layout->set_value(p_section, "mode", "maximized");
+				}
+				break;
+			default:
+				p_layout->set_value(p_section, "mode", "maximized");
+				break;
+		}
+
+		p_layout->set_value(p_section, "position", w->get_position());
 	}
 }
 
@@ -6328,8 +6389,6 @@ void EditorNode::reload_instances_with_path_in_edited_scenes() {
 
 	editor_data.restore_edited_scene_state(editor_selection, &editor_history);
 
-	scenes_modification_table.clear();
-
 	progress.step(TTR("Reloading done."), editor_data.get_edited_scene_count());
 }
 
@@ -6829,10 +6888,10 @@ EditorNode::EditorNode() {
 		import_shader_file.instantiate();
 		ResourceFormatImporter::get_singleton()->add_importer(import_shader_file);
 
-		Ref<ResourceImporterScene> import_scene = memnew(ResourceImporterScene(false, true));
+		Ref<ResourceImporterScene> import_scene = memnew(ResourceImporterScene("PackedScene", true));
 		ResourceFormatImporter::get_singleton()->add_importer(import_scene);
 
-		Ref<ResourceImporterScene> import_animation = memnew(ResourceImporterScene(true, true));
+		Ref<ResourceImporterScene> import_animation = memnew(ResourceImporterScene("AnimationLibrary", true));
 		ResourceFormatImporter::get_singleton()->add_importer(import_animation);
 
 		{
@@ -7319,9 +7378,7 @@ EditorNode::EditorNode() {
 #endif
 
 	settings_menu->add_item(TTR("Manage Editor Features..."), SETTINGS_MANAGE_FEATURE_PROFILES);
-#ifndef ANDROID_ENABLED
 	settings_menu->add_item(TTR("Manage Export Templates..."), SETTINGS_MANAGE_EXPORT_TEMPLATES);
-#endif
 #if !defined(ANDROID_ENABLED) && !defined(WEB_ENABLED)
 	settings_menu->add_item(TTR("Configure FBX Importer..."), SETTINGS_MANAGE_FBX_IMPORTER);
 #endif
@@ -7839,6 +7896,9 @@ EditorNode::EditorNode() {
 
 	ED_SHORTCUT_AND_COMMAND("editor/editor_next", TTR("Open the next Editor"));
 	ED_SHORTCUT_AND_COMMAND("editor/editor_prev", TTR("Open the previous Editor"));
+
+	// Apply setting presets in case the editor_settings file is missing values.
+	EditorSettingsDialog::update_navigation_preset();
 
 	screenshot_timer = memnew(Timer);
 	screenshot_timer->set_one_shot(true);

@@ -234,7 +234,14 @@ opts.Add(BoolVariable("dev_mode", "Alias for dev options: verbose=yes warnings=e
 opts.Add(BoolVariable("tests", "Build the unit tests", False))
 opts.Add(BoolVariable("fast_unsafe", "Enable unsafe options for faster rebuilds", False))
 opts.Add(BoolVariable("ninja", "Use the ninja backend for faster rebuilds", False))
+opts.Add(BoolVariable("ninja_auto_run", "Run ninja automatically after generating the ninja file", True))
+opts.Add("ninja_file", "Path to the generated ninja file", "build.ninja")
 opts.Add(BoolVariable("compiledb", "Generate compilation DB (`compile_commands.json`) for external tools", False))
+opts.Add(
+    "num_jobs",
+    "Use up to N jobs when compiling (equivalent to `-j N`). Defaults to max jobs - 1. Ignored if -j is used.",
+    "",
+)
 opts.Add(BoolVariable("verbose", "Enable verbose output for the compilation", False))
 opts.Add(BoolVariable("progress", "Show a progress indicator during compilation", True))
 opts.Add(EnumVariable("warnings", "Level of compilation warnings", "all", ("extra", "all", "moderate", "no")))
@@ -538,16 +545,22 @@ initial_num_jobs = env.GetOption("num_jobs")
 altered_num_jobs = initial_num_jobs + 1
 env.SetOption("num_jobs", altered_num_jobs)
 if env.GetOption("num_jobs") == altered_num_jobs:
-    cpu_count = os.cpu_count()
-    if cpu_count is None:
-        print_warning("Couldn't auto-detect CPU count to configure build parallelism. Specify it with the -j argument.")
+    num_jobs = env.get("num_jobs", "")
+    if str(num_jobs).isdigit() and int(num_jobs) > 0:
+        env.SetOption("num_jobs", num_jobs)
     else:
-        safer_cpu_count = cpu_count if cpu_count <= 4 else cpu_count - 1
-        print(
-            "Auto-detected %d CPU cores available for build parallelism. Using %d cores by default. You can override it with the -j argument."
-            % (cpu_count, safer_cpu_count)
-        )
-        env.SetOption("num_jobs", safer_cpu_count)
+        cpu_count = os.cpu_count()
+        if cpu_count is None:
+            print_warning(
+                "Couldn't auto-detect CPU count to configure build parallelism. Specify it with the `-j` or `num_jobs` arguments."
+            )
+        else:
+            safer_cpu_count = cpu_count if cpu_count <= 4 else cpu_count - 1
+            print(
+                "Auto-detected %d CPU cores available for build parallelism. Using %d cores by default. You can override it with the `-j` or `num_jobs` arguments."
+                % (cpu_count, safer_cpu_count)
+            )
+            env.SetOption("num_jobs", safer_cpu_count)
 
 env.extra_suffix = ""
 
@@ -1031,12 +1044,9 @@ if env["ninja"]:
         Exit(255)
 
     SetOption("experimental", "ninja")
+    env["NINJA_FILE_NAME"] = env["ninja_file"]
+    env["NINJA_DISABLE_AUTO_RUN"] = not env["ninja_auto_run"]
     env.Tool("ninja")
-
-    # By setting this we allow the user to run ninja by themselves with all
-    # the flags they need, as apparently automatically running from scons
-    # is way slower.
-    SetOption("disable_execute_ninja", True)
 
 # Threads
 if env["threads"]:
