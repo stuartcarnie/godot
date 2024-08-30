@@ -71,9 +71,14 @@ target_link_libraries(godot-servers PUBLIC
         godot-server-debugger
         godot-server-xr
         godot-server-extensions
-        godot-server-text)
+        godot-server-text
+        $<$<BOOL:${WANT_VULKAN}>:vulkan>
+        $<$<BOOL:${WANT_METAL}>:metal>
+)
 
 target_compile_definitions(godot-servers
         PRIVATE
         $<$<BOOL:${WANT_DYNAMIC_CORE_SHADERS}>:DYNAMIC_CORE_SHADERS GODOT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}">
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
 )

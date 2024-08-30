@@ -21,8 +21,6 @@ target_sources(godot-os PRIVATE
         mutex.h
         os.cpp
         os.h
-        pool_allocator.cpp
-        pool_allocator.h
         rw_lock.h
         safe_binary_mutex.h
         semaphore.h

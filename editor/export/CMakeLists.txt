@@ -14,6 +14,8 @@ target_sources(godot-editor-export PRIVATE
         editor_export.h
         editor_export_platform.cpp
         editor_export_platform.h
+        editor_export_platform_extension.cpp
+        editor_export_platform_extension.h
         editor_export_platform_pc.cpp
         editor_export_platform_pc.h
         editor_export_plugin.cpp

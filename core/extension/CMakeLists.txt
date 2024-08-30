@@ -16,6 +16,9 @@ target_sources(godot-extension PRIVATE
         gdextension_compat_hashes.h
         gdextension_interface.cpp
         gdextension_interface.h
+        gdextension_library_loader.cpp
+        gdextension_library_loader.h
+        gdextension_loader.h
         gdextension_manager.cpp
         gdextension_manager.h
 )

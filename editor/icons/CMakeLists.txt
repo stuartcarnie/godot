@@ -349,6 +349,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         GuiSliderGrabber.svg
         GuiSliderGrabberHl.svg
         GuiSpace.svg
+        GuiSpinboxDown.svg
+        GuiSpinboxUp.svg
         GuiSpinboxUpdown.svg
         GuiSpinboxUpdownDisabled.svg
         GuiTab.svg
@@ -487,7 +489,9 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         MaterialPreviewSphere.svg
         MemberAnnotation.svg
         MemberConstant.svg
+        MemberConstructor.svg
         MemberMethod.svg
+        MemberOperator.svg
         MemberProperty.svg
         MemberSignal.svg
         MemberTheme.svg

@@ -45,5 +45,5 @@ target_compile_definitions(godot-config
         PRIVATE
         $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:OPENGL_FOUND}>>:GLES3_ENABLED=1>
         $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
-        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
 )

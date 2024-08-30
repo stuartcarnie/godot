@@ -8,6 +8,7 @@ godot_add_library(godot-server-navigation FOLDER servers STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-server-navigation PRIVATE
+        navigation_globals.h
         navigation_path_query_parameters_2d.cpp
         navigation_path_query_parameters_2d.h
         navigation_path_query_parameters_3d.cpp

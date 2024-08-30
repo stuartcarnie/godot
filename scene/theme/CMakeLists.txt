@@ -76,6 +76,8 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/unchecked.svg
         icons/unchecked_disabled.svg
         icons/updown.svg
+        icons/value_down.svg
+        icons/value_up.svg
         icons/visibility_visible.svg
         icons/vslider_tick.svg
         icons/vsplitter.svg

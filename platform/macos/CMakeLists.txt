@@ -1,5 +1,3 @@
-add_subdirectory(export)
-
 godot_add_library(platform-macos FOLDER platform)
 # [[[cog
 #   import cog
@@ -74,14 +72,16 @@ endif()
 
 target_link_libraries(platform-macos
         PUBLIC
-        $<$<BOOL:${ENABLE_METAL}>:metal>
+        $<$<BOOL:${WANT_METAL}>:metal>
 )
 target_compile_definitions(platform-macos
         PUBLIC
-        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
         $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
         $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
 )
+
+target_compile_options(platform-macos PRIVATE -Wunguarded-availability)
 
 target_link_libraries(platform-macos PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,Cocoa.framework>
