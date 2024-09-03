@@ -59,6 +59,8 @@ target_sources(godot-editor-plugins PRIVATE
         debugger_editor_plugin.h
         dedicated_server_export_plugin.cpp
         dedicated_server_export_plugin.h
+        editor_context_menu_plugin.cpp
+        editor_context_menu_plugin.h
         editor_debugger_plugin.cpp
         editor_debugger_plugin.h
         editor_plugin.cpp

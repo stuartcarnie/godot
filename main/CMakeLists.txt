@@ -81,7 +81,7 @@ target_compile_definitions(Godot
         PUBLIC
         NO_EDITOR_SPLASH=1
         PRIVATE
-        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>
 )
 
 target_include_directories(Godot PUBLIC

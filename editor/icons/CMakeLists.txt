@@ -725,6 +725,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Snap.svg
         SnapDisable.svg
         SnapGrid.svg
+        SnapKeys.svg
+        SnapTimeline.svg
         SoftBody3D.svg
         Sort.svg
         SphereMesh.svg

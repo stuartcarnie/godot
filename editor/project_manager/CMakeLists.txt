@@ -19,3 +19,9 @@ target_sources(godot-editor-project_manager PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-editor-project_manager PRIVATE godot-config)
+target_compile_definitions(godot-editor-project_manager
+        PRIVATE
+        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:OPENGL_FOUND}>>:GLES3_ENABLED=1>
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
+)

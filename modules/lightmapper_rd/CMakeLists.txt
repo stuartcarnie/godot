@@ -37,5 +37,14 @@ target_sources(godot-module-lightmapper-rd PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-module-lightmapper-rd PUBLIC godot-object)
+target_link_libraries(godot-module-lightmapper-rd PUBLIC
+        godot-object
+        $<$<BOOL:${WANT_VULKAN}>:vulkan>
+        $<$<BOOL:${WANT_METAL}>:metal>
+)
 target_include_directories(godot-module-lightmapper-rd PRIVATE ${LIGHTMAPPER_GENERATED_OUTPUT_DIR})
+target_compile_definitions(godot-module-lightmapper-rd
+        PRIVATE
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
+)

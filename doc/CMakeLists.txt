@@ -295,6 +295,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/DirectionalLight3D.xml
         classes/DisplayServer.xml
         classes/EditorCommandPalette.xml
+        classes/EditorContextMenuPlugin.xml
         classes/EditorDebuggerPlugin.xml
         classes/EditorDebuggerSession.xml
         classes/EditorExportPlatform.xml
@@ -424,6 +425,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/JSONRPC.xml
         classes/JavaClass.xml
         classes/JavaClassWrapper.xml
+        classes/JavaObject.xml
         classes/JavaScriptBridge.xml
         classes/JavaScriptObject.xml
         classes/Joint2D.xml
