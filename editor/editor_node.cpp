@@ -167,10 +167,6 @@
 
 #include "modules/modules_enabled.gen.h" // For gdscript, mono.
 
-#if defined(GLES3_ENABLED)
-#include "drivers/gles3/rasterizer_gles3.h"
-#endif
-
 EditorNode *EditorNode::singleton = nullptr;
 
 static const String EDITOR_NODE_CONFIG_SECTION = "EditorNode";
@@ -179,7 +175,7 @@ static const String REMOVE_ANDROID_BUILD_TEMPLATE_MESSAGE = "The Android build t
 static const String INSTALL_ANDROID_BUILD_TEMPLATE_MESSAGE = "This will set up your project for gradle Android builds by installing the source template to \"%s\".\nNote that in order to make gradle builds instead of using pre-built APKs, the \"Use Gradle Build\" option should be enabled in the Android export preset.";
 
 bool EditorProgress::step(const String &p_state, int p_step, bool p_force_refresh) {
-	if (Thread::is_main_thread()) {
+	if (!force_background && Thread::is_main_thread()) {
 		return EditorNode::progress_task_step(task, p_state, p_step, p_force_refresh);
 	} else {
 		EditorNode::progress_task_step_bg(task, p_step);
@@ -187,17 +183,18 @@ bool EditorProgress::step(const String &p_state, int p_step, bool p_force_refres
 	}
 }
 
-EditorProgress::EditorProgress(const String &p_task, const String &p_label, int p_amount, bool p_can_cancel) {
-	if (Thread::is_main_thread()) {
+EditorProgress::EditorProgress(const String &p_task, const String &p_label, int p_amount, bool p_can_cancel, bool p_force_background) {
+	if (!p_force_background && Thread::is_main_thread()) {
 		EditorNode::progress_add_task(p_task, p_label, p_amount, p_can_cancel);
 	} else {
 		EditorNode::progress_add_task_bg(p_task, p_label, p_amount);
 	}
 	task = p_task;
+	force_background = p_force_background;
 }
 
 EditorProgress::~EditorProgress() {
-	if (Thread::is_main_thread()) {
+	if (!force_background && Thread::is_main_thread()) {
 		EditorNode::progress_end_task(task);
 	} else {
 		EditorNode::progress_end_task_bg(task);
@@ -5062,18 +5059,16 @@ String EditorNode::_get_system_info() const {
 		driver_name = "Vulkan";
 	} else if (driver_name == "d3d12") {
 		driver_name = "Direct3D 12";
-#if defined(GLES3_ENABLED)
 	} else if (driver_name == "opengl3_angle") {
 		driver_name = "OpenGL ES 3/ANGLE";
 	} else if (driver_name == "opengl3_es") {
 		driver_name = "OpenGL ES 3";
 	} else if (driver_name == "opengl3") {
-		if (RasterizerGLES3::is_gles_over_gl()) {
+		if (OS::get_singleton()->get_gles_over_gl()) {
 			driver_name = "OpenGL 3";
 		} else {
 			driver_name = "OpenGL ES 3";
 		}
-#endif
 	} else if (driver_name == "metal") {
 		driver_name = "Metal";
 	}
@@ -7165,6 +7160,7 @@ EditorNode::EditorNode() {
 	}
 
 	main_menu = memnew(MenuBar);
+	main_menu->set_mouse_filter(Control::MOUSE_FILTER_STOP);
 	title_bar->add_child(main_menu);
 	main_menu->set_theme_type_variation("MainMenuBar");
 	main_menu->set_start_index(0); // Main menu, add to the start of global menu.
@@ -7347,6 +7343,7 @@ EditorNode::EditorNode() {
 	}
 
 	main_editor_button_hb = memnew(HBoxContainer);
+	main_editor_button_hb->set_mouse_filter(Control::MOUSE_FILTER_STOP);
 	title_bar->add_child(main_editor_button_hb);
 
 	// Options are added and handled by DebuggerEditorPlugin.
@@ -7441,11 +7438,13 @@ EditorNode::EditorNode() {
 	title_bar->add_child(right_spacer);
 
 	project_run_bar = memnew(EditorRunBar);
+	project_run_bar->set_mouse_filter(Control::MOUSE_FILTER_STOP);
 	title_bar->add_child(project_run_bar);
 	project_run_bar->connect("play_pressed", callable_mp(this, &EditorNode::_project_run_started));
 	project_run_bar->connect("stop_pressed", callable_mp(this, &EditorNode::_project_run_stopped));
 
 	HBoxContainer *right_menu_hb = memnew(HBoxContainer);
+	right_menu_hb->set_mouse_filter(Control::MOUSE_FILTER_STOP);
 	title_bar->add_child(right_menu_hb);
 
 	renderer = memnew(OptionButton);
