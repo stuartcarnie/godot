@@ -2925,6 +2925,10 @@ Vector<uint8_t> RenderingDeviceDriverMetal::pipeline_cache_serialize() {
 												   encoding:NSUTF8StringEncoding
 											   freeWhenDone:NO];
 	NSURL *target = [NSURL fileURLWithPath:nPath];
+	[NSFileManager.defaultManager createDirectoryAtURL:target.URLByDeletingLastPathComponent
+						   withIntermediateDirectories:YES
+											attributes:nil
+												 error:nil];
 	NSError *error = nil;
 	if ([archive serializeToURL:target error:&error]) {
 		return Vector<uint8_t>();
@@ -3478,12 +3482,18 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 		desc.fragmentFunction = std::get<id<MTLFunction>>(function_or_err);
 	}
 
+	MTLPipelineOption options = MTLPipelineOptionNone;
 	if (archive) {
 		desc.binaryArchives = @[ archive ];
+		if (archive_fail_on_miss) {
+			options |= MTLPipelineOptionFailOnBinaryArchiveMiss;
+		}
 	}
 
 	NSError *error = nil;
 	pipeline->state = [device newRenderPipelineStateWithDescriptor:desc
+														   options:options
+														reflection:nil
 															 error:&error];
 	pipeline->shader = shader;
 
@@ -3543,13 +3553,17 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 
 	MTLComputePipelineDescriptor *desc = [MTLComputePipelineDescriptor new];
 	desc.computeFunction = function;
+	MTLPipelineOption options = MTLPipelineOptionNone;
 	if (archive) {
 		desc.binaryArchives = @[ archive ];
+		if (archive_fail_on_miss) {
+			options |= MTLPipelineOptionFailOnBinaryArchiveMiss;
+		}
 	}
 
 	NSError *error;
 	id<MTLComputePipelineState> state = [device newComputePipelineStateWithDescriptor:desc
-																			  options:MTLPipelineOptionNone
+																			  options:options
 																		   reflection:nil
 																				error:&error];
 	ERR_FAIL_COND_V_MSG(error != nil, PipelineID(), ([NSString stringWithFormat:@"error creating pipeline: %@", error.localizedDescription].UTF8String));
@@ -3884,6 +3898,9 @@ size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(MTLPixe
 RenderingDeviceDriverMetal::RenderingDeviceDriverMetal(RenderingContextDriverMetal *p_context_driver) :
 		context_driver(p_context_driver) {
 	DEV_ASSERT(p_context_driver != nullptr);
+	if (String res = OS::get_singleton()->get_environment("GODOT_MTL_ARCHIVE_FAIL_ON_MISS"); res == "1") {
+		archive_fail_on_miss = true;
+	}
 
 	if (String res = OS::get_singleton()->get_environment("GODOT_MTL_SHADER_LOAD_STRATEGY"); res == U"lazy") {
 		_shader_load_strategy = ShaderLoadStrategy::LAZY;

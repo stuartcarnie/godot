@@ -70,6 +70,8 @@ class API_AVAILABLE(macos(11.0), ios(14.0)) RenderingDeviceDriverMetal : public 
 
 	id<MTLBinaryArchive> archive = nil;
 	uint32_t archive_count = 0;
+	// DEV: When true, attempting to create a pipeline will fail if it cannot use the archive.
+	bool archive_fail_on_miss = false;
 
 	id<MTLCommandQueue> device_queue = nil;
 	id<MTLCaptureScope> device_scope = nil;
