@@ -22,6 +22,7 @@ target_sources(godot-variant PRIVATE
         native_ptr.h
         type_info.h
         typed_array.h
+        typed_dictionary.h
         variant.cpp
         variant.h
         variant_call.cpp
