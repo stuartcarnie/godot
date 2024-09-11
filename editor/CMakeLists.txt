@@ -106,6 +106,8 @@ target_sources(godot-editor PRIVATE
         editor_locale_dialog.h
         editor_log.cpp
         editor_log.h
+        editor_main_screen.cpp
+        editor_main_screen.h
         editor_native_shader_source_visualizer.cpp
         editor_native_shader_source_visualizer.h
         editor_node.cpp
