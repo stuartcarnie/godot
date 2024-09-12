@@ -485,6 +485,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Line2D.svg
         LineEdit.svg
         LinkButton.svg
+        LinkOverlay.svg
         ListSelect.svg
         Load.svg
         Lock.svg
