@@ -2146,7 +2146,7 @@ void RendererCanvasRenderRD::_render_batch_items(RenderTarget p_to_render_target
 				current_batch->material_data = material_data;
 			}
 
-			if (!ci->repeat_size.x && !ci->repeat_size.y) {
+			if (ci->repeat_source_item == nullptr || ci->repeat_size == Vector2()) {
 				Transform2D base_transform = p_canvas_transform_inverse * ci->final_transform;
 				_record_item_commands(ci, p_to_render_target, base_transform, current_clip, p_lights, instance_index, batch_broken, r_sdf_used, current_batch);
 			} else {
@@ -2159,9 +2159,7 @@ void RendererCanvasRenderRD::_render_batch_items(RenderTarget p_to_render_target
 					for (int rx = 0; rx <= repeat_times_x; rx++) {
 						offset.x = start_pos.x + rx * ci->repeat_size.x;
 						Transform2D base_transform = ci->final_transform;
-						if (ci->repeat_source_item) {
-							base_transform.columns[2] += ci->repeat_source_item->final_transform.basis_xform(offset);
-						}
+						base_transform.columns[2] += ci->repeat_source_item->final_transform.basis_xform(offset);
 						base_transform = p_canvas_transform_inverse * base_transform;
 						_record_item_commands(ci, p_to_render_target, base_transform, current_clip, p_lights, instance_index, batch_broken, r_sdf_used, current_batch);
 					}
