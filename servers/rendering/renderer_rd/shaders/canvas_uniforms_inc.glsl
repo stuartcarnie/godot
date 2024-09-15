@@ -159,7 +159,23 @@ transforms;
 
 /* SET3: Texture */
 
+#if defined(USE_BATCH_TEXTURES)
+
+// REQUIRED: #define MAX_BATCH_TEXTURES <N>
+
+layout(set = 3, binding = 0) uniform texture2D color_array_texture[MAX_BATCH_TEXTURES];
+layout(set = 3, binding = 1) uniform texture2D normal_array_texture[MAX_BATCH_TEXTURES];
+layout(set = 3, binding = 2) uniform texture2D specular_array_texture[MAX_BATCH_TEXTURES];
+layout(set = 3, binding = 3) uniform sampler texture_array_sampler[MAX_BATCH_TEXTURES];
+
+#define color_texture color_array_texture[BATCH_INDEX]
+#define normal_texture normal_array_texture[BATCH_INDEX]
+#define specular_texture specular_array_texture[BATCH_INDEX]
+#define texture_sampler texture_array_sampler[BATCH_INDEX]
+
+#else
 layout(set = 3, binding = 0) uniform texture2D color_texture;
 layout(set = 3, binding = 1) uniform texture2D normal_texture;
 layout(set = 3, binding = 2) uniform texture2D specular_texture;
 layout(set = 3, binding = 3) uniform sampler texture_sampler;
+#endif

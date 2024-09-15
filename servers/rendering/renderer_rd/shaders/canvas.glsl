@@ -476,6 +476,10 @@ void main() {
 	const InstanceData draw_data = instances.data[instance_index];
 #endif // USE_ATTRIBUTES
 
+#ifdef USE_BATCH_TEXTURES
+	const uint BATCH_INDEX = draw_data.flags & FLAGS_INSTANCING_MASK;
+#endif // USE_BATCH_TEXTURES
+
 #if !defined(USE_ATTRIBUTES) && !defined(USE_PRIMITIVE)
 
 #ifdef USE_NINEPATCH

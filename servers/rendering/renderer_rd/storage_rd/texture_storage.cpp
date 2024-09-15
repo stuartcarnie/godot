@@ -643,6 +643,97 @@ void TextureStorage::canvas_texture_set_texture_repeat(RID p_canvas_texture, RS:
 	ct->clear_sets();
 }
 
+TextureStorage::CanvasTextureInfo TextureStorage::canvas_texture_get_info(RID p_texture, RS::CanvasItemTextureFilter p_base_filter, RS::CanvasItemTextureRepeat p_base_repeat, bool p_use_srgb, bool p_texture_is_data) {
+	MaterialStorage *material_storage = MaterialStorage::get_singleton();
+
+	CanvasTexture *ct = nullptr;
+	Texture *t = get_texture(p_texture);
+
+	// TODO once we have our texture storage split off we'll look into moving this code into canvas_texture
+
+	if (t) {
+		//regular texture
+		if (!t->canvas_texture) {
+			t->canvas_texture = memnew(CanvasTexture);
+			t->canvas_texture->diffuse = p_texture;
+		}
+
+		ct = t->canvas_texture;
+		if (t->render_target) {
+			t->render_target->was_used = true;
+		}
+	} else {
+		ct = canvas_texture_owner.get_or_null(p_texture);
+	}
+
+	if (!ct) {
+		return CanvasTextureInfo(); //invalid texture RID
+	}
+
+	RS::CanvasItemTextureFilter filter = ct->texture_filter != RS::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT ? ct->texture_filter : p_base_filter;
+	ERR_FAIL_COND_V(filter == RS::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT, CanvasTextureInfo());
+
+	RS::CanvasItemTextureRepeat repeat = ct->texture_repeat != RS::CANVAS_ITEM_TEXTURE_REPEAT_DEFAULT ? ct->texture_repeat : p_base_repeat;
+	ERR_FAIL_COND_V(repeat == RS::CANVAS_ITEM_TEXTURE_REPEAT_DEFAULT, CanvasTextureInfo());
+
+	CanvasTextureCache &ctc = ct->info_cache[int(p_use_srgb)];
+	if (!RD::get_singleton()->texture_is_valid(ctc.diffuse) ||
+			!RD::get_singleton()->texture_is_valid(ctc.normal) ||
+			!RD::get_singleton()->texture_is_valid(ctc.specular)) {
+		{ //diffuse
+			t = get_texture(ct->diffuse);
+			if (!t) {
+				ctc.diffuse = texture_rd_get_default(DEFAULT_RD_TEXTURE_WHITE);
+				ct->size_cache = Size2i(1, 1);
+			} else {
+				ctc.diffuse = t->rd_texture_srgb.is_valid() && p_use_srgb && !p_texture_is_data ? t->rd_texture_srgb : t->rd_texture;
+				ct->size_cache = Size2i(t->width_2d, t->height_2d);
+				if (t->render_target) {
+					t->render_target->was_used = true;
+				}
+			}
+		}
+		{ //normal
+			t = get_texture(ct->normal_map);
+			if (!t) {
+				ctc.normal = texture_rd_get_default(DEFAULT_RD_TEXTURE_NORMAL);
+				ct->use_normal_cache = false;
+			} else {
+				ctc.normal = t->rd_texture;
+				ct->use_normal_cache = true;
+				if (t->render_target) {
+					t->render_target->was_used = true;
+				}
+			}
+		}
+		{ //specular
+			t = get_texture(ct->specular);
+			if (!t) {
+				ctc.specular = texture_rd_get_default(DEFAULT_RD_TEXTURE_WHITE);
+				ct->use_specular_cache = false;
+			} else {
+				ctc.specular = t->rd_texture;
+				ct->use_specular_cache = true;
+				if (t->render_target) {
+					t->render_target->was_used = true;
+				}
+			}
+		}
+	}
+
+	CanvasTextureInfo res;
+	res.diffuse = ctc.diffuse;
+	res.normal = ctc.normal;
+	res.specular = ctc.specular;
+	res.sampler = material_storage->sampler_rd_get_default(filter, repeat);
+	res.size = ct->size_cache;
+	res.specular_color = ct->specular_color;
+	res.use_normal = ct->use_normal_cache;
+	res.use_specular = ct->use_specular_cache;
+
+	return res;
+}
+
 bool TextureStorage::canvas_texture_get_uniform_set(RID p_texture, RS::CanvasItemTextureFilter p_base_filter, RS::CanvasItemTextureRepeat p_base_repeat, RID p_base_shader, int p_base_set, bool p_use_srgb, RID &r_uniform_set, Size2i &r_size, Color &r_specular_shininess, bool &r_use_normal, bool &r_use_specular, bool p_texture_is_data) {
 	MaterialStorage *material_storage = MaterialStorage::get_singleton();
 
