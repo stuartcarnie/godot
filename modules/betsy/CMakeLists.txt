@@ -9,6 +9,7 @@
 set_abs(GODOT_MODULE_BETSY_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         CrossPlatformSettings_piece_all.glsl
         UavCrossPlatform_piece_all.glsl
+        bc1.glsl
         bc6h.glsl
 )
 # [[[end]]]
@@ -29,6 +30,7 @@ godot_add_library(godot-module-betsy FOLDER modules STATIC ${GODOT_MODULE_BETSY_
 #   cog.outl(')')
 # ]]]
 target_sources(godot-module-betsy PRIVATE
+        betsy_bc1.h
         image_compress_betsy.cpp
         image_compress_betsy.h
         register_types.cpp
