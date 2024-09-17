@@ -37,7 +37,8 @@ struct InstanceData {
 	vec2 world_y;
 	vec2 world_ofs;
 	uint flags;
-	uint specular_shininess;
+	// a set of indexes indicating which textures to read for this instance
+	uint batch_indexes;
 #ifdef USE_PRIMITIVE
 	vec2 points[3];
 	vec2 uvs[3];
@@ -61,9 +62,11 @@ instances;
 
 layout(push_constant, std430) uniform Params {
 	uint base_instance_index; // base index to instance data
-	uint pad1;
-	uint pad2;
-	uint pad3;
+	uint specular_shininess;
+	uint pad[2];
+#ifdef USE_BATCH_TEXTURES
+	uint batch_specular_shininess[MAX_BATCH_TEXTURES];
+#endif
 }
 params;
 
@@ -162,16 +165,15 @@ transforms;
 #if defined(USE_BATCH_TEXTURES)
 
 // REQUIRED: #define MAX_BATCH_TEXTURES <N>
+// REQUIRED: #define MAX_BATCH_SAMPLERS <N>
 
-layout(set = 3, binding = 0) uniform texture2D color_array_texture[MAX_BATCH_TEXTURES];
-layout(set = 3, binding = 1) uniform texture2D normal_array_texture[MAX_BATCH_TEXTURES];
-layout(set = 3, binding = 2) uniform texture2D specular_array_texture[MAX_BATCH_TEXTURES];
-layout(set = 3, binding = 3) uniform sampler texture_array_sampler[MAX_BATCH_TEXTURES];
+layout(set = 3, binding = 0) uniform texture2D texture_array[MAX_BATCH_TEXTURES];
+layout(set = 3, binding = 1) uniform sampler sampler_array[MAX_BATCH_SAMPLERS];
 
-#define color_texture color_array_texture[BATCH_INDEX]
-#define normal_texture normal_array_texture[BATCH_INDEX]
-#define specular_texture specular_array_texture[BATCH_INDEX]
-#define texture_sampler texture_array_sampler[BATCH_INDEX]
+#define color_texture texture_array[BATCH_COLOR_INDEX]
+#define normal_texture texture_array[BATCH_NORMAL_INDEX]
+#define specular_texture texture_array[BATCH_SPECULAR_INDEX]
+#define texture_sampler sampler_array[BATCH_SAMPLER_INDEX]
 
 #else
 layout(set = 3, binding = 0) uniform texture2D color_texture;

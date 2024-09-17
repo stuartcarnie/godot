@@ -28,7 +28,7 @@ layout(location = 11) in vec4 weight_attrib;
 
 layout(location = 4) out flat uint instance_index_interp;
 
-#endif // USE_ATTRIBUTES
+#endif // !USE_ATTRIBUTES
 
 layout(location = 0) out vec2 uv_interp;
 layout(location = 1) out vec4 color_interp;
@@ -477,7 +477,10 @@ void main() {
 #endif // USE_ATTRIBUTES
 
 #ifdef USE_BATCH_TEXTURES
-	const uint BATCH_INDEX = draw_data.flags & FLAGS_INSTANCING_MASK;
+	const uint BATCH_COLOR_INDEX = bitfieldExtract(draw_data.batch_indexes, 0, 8);
+	const uint BATCH_NORMAL_INDEX = bitfieldExtract(draw_data.batch_indexes, 8, 8);
+	const uint BATCH_SPECULAR_INDEX = bitfieldExtract(draw_data.batch_indexes, 16, 8);
+	const uint BATCH_SAMPLER_INDEX = bitfieldExtract(draw_data.batch_indexes, 24, 8);
 #endif // USE_BATCH_TEXTURES
 
 #if !defined(USE_ATTRIBUTES) && !defined(USE_PRIMITIVE)
@@ -576,7 +579,11 @@ void main() {
 
 	if (specular_shininess_used || (using_light && normal_used && bool(draw_data.flags & FLAGS_DEFAULT_SPECULAR_MAP_USED))) {
 		specular_shininess = texture(sampler2D(specular_texture, texture_sampler), uv);
-		specular_shininess *= unpackUnorm4x8(draw_data.specular_shininess);
+#ifdef USE_BATCH_TEXTURES
+		specular_shininess *= unpackUnorm4x8(params.batch_specular_shininess[BATCH_SPECULAR_INDEX]);
+#else
+		specular_shininess *= unpackUnorm4x8(params.specular_shininess);
+#endif
 		specular_shininess_used = true;
 	} else {
 		specular_shininess = vec4(1.0);
