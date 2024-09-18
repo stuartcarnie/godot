@@ -9,6 +9,7 @@
 set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         editor/ar.po
         editor/bg.po
+        editor/bn.po
         editor/ca.po
         editor/cs.po
         editor/de.po

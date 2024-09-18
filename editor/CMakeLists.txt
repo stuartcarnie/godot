@@ -48,6 +48,8 @@ godot_add_library(godot-editor FOLDER editor STATIC
 target_sources(godot-editor PRIVATE
         action_map_editor.cpp
         action_map_editor.h
+        add_metadata_dialog.cpp
+        add_metadata_dialog.h
         animation_bezier_editor.cpp
         animation_bezier_editor.h
         animation_track_editor.cpp
