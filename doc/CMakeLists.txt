@@ -340,6 +340,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/EngineProfiler.xml
         classes/Environment.xml
         classes/Expression.xml
+        classes/ExternalTexture.xml
         classes/FileAccess.xml
         classes/FileDialog.xml
         classes/FileSystemDock.xml
@@ -796,6 +797,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Transform2D.xml
         classes/Transform3D.xml
         classes/Translation.xml
+        classes/TranslationDomain.xml
         classes/TranslationServer.xml
         classes/Tree.xml
         classes/TreeItem.xml

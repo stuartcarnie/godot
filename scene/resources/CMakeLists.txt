@@ -47,6 +47,8 @@ target_sources(godot-scene-resources PRIVATE
         curve_texture.h
         environment.cpp
         environment.h
+        external_texture.cpp
+        external_texture.h
         font.cpp
         font.h
         gradient.cpp

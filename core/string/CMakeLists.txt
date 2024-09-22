@@ -23,6 +23,8 @@ target_sources(godot-string PRIVATE
         string_name.h
         translation.cpp
         translation.h
+        translation_domain.cpp
+        translation_domain.h
         translation_po.cpp
         translation_po.h
         translation_server.cpp
