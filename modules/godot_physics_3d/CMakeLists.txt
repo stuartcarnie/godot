@@ -1,15 +1,15 @@
 add_subdirectory(joints)
 
-godot_add_library(godot-server-physics-3D FOLDER servers STATIC)
+godot_add_library(godot-module-physics-3D FOLDER servers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-physics-3D PRIVATE')
+#   cog.outl('target_sources(godot-module-physics-3D PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-physics-3D PRIVATE
+target_sources(godot-module-physics-3D PRIVATE
         gjk_epa.cpp
         gjk_epa.h
         godot_area_3d.cpp
@@ -44,7 +44,9 @@ target_sources(godot-server-physics-3D PRIVATE
         godot_space_3d.h
         godot_step_3d.cpp
         godot_step_3d.h
+        register_types.cpp
+        register_types.h
 )
 # [[[end]]]
 
-target_link_libraries(godot-server-physics-3D PUBLIC godot-math)
+target_link_libraries(godot-module-physics-3D PUBLIC godot-math)

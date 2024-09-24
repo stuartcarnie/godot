@@ -7,8 +7,6 @@ add_subdirectory(display)
 add_subdirectory(extensions)
 add_subdirectory(movie_writer)
 add_subdirectory(navigation)
-add_subdirectory(physics_2d)
-add_subdirectory(physics_3d)
 add_subdirectory(rendering)
 add_subdirectory(text)
 add_subdirectory(xr)
@@ -38,10 +36,12 @@ target_sources(godot-servers PRIVATE
         navigation_server_3d_dummy.h
         physics_server_2d.cpp
         physics_server_2d.h
+        physics_server_2d_dummy.h
         physics_server_2d_wrap_mt.cpp
         physics_server_2d_wrap_mt.h
         physics_server_3d.cpp
         physics_server_3d.h
+        physics_server_3d_dummy.h
         physics_server_3d_wrap_mt.cpp
         physics_server_3d_wrap_mt.h
         register_server_types.cpp
@@ -65,8 +65,6 @@ target_link_libraries(godot-servers PUBLIC
         godot-server-camera
         godot-server-renderer
         godot-server-navigation
-        godot-server-physics-2D
-        godot-server-physics-3D
         godot-server-movie-writer
         godot-server-debugger
         godot-server-xr

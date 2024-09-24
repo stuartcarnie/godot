@@ -1,13 +1,13 @@
-godot_add_library(godot-server-physics-3D-joints FOLDER servers STATIC)
+godot_add_library(godot-module-physics-3D-joints FOLDER servers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-physics-3D-joints PRIVATE')
+#   cog.outl('target_sources(godot-module-physics-3D-joints PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-physics-3D-joints PRIVATE
+target_sources(godot-module-physics-3D-joints PRIVATE
         godot_cone_twist_joint_3d.cpp
         godot_cone_twist_joint_3d.h
         godot_generic_6dof_joint_3d.cpp
@@ -22,4 +22,4 @@ target_sources(godot-server-physics-3D-joints PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-server-physics-3D-joints PUBLIC godot-math)
+target_link_libraries(godot-module-physics-3D-joints PUBLIC godot-math)

@@ -1,13 +1,13 @@
-godot_add_library(godot-server-physics-2D FOLDER servers STATIC)
+godot_add_library(godot-module-physics-2D FOLDER servers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-physics-2D PRIVATE')
+#   cog.outl('target_sources(godot-module-physics-2D PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-physics-2D PRIVATE
+target_sources(godot-module-physics-2D PRIVATE
         godot_area_2d.cpp
         godot_area_2d.h
         godot_area_pair_2d.cpp
@@ -39,6 +39,8 @@ target_sources(godot-server-physics-2D PRIVATE
         godot_space_2d.h
         godot_step_2d.cpp
         godot_step_2d.h
+        register_types.cpp
+        register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-physics-2D PRIVATE godot-math)
+target_link_libraries(godot-module-physics-2D PRIVATE godot-math)
