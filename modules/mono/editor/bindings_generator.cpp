@@ -77,6 +77,10 @@ StringBuilder &operator<<(StringBuilder &r_sb, const char *p_cstring) {
 #define BINDINGS_GLOBAL_SCOPE_CLASS "GD"
 #define BINDINGS_NATIVE_NAME_FIELD "NativeName"
 
+#define BINDINGS_CLASS_CONSTRUCTOR "Constructors"
+#define BINDINGS_CLASS_CONSTRUCTOR_EDITOR "EditorConstructors"
+#define BINDINGS_CLASS_CONSTRUCTOR_DICTIONARY "BuiltInMethodConstructors"
+
 #define CS_PARAM_MEMORYOWN "memoryOwn"
 #define CS_PARAM_METHODBIND "method"
 #define CS_PARAM_INSTANCE "ptr"
@@ -1737,6 +1741,69 @@ Error BindingsGenerator::generate_cs_core_project(const String &p_proj_dir) {
 		compile_items.push_back(output_file);
 	}
 
+	// Generate source file for built-in type constructor dictionary.
+
+	{
+		StringBuilder cs_built_in_ctors_content;
+
+		cs_built_in_ctors_content.append("namespace " BINDINGS_NAMESPACE ";\n\n");
+		cs_built_in_ctors_content.append("using System;\n"
+										 "using System.Collections.Generic;\n"
+										 "\n");
+		cs_built_in_ctors_content.append("internal static class " BINDINGS_CLASS_CONSTRUCTOR "\n{");
+
+		cs_built_in_ctors_content.append(MEMBER_BEGIN "internal static readonly Dictionary<string, Func<IntPtr, GodotObject>> " BINDINGS_CLASS_CONSTRUCTOR_DICTIONARY ";\n");
+
+		cs_built_in_ctors_content.append(MEMBER_BEGIN "public static GodotObject Invoke(string nativeTypeNameStr, IntPtr nativeObjectPtr)\n");
+		cs_built_in_ctors_content.append(INDENT1 OPEN_BLOCK);
+		cs_built_in_ctors_content.append(INDENT2 "if (!" BINDINGS_CLASS_CONSTRUCTOR_DICTIONARY ".TryGetValue(nativeTypeNameStr, out var constructor))\n");
+		cs_built_in_ctors_content.append(INDENT3 "throw new InvalidOperationException(\"Wrapper class not found for type: \" + nativeTypeNameStr);\n");
+		cs_built_in_ctors_content.append(INDENT2 "return constructor(nativeObjectPtr);\n");
+		cs_built_in_ctors_content.append(INDENT1 CLOSE_BLOCK);
+
+		cs_built_in_ctors_content.append(MEMBER_BEGIN "static " BINDINGS_CLASS_CONSTRUCTOR "()\n");
+		cs_built_in_ctors_content.append(INDENT1 OPEN_BLOCK);
+		cs_built_in_ctors_content.append(INDENT2 BINDINGS_CLASS_CONSTRUCTOR_DICTIONARY " = new();\n");
+
+		for (const KeyValue<StringName, TypeInterface> &E : obj_types) {
+			const TypeInterface &itype = E.value;
+
+			if (itype.api_type != ClassDB::API_CORE || itype.is_singleton_instance) {
+				continue;
+			}
+
+			if (itype.is_deprecated) {
+				cs_built_in_ctors_content.append("#pragma warning disable CS0618\n");
+			}
+
+			cs_built_in_ctors_content.append(INDENT2 BINDINGS_CLASS_CONSTRUCTOR_DICTIONARY ".Add(\"");
+			cs_built_in_ctors_content.append(itype.name);
+			cs_built_in_ctors_content.append("\", " CS_PARAM_INSTANCE " => new ");
+			cs_built_in_ctors_content.append(itype.proxy_name);
+			if (itype.is_singleton && !itype.is_compat_singleton) {
+				cs_built_in_ctors_content.append("Instance");
+			}
+			cs_built_in_ctors_content.append("(" CS_PARAM_INSTANCE "));\n");
+
+			if (itype.is_deprecated) {
+				cs_built_in_ctors_content.append("#pragma warning restore CS0618\n");
+			}
+		}
+
+		cs_built_in_ctors_content.append(INDENT1 CLOSE_BLOCK);
+
+		cs_built_in_ctors_content.append(CLOSE_BLOCK);
+
+		String constructors_file = path::join(base_gen_dir, BINDINGS_CLASS_CONSTRUCTOR ".cs");
+		Error err = _save_file(constructors_file, cs_built_in_ctors_content);
+
+		if (err != OK) {
+			return err;
+		}
+
+		compile_items.push_back(constructors_file);
+	}
+
 	// Generate native calls
 
 	StringBuilder cs_icalls_content;
@@ -1842,6 +1909,57 @@ Error BindingsGenerator::generate_cs_editor_project(const String &p_proj_dir) {
 		}
 
 		compile_items.push_back(output_file);
+	}
+
+	// Generate source file for editor type constructor dictionary.
+
+	{
+		StringBuilder cs_built_in_ctors_content;
+
+		cs_built_in_ctors_content.append("namespace " BINDINGS_NAMESPACE ";\n\n");
+		cs_built_in_ctors_content.append("internal static class " BINDINGS_CLASS_CONSTRUCTOR_EDITOR "\n{");
+
+		cs_built_in_ctors_content.append(MEMBER_BEGIN "private static void AddEditorConstructors()\n");
+		cs_built_in_ctors_content.append(INDENT1 OPEN_BLOCK);
+		cs_built_in_ctors_content.append(INDENT2 "var builtInMethodConstructors = " BINDINGS_CLASS_CONSTRUCTOR "." BINDINGS_CLASS_CONSTRUCTOR_DICTIONARY ";\n");
+
+		for (const KeyValue<StringName, TypeInterface> &E : obj_types) {
+			const TypeInterface &itype = E.value;
+
+			if (itype.api_type != ClassDB::API_EDITOR || itype.is_singleton_instance) {
+				continue;
+			}
+
+			if (itype.is_deprecated) {
+				cs_built_in_ctors_content.append("#pragma warning disable CS0618\n");
+			}
+
+			cs_built_in_ctors_content.append(INDENT2 "builtInMethodConstructors.Add(\"");
+			cs_built_in_ctors_content.append(itype.name);
+			cs_built_in_ctors_content.append("\", " CS_PARAM_INSTANCE " => new ");
+			cs_built_in_ctors_content.append(itype.proxy_name);
+			if (itype.is_singleton && !itype.is_compat_singleton) {
+				cs_built_in_ctors_content.append("Instance");
+			}
+			cs_built_in_ctors_content.append("(" CS_PARAM_INSTANCE "));\n");
+
+			if (itype.is_deprecated) {
+				cs_built_in_ctors_content.append("#pragma warning restore CS0618\n");
+			}
+		}
+
+		cs_built_in_ctors_content.append(INDENT1 CLOSE_BLOCK);
+
+		cs_built_in_ctors_content.append(CLOSE_BLOCK);
+
+		String constructors_file = path::join(base_gen_dir, BINDINGS_CLASS_CONSTRUCTOR_EDITOR ".cs");
+		Error err = _save_file(constructors_file, cs_built_in_ctors_content);
+
+		if (err != OK) {
+			return err;
+		}
+
+		compile_items.push_back(constructors_file);
 	}
 
 	// Generate native calls
@@ -2209,6 +2327,15 @@ Error BindingsGenerator::_generate_cs_type(const TypeInterface &itype, const Str
 					   << (itype.is_ref_counted ? "true" : "false") << ");\n"
 					   << CLOSE_BLOCK_L2 CLOSE_BLOCK_L1;
 			}
+
+			output << MEMBER_BEGIN "internal " << itype.proxy_name << "(IntPtr " CS_PARAM_INSTANCE ") : this("
+				   << (itype.memory_own ? "true" : "false") << ")\n" OPEN_BLOCK_L1
+				   << INDENT2 "NativePtr = " CS_PARAM_INSTANCE ";\n"
+				   << INDENT2 "unsafe\n" INDENT2 OPEN_BLOCK
+				   << INDENT3 "ConstructAndInitialize(null, "
+				   << BINDINGS_NATIVE_NAME_FIELD ", CachedType, refCounted: "
+				   << (itype.is_ref_counted ? "true" : "false") << ");\n"
+				   << CLOSE_BLOCK_L2 CLOSE_BLOCK_L1;
 
 			// Add.. em.. trick constructor. Sort of.
 			output.append(MEMBER_BEGIN "internal ");
@@ -2934,11 +3061,6 @@ Error BindingsGenerator::_generate_cs_method(const BindingsGenerator::TypeInterf
 
 Error BindingsGenerator::_generate_cs_signal(const BindingsGenerator::TypeInterface &p_itype, const BindingsGenerator::SignalInterface &p_isignal, StringBuilder &p_output) {
 	String arguments_sig;
-	String delegate_type_params;
-
-	if (!p_isignal.arguments.is_empty()) {
-		delegate_type_params += "<";
-	}
 
 	// Retrieve information from the arguments
 	const ArgumentInterface &first = p_isignal.arguments.front()->get();
@@ -2959,18 +3081,13 @@ Error BindingsGenerator::_generate_cs_signal(const BindingsGenerator::TypeInterf
 
 		if (&iarg != &first) {
 			arguments_sig += ", ";
-			delegate_type_params += ", ";
 		}
 
-		arguments_sig += arg_type->cs_type;
+		String arg_cs_type = arg_type->cs_type + _get_generic_type_parameters(*arg_type, iarg.type.generic_type_parameters);
+
+		arguments_sig += arg_cs_type;
 		arguments_sig += " ";
 		arguments_sig += iarg.name;
-
-		delegate_type_params += arg_type->cs_type;
-	}
-
-	if (!p_isignal.arguments.is_empty()) {
-		delegate_type_params += ">";
 	}
 
 	// Generate signal
@@ -3019,8 +3136,14 @@ Error BindingsGenerator::_generate_cs_signal(const BindingsGenerator::TypeInterf
 					p_output << ", ";
 				}
 
-				p_output << sformat(arg_type->cs_variant_to_managed,
-						"args[" + itos(idx) + "]", arg_type->cs_type, arg_type->name);
+				if (arg_type->cname == name_cache.type_Array_generic || arg_type->cname == name_cache.type_Dictionary_generic) {
+					String arg_cs_type = arg_type->cs_type + _get_generic_type_parameters(*arg_type, iarg.type.generic_type_parameters);
+
+					p_output << "new " << arg_cs_type << "(" << sformat(arg_type->cs_variant_to_managed, "args[" + itos(idx) + "]", arg_type->cs_type, arg_type->name) << ")";
+				} else {
+					p_output << sformat(arg_type->cs_variant_to_managed,
+							"args[" + itos(idx) + "]", arg_type->cs_type, arg_type->name);
+				}
 
 				idx++;
 			}
