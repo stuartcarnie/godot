@@ -45,14 +45,20 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		BASE_UNIFORM_SET = 0,
 		MATERIAL_UNIFORM_SET = 1,
 		TRANSFORMS_UNIFORM_SET = 2,
-		CANVAS_TEXTURE_UNIFORM_SET = 3,
-		INSTANCE_DATA_UNIFORM_SET = 4,
+		BATCH_UNIFORM_SET = 3,
 	};
 
-	static const int MAX_BATCH_TEXTURES = 32;
-	static const int MAX_BATCH_SAMPLERS = 8;
-
-	const int SAMPLERS_BINDING_FIRST_INDEX = 10;
+	/// This is the number of texture uniforms used in the shader, such as atlas_texture and shadow_atlas_texture
+	static const uint32_t TEXTURE_SLOTS_USED = 4;
+	/// Most we can support is 64, based on the Batch::batch_textures_used bit mask, which allows for 64 slots
+	static const uint32_t BATCH_MAX_TEXTURES = 64;
+	static const uint32_t BATCH_MAX_SAMPLERS = 15;
+	/// The first open slot in batch_textures, as 0 and 1 are reserved.
+	static const uint32_t BATCH_FIRST_OPEN_BATCH_TEXTURE_SLOT = 2;
+	// The number of default material samplers, which include SAMPLER_NEAREST_CLAMP, SAMPLER_LINEAR_CLAMP, etc
+	static const uint32_t DEFAULT_MATERIAL_SAMPLER_COUNT = 12;
+	// The maximum number of dynamic samplers that can be used in a single batch
+	static const uint32_t BATCH_MAX_DYNAMIC_SAMPLERS = 3;
 
 	enum ShaderVariant {
 		SHADER_VARIANT_QUAD,
@@ -384,11 +390,39 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t lights[4];
 	};
 
+	struct MCInstanceData {
+		float world[6];
+		uint32_t flags;
+		uint32_t batch_indexes;
+		float color_texture_pixel_size[2];
+		uint32_t lights[4];
+		uint32_t cmd_type;
+		uint32_t data_index; // index into quad or primitive buffers
+	};
+
+	struct MCQuadData {
+		float modulation[4];
+		union {
+			float msdf[4];
+			float ninepatch_margins[4];
+		};
+		float dst_rect[4];
+		float src_rect[4];
+	};
+
+	// 80-byte struct
+	struct MCPrimitiveData {
+		float points[6]; // vec2 points[3]
+		float uvs[6]; // vec2 points[3]
+		uint32_t colors[6]; // colors encoded as half
+		float pad[2];
+	};
+
 	struct PushConstant {
 		uint32_t base_instance_index;
+		/// Placeholder for the start of specular shininess entries in the push constant buffer.
+		/// MUST be the last entry in the struct
 		uint32_t specular_shininess;
-		uint32_t pad[2];
-		uint32_t batch_specular_shininess[MAX_BATCH_TEXTURES];
 	};
 
 	// TextureState is used to determine when a new batch is required due to a change of texture state.
@@ -457,45 +491,31 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t specular_shininess = 0;
 		uint32_t flags = 0;
 		Vector2 texpixel_size;
-		/// The number of references to this texture in the current batch.
-		uint32_t usage_count;
 		/// When batch mode is disabled, this is a uniform_set.
 		RID diffuse_or_uniform_set;
 		RID normal;
 		RID specular;
 		RID sampler;
-
-		/// Reset so it can be reused for another batch.
-		/// If is_valid() returned true, it will still be valid after reset.
-		_FORCE_INLINE_ void reset() {
-			usage_count = 0;
-		}
-
-		/// Replace texture state.
-		void set_state(TextureState &p_state) {
-			state = p_state;
-			usage_count = 1;
-			specular_shininess = 0;
-			flags = 0;
-			texpixel_size = Vector2();
-			diffuse_or_uniform_set = RID();
-			normal = RID();
-			specular = RID();
-			sampler = RID();
-		}
 	};
 
 	HashMap<TextureState, TextureInfo, HashableHasher<TextureState>> texture_info_map;
 
 	union BatchIndexes {
 		struct {
-			uint8_t color = BATCH_INDEX_UNSET;
-			uint8_t normal = BATCH_INDEX_UNSET;
-			uint8_t specular = BATCH_INDEX_UNSET;
-			uint8_t sampler = BATCH_INDEX_UNSET;
+			uint8_t color;
+			uint8_t normal;
+			uint8_t specular;
+			uint8_t sampler;
 		};
+		/// Little-endian encoding of the indexes.
+		/// - bits 0-7  : color
+		/// - bits 8-15 : normal
+		/// - bits 16-23: specular
+		/// - bits 24-31: sampler
 		uint32_t batch_indexes;
-		uint8_t indexes[4];
+
+		BatchIndexes() :
+				batch_indexes(0x80808080) {}
 
 		_FORCE_INLINE_ bool found_textures() const {
 			return (batch_indexes & 0x00808080) == 0;
@@ -506,27 +526,29 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		}
 	};
 
+	struct MCBatch {
+		// Position in the UBO measured in bytes
+		uint32_t start = 0;
+		uint32_t instance_count = 0;
+		uint32_t instance_buffer_index = 0;
+	};
+
 	struct Batch {
 		// Position in the UBO measured in bytes
 		uint32_t start = 0;
 		uint32_t instance_count = 0;
 		uint32_t instance_buffer_index = 0;
 
-		TextureState texture_state;
-
-		/// The first open slot in batch_textures, as 0 and 1 are reserved.
-		const int FIRST_OPEN_BATCH_TEXTURE_SLOT = 2;
-		// The first open slot in batch_samplers, as 0 is reserved.
-		const int FIRST_OPEN_BATCH_SAMPLER_SLOT = 1;
-
 		/// Contains all the textures used in the batch.
 		///
 		/// index 0 is the default_canvas_texture.diffuse
 		/// index 1 is the default_canvas_texture.normal
-		RID batch_textures[MAX_BATCH_TEXTURES];
-		uint32_t batch_specular_shininess[MAX_BATCH_TEXTURES];
+		RID batch_textures[BATCH_MAX_TEXTURES];
+		uint32_t batch_specular_shininess[BATCH_MAX_TEXTURES];
+		/// A bitmask indicating which slots are used, allowing up to 64 textures
 		uint64_t batch_textures_used = 0;
-		RID batch_samplers[MAX_BATCH_SAMPLERS];
+		RID batch_samplers[3];
+		/// A bitmask indicating which slots are used, allowing up to 64 samplers
 		uint64_t batch_samplers_used = 0;
 
 		Color modulate = Color(1.0, 1.0, 1.0, 1.0);
@@ -550,109 +572,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		};
 		bool has_blend = false;
 
-		BatchIndexes set_first_slot(TextureInfo &p_info) {
-			BatchIndexes indexes;
-			int next_texture_slot = FIRST_OPEN_BATCH_TEXTURE_SLOT;
-
-			if (p_info.diffuse_or_uniform_set == batch_textures[0]) {
-				indexes.color = 0;
-			} else {
-				indexes.color = next_texture_slot;
-				batch_textures[next_texture_slot] = p_info.diffuse_or_uniform_set;
-				next_texture_slot++;
-			}
-			if (p_info.normal == batch_textures[1]) {
-				indexes.normal = 1;
-			} else {
-				indexes.normal = next_texture_slot;
-				batch_textures[next_texture_slot] = p_info.normal;
-				next_texture_slot++;
-			}
-			if (p_info.specular == batch_textures[0]) {
-				indexes.specular = 0;
-			} else {
-				indexes.specular = next_texture_slot;
-				batch_textures[next_texture_slot] = p_info.specular;
-				batch_specular_shininess[next_texture_slot] = p_info.specular_shininess;
-			}
-
-			if (p_info.sampler == batch_samplers[0]) {
-				indexes.sampler = 0;
-			} else {
-				indexes.sampler = FIRST_OPEN_BATCH_SAMPLER_SLOT;
-				batch_samplers[FIRST_OPEN_BATCH_SAMPLER_SLOT] = p_info.sampler;
-			}
-			return indexes;
-		}
-
-		BatchIndexes find_slots(TextureInfo &p_info) {
-			BatchIndexes indexes;
-			// first find existing slots
-			for (int i = 0; i < MAX_BATCH_TEXTURES; i++) {
-				RID &rid = batch_textures[i];
-				if (indexes.color == BATCH_INDEX_UNSET && rid == p_info.diffuse_or_uniform_set) {
-					indexes.color = i;
-				}
-				if (indexes.normal == BATCH_INDEX_UNSET && rid == p_info.normal) {
-					indexes.normal = i;
-				}
-				if (indexes.specular == BATCH_INDEX_UNSET && rid == p_info.specular) {
-					indexes.specular = i;
-				}
-
-				if (indexes.found_textures()) break;
-			}
-
-			// try to assign unset textures to unused slots
-			if (!indexes.found_textures()) {
-				for (int i = FIRST_OPEN_BATCH_TEXTURE_SLOT; i < MAX_BATCH_TEXTURES; i++) {
-					if ((batch_textures_used & (1 << i)) == 0) {
-						if (indexes.color == BATCH_INDEX_UNSET) {
-							indexes.color = i;
-							batch_textures[i] = p_info.diffuse_or_uniform_set;
-						} else if (indexes.normal == BATCH_INDEX_UNSET) {
-							indexes.normal = i;
-							batch_textures[i] = p_info.normal;
-						} else if (indexes.specular == BATCH_INDEX_UNSET) {
-							indexes.specular = i;
-							batch_textures[i] = p_info.specular;
-							batch_specular_shininess[i] = p_info.specular_shininess;
-						}
-						if (indexes.found_textures()) break;
-					}
-				}
-			}
-
-			// find sampler in existing slot
-			for (int i = 0; i < MAX_BATCH_SAMPLERS; i++) {
-				if (indexes.sampler == BATCH_INDEX_UNSET && batch_samplers[i] == p_info.sampler) {
-					indexes.sampler = i;
-					break;
-				}
-			}
-
-			// find sampler in unused slot
-			if (indexes.sampler == BATCH_INDEX_UNSET) {
-				for (int i = FIRST_OPEN_BATCH_SAMPLER_SLOT; i < MAX_BATCH_SAMPLERS; i++) {
-					if ((batch_samplers_used & (1 << i)) == 0) {
-						indexes.sampler = i;
-						batch_samplers[i] = p_info.sampler;
-						break;
-					}
-				}
-			}
-
-			// if slots are found, increase usage count
-			if (indexes.found_all()) {
-				batch_textures_used |= 1 << indexes.color;
-				batch_textures_used |= 1 << indexes.normal;
-				batch_textures_used |= 1 << indexes.specular;
-				batch_samplers_used |= 1 << indexes.sampler;
-			}
-
-			return indexes;
-		}
-
 		_FORCE_INLINE_ void reset_batch_usage() {
 			batch_textures_used = 0;
 			batch_samplers_used = 0;
@@ -661,6 +580,12 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 	struct DataBuffer {
 		LocalVector<RID> instance_buffers;
+	};
+
+	struct MCDataBuffer {
+		LocalVector<RID> instance_buffers;
+		LocalVector<RID> primitive_buffers;
+		LocalVector<RID> quad_buffers;
 	};
 
 	struct State {
@@ -696,6 +621,21 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t max_instances_per_buffer = 16384;
 		uint32_t max_instance_buffer_size = 16384 * sizeof(InstanceData);
 
+		LocalVector<MCDataBuffer> mc_canvas_instance_data_buffers;
+		LocalVector<MCBatch> mc_canvas_instance_batches;
+		uint32_t mc_current_data_buffer_index = 0;
+		uint32_t mc_current_instance_buffer_index = 0;
+		uint32_t mc_current_batch_index = 0;
+		uint32_t mc_last_instance_index = 0;
+		MCInstanceData *mc_instance_data_array = nullptr;
+		MCPrimitiveData *mc_primitive_data_array = nullptr;
+		MCQuadData *mc_quad_data_array = nullptr;
+
+		uint32_t mc_max_instances_per_buffer = 16384;
+		uint32_t mc_max_instance_buffer_size = 16384 * sizeof(MCInstanceData);
+		uint32_t mc_max_primitive_buffer_size = 16384 * sizeof(MCPrimitiveData);
+		uint32_t mc_max_quad_buffer_size = 16384 * sizeof(MCQuadData);
+
 		RID current_tex_uniform_set;
 
 		LightUniform *light_uniforms = nullptr;
@@ -719,8 +659,12 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 	Item *items[MAX_RENDER_ITEMS];
 
-	bool batching_textures_enabled = false; // TODO(sgc): remove this when complete
+	// this is assigned dynamically based on driver support
+	uint32_t batch_available_texture_slots = 0;
+	void *batch_push_constant_buf = nullptr;
+	uint32_t batch_push_constant_size = 0;
 	TextureInfo default_texture_info;
+	RID default_material_samplers[DEFAULT_MATERIAL_SAMPLER_COUNT];
 
 	bool using_directional_lights = false;
 	RID default_canvas_texture;
@@ -748,10 +692,20 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t base_flags = 0;
 	};
 
+	void _mc_render_batch_items(RenderTarget p_to_render_target, int p_item_count, const Transform2D &p_canvas_transform_inverse, Light *p_lights, bool &r_sdf_used, bool p_to_backbuffer = false, RenderingMethod::RenderInfo *r_render_info = nullptr);
+	void _mc_record_item_commands(const Item *p_item, RenderTarget p_render_target, const Transform2D &p_base_transform, Item *&r_current_clip, Light *p_lights, uint32_t &r_index, bool &r_batch_broken, bool &r_sdf_used, MCBatch *&r_current_batch);
+	void _mc_render_batch(RD::DrawListID p_draw_list, PipelineVariants *p_pipeline_variants, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, MCBatch const *p_batch, RenderingMethod::RenderInfo *r_render_info = nullptr);
+	void _mc_prepare_batch_texture(MCBatch *p_current_batch, RID p_texture, TextureInfo *p_info) const;
+	void _mc_prepare_batch_texture_info(MCBatch *p_current_batch, RID p_texture, TextureInfo *p_info) const;
+	[[nodiscard]] MCBatch *_mc_new_batch(bool &r_batch_broken);
+	void _mc_add_to_batch(uint32_t &r_index, bool &r_batch_broken, MCBatch *&r_current_batch);
+	void _mc_allocate_instance_buffer();
+
 	void _render_batch_items(RenderTarget p_to_render_target, int p_item_count, const Transform2D &p_canvas_transform_inverse, Light *p_lights, bool &r_sdf_used, bool p_to_backbuffer = false, RenderingMethod::RenderInfo *r_render_info = nullptr);
 	void _record_item_commands(const Item *p_item, RenderTarget p_render_target, const Transform2D &p_base_transform, Item *&r_current_clip, Light *p_lights, uint32_t &r_index, bool &r_batch_broken, bool &r_sdf_used, Batch *&r_current_batch);
+	BatchIndexes _find_slots(Batch *p_batch, TextureInfo &p_info);
+	BatchIndexes _set_first_slot(Batch *p_batch, TextureInfo &p_info);
 	void _render_batch(RD::DrawListID p_draw_list, PipelineVariants *p_pipeline_variants, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, Batch const *p_batch, RenderingMethod::RenderInfo *r_render_info = nullptr);
-	void _prepare_batch_texture(Batch *p_current_batch, RID p_texture, TextureInfo *p_info) const;
 	void _prepare_batch_texture_info(Batch *p_current_batch, RID p_texture, TextureInfo *p_info) const;
 	void _bind_canvas_texture(RD::DrawListID p_draw_list, RID p_uniform_set);
 	[[nodiscard]] Batch *_new_batch(bool &r_batch_broken);

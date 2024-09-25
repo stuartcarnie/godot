@@ -324,11 +324,7 @@ vec4 light_compute(
 #ifdef USE_NINEPATCH
 
 float map_ninepatch_axis(float pixel, float draw_size, float tex_pixel_size, float margin_begin, float margin_end, int np_repeat, inout int draw_center) {
-#ifdef USE_ATTRIBUTES
-	const InstanceData draw_data = instances.data[params.base_instance_index];
-#else
 	const InstanceData draw_data = instances.data[instance_index];
-#endif // USE_ATTRIBUTES
 
 	float tex_size = 1.0 / tex_pixel_size;
 
@@ -476,12 +472,10 @@ void main() {
 	const InstanceData draw_data = instances.data[instance_index];
 #endif // USE_ATTRIBUTES
 
-#ifdef USE_BATCH_TEXTURES
 	const uint BATCH_COLOR_INDEX = bitfieldExtract(draw_data.batch_indexes, 0, 8);
 	const uint BATCH_NORMAL_INDEX = bitfieldExtract(draw_data.batch_indexes, 8, 8);
 	const uint BATCH_SPECULAR_INDEX = bitfieldExtract(draw_data.batch_indexes, 16, 8);
 	const uint BATCH_SAMPLER_INDEX = bitfieldExtract(draw_data.batch_indexes, 24, 8);
-#endif // USE_BATCH_TEXTURES
 
 #if !defined(USE_ATTRIBUTES) && !defined(USE_PRIMITIVE)
 
@@ -506,6 +500,7 @@ void main() {
 #endif
 
 #ifndef USE_PRIMITIVE
+	// only used by TYPE_RECT
 	if (bool(draw_data.flags & FLAGS_USE_MSDF)) {
 		float px_range = draw_data.ninepatch_margins.x;
 		float outline_thickness = draw_data.ninepatch_margins.y;
@@ -579,11 +574,7 @@ void main() {
 
 	if (specular_shininess_used || (using_light && normal_used && bool(draw_data.flags & FLAGS_DEFAULT_SPECULAR_MAP_USED))) {
 		specular_shininess = texture(sampler2D(specular_texture, texture_sampler), uv);
-#ifdef USE_BATCH_TEXTURES
-		specular_shininess *= unpackUnorm4x8(params.batch_specular_shininess[BATCH_SPECULAR_INDEX]);
-#else
-		specular_shininess *= unpackUnorm4x8(params.specular_shininess);
-#endif
+		specular_shininess *= unpackUnorm4x8(params.specular_shininess[BATCH_SPECULAR_INDEX]);
 		specular_shininess_used = true;
 	} else {
 		specular_shininess = vec4(1.0);

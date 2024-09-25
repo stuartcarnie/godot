@@ -32,12 +32,65 @@
 #define FLAGS_FLIP_H (1 << 30)
 #define FLAGS_FLIP_V (1 << 31)
 
+#ifdef USE_MULTI_CMD
+
+// A list of all command types from the canvas renderer
+#define CMD_TYPE_RECT 0 // can be batched
+#define CMD_TYPE_NINEPATCH 1 // can be batched
+#define CMD_TYPE_POLYGON 2
+#define CMD_TYPE_PRIMITIVE 3 // can be batched
+#define CMD_TYPE_MESH 4
+#define CMD_TYPE_MULTIMESH 5
+#define CMD_TYPE_PARTICLES 6
+#define CMD_TYPE_TRANSFORM 7
+
+// Unused
+#define CMD_TYPE_CLIP_IGNORE 8
+#define CMD_TYPE_ANIMATION_SLICE 9
+
 struct InstanceData {
 	vec2 world_x;
 	vec2 world_y;
 	vec2 world_ofs;
 	uint flags;
-	// a set of indexes indicating which textures to read for this instance
+	uint batch_indexes;
+	vec2 color_texture_pixel_size;
+	uint lights[4];
+	uint cmd_type;
+	uint data_index; // index into QuadData or PrimitiveData buffers, depending on cmd_type
+}; // 64 bytes
+
+struct QuadData {
+	vec4 modulation;
+	vec4 ninepatch_margins; // or msdf
+	vec4 dst_rect; // for built-in rect and UV
+	vec4 src_rect;
+}; // 64 bytes
+
+struct PrimitiveData {
+	vec2 points[3];
+	vec2 uvs[3];
+	uint colors[6];
+	uint pad[2];
+}; // 80 bytes
+
+layout(set = 4, binding = 2, std430) restrict readonly buffer QuadDataBuffer {
+	QuadData data[];
+}
+quads;
+
+layout(set = 4, binding = 3, std430) restrict readonly buffer PrimitiveDataBuffer {
+	PrimitiveData data[];
+}
+primitives;
+
+#else
+
+struct InstanceData {
+	vec2 world_x;
+	vec2 world_y;
+	vec2 world_ofs;
+	uint flags;
 	uint batch_indexes;
 #ifdef USE_PRIMITIVE
 	vec2 points[3];
@@ -55,17 +108,13 @@ struct InstanceData {
 	uint lights[4];
 };
 
-layout(set = 4, binding = 0, std430) restrict readonly buffer DrawData {
-	InstanceData data[];
-}
-instances;
+#endif // USE_MULTI_CMD
 
 layout(push_constant, std430) uniform Params {
 	uint base_instance_index; // base index to instance data
-	uint specular_shininess;
-	uint pad[2];
-#ifdef USE_BATCH_TEXTURES
-	uint batch_specular_shininess[MAX_BATCH_TEXTURES];
+	uint specular_shininess[BATCH_MAX_TEXTURES];
+#ifdef PUSH_PAD_SIZE
+	uint pad[PUSH_PAD_SIZE];
 #endif
 }
 params;
@@ -142,8 +191,6 @@ layout(set = 0, binding = 5) uniform sampler shadow_sampler;
 layout(set = 0, binding = 6) uniform texture2D color_buffer;
 layout(set = 0, binding = 7) uniform texture2D sdf_texture;
 
-#include "samplers_inc.glsl"
-
 layout(set = 0, binding = 9, std430) restrict readonly buffer GlobalShaderUniformData {
 	vec4 data[];
 }
@@ -162,22 +209,23 @@ transforms;
 
 /* SET3: Texture */
 
-#if defined(USE_BATCH_TEXTURES)
+layout(set = 3, binding = 0) uniform texture2D texture_array[BATCH_MAX_TEXTURES];
 
-// REQUIRED: #define MAX_BATCH_TEXTURES <N>
-// REQUIRED: #define MAX_BATCH_SAMPLERS <N>
+#define SAMPLER_LINEAR_CLAMP material_samplers[1]
 
-layout(set = 3, binding = 0) uniform texture2D texture_array[MAX_BATCH_TEXTURES];
-layout(set = 3, binding = 1) uniform sampler sampler_array[MAX_BATCH_SAMPLERS];
+/// This shader uses a max of 16 samplers
+///
+/// - 1 shadow_sampler
+/// - 12 base samplers, SAMPLER_NEAREST_CLAMP, SAMPLER_LINEAR_CLAMP, etc
+/// - 3 dynamic samplers
+layout(set = 3, binding = 1) uniform sampler material_samplers[15];
 
 #define color_texture texture_array[BATCH_COLOR_INDEX]
 #define normal_texture texture_array[BATCH_NORMAL_INDEX]
 #define specular_texture texture_array[BATCH_SPECULAR_INDEX]
-#define texture_sampler sampler_array[BATCH_SAMPLER_INDEX]
+#define texture_sampler material_samplers[BATCH_SAMPLER_INDEX]
 
-#else
-layout(set = 3, binding = 0) uniform texture2D color_texture;
-layout(set = 3, binding = 1) uniform texture2D normal_texture;
-layout(set = 3, binding = 2) uniform texture2D specular_texture;
-layout(set = 3, binding = 3) uniform sampler texture_sampler;
-#endif
+layout(set = 3, binding = 2, std430) restrict readonly buffer DrawData {
+	InstanceData data[];
+}
+instances;

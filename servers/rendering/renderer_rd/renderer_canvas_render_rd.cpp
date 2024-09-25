@@ -359,7 +359,6 @@ _FORCE_INLINE_ static uint32_t _indices_to_primitives(RS::PrimitiveType p_primit
 
 RID RendererCanvasRenderRD::_create_base_uniform_set(RID p_to_render_target, bool p_backbuffer) {
 	RendererRD::TextureStorage *texture_storage = RendererRD::TextureStorage::get_singleton();
-	RendererRD::MaterialStorage *material_storage = RendererRD::MaterialStorage::get_singleton();
 
 	//re create canvas state
 	Vector<RD::Uniform> uniforms;
@@ -437,8 +436,6 @@ RID RendererCanvasRenderRD::_create_base_uniform_set(RID p_to_render_target, boo
 		u.append_id(RendererRD::MaterialStorage::get_singleton()->global_shader_uniforms_get_storage_buffer());
 		uniforms.push_back(u);
 	}
-
-	uniforms.append_array(material_storage->samplers_rd_get_default().get_uniforms(SAMPLERS_BINDING_FIRST_INDEX));
 
 	RID uniform_set = RD::get_singleton()->uniform_set_create(uniforms, shader.default_version_rd_shader, BASE_UNIFORM_SET);
 	if (p_backbuffer) {
@@ -1619,6 +1616,23 @@ void RendererCanvasRenderRD::set_time(double p_time) {
 void RendererCanvasRenderRD::update() {
 }
 
+static constexpr bool is_power_of_two(uint64_t p_value) {
+	return p_value && ((p_value & (p_value - 1)) == 0);
+}
+
+static constexpr uint64_t round_up_to_alignment(uint64_t p_value, uint64_t p_alignment) {
+	DEV_ASSERT(is_power_of_two(p_alignment));
+
+	if (p_alignment == 0) {
+		return p_value;
+	}
+
+	uint64_t mask = p_alignment - 1;
+	uint64_t aligned_value = (p_value + mask) & ~mask;
+
+	return aligned_value;
+}
+
 RendererCanvasRenderRD::RendererCanvasRenderRD() {
 	RendererRD::TextureStorage *texture_storage = RendererRD::TextureStorage::get_singleton();
 	RendererRD::MaterialStorage *material_storage = RendererRD::MaterialStorage::get_singleton();
@@ -1627,13 +1641,38 @@ RendererCanvasRenderRD::RendererCanvasRenderRD() {
 
 		default_samplers.default_filter = RS::CANVAS_ITEM_TEXTURE_FILTER_LINEAR;
 		default_samplers.default_repeat = RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED;
+		Vector<RID> samplers = material_storage->samplers_rd_get_default().get_rids();
+		for (int i = 0; i < DEFAULT_MATERIAL_SAMPLER_COUNT; i++) {
+			default_material_samplers[i] = samplers[i];
+		}
 	}
 
-	// TODO(sgc): remove this when complete
+	uint32_t push_pad_size = 0;
+
 	{
-		if (String res = OS::get_singleton()->get_environment("GODOT_2D_TEX_BATCHING_ENABLED"); res == "1") {
-			batching_textures_enabled = true;
-		}
+		// determine max number of texture slots we can use, which is a function of two driver limits:
+		//
+		// - LIMIT_MAX_TEXTURES_PER_SHADER_STAGE, which is the maximum number of texture slots per stage
+		// - LIMIT_MAX_PUSH_CONSTANT_SIZE, which is the maximum size (in bytes) of a push constant buffer
+
+		uint32_t available_texture_slots = MIN(RD::get_singleton()->limit_get(RD::LIMIT_MAX_TEXTURES_PER_SHADER_STAGE) - TEXTURE_SLOTS_USED, BATCH_MAX_TEXTURES);
+
+		// base_pc_size is the fixed-size of the data in the push constant, so we can
+		// determine how much is available for the specular_shininess data
+		uint32_t base_pc_size = offsetof(PushConstant, specular_shininess);
+		// based on the maximum size of the push constant from the driver, how many bytes are available
+		// for the specular_shininess data
+		uint32_t available_pc_bytes = RD::get_singleton()->limit_get(RD::LIMIT_MAX_PUSH_CONSTANT_SIZE) - base_pc_size;
+		// convert to a number of elements, so we can compare with how many texture slots are available
+		uint32_t pc_max_slots = MIN(available_pc_bytes / sizeof(uint32_t), BATCH_MAX_TEXTURES);
+
+		// the maximum number of textures that can be batched is the minimum of the two
+		batch_available_texture_slots = MIN(available_texture_slots, pc_max_slots);
+		uint32_t shininess_size_bytes = batch_available_texture_slots * sizeof(uint32_t);
+		uint32_t pc_size = base_pc_size + shininess_size_bytes;
+		batch_push_constant_size = round_up_to_alignment(pc_size, 16); // 16-byte alignment rules
+		push_pad_size = (batch_push_constant_size - pc_size) / sizeof(uint32_t);
+		batch_push_constant_buf = memalloc(batch_push_constant_size);
 	}
 
 	{ //shader variants
@@ -1650,12 +1689,9 @@ RendererCanvasRenderRD::RendererCanvasRenderRD() {
 			global_defines += "#define MAX_LIGHTS " + itos(DEFAULT_MAX_LIGHTS_PER_RENDER) + "\n";
 		}
 
-		global_defines += "\n#define SAMPLERS_BINDING_FIRST_INDEX " + itos(SAMPLERS_BINDING_FIRST_INDEX) + "\n";
-
-		if (batching_textures_enabled) {
-			global_defines += "#define USE_BATCH_TEXTURES\n";
-			global_defines += "#define MAX_BATCH_TEXTURES " + itos(MAX_BATCH_TEXTURES) + "\n";
-			global_defines += "#define MAX_BATCH_SAMPLERS " + itos(MAX_BATCH_SAMPLERS) + "\n";
+		global_defines += "#define BATCH_MAX_TEXTURES " + itos(batch_available_texture_slots) + "\n";
+		if (push_pad_size > 0) {
+			global_defines += "#define PUSH_PAD_SIZE " + itos(push_pad_size) + "\n";
 		}
 
 		state.light_uniforms = memnew_arr(LightUniform, state.max_lights_per_render);
@@ -1833,6 +1869,7 @@ RendererCanvasRenderRD::RendererCanvasRenderRD() {
 		actions.custom_samplers["TEXTURE"] = "texture_sampler";
 		actions.custom_samplers["NORMAL_TEXTURE"] = "texture_sampler";
 		actions.custom_samplers["SPECULAR_SHININESS_TEXTURE"] = "texture_sampler";
+		actions.sampler_array_name = "material_samplers";
 		actions.base_texture_binding_index = 1;
 		actions.texture_layout_set = MATERIAL_UNIFORM_SET;
 		actions.base_uniform_string = "material.";
@@ -1987,13 +2024,11 @@ RendererCanvasRenderRD::RendererCanvasRenderRD() {
 	default_canvas_texture = texture_storage->canvas_texture_allocate();
 	texture_storage->canvas_texture_initialize(default_canvas_texture);
 
-	if (batching_textures_enabled) {
-		RendererRD::TextureStorage::CanvasTextureInfo info = RendererRD::TextureStorage::get_singleton()->canvas_texture_get_info(default_canvas_texture, default_filter, default_repeat, false, false);
-		default_texture_info.diffuse_or_uniform_set = info.diffuse;
-		default_texture_info.normal = info.normal;
-		default_texture_info.specular = info.specular;
-		default_texture_info.sampler = info.sampler;
-	}
+	RendererRD::TextureStorage::CanvasTextureInfo info = RendererRD::TextureStorage::get_singleton()->canvas_texture_get_info(default_canvas_texture, default_filter, default_repeat, false, false);
+	default_texture_info.diffuse_or_uniform_set = info.diffuse;
+	default_texture_info.normal = info.normal;
+	default_texture_info.specular = info.specular;
+	default_texture_info.sampler = info.sampler;
 
 	state.shadow_texture_size = GLOBAL_GET("rendering/2d/shadow_atlas/size");
 
@@ -2115,6 +2150,35 @@ void RendererCanvasRenderRD::set_debug_redraw(bool p_enabled, double p_time, con
 	debug_redraw_time = p_time;
 	debug_redraw_color = p_color;
 }
+
+// #region Multi-command Batch Rendering
+
+void RendererCanvasRenderRD::_mc_render_batch_items(RenderTarget p_to_render_target, int p_item_count, const Transform2D &p_canvas_transform_inverse, Light *p_lights, bool &r_sdf_used, bool p_to_backbuffer, RenderingMethod::RenderInfo *r_render_info) {
+}
+
+void RendererCanvasRenderRD::_mc_record_item_commands(const Item *p_item, RenderTarget p_render_target, const Transform2D &p_base_transform, Item *&r_current_clip, Light *p_lights, uint32_t &r_index, bool &r_batch_broken, bool &r_sdf_used, MCBatch *&r_current_batch) {
+}
+
+void RendererCanvasRenderRD::_mc_render_batch(RD::DrawListID p_draw_list, PipelineVariants *p_pipeline_variants, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, MCBatch const *p_batch, RenderingMethod::RenderInfo *r_render_info) {
+}
+
+void RendererCanvasRenderRD::_mc_prepare_batch_texture(MCBatch *p_current_batch, RID p_texture, TextureInfo *p_info) const {
+}
+
+void RendererCanvasRenderRD::_mc_prepare_batch_texture_info(MCBatch *p_current_batch, RID p_texture, TextureInfo *p_info) const {
+}
+
+RendererCanvasRenderRD::MCBatch *RendererCanvasRenderRD::_mc_new_batch(bool &r_batch_broken) {
+	return nullptr;
+}
+
+void RendererCanvasRenderRD::_mc_add_to_batch(uint32_t &r_index, bool &r_batch_broken, MCBatch *&r_current_batch) {
+}
+
+void RendererCanvasRenderRD::_mc_allocate_instance_buffer() {
+}
+
+// #endregion Multi-command Batch Rendering
 
 void RendererCanvasRenderRD::_render_batch_items(RenderTarget p_to_render_target, int p_item_count, const Transform2D &p_canvas_transform_inverse, Light *p_lights, bool &r_sdf_used, bool p_to_backbuffer, RenderingMethod::RenderInfo *r_render_info) {
 	// Record batches
@@ -2363,9 +2427,7 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 
 		instance_data->color_texture_pixel_size[0] = p_info->texpixel_size.width;
 		instance_data->color_texture_pixel_size[1] = p_info->texpixel_size.height;
-		if (batching_textures_enabled) {
-			instance_data->batch_indexes = p_batch_indexes.batch_indexes;
-		}
+		instance_data->batch_indexes = p_batch_indexes.batch_indexes;
 
 		return instance_data;
 	};
@@ -2401,26 +2463,14 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 				if (!tex_info) {
 					tex_info = &texture_info_map.insert(tex_state, TextureInfo())->value;
 					tex_info->state = tex_state;
-					if (batching_textures_enabled) {
-						_prepare_batch_texture_info(r_current_batch, rect->texture, tex_info);
-					} else {
-						_prepare_batch_texture(r_current_batch, rect->texture, tex_info);
-					}
+					_prepare_batch_texture_info(r_current_batch, rect->texture, tex_info);
 				}
 
-				BatchIndexes indexes;
-				if (batching_textures_enabled) {
-					indexes = r_current_batch->find_slots(*tex_info);
-					if (!indexes.found_all()) {
-						r_current_batch = _new_batch(r_batch_broken);
-						indexes = r_current_batch->find_slots(*tex_info);
-					}
-				} else {
-					if (tex_state != r_current_batch->texture_state) {
-						r_current_batch = _new_batch(r_batch_broken);
-						r_current_batch->texture_state = tex_state;
-					}
-				}
+				BatchIndexes indexes = _find_slots(r_current_batch, *tex_info);
+				if (!indexes.found_all()) {
+					r_current_batch = _new_batch(r_batch_broken);
+					indexes = _find_slots(r_current_batch, *tex_info);
+				};
 
 				Color modulated = rect->modulate * base_color;
 				if (use_linear_colors) {
@@ -2531,26 +2581,14 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 				if (!tex_info) {
 					tex_info = &texture_info_map.insert(tex_state, TextureInfo())->value;
 					tex_info->state = tex_state;
-					if (batching_textures_enabled) {
-						_prepare_batch_texture_info(r_current_batch, np->texture, tex_info);
-					} else {
-						_prepare_batch_texture(r_current_batch, np->texture, tex_info);
-					}
+					_prepare_batch_texture_info(r_current_batch, np->texture, tex_info);
 				}
 
-				BatchIndexes indexes;
-				if (batching_textures_enabled) {
-					indexes = r_current_batch->find_slots(*tex_info);
-					if (!indexes.found_all()) {
-						r_current_batch = _new_batch(r_batch_broken);
-						indexes = r_current_batch->find_slots(*tex_info);
-					}
-				} else {
-					if (tex_state != r_current_batch->texture_state) {
-						r_current_batch = _new_batch(r_batch_broken);
-						r_current_batch->texture_state = tex_state;
-					}
-				}
+				BatchIndexes indexes = _find_slots(r_current_batch, *tex_info);
+				if (!indexes.found_all()) {
+					r_current_batch = _new_batch(r_batch_broken);
+					indexes = _find_slots(r_current_batch, *tex_info);
+				};
 
 				InstanceData *instance_data = new_instance_data(tex_info, indexes);
 
@@ -2619,22 +2657,10 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 				if (!tex_info) {
 					tex_info = &texture_info_map.insert(tex_state, TextureInfo())->value;
 					tex_info->state = tex_state;
-					if (batching_textures_enabled) {
-						_prepare_batch_texture_info(r_current_batch, polygon->texture, tex_info);
-					} else {
-						_prepare_batch_texture(r_current_batch, polygon->texture, tex_info);
-					}
+					_prepare_batch_texture_info(r_current_batch, polygon->texture, tex_info);
 				}
 
-				BatchIndexes indexes;
-				if (batching_textures_enabled) {
-					indexes = r_current_batch->set_first_slot(*tex_info);
-				} else {
-					if (tex_state != r_current_batch->texture_state) {
-						r_current_batch = _new_batch(r_batch_broken);
-						r_current_batch->texture_state = tex_state;
-					}
-				}
+				BatchIndexes indexes = _set_first_slot(r_current_batch, *tex_info);
 
 				// pipeline variant
 				{
@@ -2678,26 +2704,14 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 				if (!tex_info) {
 					tex_info = &texture_info_map.insert(tex_state, TextureInfo())->value;
 					tex_info->state = tex_state;
-					if (batching_textures_enabled) {
-						_prepare_batch_texture_info(r_current_batch, primitive->texture, tex_info);
-					} else {
-						_prepare_batch_texture(r_current_batch, primitive->texture, tex_info);
-					}
+					_prepare_batch_texture_info(r_current_batch, primitive->texture, tex_info);
 				}
 
-				BatchIndexes indexes;
-				if (batching_textures_enabled) {
-					indexes = r_current_batch->find_slots(*tex_info);
-					if (!indexes.found_all()) {
-						r_current_batch = _new_batch(r_batch_broken);
-						indexes = r_current_batch->find_slots(*tex_info);
-					}
-				} else {
-					if (tex_state != r_current_batch->texture_state) {
-						r_current_batch = _new_batch(r_batch_broken);
-						r_current_batch->texture_state = tex_state;
-					}
-				}
+				BatchIndexes indexes = _find_slots(r_current_batch, *tex_info);
+				if (!indexes.found_all()) {
+					r_current_batch = _new_batch(r_batch_broken);
+					indexes = _find_slots(r_current_batch, *tex_info);
+				};
 
 				InstanceData *instance_data = new_instance_data(tex_info, indexes);
 
@@ -2757,21 +2771,9 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 					if (!tex_info) {
 						tex_info = &texture_info_map.insert(tex_state, TextureInfo())->value;
 						tex_info->state = tex_state;
-						if (batching_textures_enabled) {
-							_prepare_batch_texture_info(r_current_batch, m->texture, tex_info);
-						} else {
-							_prepare_batch_texture(r_current_batch, m->texture, tex_info);
-						}
+						_prepare_batch_texture_info(r_current_batch, m->texture, tex_info);
 					}
-					BatchIndexes indexes;
-					if (batching_textures_enabled) {
-						indexes = r_current_batch->set_first_slot(*tex_info);
-					} else {
-						if (tex_state != r_current_batch->texture_state) {
-							r_current_batch = _new_batch(r_batch_broken);
-							r_current_batch->texture_state = tex_state;
-						}
-					}
+					BatchIndexes indexes = _set_first_slot(r_current_batch, *tex_info);
 					instance_data = new_instance_data(tex_info, indexes);
 
 					r_current_batch->mesh_instance_count = 1;
@@ -2797,21 +2799,9 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 					if (!tex_info) {
 						tex_info = &texture_info_map.insert(tex_state, TextureInfo())->value;
 						tex_info->state = tex_state;
-						if (batching_textures_enabled) {
-							_prepare_batch_texture_info(r_current_batch, mm->texture, tex_info);
-						} else {
-							_prepare_batch_texture(r_current_batch, mm->texture, tex_info);
-						}
+						_prepare_batch_texture_info(r_current_batch, mm->texture, tex_info);
 					}
-					BatchIndexes indexes;
-					if (batching_textures_enabled) {
-						indexes = r_current_batch->set_first_slot(*tex_info);
-					} else {
-						if (tex_state != r_current_batch->texture_state) {
-							r_current_batch = _new_batch(r_batch_broken);
-							r_current_batch->texture_state = tex_state;
-						}
-					}
+					BatchIndexes indexes = _set_first_slot(r_current_batch, *tex_info);
 
 					instance_data = new_instance_data(tex_info, indexes);
 
@@ -2833,21 +2823,9 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 					if (!tex_info) {
 						tex_info = &texture_info_map.insert(tex_state, TextureInfo())->value;
 						tex_info->state = tex_state;
-						if (batching_textures_enabled) {
-							_prepare_batch_texture_info(r_current_batch, pt->texture, tex_info);
-						} else {
-							_prepare_batch_texture(r_current_batch, pt->texture, tex_info);
-						}
+						_prepare_batch_texture_info(r_current_batch, pt->texture, tex_info);
 					}
-					BatchIndexes indexes;
-					if (batching_textures_enabled) {
-						indexes = r_current_batch->set_first_slot(*tex_info);
-					} else {
-						if (tex_state != r_current_batch->texture_state) {
-							r_current_batch = _new_batch(r_batch_broken);
-							r_current_batch->texture_state = tex_state;
-						}
-					}
+					BatchIndexes indexes = _set_first_slot(r_current_batch, *tex_info);
 
 					instance_data = new_instance_data(tex_info, indexes);
 
@@ -2937,29 +2915,149 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 	}
 }
 
+RendererCanvasRenderRD::BatchIndexes RendererCanvasRenderRD::_find_slots(Batch *p_batch, TextureInfo &p_info) {
+	BatchIndexes indexes;
+	// first find existing slots
+	for (uint32_t i = 0; i < batch_available_texture_slots; i++) {
+		RID &rid = p_batch->batch_textures[i];
+		if (indexes.color == BATCH_INDEX_UNSET && rid == p_info.diffuse_or_uniform_set) {
+			indexes.color = i;
+		}
+		if (indexes.normal == BATCH_INDEX_UNSET && rid == p_info.normal) {
+			indexes.normal = i;
+		}
+		if (indexes.specular == BATCH_INDEX_UNSET && rid == p_info.specular) {
+			indexes.specular = i;
+		}
+
+		if (indexes.found_textures())
+			break;
+	}
+
+	// try to assign unset textures to unused slots
+	if (!indexes.found_textures()) {
+		for (uint32_t i = BATCH_FIRST_OPEN_BATCH_TEXTURE_SLOT; i < batch_available_texture_slots; i++) {
+			if ((p_batch->batch_textures_used & (uint32_t)(1 << i)) == 0) {
+				if (indexes.color == BATCH_INDEX_UNSET) {
+					indexes.color = i;
+					p_batch->batch_textures[i] = p_info.diffuse_or_uniform_set;
+				} else if (indexes.normal == BATCH_INDEX_UNSET) {
+					indexes.normal = i;
+					p_batch->batch_textures[i] = p_info.normal;
+				} else if (indexes.specular == BATCH_INDEX_UNSET) {
+					indexes.specular = i;
+					p_batch->batch_textures[i] = p_info.specular;
+					p_batch->batch_specular_shininess[i] = p_info.specular_shininess;
+				}
+				if (indexes.found_textures())
+					break;
+			}
+		}
+	}
+
+	// find sampler in existing default material samplers slot
+	for (uint32_t i = 0; i < DEFAULT_MATERIAL_SAMPLER_COUNT; i++) {
+		if (default_material_samplers[i] == p_info.sampler) {
+			indexes.sampler = i;
+			break;
+		}
+	}
+
+	if (indexes.sampler == BATCH_INDEX_UNSET) {
+		// find it in dynamic slot
+		for (uint32_t i = 0; i < BATCH_MAX_DYNAMIC_SAMPLERS; i++) {
+			if (p_batch->batch_samplers[i] == p_info.sampler) {
+				indexes.sampler = DEFAULT_MATERIAL_SAMPLER_COUNT + i;
+			}
+		}
+	}
+
+	// find sampler in unused slot
+	if (indexes.sampler == BATCH_INDEX_UNSET) {
+		for (uint32_t i = 0; i < BATCH_MAX_DYNAMIC_SAMPLERS; i++) {
+			if ((p_batch->batch_samplers_used & (uint32_t)(1 << i)) == 0) {
+				indexes.sampler = DEFAULT_MATERIAL_SAMPLER_COUNT + i;
+				p_batch->batch_samplers[i] = p_info.sampler;
+				break;
+			}
+		}
+	}
+
+	// if slots are found, increase usage count
+	if (indexes.found_all()) {
+		p_batch->batch_textures_used |= (uint32_t)(1 << indexes.color);
+		p_batch->batch_textures_used |= (uint32_t)(1 << indexes.normal);
+		p_batch->batch_textures_used |= (uint32_t)(1 << indexes.specular);
+		p_batch->batch_samplers_used |= (uint32_t)(1 << indexes.sampler);
+	}
+
+	return indexes;
+}
+
+RendererCanvasRenderRD::BatchIndexes RendererCanvasRenderRD::_set_first_slot(Batch *p_batch, TextureInfo &p_info) {
+	BatchIndexes indexes;
+	int next_texture_slot = BATCH_FIRST_OPEN_BATCH_TEXTURE_SLOT;
+
+	if (p_info.diffuse_or_uniform_set == p_batch->batch_textures[0]) {
+		indexes.color = 0;
+	} else {
+		indexes.color = next_texture_slot;
+		p_batch->batch_textures[next_texture_slot] = p_info.diffuse_or_uniform_set;
+		next_texture_slot++;
+	}
+	if (p_info.normal == p_batch->batch_textures[1]) {
+		indexes.normal = 1;
+	} else {
+		indexes.normal = next_texture_slot;
+		p_batch->batch_textures[next_texture_slot] = p_info.normal;
+		next_texture_slot++;
+	}
+	if (p_info.specular == p_batch->batch_textures[0]) {
+		indexes.specular = 0;
+	} else {
+		indexes.specular = next_texture_slot;
+		p_batch->batch_textures[next_texture_slot] = p_info.specular;
+		p_batch->batch_specular_shininess[next_texture_slot] = p_info.specular_shininess;
+	}
+
+	// is it a default sampler?
+	for (uint32_t i = 0; i < DEFAULT_MATERIAL_SAMPLER_COUNT; i++) {
+		if (default_material_samplers[i] == p_info.sampler) {
+			indexes.sampler = i;
+			break;
+		}
+	}
+
+	for (uint32_t i = 0; i < 3; i++) {
+		if (p_batch->batch_samplers[i] == p_info.sampler) {
+			indexes.sampler = DEFAULT_MATERIAL_SAMPLER_COUNT + i;
+			break;
+		}
+	}
+
+	if (indexes.sampler == BATCH_INDEX_UNSET) {
+		indexes.sampler = DEFAULT_MATERIAL_SAMPLER_COUNT;
+		p_batch->batch_samplers[0] = p_info.sampler;
+	}
+	return indexes;
+}
+
 void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineVariants *p_pipeline_variants, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, Batch const *p_batch, RenderingMethod::RenderInfo *r_render_info) {
 	UniformSetCacheRD *uniform_set_cache = UniformSetCacheRD::get_singleton();
 	ERR_FAIL_NULL(uniform_set_cache);
 
 	ERR_FAIL_NULL(p_batch->command);
 
-	PushConstant push_constant;
-	push_constant.base_instance_index = p_batch->start;
+	PushConstant *push_constant = static_cast<PushConstant *>(batch_push_constant_buf);
+	push_constant->base_instance_index = p_batch->start;
+	memcpy(&push_constant->specular_shininess, p_batch->batch_specular_shininess, batch_available_texture_slots * sizeof(uint32_t));
 
-	uint32_t push_constant_size = 0;
-
-	if (batching_textures_enabled) {
-		push_constant_size = sizeof(PushConstant);
-
+	{
 		RD::Uniform u_textures;
 		u_textures.uniform_type = RD::UNIFORM_TYPE_TEXTURE;
 		u_textures.binding = 0;
 
-		RD::Uniform u_samplers;
-		u_samplers.uniform_type = RD::UNIFORM_TYPE_SAMPLER;
-		u_samplers.binding = 1;
-
-		for (int i = 0; i < MAX_BATCH_TEXTURES; i++) {
+		for (int i = 0; i < batch_available_texture_slots; i++) {
 			if (p_batch->batch_textures[i].is_valid()) {
 				u_textures.append_id(p_batch->batch_textures[i]);
 			} else {
@@ -2967,7 +3065,15 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 			}
 		}
 
-		for (int i = 0; i < MAX_BATCH_SAMPLERS; i++) {
+		RD::Uniform u_samplers;
+		u_samplers.uniform_type = RD::UNIFORM_TYPE_SAMPLER;
+		u_samplers.binding = 1;
+
+		for (uint32_t i = 0; i < DEFAULT_MATERIAL_SAMPLER_COUNT; i++) {
+			u_samplers.append_id(default_material_samplers[i]);
+		}
+
+		for (uint32_t i = 0; i < BATCH_MAX_DYNAMIC_SAMPLERS; i++) {
 			if (p_batch->batch_samplers[i].is_valid()) {
 				u_samplers.append_id(p_batch->batch_samplers[i]);
 			} else {
@@ -2975,15 +3081,10 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 			}
 		}
 
-		memcpy(push_constant.batch_specular_shininess, p_batch->batch_specular_shininess, sizeof(push_constant.batch_specular_shininess));
+		RD::Uniform u_instance_data(RD::UNIFORM_TYPE_STORAGE_BUFFER, 2, state.canvas_instance_data_buffers[state.current_data_buffer_index].instance_buffers[p_batch->instance_buffer_index]);
 
-		RID uniform_set = uniform_set_cache->get_cache(shader.default_version_rd_shader, CANVAS_TEXTURE_UNIFORM_SET, u_textures, u_samplers);
+		RID uniform_set = uniform_set_cache->get_cache(shader.default_version_rd_shader, BATCH_UNIFORM_SET, u_textures, u_samplers, u_instance_data);
 		_bind_canvas_texture(p_draw_list, uniform_set);
-	} else {
-		TextureInfo *info = texture_info_map.getptr(p_batch->texture_state);
-		push_constant.specular_shininess = info->specular_shininess;
-		push_constant_size = offsetof(PushConstant, batch_specular_shininess);
-		_bind_canvas_texture(p_draw_list, info->diffuse_or_uniform_set);
 	}
 
 	switch (p_batch->command_type) {
@@ -2996,13 +3097,7 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 				RD::get_singleton()->draw_list_set_blend_constants(p_draw_list, p_batch->modulate);
 			}
 
-			RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, push_constant_size);
-
-			RD::Uniform u_instance_data(RD::UNIFORM_TYPE_STORAGE_BUFFER, 0, state.canvas_instance_data_buffers[state.current_data_buffer_index].instance_buffers[p_batch->instance_buffer_index]);
-			RD::get_singleton()->draw_list_bind_uniform_set(
-					p_draw_list,
-					uniform_set_cache->get_cache(shader.default_version_rd_shader, INSTANCE_DATA_UNIFORM_SET, u_instance_data),
-					INSTANCE_DATA_UNIFORM_SET);
+			RD::get_singleton()->draw_list_set_push_constant(p_draw_list, push_constant, batch_push_constant_size);
 
 			RD::get_singleton()->draw_list_bind_index_array(p_draw_list, shader.quad_index_array);
 			RD::get_singleton()->draw_list_draw(p_draw_list, true, p_batch->instance_count);
@@ -3023,13 +3118,7 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 			RID pipeline = p_pipeline_variants->variants[p_batch->light_mode][p_batch->pipeline_variant].get_render_pipeline(pb->vertex_format_id, p_framebuffer_format);
 			RD::get_singleton()->draw_list_bind_render_pipeline(p_draw_list, pipeline);
 
-			RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, push_constant_size);
-
-			RD::Uniform u_instance_data(RD::UNIFORM_TYPE_STORAGE_BUFFER, 0, state.canvas_instance_data_buffers[state.current_data_buffer_index].instance_buffers[p_batch->instance_buffer_index]);
-			RD::get_singleton()->draw_list_bind_uniform_set(
-					p_draw_list,
-					uniform_set_cache->get_cache(shader.default_version_rd_shader, INSTANCE_DATA_UNIFORM_SET, u_instance_data),
-					INSTANCE_DATA_UNIFORM_SET);
+			RD::get_singleton()->draw_list_set_push_constant(p_draw_list, push_constant, batch_push_constant_size);
 
 			RD::get_singleton()->draw_list_bind_vertex_array(p_draw_list, pb->vertex_array);
 			if (pb->indices.is_valid()) {
@@ -3050,13 +3139,7 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 			RID pipeline = p_pipeline_variants->variants[p_batch->light_mode][p_batch->pipeline_variant].get_render_pipeline(RD::INVALID_ID, p_framebuffer_format);
 			RD::get_singleton()->draw_list_bind_render_pipeline(p_draw_list, pipeline);
 
-			RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, push_constant_size);
-
-			RD::Uniform u_instance_data(RD::UNIFORM_TYPE_STORAGE_BUFFER, 0, state.canvas_instance_data_buffers[state.current_data_buffer_index].instance_buffers[p_batch->instance_buffer_index]);
-			RD::get_singleton()->draw_list_bind_uniform_set(
-					p_draw_list,
-					uniform_set_cache->get_cache(shader.default_version_rd_shader, INSTANCE_DATA_UNIFORM_SET, u_instance_data),
-					INSTANCE_DATA_UNIFORM_SET);
+			RD::get_singleton()->draw_list_set_push_constant(p_draw_list, push_constant, batch_push_constant_size);
 
 			RD::get_singleton()->draw_list_bind_index_array(p_draw_list, primitive_arrays.index_array[MIN(3u, primitive->point_count) - 1]);
 			uint32_t instance_count = p_batch->instance_count;
@@ -3117,12 +3200,6 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 				break;
 			}
 
-			RD::Uniform u_instance_data(RD::UNIFORM_TYPE_STORAGE_BUFFER, 0, state.canvas_instance_data_buffers[state.current_data_buffer_index].instance_buffers[p_batch->instance_buffer_index]);
-			RD::get_singleton()->draw_list_bind_uniform_set(
-					p_draw_list,
-					uniform_set_cache->get_cache(shader.default_version_rd_shader, INSTANCE_DATA_UNIFORM_SET, u_instance_data),
-					INSTANCE_DATA_UNIFORM_SET);
-
 			uint32_t surf_count = mesh_storage->mesh_get_surface_count(mesh);
 			static const PipelineVariant variant[RS::PRIMITIVE_MAX] = { PIPELINE_VARIANT_ATTRIBUTE_POINTS, PIPELINE_VARIANT_ATTRIBUTE_LINES, PIPELINE_VARIANT_ATTRIBUTE_LINES_STRIP, PIPELINE_VARIANT_ATTRIBUTE_TRIANGLES, PIPELINE_VARIANT_ATTRIBUTE_TRIANGLE_STRIP };
 
@@ -3146,7 +3223,7 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 				RID pipeline = p_pipeline_variants->variants[p_batch->light_mode][variant[primitive]].get_render_pipeline(vertex_format, p_framebuffer_format);
 				RD::get_singleton()->draw_list_bind_render_pipeline(p_draw_list, pipeline);
 
-				RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, push_constant_size);
+				RD::get_singleton()->draw_list_set_push_constant(p_draw_list, push_constant, batch_push_constant_size);
 
 				RID index_array = mesh_storage->mesh_surface_get_index_array(surface, 0);
 
@@ -3176,12 +3253,10 @@ RendererCanvasRenderRD::Batch *RendererCanvasRenderRD::_new_batch(bool &r_batch_
 	if (state.canvas_instance_batches.size() == 0) {
 		state.canvas_instance_batches.push_back(Batch());
 		Batch *new_batch = state.canvas_instance_batches.ptr();
-		if (batching_textures_enabled) {
-			// set the default textures and sampler
-			new_batch->batch_textures[0] = default_texture_info.diffuse_or_uniform_set;
-			new_batch->batch_textures[1] = default_texture_info.normal;
-			new_batch->batch_samplers[0] = default_texture_info.sampler;
-		}
+		// set the default textures and sampler
+		new_batch->batch_textures[0] = default_texture_info.diffuse_or_uniform_set;
+		new_batch->batch_textures[1] = default_texture_info.normal;
+		new_batch->batch_samplers[0] = default_texture_info.sampler;
 		return new_batch;
 	}
 
@@ -3196,9 +3271,7 @@ RendererCanvasRenderRD::Batch *RendererCanvasRenderRD::_new_batch(bool &r_batch_
 	new_batch.instance_count = 0;
 	new_batch.start = state.canvas_instance_batches[state.current_batch_index].start + state.canvas_instance_batches[state.current_batch_index].instance_count;
 	new_batch.instance_buffer_index = state.current_instance_buffer_index;
-	if (batching_textures_enabled) {
-		new_batch.reset_batch_usage();
-	}
+	new_batch.reset_batch_usage();
 	state.current_batch_index++;
 	state.canvas_instance_batches.push_back(new_batch);
 	return &state.canvas_instance_batches[state.current_batch_index];
@@ -3243,12 +3316,12 @@ void RendererCanvasRenderRD::_prepare_batch_texture_info(Batch *p_current_batch,
 	}
 
 	RendererRD::TextureStorage::CanvasTextureInfo info =
-	RendererRD::TextureStorage::get_singleton()->canvas_texture_get_info(
-			p_texture,
-			p_info->state.texture_filter(),
-			p_info->state.texture_repeat(),
-			p_info->state.linear_colors(),
-			p_info->state.texture_is_data());
+			RendererRD::TextureStorage::get_singleton()->canvas_texture_get_info(
+					p_texture,
+					p_info->state.texture_filter(),
+					p_info->state.texture_repeat(),
+					p_info->state.linear_colors(),
+					p_info->state.texture_is_data());
 	// something odd happened
 	if (info.is_null()) {
 		_prepare_batch_texture_info(p_current_batch, default_canvas_texture, p_info);
@@ -3278,53 +3351,6 @@ void RendererCanvasRenderRD::_prepare_batch_texture_info(Batch *p_current_batch,
 	p_info->texpixel_size = Vector2(1.0 / float(info.size.width), 1.0 / float(info.size.height));
 }
 
-void RendererCanvasRenderRD::_prepare_batch_texture(Batch *p_current_batch, RID p_texture, TextureInfo *p_info) const {
-	if (p_texture.is_null()) {
-		p_texture = default_canvas_texture;
-	}
-
-	Color specular_shininess;
-	bool use_normal;
-	bool use_specular;
-	Size2i size;
-
-	bool success = RendererRD::TextureStorage::get_singleton()->canvas_texture_get_uniform_set(
-			p_texture,
-			p_info->state.texture_filter(),
-			p_info->state.texture_repeat(),
-			shader.default_version_rd_shader,
-			CANVAS_TEXTURE_UNIFORM_SET,
-			p_info->state.linear_colors(),
-			p_info->diffuse_or_uniform_set,
-			size,
-			specular_shininess,
-			use_normal,
-			use_specular,
-			p_info->state.texture_is_data());
-	// something odd happened
-	if (!success) {
-		_prepare_batch_texture(p_current_batch, default_canvas_texture, p_info);
-		return;
-	}
-
-	// cache values to be copied to instance data
-	if (specular_shininess.a < 0.999) {
-		p_info->flags |= FLAGS_DEFAULT_SPECULAR_MAP_USED;
-	}
-
-	if (use_normal) {
-		p_info->flags |= FLAGS_DEFAULT_NORMAL_MAP_USED;
-	}
-
-	uint8_t a = uint8_t(CLAMP(specular_shininess.a * 255.0, 0.0, 255.0));
-	uint8_t b = uint8_t(CLAMP(specular_shininess.b * 255.0, 0.0, 255.0));
-	uint8_t g = uint8_t(CLAMP(specular_shininess.g * 255.0, 0.0, 255.0));
-	uint8_t r = uint8_t(CLAMP(specular_shininess.r * 255.0, 0.0, 255.0));
-	p_info->specular_shininess = uint32_t(a) << 24 | uint32_t(b) << 16 | uint32_t(g) << 8 | uint32_t(r);
-
-	p_info->texpixel_size = Vector2(1.0 / float(size.width), 1.0 / float(size.height));
-}
-
 void RendererCanvasRenderRD::_bind_canvas_texture(RD::DrawListID p_draw_list, RID p_uniform_set) {
 	if (state.current_tex_uniform_set == p_uniform_set) {
 		return;
@@ -3332,7 +3358,7 @@ void RendererCanvasRenderRD::_bind_canvas_texture(RD::DrawListID p_draw_list, RI
 
 	state.current_tex_uniform_set = p_uniform_set;
 
-	RD::get_singleton()->draw_list_bind_uniform_set(p_draw_list, p_uniform_set, CANVAS_TEXTURE_UNIFORM_SET);
+	RD::get_singleton()->draw_list_bind_uniform_set(p_draw_list, p_uniform_set, BATCH_UNIFORM_SET);
 }
 
 RendererCanvasRenderRD::~RendererCanvasRenderRD() {
@@ -3377,6 +3403,8 @@ RendererCanvasRenderRD::~RendererCanvasRenderRD() {
 		RD::get_singleton()->free(state.shadow_depth_texture);
 	}
 	RD::get_singleton()->free(state.shadow_texture);
+
+	memfree(batch_push_constant_buf);
 
 	memdelete_arr(state.instance_data_array);
 	for (uint32_t i = 0; i < state.canvas_instance_data_buffers.size(); i++) {
