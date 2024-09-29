@@ -101,10 +101,11 @@ struct InstanceData {
 	vec4 ninepatch_margins;
 	vec4 dst_rect; //for built-in rect and UV
 	vec4 src_rect;
-	vec2 pad;
+	vec2 color_texture_pixel_size;
 
 #endif
-	vec2 color_texture_pixel_size;
+	uint texture_data_index;
+	uint pad;
 	uint lights[4];
 };
 
@@ -112,10 +113,7 @@ struct InstanceData {
 
 layout(push_constant, std430) uniform Params {
 	uint base_instance_index; // base index to instance data
-	uint specular_shininess[BATCH_MAX_TEXTURES];
-#ifdef PUSH_PAD_SIZE
-	uint pad[PUSH_PAD_SIZE];
-#endif
+	uint pad[3];
 }
 params;
 
@@ -229,3 +227,21 @@ layout(set = 3, binding = 2, std430) restrict readonly buffer DrawData {
 	InstanceData data[];
 }
 instances;
+
+#ifdef USE_NINEPATCH
+// ninepatch has per-instance color_texture_pixel_size
+#define _color_texture_pixel_size draw_data.color_texture_pixel_size
+#else
+#define _color_texture_pixel_size texture_data.data[draw_data.texture_data_index].color_texture_pixel_size
+#endif
+
+struct TextureData {
+	vec2 color_texture_pixel_size;
+	uint specular_shininess;
+	uint pad;
+};
+
+layout(set = 3, binding = 3, std430) restrict readonly buffer TextureDrawData {
+	TextureData data[];
+}
+texture_data;

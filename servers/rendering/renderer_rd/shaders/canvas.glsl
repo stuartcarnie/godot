@@ -574,7 +574,7 @@ void main() {
 
 	if (specular_shininess_used || (using_light && normal_used && bool(draw_data.flags & FLAGS_DEFAULT_SPECULAR_MAP_USED))) {
 		specular_shininess = texture(sampler2D(specular_texture, texture_sampler), uv);
-		specular_shininess *= unpackUnorm4x8(params.specular_shininess[BATCH_SPECULAR_INDEX]);
+		specular_shininess *= unpackUnorm4x8(texture_data.data[draw_data.texture_data_index].specular_shininess);
 		specular_shininess_used = true;
 	} else {
 		specular_shininess = vec4(1.0);

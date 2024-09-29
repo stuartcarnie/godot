@@ -361,12 +361,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 	struct InstanceData {
 		float world[6];
 		uint32_t flags;
-		union {
-			uint32_t specular_shininess;
-			// when rendering batch commands / textures
-			//
-			uint32_t batch_indexes;
-		};
+		uint32_t batch_indexes;
 		union {
 			//rect
 			struct {
@@ -377,7 +372,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 				};
 				float dst_rect[4];
 				float src_rect[4];
-				float pad[2];
+				float color_texture_pixel_size[2];
 			};
 			//primitive
 			struct {
@@ -386,8 +381,15 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 				uint32_t colors[6]; // colors encoded as half
 			};
 		};
-		float color_texture_pixel_size[2];
+		uint32_t texture_data_index;
+		uint32_t pad;
 		uint32_t lights[4];
+	};
+
+	struct TextureData {
+		float color_texture_pixel_size[2];
+		uint32_t specular_shininess;
+		uint32_t pad;
 	};
 
 	struct MCInstanceData {
@@ -420,9 +422,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 	struct PushConstant {
 		uint32_t base_instance_index;
-		/// Placeholder for the start of specular shininess entries in the push constant buffer.
-		/// MUST be the last entry in the struct
-		uint32_t specular_shininess;
+		uint32_t pad[3];
 	};
 
 	// TextureState is used to determine when a new batch is required due to a change of texture state.
@@ -487,15 +487,13 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 	};
 
 	struct TextureInfo {
-		TextureState state;
-		uint32_t specular_shininess = 0;
 		uint32_t flags = 0;
 		Vector2 texpixel_size;
-		/// When batch mode is disabled, this is a uniform_set.
-		RID diffuse_or_uniform_set;
+		RID diffuse;
 		RID normal;
 		RID specular;
 		RID sampler;
+		uint32_t texture_data_index = 0;
 	};
 
 	HashMap<TextureState, TextureInfo, HashableHasher<TextureState>> texture_info_map;
@@ -544,7 +542,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		/// index 0 is the default_canvas_texture.diffuse
 		/// index 1 is the default_canvas_texture.normal
 		RID batch_textures[BATCH_MAX_TEXTURES];
-		uint32_t batch_specular_shininess[BATCH_MAX_TEXTURES];
 		/// A bitmask indicating which slots are used, allowing up to 64 textures
 		uint64_t batch_textures_used = 0;
 		RID batch_samplers[3];
@@ -578,8 +575,19 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		}
 	};
 
+	struct BufferSize {
+		RID buffer;
+		uint32_t size = 0;
+		BufferSize() {}
+		BufferSize(RID p_buffer, uint32_t p_size) :
+				buffer(p_buffer),
+				size(p_size) {}
+		operator RID() const { return buffer; }
+	};
+
 	struct DataBuffer {
 		LocalVector<RID> instance_buffers;
+		LocalVector<BufferSize> texture_data_buffers;
 	};
 
 	struct MCDataBuffer {
@@ -621,6 +629,14 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t max_instances_per_buffer = 16384;
 		uint32_t max_instance_buffer_size = 16384 * sizeof(InstanceData);
 
+		uint32_t next_texture_data_index = 0;
+		uint32_t current_texture_data_buffer_index = 0;
+		TextureData *texture_data_array = nullptr;
+		// Start with 128 unique textures in a single frame
+		// however, this can grow as needed, and should settle on a size
+		// that prevents further allocations
+		uint32_t texture_data_array_size = 128;
+
 		LocalVector<MCDataBuffer> mc_canvas_instance_data_buffers;
 		LocalVector<MCBatch> mc_canvas_instance_batches;
 		uint32_t mc_current_data_buffer_index = 0;
@@ -636,7 +652,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t mc_max_primitive_buffer_size = 16384 * sizeof(MCPrimitiveData);
 		uint32_t mc_max_quad_buffer_size = 16384 * sizeof(MCQuadData);
 
-		RID current_tex_uniform_set;
+		RID current_batch_uniform_set;
 
 		LightUniform *light_uniforms = nullptr;
 
@@ -661,8 +677,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 	// this is assigned dynamically based on driver support
 	uint32_t batch_available_texture_slots = 0;
-	void *batch_push_constant_buf = nullptr;
-	uint32_t batch_push_constant_size = 0;
 	TextureInfo default_texture_info;
 	RID default_material_samplers[DEFAULT_MATERIAL_SAMPLER_COUNT];
 
@@ -706,11 +720,14 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 	BatchIndexes _find_slots(Batch *p_batch, TextureInfo &p_info);
 	BatchIndexes _set_first_slot(Batch *p_batch, TextureInfo &p_info);
 	void _render_batch(RD::DrawListID p_draw_list, PipelineVariants *p_pipeline_variants, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, Batch const *p_batch, RenderingMethod::RenderInfo *r_render_info = nullptr);
-	void _prepare_batch_texture_info(Batch *p_current_batch, RID p_texture, TextureInfo *p_info) const;
-	void _bind_canvas_texture(RD::DrawListID p_draw_list, RID p_uniform_set);
+	void _prepare_batch_texture_info(RID p_texture, TextureState &p_state, TextureInfo *p_info);
+	void _bind_batch_uniform(RD::DrawListID p_draw_list, RID p_uniform_set);
 	[[nodiscard]] Batch *_new_batch(bool &r_batch_broken);
+	[[nodiscard]] TextureData *_next_texture_data();
+	void _update_texture_data_buffer();
 	void _add_to_batch(uint32_t &r_index, bool &r_batch_broken, Batch *&r_current_batch);
 	void _allocate_instance_buffer();
+	void _allocate_texture_data_buffer();
 
 	_FORCE_INLINE_ void _update_transform_2d_to_mat2x4(const Transform2D &p_transform, float *p_mat2x4);
 	_FORCE_INLINE_ void _update_transform_2d_to_mat2x3(const Transform2D &p_transform, float *p_mat2x3);
