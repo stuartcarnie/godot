@@ -159,6 +159,7 @@ function(generate_godot_extension_wrappers _output)
             OUTPUT ${_output}
             COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
             ARGS --env ${GODOT_ENV_FILE} make_extension_wrapper --output ${_output}
+``            DEPENDS ${CMAKE_SOURCE_DIR}/core/extension/make_wrappers.py
             COMMENT "Generating gdextension wrappers file to ${_output}"
             WORKING_DIRECTORY ${GODOT_ENGINE_ROOT_DIRECTORY}
     )
@@ -169,7 +170,7 @@ function(generate_godot_gdscript_virtuals _output)
             OUTPUT ${_output}
             COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
             ARGS --env ${GODOT_ENV_FILE} make_gdscript_virtuals --output ${_output}
-            DEPENDS ${_input}
+            DEPENDS make_virtuals.py
             COMMENT "Generating gdscript virtuals file to ${_output}"
             WORKING_DIRECTORY ${GODOT_ENGINE_ROOT_DIRECTORY}
     )
