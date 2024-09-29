@@ -2305,8 +2305,8 @@ void RendererCanvasRenderRD::_update_texture_data_buffer() {
 }
 
 void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTarget p_render_target, const Transform2D &p_base_transform, Item *&r_current_clip, Light *p_lights, uint32_t &r_index, bool &r_batch_broken, bool &r_sdf_used, Batch *&r_current_batch) {
-	RenderingServer::CanvasItemTextureFilter texture_filter = p_item->texture_filter == RS::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT ? default_filter : p_item->texture_filter;
-	RenderingServer::CanvasItemTextureRepeat texture_repeat = p_item->texture_repeat == RS::CANVAS_ITEM_TEXTURE_REPEAT_DEFAULT ? default_repeat : p_item->texture_repeat;
+	const RenderingServer::CanvasItemTextureFilter texture_filter = p_item->texture_filter == RS::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT ? default_filter : p_item->texture_filter;
+	const RenderingServer::CanvasItemTextureRepeat texture_repeat = p_item->texture_repeat == RS::CANVAS_ITEM_TEXTURE_REPEAT_DEFAULT ? default_repeat : p_item->texture_repeat;
 
 	Transform2D base_transform = p_base_transform;
 
@@ -2407,22 +2407,9 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 					r_current_batch->pipeline_variant = PIPELINE_VARIANT_QUAD;
 				}
 
+				RenderingServer::CanvasItemTextureRepeat rect_repeat = texture_repeat;
 				if (bool(rect->flags & CANVAS_RECT_TILE)) {
-					texture_repeat = RenderingServer::CanvasItemTextureRepeat::CANVAS_ITEM_TEXTURE_REPEAT_ENABLED;
-				}
-
-				bool has_msdf = bool(rect->flags & CANVAS_RECT_MSDF);
-				TextureState tex_state(rect->texture, texture_filter, texture_repeat, has_msdf, use_linear_colors);
-				TextureInfo *tex_info = texture_info_map.getptr(tex_state);
-				if (!tex_info) {
-					tex_info = &texture_info_map.insert(tex_state, TextureInfo())->value;
-					_prepare_batch_texture_info(rect->texture, tex_state, tex_info);
-				}
-
-				BatchIndexes indexes = _find_slots(r_current_batch, *tex_info);
-				if (!indexes.found_all()) {
-					r_current_batch = _new_batch(r_batch_broken);
-					indexes = _find_slots(r_current_batch, *tex_info);
+					rect_repeat = RenderingServer::CanvasItemTextureRepeat::CANVAS_ITEM_TEXTURE_REPEAT_ENABLED;
 				}
 
 				Color modulated = rect->modulate * base_color;
@@ -2438,6 +2425,20 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 					r_current_batch->has_blend = has_blend;
 					r_current_batch->modulate = modulated;
 					r_current_batch->pipeline_variant = has_blend ? PIPELINE_VARIANT_QUAD_LCD_BLEND : PIPELINE_VARIANT_QUAD;
+				}
+
+				bool has_msdf = bool(rect->flags & CANVAS_RECT_MSDF);
+				TextureState tex_state(rect->texture, texture_filter, rect_repeat, has_msdf, use_linear_colors);
+				TextureInfo *tex_info = texture_info_map.getptr(tex_state);
+				if (!tex_info) {
+					tex_info = &texture_info_map.insert(tex_state, TextureInfo())->value;
+					_prepare_batch_texture_info(rect->texture, tex_state, tex_info);
+				}
+
+				BatchIndexes indexes = _find_slots(r_current_batch, *tex_info);
+				if (!indexes.found_all()) {
+					r_current_batch = _new_batch(r_batch_broken);
+					indexes = _find_slots(r_current_batch, *tex_info);
 				}
 
 				InstanceData *instance_data = new_instance_data(tex_info, indexes);
@@ -2882,21 +2883,17 @@ RendererCanvasRenderRD::BatchIndexes RendererCanvasRenderRD::_find_slots(Batch *
 	}
 
 	// try to assign unset textures to unused slots
-	if (!indexes.found_textures()) {
-		for (uint32_t i = BATCH_FIRST_OPEN_BATCH_TEXTURE_SLOT; i < batch_available_texture_slots; i++) {
-			if ((p_batch->batch_textures_used & (uint32_t)(1 << i)) == 0) {
-				if (indexes.color == BATCH_INDEX_UNSET) {
-					indexes.color = i;
-					p_batch->batch_textures[i] = p_info.diffuse;
-				} else if (indexes.normal == BATCH_INDEX_UNSET) {
-					indexes.normal = i;
-					p_batch->batch_textures[i] = p_info.normal;
-				} else if (indexes.specular == BATCH_INDEX_UNSET) {
-					indexes.specular = i;
-					p_batch->batch_textures[i] = p_info.specular;
-				}
-				if (indexes.found_textures())
-					break;
+	for (uint32_t i = BATCH_FIRST_OPEN_BATCH_TEXTURE_SLOT; !indexes.found_textures() && i < batch_available_texture_slots; i++) {
+		if ((p_batch->batch_textures_used & (uint32_t)(1 << i)) == 0) {
+			if (indexes.color == BATCH_INDEX_UNSET) {
+				indexes.color = i;
+				p_batch->batch_textures[i] = p_info.diffuse;
+			} else if (indexes.normal == BATCH_INDEX_UNSET) {
+				indexes.normal = i;
+				p_batch->batch_textures[i] = p_info.normal;
+			} else if (indexes.specular == BATCH_INDEX_UNSET) {
+				indexes.specular = i;
+				p_batch->batch_textures[i] = p_info.specular;
 			}
 		}
 	}
@@ -2914,6 +2911,7 @@ RendererCanvasRenderRD::BatchIndexes RendererCanvasRenderRD::_find_slots(Batch *
 		for (uint32_t i = 0; i < BATCH_MAX_DYNAMIC_SAMPLERS; i++) {
 			if (p_batch->batch_samplers[i] == p_info.sampler) {
 				indexes.sampler = DEFAULT_MATERIAL_SAMPLER_COUNT + i;
+				break;
 			}
 		}
 	}
@@ -3214,6 +3212,10 @@ RendererCanvasRenderRD::Batch *RendererCanvasRenderRD::_new_batch(bool &r_batch_
 
 	// Copy the properties of the current batch, we will manually update the things that changed.
 	Batch new_batch = state.canvas_instance_batches[state.current_batch_index];
+	DEV_ASSERT(new_batch.batch_textures[0] == default_texture_info.diffuse);
+	DEV_ASSERT(new_batch.batch_textures[1] == default_texture_info.normal);
+	DEV_ASSERT(new_batch.batch_samplers[0] == default_texture_info.sampler);
+
 	new_batch.instance_count = 0;
 	new_batch.start = state.canvas_instance_batches[state.current_batch_index].start + state.canvas_instance_batches[state.current_batch_index].instance_count;
 	new_batch.instance_buffer_index = state.current_instance_buffer_index;
