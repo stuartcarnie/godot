@@ -95,6 +95,7 @@ set_abs(RENDERER_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         renderer_rd/shaders/scene_forward_aa_inc.glsl
         renderer_rd/shaders/scene_forward_gi_inc.glsl
         renderer_rd/shaders/scene_forward_lights_inc.glsl
+        renderer_rd/shaders/scene_forward_vertex_lights_inc.glsl
         renderer_rd/shaders/skeleton.glsl
 )
 # [[[end]]]

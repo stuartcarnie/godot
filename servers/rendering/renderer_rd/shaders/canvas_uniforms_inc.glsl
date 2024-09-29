@@ -32,60 +32,6 @@
 #define FLAGS_FLIP_H (1 << 30)
 #define FLAGS_FLIP_V (1 << 31)
 
-#ifdef USE_MULTI_CMD
-
-// A list of all command types from the canvas renderer
-#define CMD_TYPE_RECT 0 // can be batched
-#define CMD_TYPE_NINEPATCH 1 // can be batched
-#define CMD_TYPE_POLYGON 2
-#define CMD_TYPE_PRIMITIVE 3 // can be batched
-#define CMD_TYPE_MESH 4
-#define CMD_TYPE_MULTIMESH 5
-#define CMD_TYPE_PARTICLES 6
-#define CMD_TYPE_TRANSFORM 7
-
-// Unused
-#define CMD_TYPE_CLIP_IGNORE 8
-#define CMD_TYPE_ANIMATION_SLICE 9
-
-struct InstanceData {
-	vec2 world_x;
-	vec2 world_y;
-	vec2 world_ofs;
-	uint flags;
-	uint batch_indexes;
-	vec2 color_texture_pixel_size;
-	uint lights[4];
-	uint cmd_type;
-	uint data_index; // index into QuadData or PrimitiveData buffers, depending on cmd_type
-}; // 64 bytes
-
-struct QuadData {
-	vec4 modulation;
-	vec4 ninepatch_margins; // or msdf
-	vec4 dst_rect; // for built-in rect and UV
-	vec4 src_rect;
-}; // 64 bytes
-
-struct PrimitiveData {
-	vec2 points[3];
-	vec2 uvs[3];
-	uint colors[6];
-	uint pad[2];
-}; // 80 bytes
-
-layout(set = 4, binding = 2, std430) restrict readonly buffer QuadDataBuffer {
-	QuadData data[];
-}
-quads;
-
-layout(set = 4, binding = 3, std430) restrict readonly buffer PrimitiveDataBuffer {
-	PrimitiveData data[];
-}
-primitives;
-
-#else
-
 struct InstanceData {
 	vec2 world_x;
 	vec2 world_y;
@@ -108,8 +54,6 @@ struct InstanceData {
 	uint pad;
 	uint lights[4];
 };
-
-#endif // USE_MULTI_CMD
 
 layout(push_constant, std430) uniform Params {
 	uint base_instance_index; // base index to instance data

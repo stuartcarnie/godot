@@ -158,6 +158,8 @@ target_sources(godot-editor PRIVATE
         event_listener_line_edit.h
         fbx_importer_manager.cpp
         fbx_importer_manager.h
+        file_info.cpp
+        file_info.h
         filesystem_dock.cpp
         filesystem_dock.h
         find_in_files.cpp

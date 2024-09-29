@@ -2050,7 +2050,6 @@ void fragment() {
 	{
 		state.max_instances_per_buffer = uint32_t(GLOBAL_GET("rendering/2d/batching/item_buffer_size"));
 		state.max_instance_buffer_size = state.max_instances_per_buffer * sizeof(InstanceData);
-
 		state.canvas_instance_data_buffers.resize(3);
 		state.canvas_instance_batches.reserve(200);
 
@@ -2111,35 +2110,6 @@ void RendererCanvasRenderRD::set_debug_redraw(bool p_enabled, double p_time, con
 	debug_redraw_time = p_time;
 	debug_redraw_color = p_color;
 }
-
-// #region Multi-command Batch Rendering
-
-void RendererCanvasRenderRD::_mc_render_batch_items(RenderTarget p_to_render_target, int p_item_count, const Transform2D &p_canvas_transform_inverse, Light *p_lights, bool &r_sdf_used, bool p_to_backbuffer, RenderingMethod::RenderInfo *r_render_info) {
-}
-
-void RendererCanvasRenderRD::_mc_record_item_commands(const Item *p_item, RenderTarget p_render_target, const Transform2D &p_base_transform, Item *&r_current_clip, Light *p_lights, uint32_t &r_index, bool &r_batch_broken, bool &r_sdf_used, MCBatch *&r_current_batch) {
-}
-
-void RendererCanvasRenderRD::_mc_render_batch(RD::DrawListID p_draw_list, PipelineVariants *p_pipeline_variants, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, MCBatch const *p_batch, RenderingMethod::RenderInfo *r_render_info) {
-}
-
-void RendererCanvasRenderRD::_mc_prepare_batch_texture(MCBatch *p_current_batch, RID p_texture, TextureInfo *p_info) const {
-}
-
-void RendererCanvasRenderRD::_mc_prepare_batch_texture_info(MCBatch *p_current_batch, RID p_texture, TextureInfo *p_info) const {
-}
-
-RendererCanvasRenderRD::MCBatch *RendererCanvasRenderRD::_mc_new_batch(bool &r_batch_broken) {
-	return nullptr;
-}
-
-void RendererCanvasRenderRD::_mc_add_to_batch(uint32_t &r_index, bool &r_batch_broken, MCBatch *&r_current_batch) {
-}
-
-void RendererCanvasRenderRD::_mc_allocate_instance_buffer() {
-}
-
-// #endregion Multi-command Batch Rendering
 
 void RendererCanvasRenderRD::_render_batch_items(RenderTarget p_to_render_target, int p_item_count, const Transform2D &p_canvas_transform_inverse, Light *p_lights, bool &r_sdf_used, bool p_to_backbuffer, RenderingMethod::RenderInfo *r_render_info) {
 	// Record batches
@@ -2442,7 +2412,6 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 				}
 
 				bool has_msdf = bool(rect->flags & CANVAS_RECT_MSDF);
-
 				TextureState tex_state(rect->texture, texture_filter, texture_repeat, has_msdf, use_linear_colors);
 				TextureInfo *tex_info = texture_info_map.getptr(tex_state);
 				if (!tex_info) {
@@ -2454,7 +2423,7 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 				if (!indexes.found_all()) {
 					r_current_batch = _new_batch(r_batch_broken);
 					indexes = _find_slots(r_current_batch, *tex_info);
-				};
+				}
 
 				Color modulated = rect->modulate * base_color;
 				if (use_linear_colors) {
@@ -2571,7 +2540,7 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 				if (!indexes.found_all()) {
 					r_current_batch = _new_batch(r_batch_broken);
 					indexes = _find_slots(r_current_batch, *tex_info);
-				};
+				}
 
 				InstanceData *instance_data = new_instance_data(tex_info, indexes);
 
@@ -2692,7 +2661,7 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 				if (!indexes.found_all()) {
 					r_current_batch = _new_batch(r_batch_broken);
 					indexes = _find_slots(r_current_batch, *tex_info);
-				};
+				}
 
 				InstanceData *instance_data = new_instance_data(tex_info, indexes);
 
@@ -3061,7 +3030,10 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 		RD::Uniform u_texture_data(RD::UNIFORM_TYPE_STORAGE_BUFFER, 3, state.canvas_instance_data_buffers[state.current_data_buffer_index].texture_data_buffers[state.current_texture_data_buffer_index]);
 
 		RID uniform_set = uniform_set_cache->get_cache(shader.default_version_rd_shader, BATCH_UNIFORM_SET, u_textures, u_samplers, u_instance_data, u_texture_data);
-		_bind_batch_uniform(p_draw_list, uniform_set);
+		if (state.current_batch_uniform_set != uniform_set) {
+			state.current_batch_uniform_set = uniform_set;
+			RD::get_singleton()->draw_list_bind_uniform_set(p_draw_list, uniform_set, BATCH_UNIFORM_SET);
+		}
 	}
 
 	switch (p_batch->command_type) {
@@ -3095,7 +3067,6 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 			RD::get_singleton()->draw_list_bind_render_pipeline(p_draw_list, pipeline);
 
 			RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, sizeof(PushConstant));
-
 			RD::get_singleton()->draw_list_bind_vertex_array(p_draw_list, pb->vertex_array);
 			if (pb->indices.is_valid()) {
 				RD::get_singleton()->draw_list_bind_index_array(p_draw_list, pb->indices);
@@ -3116,7 +3087,6 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 			RD::get_singleton()->draw_list_bind_render_pipeline(p_draw_list, pipeline);
 
 			RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, sizeof(PushConstant));
-
 			RD::get_singleton()->draw_list_bind_index_array(p_draw_list, primitive_arrays.index_array[MIN(3u, primitive->point_count) - 1]);
 			uint32_t instance_count = p_batch->instance_count;
 			RD::get_singleton()->draw_list_draw(p_draw_list, true, instance_count);
@@ -3360,16 +3330,6 @@ void RendererCanvasRenderRD::_prepare_batch_texture_info(RID p_texture, TextureS
 	texture_data->color_texture_pixel_size[0] = p_info->texpixel_size.width;
 	texture_data->color_texture_pixel_size[1] = p_info->texpixel_size.height;
 	texture_data->pad = 0;
-}
-
-void RendererCanvasRenderRD::_bind_batch_uniform(RD::DrawListID p_draw_list, RID p_uniform_set) {
-	if (state.current_batch_uniform_set == p_uniform_set) {
-		return;
-	}
-
-	state.current_batch_uniform_set = p_uniform_set;
-
-	RD::get_singleton()->draw_list_bind_uniform_set(p_draw_list, p_uniform_set, BATCH_UNIFORM_SET);
 }
 
 RendererCanvasRenderRD::~RendererCanvasRenderRD() {

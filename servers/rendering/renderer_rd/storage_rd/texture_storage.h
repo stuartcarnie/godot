@@ -118,7 +118,6 @@ private:
 		RS::CanvasItemTextureFilter texture_filter = RS::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT;
 		RS::CanvasItemTextureRepeat texture_repeat = RS::CANVAS_ITEM_TEXTURE_REPEAT_DEFAULT;
 		CanvasTextureCache info_cache[2];
-		CanvasTextureCache info_cache[2];
 
 		Size2i size_cache = Size2i(1, 1);
 		bool use_normal_cache = false;

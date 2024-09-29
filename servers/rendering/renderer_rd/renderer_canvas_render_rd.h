@@ -392,34 +392,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t pad;
 	};
 
-	struct MCInstanceData {
-		float world[6];
-		uint32_t flags;
-		uint32_t batch_indexes;
-		float color_texture_pixel_size[2];
-		uint32_t lights[4];
-		uint32_t cmd_type;
-		uint32_t data_index; // index into quad or primitive buffers
-	};
-
-	struct MCQuadData {
-		float modulation[4];
-		union {
-			float msdf[4];
-			float ninepatch_margins[4];
-		};
-		float dst_rect[4];
-		float src_rect[4];
-	};
-
-	// 80-byte struct
-	struct MCPrimitiveData {
-		float points[6]; // vec2 points[3]
-		float uvs[6]; // vec2 points[3]
-		uint32_t colors[6]; // colors encoded as half
-		float pad[2];
-	};
-
 	struct PushConstant {
 		uint32_t base_instance_index;
 		uint32_t pad[3];
@@ -524,25 +496,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		}
 	};
 
-	struct MCBatch {
-		// Position in the UBO measured in bytes
-		uint32_t start = 0;
-		uint32_t instance_count = 0;
-		uint32_t instance_buffer_index = 0;
-	};
-
-	struct TextureInfo {
-		TextureState state;
-		uint32_t specular_shininess = 0;
-		uint32_t flags = 0;
-		Vector2 texpixel_size;
-
-		RID diffuse;
-		RID normal;
-		RID specular;
-		RID sampler;
-	};
-
 	struct Batch {
 		// Position in the UBO measured in bytes
 		uint32_t start = 0;
@@ -602,12 +555,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		LocalVector<BufferSize> texture_data_buffers;
 	};
 
-	struct MCDataBuffer {
-		LocalVector<RID> instance_buffers;
-		LocalVector<RID> primitive_buffers;
-		LocalVector<RID> quad_buffers;
-	};
-
 	struct State {
 		//state buffer
 		struct Buffer {
@@ -648,21 +595,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		// however, this can grow as needed, and should settle on a size
 		// that prevents further allocations
 		uint32_t texture_data_array_size = 128;
-
-		LocalVector<MCDataBuffer> mc_canvas_instance_data_buffers;
-		LocalVector<MCBatch> mc_canvas_instance_batches;
-		uint32_t mc_current_data_buffer_index = 0;
-		uint32_t mc_current_instance_buffer_index = 0;
-		uint32_t mc_current_batch_index = 0;
-		uint32_t mc_last_instance_index = 0;
-		MCInstanceData *mc_instance_data_array = nullptr;
-		MCPrimitiveData *mc_primitive_data_array = nullptr;
-		MCQuadData *mc_quad_data_array = nullptr;
-
-		uint32_t mc_max_instances_per_buffer = 16384;
-		uint32_t mc_max_instance_buffer_size = 16384 * sizeof(MCInstanceData);
-		uint32_t mc_max_primitive_buffer_size = 16384 * sizeof(MCPrimitiveData);
-		uint32_t mc_max_quad_buffer_size = 16384 * sizeof(MCQuadData);
 
 		RID current_batch_uniform_set;
 
@@ -718,22 +650,12 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t base_flags = 0;
 	};
 
-	void _mc_render_batch_items(RenderTarget p_to_render_target, int p_item_count, const Transform2D &p_canvas_transform_inverse, Light *p_lights, bool &r_sdf_used, bool p_to_backbuffer = false, RenderingMethod::RenderInfo *r_render_info = nullptr);
-	void _mc_record_item_commands(const Item *p_item, RenderTarget p_render_target, const Transform2D &p_base_transform, Item *&r_current_clip, Light *p_lights, uint32_t &r_index, bool &r_batch_broken, bool &r_sdf_used, MCBatch *&r_current_batch);
-	void _mc_render_batch(RD::DrawListID p_draw_list, PipelineVariants *p_pipeline_variants, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, MCBatch const *p_batch, RenderingMethod::RenderInfo *r_render_info = nullptr);
-	void _mc_prepare_batch_texture(MCBatch *p_current_batch, RID p_texture, TextureInfo *p_info) const;
-	void _mc_prepare_batch_texture_info(MCBatch *p_current_batch, RID p_texture, TextureInfo *p_info) const;
-	[[nodiscard]] MCBatch *_mc_new_batch(bool &r_batch_broken);
-	void _mc_add_to_batch(uint32_t &r_index, bool &r_batch_broken, MCBatch *&r_current_batch);
-	void _mc_allocate_instance_buffer();
-
 	void _render_batch_items(RenderTarget p_to_render_target, int p_item_count, const Transform2D &p_canvas_transform_inverse, Light *p_lights, bool &r_sdf_used, bool p_to_backbuffer = false, RenderingMethod::RenderInfo *r_render_info = nullptr);
 	void _record_item_commands(const Item *p_item, RenderTarget p_render_target, const Transform2D &p_base_transform, Item *&r_current_clip, Light *p_lights, uint32_t &r_index, bool &r_batch_broken, bool &r_sdf_used, Batch *&r_current_batch);
 	BatchIndexes _find_slots(Batch *p_batch, TextureInfo &p_info);
 	BatchIndexes _set_first_slot(Batch *p_batch, TextureInfo &p_info);
 	void _render_batch(RD::DrawListID p_draw_list, PipelineVariants *p_pipeline_variants, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, Batch const *p_batch, RenderingMethod::RenderInfo *r_render_info = nullptr);
 	void _prepare_batch_texture_info(RID p_texture, TextureState &p_state, TextureInfo *p_info);
-	void _bind_batch_uniform(RD::DrawListID p_draw_list, RID p_uniform_set);
 	[[nodiscard]] Batch *_new_batch(bool &r_batch_broken);
 	[[nodiscard]] TextureData *_next_texture_data();
 	void _update_texture_data_buffer();

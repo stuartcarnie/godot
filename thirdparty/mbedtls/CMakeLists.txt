@@ -116,6 +116,22 @@ target_sources(mbedtls PRIVATE
         library/platform_util.c
         library/poly1305.c
         library/ripemd160.c
+        library/psa_crypto.c
+        library/psa_crypto_aead.c
+        library/psa_crypto_cipher.c
+        library/psa_crypto_client.c
+        library/psa_crypto_driver_wrappers_no_static.c
+        library/psa_crypto_ecp.c
+        library/psa_crypto_ffdh.c
+        library/psa_crypto_hash.c
+        library/psa_crypto_mac.c
+        library/psa_crypto_pake.c
+        library/psa_crypto_rsa.c
+        library/psa_crypto_se.c
+        library/psa_crypto_slot_management.c
+        library/psa_crypto_storage.c
+        library/psa_its_file.c
+        library/psa_util.c
         library/rsa.c
         library/rsa_alt_helpers.c
         library/sha1.c

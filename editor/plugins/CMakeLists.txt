@@ -180,6 +180,8 @@ target_sources(godot-editor-plugins PRIVATE
         theme_editor_plugin.h
         theme_editor_preview.cpp
         theme_editor_preview.h
+        tool_button_editor_plugin.cpp
+        tool_button_editor_plugin.h
         version_control_editor_plugin.cpp
         version_control_editor_plugin.h
         visual_shader_editor_plugin.cpp
