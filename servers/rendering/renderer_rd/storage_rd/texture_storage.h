@@ -102,9 +102,9 @@ private:
 	/* Canvas Texture API */
 
 	struct CanvasTextureCache {
-		RID diffuse;
-		RID normal;
-		RID specular;
+		RID diffuse = RID();
+		RID normal = RID();
+		RID specular = RID();
 	};
 
 	class CanvasTexture {
@@ -117,7 +117,7 @@ private:
 
 		RS::CanvasItemTextureFilter texture_filter = RS::CANVAS_ITEM_TEXTURE_FILTER_DEFAULT;
 		RS::CanvasItemTextureRepeat texture_repeat = RS::CANVAS_ITEM_TEXTURE_REPEAT_DEFAULT;
-		RID uniform_sets[RS::CANVAS_ITEM_TEXTURE_FILTER_MAX][RS::CANVAS_ITEM_TEXTURE_REPEAT_MAX][2];
+		CanvasTextureCache info_cache[2];
 		CanvasTextureCache info_cache[2];
 
 		Size2i size_cache = Size2i(1, 1);
@@ -125,7 +125,7 @@ private:
 		bool use_specular_cache = false;
 		bool cleared_cache = true;
 
-		void clear_sets();
+		void clear_cache();
 		~CanvasTexture();
 	};
 
@@ -500,7 +500,6 @@ public:
 	virtual void canvas_texture_set_texture_repeat(RID p_item, RS::CanvasItemTextureRepeat p_repeat) override;
 
 	CanvasTextureInfo canvas_texture_get_info(RID p_texture, RS::CanvasItemTextureFilter p_base_filter, RS::CanvasItemTextureRepeat p_base_repeat, bool p_use_srgb, bool p_texture_is_data);
-	bool canvas_texture_get_uniform_set(RID p_texture, RS::CanvasItemTextureFilter p_base_filter, RS::CanvasItemTextureRepeat p_base_repeat, RID p_base_shader, int p_base_set, bool p_use_srgb, RID &r_uniform_set, Size2i &r_size, Color &r_specular_shininess, bool &r_use_normal, bool &r_use_specular, bool p_texture_is_data);
 
 	/* Texture API */
 

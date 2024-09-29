@@ -531,6 +531,18 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t instance_buffer_index = 0;
 	};
 
+	struct TextureInfo {
+		TextureState state;
+		uint32_t specular_shininess = 0;
+		uint32_t flags = 0;
+		Vector2 texpixel_size;
+
+		RID diffuse;
+		RID normal;
+		RID specular;
+		RID sampler;
+	};
+
 	struct Batch {
 		// Position in the UBO measured in bytes
 		uint32_t start = 0;

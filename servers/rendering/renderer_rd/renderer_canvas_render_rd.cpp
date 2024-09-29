@@ -3075,7 +3075,6 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, PipelineV
 			}
 
 			RD::get_singleton()->draw_list_set_push_constant(p_draw_list, &push_constant, sizeof(PushConstant));
-
 			RD::get_singleton()->draw_list_bind_index_array(p_draw_list, shader.quad_index_array);
 			RD::get_singleton()->draw_list_draw(p_draw_list, true, p_batch->instance_count);
 
