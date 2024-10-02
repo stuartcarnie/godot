@@ -2338,7 +2338,7 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 
 				light_count++;
 
-				if (light_count == state.max_lights_per_item - 1) {
+				if (light_count == MAX_LIGHTS_PER_ITEM - 1) {
 					break;
 				}
 			}
@@ -2971,17 +2971,11 @@ RendererCanvasRenderRD::BatchIndexes RendererCanvasRenderRD::_set_first_slot(Bat
 		}
 	}
 
-	for (int i = 0; i < 3; i++) {
-		if (p_batch->batch_samplers[i] == p_info.sampler) {
-			indexes.sampler = DEFAULT_MATERIAL_SAMPLER_COUNT + (uint8_t)i;
-			break;
-		}
-	}
-
 	if (indexes.sampler == BATCH_INDEX_UNSET) {
 		indexes.sampler = DEFAULT_MATERIAL_SAMPLER_COUNT;
 		p_batch->batch_samplers[0] = p_info.sampler;
 	}
+
 	return indexes;
 }
 
@@ -3200,7 +3194,6 @@ RendererCanvasRenderRD::Batch *RendererCanvasRenderRD::_new_batch(bool &r_batch_
 		// set the default textures and sampler
 		new_batch->batch_textures[0] = default_texture_info.diffuse;
 		new_batch->batch_textures[1] = default_texture_info.normal;
-		new_batch->batch_samplers[0] = default_texture_info.sampler;
 		return new_batch;
 	}
 
@@ -3214,7 +3207,6 @@ RendererCanvasRenderRD::Batch *RendererCanvasRenderRD::_new_batch(bool &r_batch_
 	Batch new_batch = state.canvas_instance_batches[state.current_batch_index];
 	DEV_ASSERT(new_batch.batch_textures[0] == default_texture_info.diffuse);
 	DEV_ASSERT(new_batch.batch_textures[1] == default_texture_info.normal);
-	DEV_ASSERT(new_batch.batch_samplers[0] == default_texture_info.sampler);
 
 	new_batch.instance_count = 0;
 	new_batch.start = state.canvas_instance_batches[state.current_batch_index].start + state.canvas_instance_batches[state.current_batch_index].instance_count;

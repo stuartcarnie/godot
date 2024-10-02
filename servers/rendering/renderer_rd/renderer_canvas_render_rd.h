@@ -611,7 +611,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		RID default_transforms_uniform_set;
 
 		uint32_t max_lights_per_render;
-		uint32_t max_lights_per_item;
 
 		double time;
 
