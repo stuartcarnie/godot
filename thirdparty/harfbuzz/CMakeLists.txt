@@ -81,7 +81,6 @@ target_sources(harfbuzz PRIVATE
         src/hb-face.h
         src/hb-face.hh
         src/hb-fallback-shape.cc
-        src/hb-features.h
         src/hb-font.cc
         src/hb-font.h
         src/hb-font.hh
@@ -90,6 +89,7 @@ target_sources(harfbuzz PRIVATE
         src/hb-ft.h
         src/hb-gdi.cc
         src/hb-gdi.h
+        src/hb-geometry.hh
         src/hb-glib.cc
         src/hb-glib.h
         src/hb-gobject-structs.cc
@@ -215,6 +215,7 @@ target_sources(harfbuzz PRIVATE
         src/hb-ot-var-gvar-table.hh
         src/hb-ot-var-hvar-table.hh
         src/hb-ot-var-mvar-table.hh
+        src/hb-ot-var-varc-table.hh
         src/hb-ot-var.cc
         src/hb-ot-var.h
         src/hb-ot-vorg-table.hh

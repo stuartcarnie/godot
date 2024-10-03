@@ -20,6 +20,7 @@ target_sources(godot-server-rendering-renderer_rd PRIVATE
         framebuffer_cache_rd.h
         pipeline_cache_rd.cpp
         pipeline_cache_rd.h
+        pipeline_hash_map_rd.h
         renderer_canvas_render_rd.cpp
         renderer_canvas_render_rd.h
         renderer_compositor_rd.cpp

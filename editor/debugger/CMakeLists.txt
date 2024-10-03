@@ -17,6 +17,8 @@ target_sources(godot-editor-debugger PRIVATE
         editor_debugger_server.h
         editor_debugger_tree.cpp
         editor_debugger_tree.h
+        editor_expression_evaluator.cpp
+        editor_expression_evaluator.h
         editor_file_server.cpp
         editor_file_server.h
         editor_performance_profiler.cpp

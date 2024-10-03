@@ -496,8 +496,10 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         MainPlay.svg
         MakeFloating.svg
         MarginContainer.svg
+        Marker.svg
         Marker2D.svg
         Marker3D.svg
+        MarkerSelected.svg
         MatchCase.svg
         MaterialPreviewCube.svg
         MaterialPreviewLight1.svg

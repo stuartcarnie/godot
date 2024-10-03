@@ -16,6 +16,8 @@ target_sources(godot-editor-gui PRIVATE
         editor_file_dialog.h
         editor_object_selector.cpp
         editor_object_selector.h
+        editor_quick_open_dialog.cpp
+        editor_quick_open_dialog.h
         editor_run_bar.cpp
         editor_run_bar.h
         editor_scene_tabs.cpp
@@ -28,6 +30,8 @@ target_sources(godot-editor-gui PRIVATE
         editor_toaster.h
         editor_validation_panel.cpp
         editor_validation_panel.h
+        editor_version_button.cpp
+        editor_version_button.h
         editor_zoom_widget.cpp
         editor_zoom_widget.h
         scene_tree_editor.cpp
