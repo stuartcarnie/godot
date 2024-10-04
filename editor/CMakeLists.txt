@@ -124,8 +124,6 @@ target_sources(godot-editor PRIVATE
         editor_properties_vector.h
         editor_property_name_processor.cpp
         editor_property_name_processor.h
-        editor_quick_open.cpp
-        editor_quick_open.h
         editor_resource_picker.cpp
         editor_resource_picker.h
         editor_resource_preview.cpp
