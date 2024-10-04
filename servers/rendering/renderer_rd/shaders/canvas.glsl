@@ -466,10 +466,10 @@ void main() {
 	const InstanceData draw_data = instances.data[instance_index];
 #endif // USE_ATTRIBUTES
 
-	const uint BATCH_COLOR_INDEX = bitfieldExtract(draw_data.batch_indexes, 0, 8);
-	const uint BATCH_NORMAL_INDEX = bitfieldExtract(draw_data.batch_indexes, 8, 8);
-	const uint BATCH_SPECULAR_INDEX = bitfieldExtract(draw_data.batch_indexes, 16, 8);
-	const uint BATCH_SAMPLER_INDEX = bitfieldExtract(draw_data.batch_indexes, 24, 8);
+	const uint BATCH_COLOR_INDEX = bitfieldExtract(draw_data.batch_indices, 0, 8);
+	const uint BATCH_NORMAL_INDEX = bitfieldExtract(draw_data.batch_indices, 8, 8);
+	const uint BATCH_SPECULAR_INDEX = bitfieldExtract(draw_data.batch_indices, 16, 8);
+	const uint BATCH_SAMPLER_INDEX = bitfieldExtract(draw_data.batch_indices, 24, 8);
 
 #if !defined(USE_ATTRIBUTES) && !defined(USE_PRIMITIVE)
 

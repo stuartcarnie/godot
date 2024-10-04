@@ -362,7 +362,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 	struct InstanceData {
 		float world[6];
 		uint32_t flags;
-		uint32_t batch_indexes;
+		uint32_t batch_indices;
 		union {
 			//rect
 			struct {
@@ -472,29 +472,29 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 	HashMap<TextureState, TextureInfo, HashableHasher<TextureState>> texture_info_map;
 
-	union BatchIndexes {
+	union BatchIndices {
 		struct {
 			uint8_t color;
 			uint8_t normal;
 			uint8_t specular;
 			uint8_t sampler;
 		};
-		/// Little-endian encoding of the indexes.
+		/// Little-endian encoding of the indices.
 		/// - bits 0-7  : color
 		/// - bits 8-15 : normal
 		/// - bits 16-23: specular
 		/// - bits 24-31: sampler
-		uint32_t batch_indexes;
+		uint32_t batch_indices;
 
-		BatchIndexes() :
-				batch_indexes(0x80808080) {}
+		BatchIndices() :
+				batch_indices(0x80808080) {}
 
 		_FORCE_INLINE_ bool found_textures() const {
-			return (batch_indexes & 0x00808080) == 0;
+			return (batch_indices & 0x00808080) == 0;
 		}
 
 		_FORCE_INLINE_ bool found_all() const {
-			return (batch_indexes & 0x80808080) == 0;
+			return (batch_indices & 0x80808080) == 0;
 		}
 	};
 
@@ -599,6 +599,11 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		// that prevents further allocations
 		uint32_t texture_data_array_size = 128;
 
+		// Avoid Uniform::append_id APIs, and pass in preallocated
+		// vectors
+		Vector<RID> texture_data_uniform_sampler_rids;
+		Vector<RID> texture_data_uniform_texture_rids;
+
 		RID current_batch_uniform_set;
 
 		LightUniform *light_uniforms = nullptr;
@@ -655,8 +660,8 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 	inline RID _get_pipeline_specialization_or_ubershader(CanvasShaderData *p_shader_data, PipelineKey &r_pipeline_key, PushConstant &r_push_constant, RID p_mesh_instance = RID(), void *p_surface = nullptr, uint32_t p_surface_index = 0, RID *r_vertex_array = nullptr);
 	void _render_batch_items(RenderTarget p_to_render_target, int p_item_count, const Transform2D &p_canvas_transform_inverse, Light *p_lights, bool &r_sdf_used, bool p_to_backbuffer = false, RenderingMethod::RenderInfo *r_render_info = nullptr);
 	void _record_item_commands(const Item *p_item, RenderTarget p_render_target, const Transform2D &p_base_transform, Item *&r_current_clip, Light *p_lights, uint32_t &r_index, bool &r_batch_broken, bool &r_sdf_used, Batch *&r_current_batch);
-	BatchIndexes _find_slots(Batch *p_batch, TextureInfo &p_info);
-	BatchIndexes _set_first_slot(Batch *p_batch, TextureInfo &p_info);
+	BatchIndices _find_slots(Batch *p_batch, TextureInfo &p_info);
+	BatchIndices _set_first_slot(Batch *p_batch, TextureInfo &p_info);
 	void _render_batch(RD::DrawListID p_draw_list, CanvasShaderData *p_shader_data, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, Batch const *p_batch, RenderingMethod::RenderInfo *r_render_info = nullptr);
 	void _prepare_batch_texture_info(RID p_texture, TextureState &p_state, TextureInfo *p_info);
 	[[nodiscard]] Batch *_new_batch(bool &r_batch_broken);
