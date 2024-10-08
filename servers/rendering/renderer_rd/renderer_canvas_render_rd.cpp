@@ -908,7 +908,7 @@ void RendererCanvasRenderRD::canvas_render_items(RID p_to_render_target, Item *p
 		RenderingServerDefault::redraw_request();
 	}
 
-	state.current_data_buffer_index = (state.current_data_buffer_index + 1) % state.canvas_instance_data_buffers.size();
+	state.current_data_buffer_index = (state.current_data_buffer_index + 1) % BATCH_DATA_BUFFER_COUNT;
 	state.current_instance_buffer_index = 0;
 	state.current_texture_data_buffer_index = 0;
 }
@@ -1656,6 +1656,7 @@ RendererCanvasRenderRD::RendererCanvasRenderRD() {
 		batch_available_texture_slots = MIN(RD::get_singleton()->limit_get(RD::LIMIT_MAX_TEXTURES_PER_SHADER_STAGE) - TEXTURE_SLOTS_USED, BATCH_MAX_TEXTURES);
 		// preallocate the vectors which will hold RIDs to build the uniforms
 		state.texture_data_uniform_texture_rids.resize(batch_available_texture_slots);
+		state.batch_texture_uniforms.resize(4);
 	}
 
 	{ //shader variants
@@ -1988,14 +1989,12 @@ void fragment() {
 	{
 		state.max_instances_per_buffer = uint32_t(GLOBAL_GET("rendering/2d/batching/item_buffer_size"));
 		state.max_instance_buffer_size = state.max_instances_per_buffer * sizeof(InstanceData);
-		state.canvas_instance_data_buffers.resize(3);
 		state.canvas_instance_batches.reserve(200);
 
-		for (int i = 0; i < 3; i++) {
-			DataBuffer db;
+		for (int i = 0; i < BATCH_DATA_BUFFER_COUNT; i++) {
+			DataBuffer &db = state.canvas_instance_data_buffers[i];
 			db.instance_buffers.push_back(RD::get_singleton()->storage_buffer_create(state.max_instance_buffer_size));
 			db.texture_data_buffers.push_back(BufferSize(RD::get_singleton()->storage_buffer_create(state.texture_data_array_size * sizeof(TextureData)), state.texture_data_array_size * sizeof(TextureData)));
-			state.canvas_instance_data_buffers[i] = db;
 		}
 		state.instance_data_array = memnew_arr(InstanceData, state.max_instances_per_buffer);
 		state.texture_data_array = memnew_arr(TextureData, state.texture_data_array_size);
@@ -2948,37 +2947,52 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, CanvasSha
 	ERR_FAIL_NULL(p_batch->command);
 
 	{
-		{
-			RID *ptr = state.texture_data_uniform_texture_rids.ptrw();
-			for (uint32_t i = 0; i < batch_available_texture_slots; i++) {
-				if (p_batch->batch_textures[i].is_valid()) {
-					ptr[i] = p_batch->batch_textures[i];
-				} else {
-					ptr[i] = default_texture_info.diffuse;
+		RIDSetKey key(
+				&p_batch->batch_textures[0],
+				p_batch->batch_textures_used,
+				&p_batch->batch_samplers[0],
+				p_batch->batch_samplers_used,
+				state.canvas_instance_data_buffers[state.current_data_buffer_index].instance_buffers[p_batch->instance_buffer_index],
+				state.canvas_instance_data_buffers[state.current_data_buffer_index].texture_data_buffers[state.current_texture_data_buffer_index]);
+
+		RID *uniform_set = rid_set_to_uniform_set.getptr(key);
+		if (uniform_set == nullptr) {
+			uniform_set = &rid_set_to_uniform_set.insert(std::move(key.to_owned()), RID())->value;
+
+			{
+				RID *ptr = state.texture_data_uniform_texture_rids.ptrw();
+				for (uint32_t i = 0; i < batch_available_texture_slots; i++) {
+					if (p_batch->batch_textures[i].is_valid()) {
+						ptr[i] = p_batch->batch_textures[i];
+					} else {
+						ptr[i] = default_texture_info.diffuse;
+					}
 				}
 			}
-		}
 
-		{
-			RID *ptr = state.texture_data_uniform_sampler_rids.ptrw() + DEFAULT_MATERIAL_SAMPLER_COUNT;
-			for (uint32_t i = 0; i < BATCH_MAX_DYNAMIC_SAMPLERS; i++) {
-				if (p_batch->batch_samplers[i].is_valid()) {
-					ptr[i] = p_batch->batch_samplers[i];
-				} else {
-					ptr[i] = default_texture_info.sampler;
+			{
+				RID *ptr = state.texture_data_uniform_sampler_rids.ptrw() + DEFAULT_MATERIAL_SAMPLER_COUNT;
+				for (uint32_t i = 0; i < BATCH_MAX_DYNAMIC_SAMPLERS; i++) {
+					if (p_batch->batch_samplers[i].is_valid()) {
+						ptr[i] = p_batch->batch_samplers[i];
+					} else {
+						ptr[i] = default_texture_info.sampler;
+					}
 				}
 			}
+
+
+			state.batch_texture_uniforms.write[0] = RD::Uniform(RD::UNIFORM_TYPE_TEXTURE, 0, state.texture_data_uniform_texture_rids);
+			state.batch_texture_uniforms.write[1] = RD::Uniform(RD::UNIFORM_TYPE_SAMPLER, 1, state.texture_data_uniform_sampler_rids);
+			state.batch_texture_uniforms.write[2] = RD::Uniform(RD::UNIFORM_TYPE_STORAGE_BUFFER, 2, state.canvas_instance_data_buffers[state.current_data_buffer_index].instance_buffers[p_batch->instance_buffer_index]);
+			state.batch_texture_uniforms.write[3] = RD::Uniform(RD::UNIFORM_TYPE_STORAGE_BUFFER, 3, state.canvas_instance_data_buffers[state.current_data_buffer_index].texture_data_buffers[state.current_texture_data_buffer_index]);
+
+			*uniform_set = RD::get_singleton()->uniform_set_create(state.batch_texture_uniforms, shader.default_version_rd_shader, BATCH_UNIFORM_SET);
 		}
 
-		RD::Uniform u_textures(RD::UNIFORM_TYPE_TEXTURE, 0, state.texture_data_uniform_texture_rids);
-		RD::Uniform u_samplers(RD::UNIFORM_TYPE_SAMPLER, 1, state.texture_data_uniform_sampler_rids);
-		RD::Uniform u_instance_data(RD::UNIFORM_TYPE_STORAGE_BUFFER, 2, state.canvas_instance_data_buffers[state.current_data_buffer_index].instance_buffers[p_batch->instance_buffer_index]);
-		RD::Uniform u_texture_data(RD::UNIFORM_TYPE_STORAGE_BUFFER, 3, state.canvas_instance_data_buffers[state.current_data_buffer_index].texture_data_buffers[state.current_texture_data_buffer_index]);
-
-		RID uniform_set = uniform_set_cache->get_cache(shader.default_version_rd_shader, BATCH_UNIFORM_SET, u_textures, u_samplers, u_instance_data, u_texture_data);
-		if (state.current_batch_uniform_set != uniform_set) {
-			state.current_batch_uniform_set = uniform_set;
-			RD::get_singleton()->draw_list_bind_uniform_set(p_draw_list, uniform_set, BATCH_UNIFORM_SET);
+		if (state.current_batch_uniform_set != *uniform_set) {
+			state.current_batch_uniform_set = *uniform_set;
+			RD::get_singleton()->draw_list_bind_uniform_set(p_draw_list, *uniform_set, BATCH_UNIFORM_SET);
 		}
 	}
 	PushConstant push_constant;
@@ -3322,7 +3336,7 @@ RendererCanvasRenderRD::~RendererCanvasRenderRD() {
 	RD::get_singleton()->free(state.shadow_texture);
 
 	memdelete_arr(state.instance_data_array);
-	for (uint32_t i = 0; i < state.canvas_instance_data_buffers.size(); i++) {
+	for (uint32_t i = 0; i < BATCH_DATA_BUFFER_COUNT; i++) {
 		for (uint32_t j = 0; j < state.canvas_instance_data_buffers[i].instance_buffers.size(); j++) {
 			RD::get_singleton()->free(state.canvas_instance_data_buffers[i].instance_buffers[j]);
 		}

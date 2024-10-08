@@ -61,6 +61,8 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 	// The maximum number of dynamic samplers that can be used in a single batch
 	static const uint32_t BATCH_MAX_DYNAMIC_SAMPLERS = 3;
 
+	static const uint32_t BATCH_DATA_BUFFER_COUNT = 3;
+
 	enum ShaderVariant {
 		SHADER_VARIANT_QUAD,
 		SHADER_VARIANT_NINEPATCH,
@@ -176,7 +178,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 		String code;
 		RID version;
-		PipelineHashMapRD<PipelineKey, CanvasShaderData, void (CanvasShaderData::*)(PipelineKey)> pipeline_hash_map;
+		PipelineHashMapRD<PipelineKey, CanvasShaderData, void (CanvasShaderData:: *)(PipelineKey)> pipeline_hash_map;
 
 		static const uint32_t VERTEX_INPUT_MASKS_SIZE = SHADER_VARIANT_MAX * 2;
 		std::atomic<uint64_t> vertex_input_masks[VERTEX_INPUT_MASKS_SIZE] = {};
@@ -427,32 +429,32 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 					(((uint32_t)p_use_linear_colors & LINEAR_COLORS_MASK) << LINEAR_COLORS_SHIFT);
 		}
 
-		_FORCE_INLINE_ RS::CanvasItemTextureFilter texture_filter() const {
+		_ALWAYS_INLINE_ RS::CanvasItemTextureFilter texture_filter() const {
 			return (RS::CanvasItemTextureFilter)((other >> FILTER_SHIFT) & FILTER_MASK);
 		}
 
-		_FORCE_INLINE_ RS::CanvasItemTextureRepeat texture_repeat() const {
+		_ALWAYS_INLINE_ RS::CanvasItemTextureRepeat texture_repeat() const {
 			return (RS::CanvasItemTextureRepeat)((other >> REPEAT_SHIFT) & REPEAT_MASK);
 		}
 
-		_FORCE_INLINE_ bool linear_colors() const {
+		_ALWAYS_INLINE_ bool linear_colors() const {
 			return (other >> LINEAR_COLORS_SHIFT) & LINEAR_COLORS_MASK;
 		}
 
-		_FORCE_INLINE_ bool texture_is_data() const {
+		_ALWAYS_INLINE_ bool texture_is_data() const {
 			return (other >> TEXTURE_IS_DATA_SHIFT) & TEXTURE_IS_DATA_MASK;
 		}
 
-		_FORCE_INLINE_ bool operator==(const TextureState &p_val) const {
+		_ALWAYS_INLINE_ bool operator==(const TextureState &p_val) const {
 			return (texture == p_val.texture) && (other == p_val.other);
 		}
 
-		_FORCE_INLINE_ bool operator!=(const TextureState &p_val) const {
+		_ALWAYS_INLINE_ bool operator!=(const TextureState &p_val) const {
 			return (texture != p_val.texture) || (other != p_val.other);
 		}
 
-		_FORCE_INLINE_ bool is_valid() const { return texture.is_valid(); }
-		_FORCE_INLINE_ bool is_null() const { return texture.is_null(); }
+		_ALWAYS_INLINE_ bool is_valid() const { return texture.is_valid(); }
+		_ALWAYS_INLINE_ bool is_null() const { return texture.is_null(); }
 
 		uint32_t hash() const {
 			uint32_t hash = hash_murmur3_one_64(texture.get_id());
@@ -489,14 +491,104 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		BatchIndices() :
 				batch_indices(0x80808080) {}
 
-		_FORCE_INLINE_ bool found_textures() const {
+		_ALWAYS_INLINE_ bool found_textures() const {
 			return (batch_indices & 0x00808080) == 0;
 		}
 
-		_FORCE_INLINE_ bool found_all() const {
+		_ALWAYS_INLINE_ bool found_all() const {
 			return (batch_indices & 0x80808080) == 0;
 		}
 	};
+
+	struct RIDSetKey {
+		RID const *textures = nullptr;
+		uint64_t textures_used = 0;
+		RID const *samplers = nullptr;
+		uint32_t samplers_used = 0;
+		RID instance_data;
+		RID texture_data;
+		Vector<RID> _textures;
+		Vector<RID> _samplers;
+		bool owned = false;
+
+		RIDSetKey() {
+		}
+
+		RIDSetKey(RID const *p_textures, uint64_t p_textures_used, RID const *p_samplers, uint64_t p_samplers_used, RID p_instance_data, RID p_texture_data, bool p_owned = false) :
+				textures(p_textures),
+				textures_used(p_textures_used),
+				samplers(p_samplers),
+				samplers_used(p_samplers_used >> 12),
+				instance_data(p_instance_data),
+				texture_data(p_texture_data),
+				owned(p_owned) {
+		}
+
+		RIDSetKey to_owned() {
+			RIDSetKey key = *this;
+			if (!owned) {
+				key.owned = true;
+				key._textures.resize(BATCH_MAX_TEXTURES);
+				memcpy(key._textures.ptrw(), textures, sizeof(RID) * BATCH_MAX_TEXTURES);
+				key.textures = key._textures.ptr();
+
+				if (samplers_used > 0) {
+					key._samplers.resize(BATCH_MAX_SAMPLERS);
+					memcpy(key._samplers.ptrw(), samplers, sizeof(RID) * BATCH_MAX_SAMPLERS);
+					key.samplers = key._samplers.ptr();
+				} else {
+					key.samplers = nullptr;
+				}
+			}
+			return key;
+		}
+
+		_ALWAYS_INLINE_ bool operator==(const RIDSetKey &p_val) const {
+			uint64_t set = textures_used;
+			while (set != 0) {
+				uint32_t index = __builtin_ctzll(set);
+				set &= ~(1ULL << index);
+				if (textures[index] != p_val.textures[index]) {
+					return false;
+				}
+			}
+
+			set = samplers_used;
+			while (set != 0) {
+				uint32_t index = __builtin_ctzll(set);
+				set &= ~(1ULL << index);
+				if (samplers[index] != p_val.samplers[index]) {
+					return false;
+				}
+			}
+
+			return textures_used == p_val.textures_used && samplers_used == p_val.samplers_used && instance_data == p_val.instance_data && texture_data == p_val.texture_data;
+		}
+
+		_ALWAYS_INLINE_ bool operator!=(const RIDSetKey &p_val) const {
+			return !(*this == p_val);
+		}
+
+		_ALWAYS_INLINE_ uint32_t hash() const {
+			uint32_t h = HASH_MURMUR3_SEED;
+			uint64_t set = textures_used;
+			while (set != 0) {
+				uint32_t index = __builtin_ctzll(set);
+				set &= ~(1ULL << index);
+				h = hash_murmur3_one_64(textures[index].get_id(), h);
+			}
+			set = samplers_used; // we don't care about the first 12 bits, as they are the default samplers;
+			while (set != 0) {
+				uint32_t index = __builtin_ctzll(set);
+				set &= ~(1ULL << index);
+				h = hash_murmur3_one_64(samplers[index].get_id(), h);
+			}
+			h = hash_murmur3_one_64(instance_data.get_id(), h);
+			return hash_murmur3_one_64(texture_data.get_id(), h);
+		}
+	};
+
+	HashMap<RIDSetKey, RID, HashableHasher<RIDSetKey>> rid_set_to_uniform_set;
 
 	struct Batch {
 		// Position in the UBO measured in bytes
@@ -553,6 +645,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		operator RID() const { return buffer; }
 	};
 
+	// per-frame buffers
 	struct DataBuffer {
 		LocalVector<RID> instance_buffers;
 		LocalVector<BufferSize> texture_data_buffers;
@@ -580,7 +673,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 			uint32_t pad2;
 		};
 
-		LocalVector<DataBuffer> canvas_instance_data_buffers;
+		DataBuffer canvas_instance_data_buffers[BATCH_DATA_BUFFER_COUNT];
 		LocalVector<Batch> canvas_instance_batches;
 		uint32_t current_data_buffer_index = 0;
 		uint32_t current_instance_buffer_index = 0;
@@ -603,6 +696,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		// vectors
 		Vector<RID> texture_data_uniform_sampler_rids;
 		Vector<RID> texture_data_uniform_texture_rids;
+		Vector<RD::Uniform> batch_texture_uniforms;
 
 		RID current_batch_uniform_set;
 
