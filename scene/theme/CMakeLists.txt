@@ -65,6 +65,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/text_edit_ellipsis.svg
         icons/text_edit_space.svg
         icons/text_edit_tab.svg
+        icons/toggle_filename_filter.svg
         icons/toggle_off.svg
         icons/toggle_off_disabled.svg
         icons/toggle_off_disabled_mirrored.svg
