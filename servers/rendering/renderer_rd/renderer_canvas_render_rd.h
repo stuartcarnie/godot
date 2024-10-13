@@ -31,6 +31,7 @@
 #ifndef RENDERER_CANVAS_RENDER_RD_H
 #define RENDERER_CANVAS_RENDER_RD_H
 
+#include "core/templates/lru.h"
 #include "servers/rendering/renderer_canvas_render.h"
 #include "servers/rendering/renderer_compositor.h"
 #include "servers/rendering/renderer_rd/pipeline_cache_rd.h"
@@ -178,7 +179,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 		String code;
 		RID version;
-		PipelineHashMapRD<PipelineKey, CanvasShaderData, void (CanvasShaderData:: *)(PipelineKey)> pipeline_hash_map;
+		PipelineHashMapRD<PipelineKey, CanvasShaderData, void (CanvasShaderData::*)(PipelineKey)> pipeline_hash_map;
 
 		static const uint32_t VERTEX_INPUT_MASKS_SIZE = SHADER_VARIANT_MAX * 2;
 		std::atomic<uint64_t> vertex_input_masks[VERTEX_INPUT_MASKS_SIZE] = {};
@@ -462,18 +463,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		}
 	};
 
-	struct TextureInfo {
-		uint32_t flags = 0;
-		Vector2 texpixel_size;
-		RID diffuse;
-		RID normal;
-		RID specular;
-		RID sampler;
-		uint32_t texture_data_index = 0;
-	};
-
-	HashMap<TextureState, TextureInfo, HashableHasher<TextureState>> texture_info_map;
-
 	union BatchIndices {
 		struct {
 			uint8_t color;
@@ -500,6 +489,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		}
 	};
 
+	/// A key used to uniquely identify a set of RIDs that define the BATCH_UNIFORM_SET
 	struct RIDSetKey {
 		RID const *textures = nullptr;
 		uint64_t textures_used = 0;
@@ -507,35 +497,38 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t samplers_used = 0;
 		RID instance_data;
 		RID texture_data;
-		Vector<RID> _textures;
-		Vector<RID> _samplers;
-		bool owned = false;
+		/// If _local.is_empty() is false, then the textures and samplers fields point to the _local
+		/// vector, which is used to store the RIDs.
+		Vector<RID> _local;
 
 		RIDSetKey() {
 		}
 
-		RIDSetKey(RID const *p_textures, uint64_t p_textures_used, RID const *p_samplers, uint64_t p_samplers_used, RID p_instance_data, RID p_texture_data, bool p_owned = false) :
+		RIDSetKey(RID const *p_textures, uint64_t p_textures_used, RID const *p_samplers, uint64_t p_samplers_used, RID p_instance_data, RID p_texture_data) :
 				textures(p_textures),
 				textures_used(p_textures_used),
 				samplers(p_samplers),
+				// The first 12 bits are reserved for the default samplers, which never change,
+				// so we can ignore them.
 				samplers_used(p_samplers_used >> 12),
 				instance_data(p_instance_data),
-				texture_data(p_texture_data),
-				owned(p_owned) {
+				texture_data(p_texture_data) {
 		}
 
+		/// Create a copy of the key, and if the key is not owned, then
+		/// copy the RIDs into the _local vector.
 		RIDSetKey to_owned() {
 			RIDSetKey key = *this;
-			if (!owned) {
-				key.owned = true;
-				key._textures.resize(BATCH_MAX_TEXTURES);
-				memcpy(key._textures.ptrw(), textures, sizeof(RID) * BATCH_MAX_TEXTURES);
-				key.textures = key._textures.ptr();
+			if (_local.is_empty()) {
+				key._local.resize(BATCH_MAX_TEXTURES + BATCH_MAX_SAMPLERS);
+				RID *local_ptr = key._local.ptrw();
+				memcpy(local_ptr, textures, sizeof(RID) * BATCH_MAX_TEXTURES);
+				key.textures = local_ptr;
+				local_ptr += BATCH_MAX_TEXTURES;
 
 				if (samplers_used > 0) {
-					key._samplers.resize(BATCH_MAX_SAMPLERS);
-					memcpy(key._samplers.ptrw(), samplers, sizeof(RID) * BATCH_MAX_SAMPLERS);
-					key.samplers = key._samplers.ptr();
+					memcpy(local_ptr, samplers, sizeof(RID) * BATCH_MAX_SAMPLERS);
+					key.samplers = local_ptr;
 				} else {
 					key.samplers = nullptr;
 				}
@@ -544,21 +537,25 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		}
 
 		_ALWAYS_INLINE_ bool operator==(const RIDSetKey &p_val) const {
-			uint64_t set = textures_used;
-			while (set != 0) {
-				uint32_t index = __builtin_ctzll(set);
-				set &= ~(1ULL << index);
-				if (textures[index] != p_val.textures[index]) {
-					return false;
+			{
+				uint64_t set = textures_used;
+				while (set != 0) {
+					uint32_t index = CTZ64(set);
+					set &= ~(1ULL << index);
+					if (textures[index] != p_val.textures[index]) {
+						return false;
+					}
 				}
 			}
 
-			set = samplers_used;
-			while (set != 0) {
-				uint32_t index = __builtin_ctzll(set);
-				set &= ~(1ULL << index);
-				if (samplers[index] != p_val.samplers[index]) {
-					return false;
+			{
+				uint32_t set = samplers_used;
+				while (set != 0) {
+					uint32_t index = CTZ32(set);
+					set &= ~(1ULL << index);
+					if (samplers[index] != p_val.samplers[index]) {
+						return false;
+					}
 				}
 			}
 
@@ -571,24 +568,29 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 		_ALWAYS_INLINE_ uint32_t hash() const {
 			uint32_t h = HASH_MURMUR3_SEED;
-			uint64_t set = textures_used;
-			while (set != 0) {
-				uint32_t index = __builtin_ctzll(set);
-				set &= ~(1ULL << index);
-				h = hash_murmur3_one_64(textures[index].get_id(), h);
+			{
+				uint64_t set = textures_used;
+				while (set != 0) {
+					uint32_t index = CTZ64(set);
+					set &= ~(1ULL << index);
+					h = hash_murmur3_one_64(textures[index].get_id(), h);
+				}
 			}
-			set = samplers_used; // we don't care about the first 12 bits, as they are the default samplers;
-			while (set != 0) {
-				uint32_t index = __builtin_ctzll(set);
-				set &= ~(1ULL << index);
-				h = hash_murmur3_one_64(samplers[index].get_id(), h);
+			{
+				uint32_t set = samplers_used; // we don't care about the first 12 bits, as they are the default samplers;
+				while (set != 0) {
+					uint32_t index = CTZ32(set);
+					set &= ~(1ULL << index);
+					h = hash_murmur3_one_64(samplers[index].get_id(), h);
+				}
 			}
 			h = hash_murmur3_one_64(instance_data.get_id(), h);
-			return hash_murmur3_one_64(texture_data.get_id(), h);
+			h = hash_murmur3_one_64(texture_data.get_id(), h);
+			return hash_fmix32(h);
 		}
 	};
 
-	HashMap<RIDSetKey, RID, HashableHasher<RIDSetKey>> rid_set_to_uniform_set;
+	LRUCache<RIDSetKey, RID, HashableHasher<RIDSetKey>> rid_set_to_uniform_set;
 
 	struct Batch {
 		// Position in the UBO measured in bytes
@@ -634,6 +636,20 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 			batch_samplers_used = 0;
 		}
 	};
+
+	struct TextureInfo {
+		Batch *batch = nullptr;
+		BatchIndices indices;
+		Vector2 texpixel_size;
+		RID diffuse;
+		RID normal;
+		RID specular;
+		RID sampler;
+		uint32_t flags = 0;
+		uint32_t texture_data_index = 0;
+	};
+
+	HashMap<TextureState, TextureInfo, HashableHasher<TextureState>> texture_info_map;
 
 	struct BufferSize {
 		RID buffer;
@@ -758,6 +774,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 	BatchIndices _set_first_slot(Batch *p_batch, TextureInfo &p_info);
 	void _render_batch(RD::DrawListID p_draw_list, CanvasShaderData *p_shader_data, RenderingDevice::FramebufferFormatID p_framebuffer_format, Light *p_lights, Batch const *p_batch, RenderingMethod::RenderInfo *r_render_info = nullptr);
 	void _prepare_batch_texture_info(RID p_texture, TextureState &p_state, TextureInfo *p_info);
+	InstanceData *new_instance_data(float *p_world, uint32_t *p_lights, uint32_t p_base_flags, uint32_t p_index, TextureInfo *p_info, BatchIndices p_batch_indices);
 	[[nodiscard]] Batch *_new_batch(bool &r_batch_broken);
 	[[nodiscard]] TextureData *_next_texture_data();
 	void _update_texture_data_buffer();
