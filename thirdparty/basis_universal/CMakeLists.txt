@@ -4,11 +4,15 @@ if (WANT_EDITOR)
     #   import cog
     #   from cmake_builders import list_files
     #   cog.outl('    target_sources(basis_universal PRIVATE')
-    #   for file in list_files(cog, 'encoder'):
+    #   for file in list_files(cog, ['encoder', 'encoder/3rdparty']):
     #       cog.outl(f'            {file}')
     #   cog.outl('    )')
     # ]]]
     target_sources(basis_universal PRIVATE
+            encoder/3rdparty/android_astc_decomp.cpp
+            encoder/3rdparty/android_astc_decomp.h
+            encoder/basisu_astc_hdr_enc.cpp
+            encoder/basisu_astc_hdr_enc.h
             encoder/basisu_backend.cpp
             encoder/basisu_backend.h
             encoder/basisu_basis_file.cpp
@@ -63,6 +67,8 @@ endif ()
 # ]]]
 target_sources(basis_universal PRIVATE
         transcoder/basisu.h
+        transcoder/basisu_astc_hdr_core.h
+        transcoder/basisu_astc_helpers.h
         transcoder/basisu_containers.h
         transcoder/basisu_containers_impl.h
         transcoder/basisu_file_headers.h
@@ -72,7 +78,7 @@ target_sources(basis_universal PRIVATE
         transcoder/basisu_transcoder_uastc.h
 )
 # [[[end]]]
-target_link_libraries(basis_universal PRIVATE zstd jpeg-compressor ktx)
+target_link_libraries(basis_universal PRIVATE zstd jpeg-compressor ktx tinyexr)
 target_include_directories(basis_universal PUBLIC .)
 target_compile_options(basis_universal PUBLIC $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
 target_compile_definitions(basis_universal PRIVATE $<$<BOOL:${WANT_EDITOR}>:MINIZ_HEADER_FILE_ONLY>)

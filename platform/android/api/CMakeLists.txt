@@ -11,6 +11,8 @@ godot_add_library(platform-android-api FOLDER android)
 target_sources(platform-android-api PRIVATE
         api.cpp
         api.h
+        java_class_wrapper.h
+        jni_singleton.h
 )
 # [[[end]]]
 target_link_libraries(platform-android-api PRIVATE godot-config)

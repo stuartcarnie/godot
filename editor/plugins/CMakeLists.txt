@@ -49,10 +49,6 @@ target_sources(godot-editor-plugins PRIVATE
         collision_shape_2d_editor_plugin.h
         control_editor_plugin.cpp
         control_editor_plugin.h
-        cpu_particles_2d_editor_plugin.cpp
-        cpu_particles_2d_editor_plugin.h
-        cpu_particles_3d_editor_plugin.cpp
-        cpu_particles_3d_editor_plugin.h
         curve_editor_plugin.cpp
         curve_editor_plugin.h
         debugger_editor_plugin.cpp
@@ -76,10 +72,6 @@ target_sources(godot-editor-plugins PRIVATE
         font_config_plugin.cpp
         font_config_plugin.h
         gdextension_export_plugin.h
-        gpu_particles_2d_editor_plugin.cpp
-        gpu_particles_2d_editor_plugin.h
-        gpu_particles_3d_editor_plugin.cpp
-        gpu_particles_3d_editor_plugin.h
         gpu_particles_collision_sdf_editor_plugin.cpp
         gpu_particles_collision_sdf_editor_plugin.h
         gradient_editor_plugin.cpp
@@ -126,6 +118,8 @@ target_sources(godot-editor-plugins PRIVATE
         parallax_background_editor_plugin.h
         particle_process_material_editor_plugin.cpp
         particle_process_material_editor_plugin.h
+        particles_editor_plugin.cpp
+        particles_editor_plugin.h
         path_2d_editor_plugin.cpp
         path_2d_editor_plugin.h
         path_3d_editor_plugin.cpp
