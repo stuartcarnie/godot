@@ -176,11 +176,13 @@ function(generate_godot_gdscript_virtuals _output)
     )
 endfunction()
 
-function(generate_godot_register_platform_apis _output)
+function(generate_godot_register_platform_apis _inputPlatforms _output)
+    list(JOIN _inputPlatforms " " JOINED_INPUT)
+
     add_custom_command(
             OUTPUT ${_output}
             COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
-            ARGS --env ${GODOT_ENV_FILE} make_register_platform_apis --output ${_output}
+            ARGS --env ${GODOT_ENV_FILE} make_register_platform_apis --output ${_output} --input ${JOINED_INPUT}
             COMMENT "Generating platform APIs registration ${_output}"
             VERBATIM
     )

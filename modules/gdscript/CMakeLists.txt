@@ -103,16 +103,42 @@ if (WANT_EDITOR)
     )
     # [[[end]]]
 endif ()
+if (WANT_TESTS)
+    # [[[cog
+    #   import cog
+    #   from cmake_builders import list_files
+    #   cog.outl('target_sources(godot-module-gdscript PRIVATE')
+    #   for file in list_files(cog, ['tests']):
+    #       cog.outl(f'        {file}')
+    #   cog.outl(')')
+    # ]]]
+    target_sources(godot-module-gdscript PRIVATE
+            tests/gdscript_test_runner.cpp
+            tests/gdscript_test_runner.h
+            tests/gdscript_test_runner_suite.h
+            tests/test_completion.h
+            tests/test_gdscript.cpp
+            tests/test_gdscript.h
+            tests/test_lsp.h
+    )
+    # [[[end]]]
+endif ()
+
 target_link_libraries(godot-module-gdscript PUBLIC godot-object minizip)
 set_property(TARGET godot-module-gdscript PROPERTY CXX_STANDARD 17)
 if (MSVC)
     # This is a very unfortunate workaround -- in release, this file essentially hangs compilation with MSVC.
     set_source_files_properties(gdscript_vm.cpp PROPERTIES COMPILE_FLAGS /Od)
-endif()
+endif ()
 
 set(GODOT_MODULE_GDSCRIPT_RESOURCES
         # doc_classes/GDScript.xml
         # doc_classes/@GDScript.xml
         icons/GDScript.svg
         icons/GDScriptInternal.svg
+)
+
+target_compile_definitions(godot-module-gdscript
+        PRIVATE
+        $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED=1>
 )

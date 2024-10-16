@@ -1,5 +1,9 @@
 set(GODOT_PLATFORM_GENERATED_REGISTERED_APIS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/platform/register_platform_apis.gen.cpp)
-generate_godot_register_platform_apis("${GODOT_PLATFORM_GENERATED_REGISTERED_APIS_OUTPUT}")
+set(GODOT_PLATFORMS "ios")
+if (WANT_TESTS)
+    list(APPEND GODOT_PLATFORMS "android")
+endif ()
+generate_godot_register_platform_apis("${GODOT_PLATFORMS}" "${GODOT_PLATFORM_GENERATED_REGISTERED_APIS_OUTPUT}")
 
 set(GODOT_MAIN_EXECUTABLE_APP_ICON_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/app_icon.png)
 set(GODOT_MAIN_EXECUTABLE_APP_ICON_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/main/app_icon.gen.h)
@@ -82,6 +86,7 @@ target_compile_definitions(Godot
         NO_EDITOR_SPLASH=1
         PRIVATE
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>
+        $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED=1>
 )
 
 target_include_directories(Godot PUBLIC

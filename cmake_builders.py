@@ -487,7 +487,7 @@ def cmd_make_editor_gdscript_templates(source: [str], target: str) -> int:
 
 @check_output
 @source_target
-def cmd_make_register_platform_apis(target: str) -> int:
+def cmd_make_register_platform_apis(source: str, target: str) -> int:
     def register_platform_apis_builder(target, source, env):
         platforms = source[0].read()
         api_inc = "\n".join([f'#include "{p}/api/api.h"' for p in platforms])
@@ -510,7 +510,8 @@ def cmd_make_register_platform_apis(target: str) -> int:
     """
             )
 
-    register_platform_apis_builder(target=target, source=[Value([])], env=env)
+    platform_apis_input = source.split()
+    register_platform_apis_builder(target=target, source=[Value(platform_apis_input)], env=env)
     return 0
 
 
@@ -774,7 +775,7 @@ def _main() -> int:
     sp.add_parser('make_gdscript_virtuals', parents=[args_out]).set_defaults(func=cmd_make_gdscript_virtuals)
     sp.add_parser('make_editor_gdscript_templates', parents=[args_inl_out]).set_defaults(
         func=cmd_make_editor_gdscript_templates)
-    sp.add_parser('make_register_platform_apis', parents=[args_out]).set_defaults(
+    sp.add_parser('make_register_platform_apis', parents=[args_in_out]).set_defaults(
         func=cmd_make_register_platform_apis)
     sp.add_parser('make_editor_platform_exporters', parents=[args_in_out]).set_defaults(
         func=cmd_make_editor_platform_exporters)

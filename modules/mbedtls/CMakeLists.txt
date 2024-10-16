@@ -22,4 +22,15 @@ target_sources(godot-module-mbedtls PRIVATE
         tls_context_mbedtls.h
 )
 # [[[end]]]
+
+if (WANT_TESTS)
+    target_sources(godot-module-mbedtls PRIVATE
+            tests/test_crypto_mbedtls.cpp
+            tests/test_crypto_mbedtls.h
+    )
+endif ()
+
 target_link_libraries(godot-module-mbedtls PUBLIC godot-object mbedtls godot-io)
+target_compile_definitions(godot-module-mbedtls
+        PRIVATE
+        $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED=1 DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS>)
