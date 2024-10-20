@@ -396,13 +396,13 @@ void BoundUniformSet::merge_into(ResourceUsageMap &p_dst) const {
 		if (resources == nullptr) {
 			resources = &p_dst.insert(keyval.key, ResourceVector())->value;
 		}
-		// reserve space for the new resources, assuming they are all added
+		// Reserve space for the new resources, assuming they are all added.
 		resources->reserve(resources->size() + keyval.value.size());
 
 		uint32_t i = 0, j = 0;
 		__unsafe_unretained id<MTLResource> *resources_ptr = resources->ptr();
 		const __unsafe_unretained id<MTLResource> *keyval_ptr = keyval.value.ptr();
-		// 2-way merge
+		// 2-way merge.
 		while (i < resources->size() && j < keyval.value.size()) {
 			if (resources_ptr[i] < keyval_ptr[j]) {
 				i++;
@@ -818,7 +818,7 @@ void MDCommandBuffer::RenderState::end_encoding() {
 		return;
 	}
 
-	// bind all resources
+	// Bind all resources.
 	for (KeyValue<StageResourceUsage, ResourceVector> const &keyval : resource_usage) {
 		if (keyval.value.is_empty()) {
 			continue;
@@ -847,7 +847,7 @@ void MDCommandBuffer::ComputeState::end_encoding() {
 		return;
 	}
 
-	// bind all resources
+	// Bind all resources.
 	for (KeyValue<StageResourceUsage, ResourceVector> const &keyval : resource_usage) {
 		if (keyval.value.is_empty()) {
 			continue;

@@ -288,7 +288,7 @@ public:
 			blend_constants.reset();
 			vertex_buffers.clear();
 			vertex_offsets.clear();
-			// keep the keys, as they are likely to be used again
+			// Keep the keys, as they are likely to be used again.
 			for (KeyValue<StageResourceUsage, LocalVector<__unsafe_unretained id<MTLResource>>> &kv : resource_usage) {
 				kv.value.clear();
 			}
@@ -386,7 +386,7 @@ public:
 		_FORCE_INLINE_ void reset() {
 			pipeline = nil;
 			encoder = nil;
-			// keep the keys, as they are likely to be used again
+			// Keep the keys, as they are likely to be used again.
 			for (KeyValue<StageResourceUsage, LocalVector<__unsafe_unretained id<MTLResource>>> &kv : resource_usage) {
 				kv.value.clear();
 			}
