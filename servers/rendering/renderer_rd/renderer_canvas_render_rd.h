@@ -61,7 +61,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 	static const uint32_t DEFAULT_MATERIAL_SAMPLER_COUNT = 12;
 	// The maximum number of dynamic samplers that can be used in a single batch
 	static const uint32_t BATCH_MAX_DYNAMIC_SAMPLERS = 3;
-
+	// The size of the ring buffer to store GPU buffers. Triple-buffering the max expected frames in flight.
 	static const uint32_t BATCH_DATA_BUFFER_COUNT = 3;
 
 	enum ShaderVariant {
@@ -520,14 +520,14 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		RIDSetKey to_owned() {
 			RIDSetKey key = *this;
 			if (_local.is_empty()) {
-				key._local.resize(BATCH_MAX_TEXTURES + BATCH_MAX_SAMPLERS);
+				key._local.resize(BATCH_MAX_TEXTURES + BATCH_MAX_DYNAMIC_SAMPLERS);
 				RID *local_ptr = key._local.ptrw();
 				memcpy(local_ptr, textures, sizeof(RID) * BATCH_MAX_TEXTURES);
 				key.textures = local_ptr;
 				local_ptr += BATCH_MAX_TEXTURES;
 
 				if (samplers_used > 0) {
-					memcpy(local_ptr, samplers, sizeof(RID) * BATCH_MAX_SAMPLERS);
+					memcpy(local_ptr, samplers, sizeof(RID) * BATCH_MAX_DYNAMIC_SAMPLERS);
 					key.samplers = local_ptr;
 				} else {
 					key.samplers = nullptr;
@@ -541,10 +541,13 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 				uint64_t set = textures_used;
 				while (set != 0) {
 					uint32_t index = CTZ64(set);
-					set &= ~(1ULL << index);
 					if (textures[index] != p_val.textures[index]) {
 						return false;
 					}
+					// clear the least significant bit that is set
+					// Produces the most efficient code for x86 and ARM architectures
+					// per https://cpp.godbolt.org/z/vjKGPcWjq
+					set &= (set - 1); // clear least significant bit that is set
 				}
 			}
 
@@ -552,10 +555,10 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 				uint32_t set = samplers_used;
 				while (set != 0) {
 					uint32_t index = CTZ32(set);
-					set &= ~(1ULL << index);
 					if (samplers[index] != p_val.samplers[index]) {
 						return false;
 					}
+					set &= (set - 1); // clear least significant bit that is set
 				}
 			}
 
@@ -572,16 +575,16 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 				uint64_t set = textures_used;
 				while (set != 0) {
 					uint32_t index = CTZ64(set);
-					set &= ~(1ULL << index);
 					h = hash_murmur3_one_64(textures[index].get_id(), h);
+					set &= (set - 1); // clear least significant bit that is set
 				}
 			}
 			{
 				uint32_t set = samplers_used; // we don't care about the first 12 bits, as they are the default samplers;
 				while (set != 0) {
 					uint32_t index = CTZ32(set);
-					set &= ~(1ULL << index);
 					h = hash_murmur3_one_64(samplers[index].get_id(), h);
+					set &= (set - 1); // clear least significant bit that is set
 				}
 			}
 			h = hash_murmur3_one_64(instance_data.get_id(), h);
@@ -590,7 +593,11 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		}
 	};
 
-	LRUCache<RIDSetKey, RID, HashableHasher<RIDSetKey>> rid_set_to_uniform_set;
+	static void _before_evict(RendererCanvasRenderRD::RIDSetKey &p_key, RID &p_rid);
+	static void _uniform_set_invalidation_callback(void *p_userdata);
+
+	typedef LRUCache<RIDSetKey, RID, HashableHasher<RIDSetKey>, HashMapComparatorDefault<RIDSetKey>, _before_evict> RIDCache;
+	RIDCache rid_set_to_uniform_set;
 
 	struct Batch {
 		// Position in the UBO measured in bytes
@@ -607,7 +614,7 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint64_t batch_textures_used = 0;
 		RID batch_samplers[3];
 		/// A bitmask indicating which slots are used, allowing up to 64 samplers
-		uint64_t batch_samplers_used = 0;
+		uint32_t batch_samplers_used = 0;
 
 		Color modulate = Color(1.0, 1.0, 1.0, 1.0);
 

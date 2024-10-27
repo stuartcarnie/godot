@@ -176,6 +176,8 @@ transforms;
 
 /* SET3: Texture */
 
+#extension GL_EXT_nonuniform_qualifier : require
+
 layout(set = 3, binding = 0) uniform texture2D texture_array[BATCH_MAX_TEXTURES];
 
 #define SAMPLER_LINEAR_CLAMP material_samplers[1]
@@ -187,10 +189,10 @@ layout(set = 3, binding = 0) uniform texture2D texture_array[BATCH_MAX_TEXTURES]
 /// - 3 dynamic samplers
 layout(set = 3, binding = 1) uniform sampler material_samplers[15];
 
-#define color_texture texture_array[BATCH_COLOR_INDEX]
-#define normal_texture texture_array[BATCH_NORMAL_INDEX]
-#define specular_texture texture_array[BATCH_SPECULAR_INDEX]
-#define texture_sampler material_samplers[BATCH_SAMPLER_INDEX]
+#define color_texture texture_array[nonuniformEXT(BATCH_COLOR_INDEX)]
+#define normal_texture texture_array[nonuniformEXT(BATCH_NORMAL_INDEX)]
+#define specular_texture texture_array[nonuniformEXT(BATCH_SPECULAR_INDEX)]
+#define texture_sampler material_samplers[nonuniformEXT(BATCH_SAMPLER_INDEX)]
 
 layout(set = 3, binding = 2, std430) restrict readonly buffer DrawData {
 	InstanceData data[];
