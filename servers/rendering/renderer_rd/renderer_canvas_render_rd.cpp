@@ -2820,6 +2820,11 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 			_prepare_batch_texture_info(default_canvas_texture, tex_state, tex_info);
 		}
 
+		if (r_current_batch->tex_info != tex_info) {
+			r_current_batch = _new_batch(r_batch_broken);
+			r_current_batch->tex_info = tex_info;
+		}
+
 		InstanceData *instance_data = new_instance_data(world, lights, base_flags, r_index, tex_info);
 
 		Rect2 src_rect;
