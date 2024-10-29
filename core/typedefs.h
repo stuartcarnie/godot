@@ -269,7 +269,7 @@ static inline int __CTZ32_software(uint32_t x) {
 }
 
 #if defined(__GNUC__) || defined(__clang__)
-#define CTZ32(x) __builtin_ctzl(x)
+#define CTZ32(x) ((x != 0) ? __builtin_ctzl((uint32_t)(x)) : 32)
 #elif defined(_MSC_VER)
 #include <intrin.h>
 
@@ -295,7 +295,7 @@ static inline int __CTZ64_software(uint64_t x) {
 }
 
 #if defined(__GNUC__) || defined(__clang__)
-#define CTZ64(x) __builtin_ctzll(x)
+#define CTZ64(x) ((x != 0) ? __builtin_ctzll((uint64_t)(x)) : 64)
 #elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_ARM64))
 static inline int CTZ64(uint64_t x) {
 	unsigned long leading_zero = 0;

@@ -466,11 +466,6 @@ void main() {
 	const InstanceData draw_data = instances.data[instance_index];
 #endif // USE_ATTRIBUTES
 
-	const uint BATCH_COLOR_INDEX = bitfieldExtract(draw_data.batch_indices, 0, 8);
-	const uint BATCH_NORMAL_INDEX = bitfieldExtract(draw_data.batch_indices, 8, 8);
-	const uint BATCH_SPECULAR_INDEX = bitfieldExtract(draw_data.batch_indices, 16, 8);
-	const uint BATCH_SAMPLER_INDEX = bitfieldExtract(draw_data.batch_indices, 24, 8);
-
 #if !defined(USE_ATTRIBUTES) && !defined(USE_PRIMITIVE)
 
 #ifdef USE_NINEPATCH
@@ -569,7 +564,7 @@ void main() {
 
 	if (specular_shininess_used || (using_light && normal_used && bool(draw_data.flags & FLAGS_DEFAULT_SPECULAR_MAP_USED))) {
 		specular_shininess = texture(sampler2D(specular_texture, texture_sampler), uv);
-		specular_shininess *= unpackUnorm4x8(texture_data.data[draw_data.texture_data_index].specular_shininess);
+		specular_shininess *= unpackUnorm4x8(params.specular_shininess);
 		specular_shininess_used = true;
 	} else {
 		specular_shininess = vec4(1.0);

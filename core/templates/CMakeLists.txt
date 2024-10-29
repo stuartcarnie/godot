@@ -8,6 +8,8 @@ godot_add_library(godot-templates FOLDER core STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-templates PRIVATE
+        a_hash_map.cpp
+        a_hash_map.h
         bin_sorted_array.h
         command_queue_mt.cpp
         command_queue_mt.h
