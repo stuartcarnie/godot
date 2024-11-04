@@ -71,6 +71,8 @@ target_sources(godot-editor-plugins PRIVATE
         editor_resource_tooltip_plugins.h
         font_config_plugin.cpp
         font_config_plugin.h
+        game_view_plugin.cpp
+        game_view_plugin.h
         gdextension_export_plugin.h
         gpu_particles_collision_sdf_editor_plugin.cpp
         gpu_particles_collision_sdf_editor_plugin.h

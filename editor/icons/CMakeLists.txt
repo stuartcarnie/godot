@@ -24,6 +24,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ../../modules/regex/icons/RegEx.svg
         ../../modules/regex/icons/RegExMatch.svg
         2D.svg
+        2DNodes.svg
         3D.svg
         AABB.svg
         AcceptDialog.svg
@@ -114,6 +115,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         CPUParticles2D.svg
         CPUParticles3D.svg
         Callable.svg
+        Camera.svg
         Camera2D.svg
         Camera3D.svg
         CameraAttributes.svg
@@ -299,6 +301,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         GPUParticlesCollisionHeightField3D.svg
         GPUParticlesCollisionSDF3D.svg
         GPUParticlesCollisionSphere3D.svg
+        Game.svg
         Generic6DOFJoint3D.svg
         GeometryInstance3D.svg
         Gizmo3DSamplePlayer.svg
@@ -552,6 +555,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         New.svg
         NewKey.svg
         NewRoot.svg
+        NextFrame.svg
         Nil.svg
         NinePatchRect.svg
         Node.svg

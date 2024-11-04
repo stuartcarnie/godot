@@ -9,8 +9,8 @@ if(${WANT_COREAUDIO})
     #   cog.outl(')')
     # ]]]
     target_sources(coreaudio PRIVATE
-            audio_driver_coreaudio.mm
             audio_driver_coreaudio.h
+            audio_driver_coreaudio.mm
     )
     # [[[end]]]
 
