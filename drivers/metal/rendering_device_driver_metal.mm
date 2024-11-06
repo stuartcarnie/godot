@@ -1817,15 +1817,15 @@ Error RenderingDeviceDriverMetal::_reflect_spirv16(VectorView<ShaderStageSPIRVDa
 			}
 		}
 
-		for (auto f : resources.builtin_inputs) {
-			if (f.builtin == spv::BuiltInViewIndex || f.builtin == spv::BuiltInViewportIndex) {
+		for (const BuiltInResource &res : resources.builtin_inputs) {
+			if (res.builtin == spv::BuiltInViewIndex || res.builtin == spv::BuiltInViewportIndex) {
 				r_shader_meta.has_multiview = true;
 			}
 		}
 
 		if (!r_shader_meta.has_multiview) {
-			for (auto f : resources.builtin_outputs) {
-				if (f.builtin == spv::BuiltInViewIndex || f.builtin == spv::BuiltInViewportIndex) {
+			for (const BuiltInResource &res : resources.builtin_outputs) {
+				if (res.builtin == spv::BuiltInViewIndex || res.builtin == spv::BuiltInViewportIndex) {
 					r_shader_meta.has_multiview = true;
 				}
 			}

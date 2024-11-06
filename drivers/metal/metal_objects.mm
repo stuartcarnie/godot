@@ -97,7 +97,7 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 
 		if (render.encoder == nil) {
 			// This error would happen if the render pass failed.
-			ERR_FAIL_NULL_MSG(render.desc, "Render pass descriptor is null");
+			ERR_FAIL_NULL_MSG(render.desc, "Render pass descriptor is null.");
 
 			// This condition occurs when there are no attachments when calling render_next_subpass()
 			// and is due to the SUPPORTS_FRAGMENT_SHADER_WITH_ONLY_SIDE_EFFECTS flag.
@@ -672,7 +672,7 @@ void MDCommandBuffer::render_next_subpass() {
 		MDAttachment const &attachment = pass.attachments[idx];
 
 		id<MTLTexture> tex = fb.get_texture(idx);
-		ERR_FAIL_NULL_MSG(tex, "Frame buffer color texture is null");
+		ERR_FAIL_NULL_MSG(tex, "Frame buffer color texture is null.");
 
 		if ((attachment.type & MDAttachmentType::Color)) {
 			if (attachment.configureDescriptor(ca, pf, subpass, tex, render.is_rendering_entire_area, has_resolve, can_resolve, false)) {
@@ -687,7 +687,7 @@ void MDCommandBuffer::render_next_subpass() {
 		uint32_t idx = subpass.depth_stencil_reference.attachment;
 		MDAttachment const &attachment = pass.attachments[idx];
 		id<MTLTexture> tex = fb.get_texture(idx);
-		ERR_FAIL_NULL_MSG(tex, "Frame buffer depth / stencil texture is null");
+		ERR_FAIL_NULL_MSG(tex, "Frame buffer depth / stencil texture is null.");
 		if (attachment.type & MDAttachmentType::Depth) {
 			MTLRenderPassDepthAttachmentDescriptor *da = desc.depthAttachment;
 			if (attachment.configureDescriptor(da, pf, subpass, tex, render.is_rendering_entire_area, false, false, false)) {
@@ -727,7 +727,7 @@ void MDCommandBuffer::render_draw(uint32_t p_vertex_count,
 		uint32_t p_base_vertex,
 		uint32_t p_first_instance) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
-	ERR_FAIL_NULL_MSG(render.pipeline, "No pipeline set for render command buffer");
+	ERR_FAIL_NULL_MSG(render.pipeline, "No pipeline set for render command buffer.");
 
 	_render_set_dirty_state();
 
@@ -783,7 +783,7 @@ void MDCommandBuffer::render_draw_indexed(uint32_t p_index_count,
 		int32_t p_vertex_offset,
 		uint32_t p_first_instance) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
-	ERR_FAIL_NULL_MSG(render.pipeline, "No pipeline set for render command buffer");
+	ERR_FAIL_NULL_MSG(render.pipeline, "No pipeline set for render command buffer.");
 
 	_render_set_dirty_state();
 
@@ -809,7 +809,7 @@ void MDCommandBuffer::render_draw_indexed(uint32_t p_index_count,
 
 void MDCommandBuffer::render_draw_indexed_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
-	ERR_FAIL_NULL_MSG(render.pipeline, "No pipeline set for render command buffer");
+	ERR_FAIL_NULL_MSG(render.pipeline, "No pipeline set for render command buffer.");
 
 	_render_set_dirty_state();
 
@@ -835,7 +835,7 @@ void MDCommandBuffer::render_draw_indexed_indirect_count(RDD::BufferID p_indirec
 
 void MDCommandBuffer::render_draw_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
-	ERR_FAIL_NULL_MSG(render.pipeline, "No pipeline set for render command buffer");
+	ERR_FAIL_NULL_MSG(render.pipeline, "No pipeline set for render command buffer.");
 
 	_render_set_dirty_state();
 
