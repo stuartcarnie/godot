@@ -73,21 +73,13 @@ def print_error(*values: object) -> None:
 
 def add_source_files_orig(self, sources, files, allow_gen=False):
     # Convert string to list of absolute paths (including expanding wildcard)
-    if isinstance(files, (str, bytes)):
-        # Keep SCons project-absolute path as they are (no wildcard support)
-        if files.startswith("#"):
-            if "*" in files:
-                print_error("Wildcards can't be expanded in SCons project-absolute path: '{}'".format(files))
-                return
-            files = [files]
-        else:
-            # Exclude .gen.cpp files from globbing, to avoid including obsolete ones.
-            # They should instead be added manually.
-            skip_gen_cpp = "*" in files
-            dir_path = self.Dir(".").abspath
-            files = sorted(glob.glob(dir_path + "/" + files))
-            if skip_gen_cpp and not allow_gen:
-                files = [f for f in files if not f.endswith(".gen.cpp")]
+    if isinstance(files, str):
+        # Exclude .gen.cpp files from globbing, to avoid including obsolete ones.
+        # They should instead be added manually.
+        skip_gen_cpp = "*" in files
+        files = self.Glob(files)
+        if skip_gen_cpp and not allow_gen:
+            files = [f for f in files if not str(f).endswith(".gen.cpp")]
 
     # Add each path as compiled Object following environment (self) configuration
     for path in files:
@@ -563,40 +555,7 @@ def detect_visual_c_compiler_version(tools_env):
     vc_chosen_compiler_index = -1
     vc_chosen_compiler_str = ""
 
-    # Start with Pre VS 2017 checks which uses VCINSTALLDIR:
-    if "VCINSTALLDIR" in tools_env:
-        # print("Checking VCINSTALLDIR")
-
-        # find() works with -1 so big ifs below are needed... the simplest solution, in fact
-        # First test if amd64 and amd64_x86 compilers are present in the path
-        vc_amd64_compiler_detection_index = tools_env["PATH"].find(tools_env["VCINSTALLDIR"] + "BIN\\amd64;")
-        if vc_amd64_compiler_detection_index > -1:
-            vc_chosen_compiler_index = vc_amd64_compiler_detection_index
-            vc_chosen_compiler_str = "amd64"
-
-        vc_amd64_x86_compiler_detection_index = tools_env["PATH"].find(tools_env["VCINSTALLDIR"] + "BIN\\amd64_x86;")
-        if vc_amd64_x86_compiler_detection_index > -1 and (
-            vc_chosen_compiler_index == -1 or vc_chosen_compiler_index > vc_amd64_x86_compiler_detection_index
-        ):
-            vc_chosen_compiler_index = vc_amd64_x86_compiler_detection_index
-            vc_chosen_compiler_str = "amd64_x86"
-
-        # Now check the 32 bit compilers
-        vc_x86_compiler_detection_index = tools_env["PATH"].find(tools_env["VCINSTALLDIR"] + "BIN;")
-        if vc_x86_compiler_detection_index > -1 and (
-            vc_chosen_compiler_index == -1 or vc_chosen_compiler_index > vc_x86_compiler_detection_index
-        ):
-            vc_chosen_compiler_index = vc_x86_compiler_detection_index
-            vc_chosen_compiler_str = "x86"
-
-        vc_x86_amd64_compiler_detection_index = tools_env["PATH"].find(tools_env["VCINSTALLDIR"] + "BIN\\x86_amd64;")
-        if vc_x86_amd64_compiler_detection_index > -1 and (
-            vc_chosen_compiler_index == -1 or vc_chosen_compiler_index > vc_x86_amd64_compiler_detection_index
-        ):
-            vc_chosen_compiler_index = vc_x86_amd64_compiler_detection_index
-            vc_chosen_compiler_str = "x86_amd64"
-
-    # and for VS 2017 and newer we check VCTOOLSINSTALLDIR:
+    # VS 2017 and newer should set VCTOOLSINSTALLDIR
     if "VCTOOLSINSTALLDIR" in tools_env:
         # Newer versions have a different path available
         vc_amd64_compiler_detection_index = (
