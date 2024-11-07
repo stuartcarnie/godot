@@ -48,6 +48,8 @@ target_sources(godot-module-gltf PRIVATE
         structures/gltf_mesh.h
         structures/gltf_node.cpp
         structures/gltf_node.h
+        structures/gltf_object_model_property.cpp
+        structures/gltf_object_model_property.h
         structures/gltf_skeleton.cpp
         structures/gltf_skeleton.h
         structures/gltf_skin.cpp

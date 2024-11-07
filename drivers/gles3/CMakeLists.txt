@@ -17,6 +17,7 @@ set_abs(GLES3_GLSL_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/effects/cubemap_filter.glsl
         shaders/effects/glow.glsl
         shaders/effects/post.glsl
+        shaders/feed.glsl
         shaders/lens_distorted.glsl
         shaders/particles.glsl
         shaders/particles_copy.glsl
@@ -48,6 +49,8 @@ target_sources(driver-gles3 PRIVATE
         effects/copy_effects.h
         effects/cubemap_filter.cpp
         effects/cubemap_filter.h
+        effects/feed_effects.cpp
+        effects/feed_effects.h
         effects/glow.cpp
         effects/glow.h
         effects/post_effects.cpp

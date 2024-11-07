@@ -507,6 +507,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         MaterialPreviewCube.svg
         MaterialPreviewLight1.svg
         MaterialPreviewLight2.svg
+        MaterialPreviewQuad.svg
         MaterialPreviewSphere.svg
         MemberAnnotation.svg
         MemberConstant.svg
