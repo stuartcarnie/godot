@@ -331,6 +331,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/EditorSettings.xml
         classes/EditorSpinSlider.xml
         classes/EditorSyntaxHighlighter.xml
+        classes/EditorToaster.xml
         classes/EditorTranslationParserPlugin.xml
         classes/EditorUndoRedoManager.xml
         classes/EditorVCSInterface.xml
@@ -447,6 +448,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Line2D.xml
         classes/LineEdit.xml
         classes/LinkButton.xml
+        classes/LookAtModifier3D.xml
         classes/MainLoop.xml
         classes/MarginContainer.xml
         classes/Marker2D.xml

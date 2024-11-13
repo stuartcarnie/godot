@@ -258,6 +258,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ExpandBottomDock.svg
         ExpandTree.svg
         ExternalLink.svg
+        FPS.svg
         FadeCross.svg
         FadeDisabled.svg
         FadeIn.svg
@@ -278,6 +279,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         FileThumbnail.svg
         FileTree.svg
         Filesystem.svg
+        FlipWinding.svg
         FlowContainer.svg
         FogMaterial.svg
         FogVolume.svg
@@ -494,6 +496,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Lock.svg
         LockViewport.svg
         Logo.svg
+        LookAtModifier3D.svg
         Loop.svg
         MainMovieWrite.svg
         MainPlay.svg
@@ -854,6 +857,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         TubeTrailMesh.svg
         Tween.svg
         UndoRedo.svg
+        Unfavorite.svg
         Ungroup.svg
         Unlinked.svg
         Unlock.svg

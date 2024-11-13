@@ -9,6 +9,8 @@ godot_add_library(godot-string FOLDER core STATIC)
 # ]]]
 target_sources(godot-string PRIVATE
         char_utils.h
+        fuzzy_search.cpp
+        fuzzy_search.h
         locales.h
         node_path.cpp
         node_path.h

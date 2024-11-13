@@ -40,6 +40,8 @@ target_sources(godot-scene-3d PRIVATE
         lightmap_probe.h
         lightmapper.cpp
         lightmapper.h
+        look_at_modifier_3d.cpp
+        look_at_modifier_3d.h
         marker_3d.cpp
         marker_3d.h
         mesh_instance_3d.cpp
