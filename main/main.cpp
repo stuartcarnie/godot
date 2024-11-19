@@ -1598,7 +1598,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		} else if (arg.ends_with("project.godot")) {
 			String path;
 			String file = arg;
-			int sep = MAX(file.rfind("/"), file.rfind("\\"));
+			int sep = MAX(file.rfind_char('/'), file.rfind_char('\\'));
 			if (sep == -1) {
 				path = ".";
 			} else {
@@ -1810,13 +1810,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		} else if (arg == "--" || arg == "++") {
 			adding_user_args = true;
 		} else {
-			if (!FileAccess::exists(arg) && !DirAccess::exists(arg)) {
-				// Warn if the argument isn't recognized by Godot *and* the file/folder
-				// specified by a positional argument doesn't exist.
-				// This allows projects to read file or folder paths as a positional argument
-				// without printing a warning, as this scenario can't make use of user command line arguments.
-				WARN_PRINT(vformat("Unknown command line argument \"%s\". User arguments should be passed after a -- or ++ separator, e.g. \"-- %s\".", arg, arg));
-			}
 			main_args.push_back(arg);
 		}
 
@@ -3484,7 +3477,7 @@ void Main::setup_boot_logo() {
 
 	if (show_logo) { //boot logo!
 		const bool boot_logo_image = GLOBAL_DEF_BASIC("application/boot_splash/show_image", true);
-		const String boot_logo_path = String(GLOBAL_DEF_BASIC(PropertyInfo(Variant::STRING, "application/boot_splash/image", PROPERTY_HINT_FILE, "*.png"), String())).strip_edges();
+		const String boot_logo_path = ResourceUID::ensure_path(GLOBAL_DEF_BASIC(PropertyInfo(Variant::STRING, "application/boot_splash/image", PROPERTY_HINT_FILE, "*.png"), String())).strip_edges();
 		const bool boot_logo_scale = GLOBAL_DEF_BASIC("application/boot_splash/fullsize", true);
 		const bool boot_logo_filter = GLOBAL_DEF_BASIC("application/boot_splash/use_filter", true);
 
@@ -4179,7 +4172,7 @@ int Main::start() {
 						local_game_path = "res://" + local_game_path;
 
 					} else {
-						int sep = local_game_path.rfind("/");
+						int sep = local_game_path.rfind_char('/');
 
 						if (sep == -1) {
 							Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
