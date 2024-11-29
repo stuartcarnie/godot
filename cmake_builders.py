@@ -108,6 +108,7 @@ env.version_info = methods.get_version_info(env.module_version_string)
 
 env.__class__.add_module_version_string = add_module_version_string
 env.__class__.module_add_dependencies = module_add_dependencies
+env.__class__.get = lambda self, key: []
 
 env["platform"] = "macos"
 env["arch"] = "arm64"
