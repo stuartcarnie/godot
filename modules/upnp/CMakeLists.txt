@@ -14,6 +14,10 @@ target_sources(godot-module-upnp PRIVATE
         upnp.h
         upnp_device.cpp
         upnp_device.h
+        upnp_device_miniupnp.cpp
+        upnp_device_miniupnp.h
+        upnp_miniupnp.cpp
+        upnp_miniupnp.h
 )
 # [[[end]]]
 target_link_libraries(godot-module-upnp PUBLIC godot-object miniupnpc)

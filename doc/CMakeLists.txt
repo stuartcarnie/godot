@@ -668,6 +668,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/ResourcePreloader.xml
         classes/ResourceSaver.xml
         classes/ResourceUID.xml
+        classes/RetargetModifier3D.xml
         classes/RibbonTrailMesh.xml
         classes/RichTextEffect.xml
         classes/RichTextLabel.xml

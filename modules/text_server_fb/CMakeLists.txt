@@ -12,8 +12,6 @@ target_sources(godot-module-text-server-fb PRIVATE
         register_types.h
         text_server_fb.cpp
         text_server_fb.h
-        thorvg_bounds_iterator.cpp
-        thorvg_bounds_iterator.h
         thorvg_svg_in_ot.cpp
         thorvg_svg_in_ot.h
 )

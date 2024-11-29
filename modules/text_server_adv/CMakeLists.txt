@@ -20,8 +20,6 @@ target_sources(godot-module-text-server-adv PRIVATE
         script_iterator.h
         text_server_adv.cpp
         text_server_adv.h
-        thorvg_bounds_iterator.cpp
-        thorvg_bounds_iterator.h
         thorvg_svg_in_ot.cpp
         thorvg_svg_in_ot.h
 )

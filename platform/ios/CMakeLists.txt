@@ -1,3 +1,4 @@
+add_subdirectory(api)
 godot_add_library(platform-ios)
 # [[[cog
 #   import cog

@@ -68,6 +68,8 @@ target_sources(godot-scene-3d PRIVATE
         reflection_probe.h
         remote_transform_3d.cpp
         remote_transform_3d.h
+        retarget_modifier_3d.cpp
+        retarget_modifier_3d.h
         skeleton_3d.cpp
         skeleton_3d.h
         skeleton_ik_3d.cpp

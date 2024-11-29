@@ -47,6 +47,7 @@ set_abs(RENDERER_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         renderer_rd/shaders/effects/luminance_reduce_raster_inc.glsl
         renderer_rd/shaders/effects/motion_vector_inc.glsl
         renderer_rd/shaders/effects/motion_vectors.glsl
+        renderer_rd/shaders/effects/motion_vectors_store.glsl
         renderer_rd/shaders/effects/resolve.glsl
         renderer_rd/shaders/effects/roughness_limiter.glsl
         renderer_rd/shaders/effects/screen_space_reflection.glsl
