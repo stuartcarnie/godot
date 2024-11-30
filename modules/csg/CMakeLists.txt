@@ -33,4 +33,4 @@ if (WANT_EDITOR)
     # [[[end]]]
 endif ()
 
-target_link_libraries(godot-module-csg PUBLIC godot-math godot-thirdparty-misc zlib)
+target_link_libraries(godot-module-csg PUBLIC godot-math godot-thirdparty-misc zlib manifold)

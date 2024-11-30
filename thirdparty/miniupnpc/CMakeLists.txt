@@ -1,14 +1,14 @@
 godot_add_library(miniupnpc FOLDER thirdparty STATIC)
 target_sources(miniupnpc PRIVATE
-        include/upnpcommands.h
-        include/miniupnpc_declspec.h
-        include/miniwget.h
-        include/portlistingparse.h
-        include/upnpreplyparse.h
-        include/miniupnpctypes.h
-        include/igd_desc_parse.h
-        include/upnpdev.h
-        include/miniupnpc.h
+        include/miniupnpc/upnpcommands.h
+        include/miniupnpc/miniupnpc_declspec.h
+        include/miniupnpc/miniwget.h
+        include/miniupnpc/portlistingparse.h
+        include/miniupnpc/upnpreplyparse.h
+        include/miniupnpc/miniupnpctypes.h
+        include/miniupnpc/igd_desc_parse.h
+        include/miniupnpc/upnpdev.h
+        include/miniupnpc/miniupnpc.h
         src/miniupnpcstrings.h
         src/minisoap.h
         src/minissdpc.c
@@ -36,7 +36,10 @@ target_sources(miniupnpc PRIVATE
         src/connecthostport.c
 )
 target_link_libraries(miniupnpc godot-core)
-target_include_directories(miniupnpc PUBLIC include)
+target_include_directories(miniupnpc
+        PUBLIC include
+        PRIVATE include/miniupnpc
+)
 target_compile_definitions(miniupnpc PUBLIC MINIUPNP_STATICLIB MINIUPNPC_SET_SOCKET_TIMEOUT)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(miniupnpc iphlpapi)

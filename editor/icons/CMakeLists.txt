@@ -278,6 +278,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         FileMediumThumb.svg
         FileThumbnail.svg
         FileTree.svg
+        FilenameFilter.svg
         Filesystem.svg
         FlipWinding.svg
         FlowContainer.svg
