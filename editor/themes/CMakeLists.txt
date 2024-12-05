@@ -10,8 +10,6 @@ set_abs(GODOT_EDITOR_FONTS_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/fonts
         ../../thirdparty/fonts/DroidSansFallback.woff2
         ../../thirdparty/fonts/DroidSansJapanese.woff2
         ../../thirdparty/fonts/JetBrainsMono_Regular.woff2
-        ../../thirdparty/fonts/NotoNaskhArabicUI_Bold.woff2
-        ../../thirdparty/fonts/NotoNaskhArabicUI_Regular.woff2
         ../../thirdparty/fonts/NotoSansBengaliUI_Bold.woff2
         ../../thirdparty/fonts/NotoSansBengaliUI_Regular.woff2
         ../../thirdparty/fonts/NotoSansDevanagariUI_Bold.woff2
@@ -35,6 +33,8 @@ set_abs(GODOT_EDITOR_FONTS_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/fonts
         ../../thirdparty/fonts/NotoSans_Bold.woff2
         ../../thirdparty/fonts/NotoSans_Regular.woff2
         ../../thirdparty/fonts/OpenSans_SemiBold.woff2
+        ../../thirdparty/fonts/Vazirmatn_Bold.woff2
+        ../../thirdparty/fonts/Vazirmatn_Regular.woff2
 )
 # [[[end]]]
 

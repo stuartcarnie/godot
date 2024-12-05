@@ -13,6 +13,8 @@ target_sources(godot-thirdparty-misc PRIVATE
         pcg.h
         polypartition.cpp
         polypartition.h
+        qoa.c
+        qoa.h
         r128.c
         r128.h
         smaz.c

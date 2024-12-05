@@ -508,7 +508,6 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Occluder3D.xml
         classes/OccluderInstance3D.xml
         classes/OccluderPolygon2D.xml
-        classes/OfflineMultiplayerPeer.xml
         classes/OmniLight3D.xml
         classes/OptimizedTranslation.xml
         classes/OptionButton.xml
@@ -695,6 +694,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Shader.xml
         classes/ShaderGlobalsOverride.xml
         classes/ShaderInclude.xml
+        classes/ShaderIncludeDB.xml
         classes/ShaderMaterial.xml
         classes/Shape2D.xml
         classes/Shape3D.xml

@@ -857,8 +857,9 @@ def write_script_encryption_key(target):
 
 # region cog helpers
 
-def list_files(cog, search_paths: str | list[str], exts: [str] = None, recursive: bool = False, all_files=False) -> [
-    str]:
+from fnmatch import fnmatch
+
+def list_files(cog, search_paths: str | list[str], exts: [str] = None, ginclude: str = None, gexclude: str = None, recursive: bool = False, all_files=False) -> [str]:
     base_path = pathlib.Path(cog.inFile).parent
 
     search_paths = [search_paths] if isinstance(search_paths, str) else search_paths
@@ -866,13 +867,15 @@ def list_files(cog, search_paths: str | list[str], exts: [str] = None, recursive
     exts = ['cpp', 'h', 'hpp', 'hh', 'mm', 'm', 'c', 'cc', 'cxx'] if exts is None else exts
     exts = [f'{ext}' if ext.startswith('.') else f'.{ext}' for ext in exts]
 
+    def is_ok(p: Path) -> bool: return fnmatch(p.name, ginclude) if ginclude else True and not fnmatch(p.name, gexclude) if gexclude else True
+
     res = []
     for search_path in search_paths:
         for root, dirs, files in os.walk(base_path.joinpath(search_path)):
             if not recursive: dirs.clear()
             root = pathlib.Path(root)
             for f in [root.joinpath(file).relative_to(base_path) for file in files]:
-                if f.suffix in exts or all_files:
+                if (f.suffix in exts or all_files) and is_ok(f):
                     res.append(f)
 
     res.sort()

@@ -2,7 +2,6 @@ godot_add_library(thorvg FOLDER thirdparty STATIC)
 target_sources(thorvg PRIVATE
         # common
         src/common/tvgCompressor.cpp
-        src/common/tvgLines.cpp
         src/common/tvgMath.cpp
         src/common/tvgStr.cpp
         # SVG parser
@@ -41,6 +40,7 @@ target_sources(thorvg PRIVATE
         src/renderer/sw_engine/tvgSwImage.cpp
         src/renderer/sw_engine/tvgSwMath.cpp
         src/renderer/sw_engine/tvgSwMemPool.cpp
+        src/renderer/sw_engine/tvgSwPostEffect.cpp
         src/renderer/sw_engine/tvgSwRaster.cpp
         src/renderer/sw_engine/tvgSwRenderer.cpp
         src/renderer/sw_engine/tvgSwRle.cpp

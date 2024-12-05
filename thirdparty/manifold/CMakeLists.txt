@@ -9,7 +9,6 @@ godot_add_library(manifold FOLDER thirdparty STATIC)
 # ]]]
 target_sources(manifold PRIVATE
         include/manifold/common.h
-        include/manifold/iters.h
         include/manifold/linalg.h
         include/manifold/manifold.h
         include/manifold/optional_assert.h
@@ -27,6 +26,7 @@ target_sources(manifold PRIVATE
         src/hashtable.h
         src/impl.cpp
         src/impl.h
+        src/iters.h
         src/manifold.cpp
         src/mesh_fixes.h
         src/parallel.h
