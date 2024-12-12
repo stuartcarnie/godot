@@ -140,7 +140,6 @@ target_sources(godot-editor PRIVATE
         editor_settings.h
         editor_settings_dialog.cpp
         editor_settings_dialog.h
-        editor_string_names.cpp
         editor_string_names.h
         editor_translation.cpp
         editor_translation.h

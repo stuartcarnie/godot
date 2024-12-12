@@ -14,6 +14,10 @@ target_sources(godot-module-openxr-action_map PRIVATE
         openxr_action_map.h
         openxr_action_set.cpp
         openxr_action_set.h
+        openxr_binding_modifier.cpp
+        openxr_binding_modifier.h
+        openxr_haptic_feedback.cpp
+        openxr_haptic_feedback.h
         openxr_interaction_profile.cpp
         openxr_interaction_profile.h
         openxr_interaction_profile_metadata.cpp

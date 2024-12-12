@@ -40,6 +40,10 @@ if (WANT_EDITOR)
             editor/openxr_action_map_editor.h
             editor/openxr_action_set_editor.cpp
             editor/openxr_action_set_editor.h
+            editor/openxr_binding_modifier_editor.cpp
+            editor/openxr_binding_modifier_editor.h
+            editor/openxr_binding_modifiers_dialog.cpp
+            editor/openxr_binding_modifiers_dialog.h
             editor/openxr_editor_plugin.cpp
             editor/openxr_editor_plugin.h
             editor/openxr_interaction_profile_editor.cpp

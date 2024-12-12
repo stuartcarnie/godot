@@ -24,7 +24,6 @@ target_sources(godot-scene PRIVATE
         property_utils.h
         register_scene_types.cpp
         register_scene_types.h
-        scene_string_names.cpp
         scene_string_names.h
 )
 # [[[end]]]

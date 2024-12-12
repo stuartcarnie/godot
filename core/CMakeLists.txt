@@ -28,7 +28,6 @@ target_sources(godot-core PRIVATE
         core_constants.h
         core_globals.cpp
         core_globals.h
-        core_string_names.cpp
         core_string_names.h
         doc_data.cpp
         doc_data.h

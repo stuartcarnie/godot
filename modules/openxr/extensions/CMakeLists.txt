@@ -15,6 +15,8 @@ target_sources(godot-module-openxr-extensions PRIVATE
         openxr_composition_layer_provider.h
         openxr_debug_utils_extension.cpp
         openxr_debug_utils_extension.h
+        openxr_dpad_binding_extension.cpp
+        openxr_dpad_binding_extension.h
         openxr_extension_wrapper.h
         openxr_extension_wrapper_extension.cpp
         openxr_extension_wrapper_extension.h
@@ -48,6 +50,8 @@ target_sources(godot-module-openxr-extensions PRIVATE
         openxr_palm_pose_extension.h
         openxr_pico_controller_extension.cpp
         openxr_pico_controller_extension.h
+        openxr_valve_analog_threshold_extension.cpp
+        openxr_valve_analog_threshold_extension.h
         openxr_visibility_mask_extension.cpp
         openxr_visibility_mask_extension.h
         openxr_wmr_controller_extension.cpp

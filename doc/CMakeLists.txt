@@ -255,6 +255,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/CollisionShape2D.xml
         classes/CollisionShape3D.xml
         classes/Color.xml
+        classes/ColorPalette.xml
         classes/ColorPicker.xml
         classes/ColorPickerButton.xml
         classes/ColorRect.xml

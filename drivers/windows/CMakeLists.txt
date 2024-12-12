@@ -14,6 +14,8 @@ target_sources(driver-windows PRIVATE
         file_access_windows.h
         file_access_windows_pipe.cpp
         file_access_windows_pipe.h
+        ip_windows.cpp
+        ip_windows.h
         net_socket_winsock.cpp
         net_socket_winsock.h
 )

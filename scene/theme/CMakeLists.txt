@@ -15,6 +15,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/breakpoint.svg
         icons/checked.svg
         icons/checked_disabled.svg
+        icons/clear.svg
         icons/close.svg
         icons/close_hl.svg
         icons/color_picker_bar_arrow.svg
@@ -36,6 +37,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/indeterminate.svg
         icons/indeterminate_disabled.svg
         icons/line_edit_clear.svg
+        icons/load.svg
         icons/mini_checkerboard.svg
         icons/option_button_arrow.svg
         icons/picker_shape_circle.svg
@@ -52,6 +54,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/reload.svg
         icons/resizer_nw.svg
         icons/resizer_se.svg
+        icons/save.svg
         icons/scroll_button_left.svg
         icons/scroll_button_left_hl.svg
         icons/scroll_button_right.svg

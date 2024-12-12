@@ -37,6 +37,8 @@ target_sources(godot-scene-resources PRIVATE
         camera_texture.h
         canvas_item_material.cpp
         canvas_item_material.h
+        color_palette.cpp
+        color_palette.h
         compositor.cpp
         compositor.h
         compressed_texture.cpp

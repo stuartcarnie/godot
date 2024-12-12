@@ -29,6 +29,8 @@ target_sources(tests PRIVATE
         core/io/test_resource.h
         core/io/test_stream_peer.h
         core/io/test_stream_peer_buffer.h
+        core/io/test_tcp_server.h
+        core/io/test_udp_server.h
         core/io/test_xml_parser.h
         core/math/test_aabb.h
         core/math/test_astar.h
@@ -39,6 +41,7 @@ target_sources(tests PRIVATE
         core/math/test_geometry_3d.h
         core/math/test_math_funcs.h
         core/math/test_plane.h
+        core/math/test_projection.h
         core/math/test_quaternion.h
         core/math/test_random_number_generator.h
         core/math/test_rect2.h
@@ -56,10 +59,12 @@ target_sources(tests PRIVATE
         core/object/test_object.h
         core/object/test_undo_redo.h
         core/os/test_os.h
+        core/string/test_fuzzy_search.h
         core/string/test_node_path.h
         core/string/test_string.h
         core/string/test_translation.h
         core/string/test_translation_server.h
+        core/templates/test_a_hash_map.h
         core/templates/test_command_queue.h
         core/templates/test_hash_map.h
         core/templates/test_hash_set.h
@@ -94,6 +99,7 @@ target_sources(tests PRIVATE
         scene/test_curve.h
         scene/test_curve_2d.h
         scene/test_curve_3d.h
+        scene/test_fontfile.h
         scene/test_gradient.h
         scene/test_gradient_texture.h
         scene/test_graph_node.h
@@ -125,6 +131,7 @@ target_sources(tests PRIVATE
         scene/test_tab_bar.h
         scene/test_tab_container.h
         scene/test_text_edit.h
+        scene/test_texture_progress_bar.h
         scene/test_theme.h
         scene/test_timer.h
         scene/test_tree.h
