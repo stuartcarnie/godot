@@ -16,6 +16,8 @@ target_sources(godot-scene-animation PRIVATE
         animation_blend_tree.h
         animation_mixer.cpp
         animation_mixer.h
+        animation_node_extension.cpp
+        animation_node_extension.h
         animation_node_state_machine.cpp
         animation_node_state_machine.h
         animation_player.cpp

@@ -134,6 +134,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/AnimationNodeBlendSpace1D.xml
         classes/AnimationNodeBlendSpace2D.xml
         classes/AnimationNodeBlendTree.xml
+        classes/AnimationNodeExtension.xml
         classes/AnimationNodeOneShot.xml
         classes/AnimationNodeOutput.xml
         classes/AnimationNodeStateMachine.xml
