@@ -2090,7 +2090,12 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		std::unordered_set<VariableID> active = compiler.get_active_interface_variables();
 		ShaderResources resources = compiler.get_shader_resources();
 
-		std::string source = compiler.compile();
+		std::string source;
+		try {
+			source = compiler.compile();
+		} catch (CompilerError &e) {
+			ERR_FAIL_V_MSG(Result(), "Failed to compile stage " + String(SHADER_STAGE_NAMES[stage]) + ": " + e.what());
+		}
 
 		ERR_FAIL_COND_V_MSG(compiler.get_entry_points_and_stages().size() != 1, Result(), "Expected a single entry point and stage.");
 
@@ -2138,7 +2143,6 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 
 		auto descriptor_bindings = [&compiler, &active, &uniform_sets, stage, &get_decoration](SmallVector<Resource> &p_resources, Writable p_writable) {
 			for (Resource const &res : p_resources) {
-				auto name = compiler.get_name(res.id);
 				uint32_t dset = get_decoration(res.id, spv::DecorationDescriptorSet);
 				uint32_t dbin = get_decoration(res.id, spv::DecorationBinding);
 				UniformData *found = nullptr;
@@ -3994,6 +3998,8 @@ uint64_t RenderingDeviceDriverMetal::limit_get(Limit p_limit) {
 			return (uint64_t)limits.subgroupSupportedOperations;
 		UNKNOWN(LIMIT_VRS_TEXEL_WIDTH);
 		UNKNOWN(LIMIT_VRS_TEXEL_HEIGHT);
+		UNKNOWN(LIMIT_VRS_MAX_FRAGMENT_WIDTH);
+		UNKNOWN(LIMIT_VRS_MAX_FRAGMENT_HEIGHT);
 		default:
 			ERR_FAIL_V(0);
 	}
