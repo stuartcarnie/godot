@@ -669,6 +669,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         PreviewSun.svg
         PrismMesh.svg
         ProceduralSkyMaterial.svg
+        ProfilerAutostartWarning.svg
         Progress1.svg
         Progress2.svg
         Progress3.svg

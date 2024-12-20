@@ -59,17 +59,17 @@ target_sources(godot-module-openxr-extensions PRIVATE
 )
 # [[[end]]]
 
-if (${WANT_OPENGL} AND ${OPENGL_FOUND} AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-    target_sources(godot-module-openxr-extensions PRIVATE platform/openxr_opengl_extension.cpp)
-endif ()
-if (${WANT_VULKAN} AND ${VULKAN_FOUND})
-    target_sources(godot-module-openxr-extensions PRIVATE platform/openxr_vulkan_extension.cpp)
-endif ()
-if (${WANT_OPENGL} AND ${OPENGL_FOUND})
-    target_link_libraries(godot-module-openxr-extensions PUBLIC driver-gles3)
-endif ()
-if (${WANT_VULKAN} AND ${VULKAN_FOUND})
-    target_link_libraries(godot-module-openxr-extensions PUBLIC driver-vulkan)
-endif ()
+target_sources(godot-module-openxr-extensions
+        PRIVATE
+        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:${OPENGL_FOUND}>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},Darwin>>>:platform/openxr_opengl_extension.cpp>
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:platform/openxr_vulkan_extension.cpp>
+        $<$<BOOL:${WANT_METAL}>:platform/openxr_metal_extension.mm>
+)
 
-target_link_libraries(godot-module-openxr-extensions PUBLIC godot-object openxr)
+target_link_libraries(godot-module-openxr-extensions
+        PUBLIC
+        godot-object openxr
+        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:${OPENGL_FOUND}>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},Darwin>>>:driver-gles3>
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:driver-vulkan>
+        $<$<BOOL:${WANT_METAL}>:metal>
+)

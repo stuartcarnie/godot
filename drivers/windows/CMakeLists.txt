@@ -18,6 +18,8 @@ target_sources(driver-windows PRIVATE
         ip_windows.h
         net_socket_winsock.cpp
         net_socket_winsock.h
+        thread_windows.cpp
+        thread_windows.h
 )
 # [[[end]]]
 target_link_libraries(driver-windows PUBLIC godot-core)

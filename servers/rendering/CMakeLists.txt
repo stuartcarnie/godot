@@ -1,3 +1,5 @@
+add_compile_definitions($<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -127,6 +129,8 @@ godot_add_library(godot-server-renderer FOLDER servers STATIC ${RENDERER_SERVER_
 #   cog.outl(')')
 # ]]]
 target_sources(godot-server-renderer PRIVATE
+        instance_uniforms.cpp
+        instance_uniforms.h
         renderer_canvas_cull.cpp
         renderer_canvas_cull.h
         renderer_canvas_render.cpp
@@ -180,3 +184,4 @@ target_sources(godot-server-renderer PRIVATE
 # [[[end]]]
 target_include_directories(godot-server-renderer PUBLIC ${CMAKE_BINARY_INCLUDE_DIR}) #Some other targets depend on specific generated shaders
 target_link_libraries(godot-server-renderer PUBLIC godot-templates godot-os godot-glslang spirv-reflect)
+
