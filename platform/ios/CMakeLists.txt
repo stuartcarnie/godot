@@ -56,7 +56,8 @@ if(${WANT_OPENGL})
 endif()
 
 if(${WANT_VULKAN} AND ${VULKAN_FOUND})
-    target_link_libraries(platform-ios PUBLIC driver-vulkan vulkan "-framework ${MOLTENVK_FOUND}")
+    target_link_libraries(platform-ios PUBLIC driver-vulkan vulkan
+            $<LINK_LIBRARY:FRAMEWORK,${MOLTENVK_FOUND}>)
     target_compile_definitions(platform-ios PRIVATE VULKAN_ENABLED=1)
 endif()
 

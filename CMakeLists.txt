@@ -22,6 +22,7 @@ project(godot
 ###
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0")
+set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET 14.0)
 set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development")
 set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "6N425KH923")
 set(CMAKE_XCODE_ATTRIBUTE_GCC_WARN_64_TO_32_BIT_CONVERSION[arch=*64] "NO")
@@ -322,7 +323,7 @@ if (${WANT_VULKAN})
             message(FATAL_ERROR "Set MOLTENVK_SDK to MoltenVK path")
         endif ()
     elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-        find_library(MOLTENVK_FOUND MoltenVK)
+        find_library(MOLTENVK_FOUND MoltenVK REQUIRED)
         set(VULKAN_FOUND 1)
     else ()
         # Windows relies on Volk alone.
