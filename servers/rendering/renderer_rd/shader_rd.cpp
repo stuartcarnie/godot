@@ -681,18 +681,44 @@ void ShaderRD::_compile_version_start(Version *p_version, int p_group) {
 	compile_data.version = p_version;
 	compile_data.group = p_group;
 
+#ifdef TOOLS_ENABLED
+	{
+		static std::atomic<int64_t> group_task = 1;
+
+		if (String v = OS::get_singleton()->get_environment("GODOT_SHADER_DISABLE_WORKER"); v == "1") {
+			for (uint32_t i = 0; i < group_to_variant_map[p_group].size(); i++) {
+				_compile_variant(i, compile_data);
+			}
+			p_version->group_compilation_tasks.write[p_group] = group_task;
+			group_task++;
+			return;
+		}
+	}
+#endif
+
 	WorkerThreadPool::GroupID group_task = WorkerThreadPool::get_singleton()->add_template_group_task(this, &ShaderRD::_compile_variant, compile_data, group_to_variant_map[p_group].size(), -1, true, SNAME("ShaderCompilation"));
 	p_version->group_compilation_tasks.write[p_group] = group_task;
 }
 
 void ShaderRD::_compile_version_end(Version *p_version, int p_group) {
-	if (p_version->group_compilation_tasks.size() <= p_group || p_version->group_compilation_tasks[p_group] == 0) {
-		return;
-	}
+#ifdef TOOLS_ENABLED
+	bool using_worker_pool = OS::get_singleton()->get_environment("GODOT_SHADER_DISABLE_WORKER") != "1";
+#else
+	bool using_worker_pool = true;
+#endif
+	if (using_worker_pool) {
+		if (p_version->group_compilation_tasks.size() <= p_group || p_version->group_compilation_tasks[p_group] == 0) {
+			return;
+		}
 
-	WorkerThreadPool::GroupID group_task = p_version->group_compilation_tasks[p_group];
-	WorkerThreadPool::get_singleton()->wait_for_group_task_completion(group_task);
-	p_version->group_compilation_tasks.write[p_group] = 0;
+		WorkerThreadPool::GroupID group_task = p_version->group_compilation_tasks[p_group];
+		WorkerThreadPool::get_singleton()->wait_for_group_task_completion(group_task);
+		p_version->group_compilation_tasks.write[p_group] = 0;
+	} else {
+		if (p_version->dirty) {
+			return;
+		}
+	}
 
 	bool all_valid = true;
 
