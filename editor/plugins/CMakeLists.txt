@@ -69,6 +69,8 @@ target_sources(godot-editor-plugins PRIVATE
         editor_resource_conversion_plugin.h
         editor_resource_tooltip_plugins.cpp
         editor_resource_tooltip_plugins.h
+        embedded_process.cpp
+        embedded_process.h
         font_config_plugin.cpp
         font_config_plugin.h
         game_view_plugin.cpp

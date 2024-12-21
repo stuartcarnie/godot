@@ -12,8 +12,6 @@ target_sources(godot-extension PRIVATE
         extension_api_dump.h
         gdextension.cpp
         gdextension.h
-        gdextension_compat_hashes.cpp
-        gdextension_compat_hashes.h
         gdextension_interface.cpp
         gdextension_interface.h
         gdextension_library_loader.cpp
@@ -21,6 +19,8 @@ target_sources(godot-extension PRIVATE
         gdextension_loader.h
         gdextension_manager.cpp
         gdextension_manager.h
+        gdextension_special_compat_hashes.cpp
+        gdextension_special_compat_hashes.h
 )
 # [[[end]]]
 target_link_libraries(godot-extension PUBLIC godot-object)
