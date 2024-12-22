@@ -19,8 +19,11 @@ string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} ${LIGHTMAPPER_GENERATED_OUTPUT_DIR} G
 string(REPLACE "glsl" "glsl.gen.h" GODOT_MODULE_LIGHTMAPPER_RD_SHADERS_GENERATED "${GODOT_MODULE_LIGHTMAPPER_RD_SHADERS_GENERATED}")
 generate_shader_sources(glsl_raw "${GODOT_MODULE_LIGHTMAPPER_RD_SHADERS}" "${GODOT_MODULE_LIGHTMAPPER_RD_SHADERS_GENERATED}")
 
-#Apply them to the library
-godot_add_library(godot-module-lightmapper-rd FOLDER modules STATIC ${GODOT_MODULE_LIGHTMAPPER_RD_SHADERS_GENERATED})
+add_custom_target(generate_lightmapper_rd_shaders DEPENDS ${GODOT_MODULE_LIGHTMAPPER_RD_SHADERS_GENERATED})
+
+godot_add_library(godot-module-lightmapper-rd FOLDER modules STATIC)
+add_dependencies(godot-module-lightmapper-rd generate_lightmapper_rd_shaders)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files

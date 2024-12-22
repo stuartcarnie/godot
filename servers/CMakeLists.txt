@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.26 FATAL_ERROR)
-
 add_subdirectory(audio)
 add_subdirectory(camera)
 add_subdirectory(debugger)

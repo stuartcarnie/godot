@@ -35,7 +35,11 @@ string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} ${GLES3_DRIVER_SHADER_INCLUDE_DIR} GL
 string(REPLACE "glsl" "glsl.gen.h" GLES3_GLSL_SHADERS_GENERATED "${GLES3_GLSL_SHADERS_GENERATED}")
 generate_shader_sources(gles3 "${GLES3_GLSL_SHADERS}" "${GLES3_GLSL_SHADERS_GENERATED}")
 
-godot_add_library(driver-gles3 FOLDER drivers STATIC ${GLES3_GLSL_SHADERS_GENERATED})
+add_custom_target(generate_gles3_shaders DEPENDS ${GLES3_GLSL_SHADERS_GENERATED})
+
+godot_add_library(driver-gles3 FOLDER drivers STATIC)
+add_dependencies(driver-gles3 generate_gles3_shaders)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files

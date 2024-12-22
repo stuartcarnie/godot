@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.26 FATAL_ERROR)
-
 # disable warnings for third-party code
 add_compile_options($<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
 

@@ -14,10 +14,15 @@ target_sources(godot-module-navigation PRIVATE
         2d/nav_mesh_generator_2d.h
         3d/godot_navigation_server_3d.cpp
         3d/godot_navigation_server_3d.h
+        3d/nav_base_iteration_3d.h
+        3d/nav_map_builder_3d.cpp
+        3d/nav_map_builder_3d.h
+        3d/nav_map_iteration_3d.h
         3d/nav_mesh_generator_3d.cpp
         3d/nav_mesh_generator_3d.h
         3d/nav_mesh_queries_3d.cpp
         3d/nav_mesh_queries_3d.h
+        3d/nav_region_iteration_3d.h
         3d/navigation_mesh_generator.cpp
         3d/navigation_mesh_generator.h
         nav_agent.cpp

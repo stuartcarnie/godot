@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.26 FATAL_ERROR)
-
 if (${WANT_ALSA} AND ${ALSA_FOUND})
     godot_add_library(driver-alsa FOLDER drivers STATIC)
     # [[[cog

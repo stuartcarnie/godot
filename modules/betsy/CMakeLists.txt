@@ -21,8 +21,11 @@ string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} ${BETSY_GENERATED_OUTPUT_DIR} GODOT_M
 string(REPLACE "glsl" "glsl.gen.h" GODOT_MODULE_BETSY_SHADERS_GENERATED "${GODOT_MODULE_BETSY_SHADERS_GENERATED}")
 generate_shader_sources(glsl_raw "${GODOT_MODULE_BETSY_SHADERS}" "${GODOT_MODULE_BETSY_SHADERS_GENERATED}")
 
+add_custom_target(generate_betsy_shaders DEPENDS ${GODOT_MODULE_BETSY_SHADERS_GENERATED})
+
 #Apply them to the library
-godot_add_library(godot-module-betsy FOLDER modules STATIC ${GODOT_MODULE_BETSY_SHADERS_GENERATED})
+godot_add_library(godot-module-betsy FOLDER modules STATIC)
+add_dependencies(godot-module-betsy generate_betsy_shaders)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
