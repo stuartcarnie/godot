@@ -544,14 +544,12 @@ void ParticlesStorage::_particles_ensure_unused_emission_buffer(Particles *parti
 		// For rendering devices that do not support empty arrays (like C++),
 		// we need to size the buffer with at least 1 element.
 		particles->unused_emission_storage_buffer = RD::get_singleton()->storage_buffer_create(sizeof(ParticleEmissionBuffer));
-		RD::get_singleton()->set_resource_name(particles->unused_emission_storage_buffer, "Empty Emission Buffer");
 	}
 }
 
 void ParticlesStorage::_particles_ensure_unused_trail_buffer(Particles *particles) {
 	if (particles->unused_trail_storage_buffer.is_null()) {
 		particles->unused_trail_storage_buffer = RD::get_singleton()->storage_buffer_create(16 * sizeof(float)); // Size of mat4.
-		RD::get_singleton()->set_resource_name(particles->unused_trail_storage_buffer, "Empty Trail Buffer");
 	}
 }
 
