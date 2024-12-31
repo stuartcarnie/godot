@@ -12,6 +12,6 @@ set(WANT_OPENXR 1)
 set(GODOT_PLATFORM "macos")
 add_compile_definitions(MACOS_ENABLED)
 
-option(ENABLE_METAL "Enable the Metal renderer" OFF)
+option(ENABLE_METAL "Enable the Metal renderer" ON)
 
 add_compile_definitions(UNIX_ENABLED)

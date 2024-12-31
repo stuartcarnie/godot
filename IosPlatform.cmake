@@ -12,6 +12,6 @@ set(WANT_OPENXR 0)
 set(GODOT_PLATFORM "ios")
 add_compile_definitions(IOS_ENABLED)
 
-option(ENABLE_METAL "Enable the Metal renderer" OFF)
+option(ENABLE_METAL "Enable the Metal renderer" ON)
 
 add_compile_definitions(UNIX_ENABLED)
