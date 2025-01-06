@@ -28,8 +28,6 @@ target_sources(platform-ios PRIVATE
         ios.mm
         ios_terminal_logger.h
         ios_terminal_logger.mm
-        joypad_ios.h
-        joypad_ios.mm
         key_mapping_ios.h
         key_mapping_ios.mm
         keyboard_input_view.h
@@ -91,6 +89,7 @@ target_link_libraries(platform-ios PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,Security.framework>
         $<LINK_LIBRARY:FRAMEWORK,Metal.framework>
         $<LINK_LIBRARY:FRAMEWORK,MetalKit.framework>
+        $<LINK_LIBRARY:FRAMEWORK,MetalFX.framework>
         $<LINK_LIBRARY:FRAMEWORK,IOSurface.framework>
 )
 
