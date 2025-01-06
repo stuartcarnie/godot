@@ -102,6 +102,10 @@ void MetalDeviceProperties::init_features(id<MTLDevice> p_device) {
 	features.argument_buffers_tier = p_device.argumentBuffersSupport;
 
 	if (@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)) {
+		features.needs_arg_encoders = !([p_device supportsFamily:MTLGPUFamilyMetal3] && features.argument_buffers_tier == MTLArgumentBuffersTier2);
+	}
+
+	if (@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)) {
 		features.metal_fx_spatial = [MTLFXSpatialScalerDescriptor supportsDevice:p_device];
 		features.metal_fx_temporal = [MTLFXTemporalScalerDescriptor supportsDevice:p_device];
 	}
