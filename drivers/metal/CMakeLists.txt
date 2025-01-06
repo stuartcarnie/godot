@@ -8,6 +8,7 @@ godot_add_library(metal FOLDER drivers STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(metal PRIVATE
+        inflection_map.h
         metal_device_properties.h
         metal_device_properties.mm
         metal_objects.h
