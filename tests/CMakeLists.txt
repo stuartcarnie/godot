@@ -126,6 +126,7 @@ target_sources(tests PRIVATE
         scene/test_primitives.h
         scene/test_skeleton_3d.h
         scene/test_sky.h
+        scene/test_split_container.h
         scene/test_sprite_frames.h
         scene/test_style_box_texture.h
         scene/test_tab_bar.h

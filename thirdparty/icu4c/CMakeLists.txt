@@ -454,10 +454,9 @@ target_compile_definitions(icu4c PRIVATE
         -DUCONFIG_NO_TRANSLITERATION
         -DPKGDATA_MODE=static
         -DU_ENABLE_DYLOAD=0
-        -DU_HAVE_LIB_SUFFIX=1
-        -DU_LIB_SUFFIX_C_NAME=_godot
 )
 target_compile_definitions(icu4c PUBLIC
+        -DU_STATIC_IMPLEMENTATION
         -DU_HAVE_LIB_SUFFIX=1
         -DU_LIB_SUFFIX_C_NAME=_godot
 )

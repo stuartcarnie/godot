@@ -40,6 +40,7 @@ target_sources(godot-templates PRIVATE
         self_list.h
         simple_type.h
         sort_array.h
+        tuple.h
         vector.h
         vmap.h
         vset.h
