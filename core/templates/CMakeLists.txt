@@ -14,7 +14,6 @@ target_sources(godot-templates PRIVATE
         command_queue_mt.cpp
         command_queue_mt.h
         cowdata.h
-        fixed_array.h
         hash_map.cpp
         hash_map.h
         hash_set.h
