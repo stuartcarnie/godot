@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.h                                                      */
+/*  spatial_upscaler.h                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,12 +28,21 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SPIRV_CROSS_REGISTER_TYPES_H
-#define SPIRV_CROSS_REGISTER_TYPES_H
+#ifndef SPATIAL_UPSCALER_RD_H
+#define SPATIAL_UPSCALER_RD_H
 
-#include "modules/register_module_types.h"
+#include "core/object/ref_counted.h"
 
-void initialize_spirv_cross_module(ModuleInitializationLevel p_level);
-void uninitialize_spirv_cross_module(ModuleInitializationLevel p_level);
+class RenderSceneBuffersRD;
 
-#endif // SPIRV_CROSS_REGISTER_TYPES_H
+class SpatialUpscaler {
+public:
+	virtual String get_label() const = 0;
+	virtual void ensure_context(Ref<RenderSceneBuffersRD> p_render_buffers) = 0;
+	virtual void process(Ref<RenderSceneBuffersRD> p_render_buffers, RID p_source_rd_texture, RID p_destination_texture) = 0;
+
+	SpatialUpscaler() = default;
+	virtual ~SpatialUpscaler() = default;
+};
+
+#endif // SPATIAL_UPSCALER_RD_H

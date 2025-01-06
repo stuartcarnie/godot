@@ -20,12 +20,17 @@ target_sources(godot-server-rendering-renderer_rd-effects PRIVATE
         fsr2.h
         luminance.cpp
         luminance.h
+        metal_fx.h
+        metal_fx.mm
+        motion_vectors_store.cpp
+        motion_vectors_store.h
         resolve.cpp
         resolve.h
         roughness_limiter.cpp
         roughness_limiter.h
         sort_effects.cpp
         sort_effects.h
+        spatial_upscaler.h
         ss_effects.cpp
         ss_effects.h
         taa.cpp
@@ -38,3 +43,9 @@ target_sources(godot-server-rendering-renderer_rd-effects PRIVATE
 # [[[end]]]
 
 target_link_libraries(godot-server-rendering-renderer_rd-effects PRIVATE godot-config)
+
+set_property(
+        SOURCE metal_fx.mm
+        APPEND
+        PROPERTY COMPILE_DEFINITIONS $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
+)
