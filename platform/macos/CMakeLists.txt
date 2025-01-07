@@ -99,6 +99,7 @@ target_link_libraries(platform-macos PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,MetalKit.framework>
         $<LINK_LIBRARY:FRAMEWORK,MetalFX.framework>
         $<LINK_LIBRARY:FRAMEWORK,IOSurface.framework>
+        $<LINK_LIBRARY:FRAMEWORK,UniformTypeIdentifiers.framework>
 )
 
 group_target_sources(platform-macos)
