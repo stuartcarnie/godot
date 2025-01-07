@@ -27,6 +27,7 @@ target_sources(tests PRIVATE
         core/io/test_packet_peer.h
         core/io/test_pck_packer.h
         core/io/test_resource.h
+        core/io/test_resource_uid.h
         core/io/test_stream_peer.h
         core/io/test_stream_peer_buffer.h
         core/io/test_tcp_server.h
@@ -100,6 +101,7 @@ target_sources(tests PRIVATE
         scene/test_curve_2d.h
         scene/test_curve_3d.h
         scene/test_fontfile.h
+        scene/test_gltf_document.h
         scene/test_gradient.h
         scene/test_gradient_texture.h
         scene/test_graph_node.h

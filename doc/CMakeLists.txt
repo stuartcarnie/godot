@@ -755,6 +755,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/StyleBoxTexture.xml
         classes/SubViewport.xml
         classes/SubViewportContainer.xml
+        classes/SubtweenTweener.xml
         classes/SurfaceTool.xml
         classes/SyntaxHighlighter.xml
         classes/SystemFont.xml
