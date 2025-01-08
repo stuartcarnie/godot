@@ -57,8 +57,8 @@ private:
 
 	GCControllerPlayerIndex get_free_player_index();
 
-	void add_joypad(GCController *controller);
-	void remove_joypad(GCController *controller);
+	void add_joypad(GCController *p_controller);
+	void remove_joypad(GCController *p_controller);
 
 public:
 	JoypadApple();

@@ -34,7 +34,6 @@
 #import <os/log.h>
 
 #include "core/config/project_settings.h"
-#include "core/string/ustring.h"
 #include "main/main.h"
 
 class API_AVAILABLE(macos(11), ios(14.0), tvos(14.0)) RumbleMotor {
@@ -107,7 +106,7 @@ public:
 		if (!has_motors()) {
 			return false;
 		}
-		return (weak_motor && weak_motor->has_active_player()) && (strong_motor && strong_motor->has_active_player());
+		return (weak_motor && weak_motor->has_active_player()) || (strong_motor && strong_motor->has_active_player());
 	}
 
 	void stop() {
@@ -295,8 +294,8 @@ GCControllerPlayerIndex JoypadApple::get_free_player_index() {
 	return (GCControllerPlayerIndex)(n - 1);
 }
 
-void JoypadApple::add_joypad(GCController *controller) {
-	if (controller_to_joy_id.has(controller)) {
+void JoypadApple::add_joypad(GCController *p_controller) {
+	if (controller_to_joy_id.has(p_controller)) {
 		return;
 	}
 
@@ -309,25 +308,25 @@ void JoypadApple::add_joypad(GCController *controller) {
 	}
 
 	// Assign our player index.
-	if (controller.playerIndex == GCControllerPlayerIndexUnset) {
-		controller.playerIndex = get_free_player_index();
+	if (p_controller.playerIndex == GCControllerPlayerIndexUnset) {
+		p_controller.playerIndex = get_free_player_index();
 	}
 
 	// Tell Godot about our new controller.
-	Input::get_singleton()->joy_connection_changed(joy_id, true, String::utf8(controller.vendorName.UTF8String));
+	Input::get_singleton()->joy_connection_changed(joy_id, true, String::utf8(p_controller.vendorName.UTF8String));
 
 	// Assign our player index.
-	joypads.insert(joy_id, memnew(GameController(joy_id, controller)));
-	controller_to_joy_id.insert(controller, joy_id);
+	joypads.insert(joy_id, memnew(GameController(joy_id, p_controller)));
+	controller_to_joy_id.insert(p_controller, joy_id);
 }
 
-void JoypadApple::remove_joypad(GCController *controller) {
-	if (!controller_to_joy_id.has(controller)) {
+void JoypadApple::remove_joypad(GCController *p_controller) {
+	if (!controller_to_joy_id.has(p_controller)) {
 		return;
 	}
 
-	int joy_id = controller_to_joy_id[controller];
-	controller_to_joy_id.erase(controller);
+	int joy_id = controller_to_joy_id[p_controller];
+	controller_to_joy_id.erase(p_controller);
 
 	// Tell Godot this joystick is no longer there.
 	Input::get_singleton()->joy_connection_changed(joy_id, false, "");
