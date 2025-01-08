@@ -54,6 +54,16 @@ option(ENABLE_MINIZIP "Enable ZIP archive support using minizip" ON)
 option(ENABLE_BROTLI "Enable Brotli for decompresson and WOFF2 fonts support" ON)
 option(DISABLE_EXCEPTIONS "Force disabling exception handling code" ON)
 
+# Custom modules
+
+option(ENABLE_RETROFX "Enable RetroFX module" OFF)
+
+if (ENABLE_RETROFX)
+    set(WANT_RETROFX 1)
+else ()
+    set(WANT_RETROFX 0)
+endif ()
+
 # Advanced options
 
 set(DEV_BUILD_LEVEL none CACHE STRING "Developer build with dev-only debugging code (DEV_ENABLED)")
@@ -401,5 +411,7 @@ block(SCOPE_FOR VARIABLES)
     json_bool(WANT_OPENXR_B ${WANT_OPENXR})
     json_bool(WANT_VULKAN_B ${WANT_VULKAN})
     json_bool(WANT_METAL_B ${WANT_METAL})
+    # custom modules
+    json_bool(WANT_RETROFX_B ${WANT_RETROFX})
     configure_file(cmake_env.json.in cmake_env.json ESCAPE_QUOTES)
 endblock()

@@ -7,6 +7,7 @@
     "vulkan" : @WANT_VULKAN_B@,
     "metal" : @WANT_METAL_B@,
     "openxr" : @WANT_OPENXR_B@,
+    "module_retrofx_enabled": @WANT_RETROFX_B@,
     "opengl3" : true,
     "minizip" : true,
     "builtin_certs" : true,
