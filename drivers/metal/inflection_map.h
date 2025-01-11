@@ -57,12 +57,12 @@ public:
 
 		Iterator() :
 				map(nullptr), index(0) {}
-		Iterator(InflectionMap &m, const IndexType i) :
-				map(&m), index(i) {}
+		Iterator(InflectionMap &p_m, const IndexType p_i) :
+				map(&p_m), index(p_i) {}
 
-		Iterator &operator=(const Iterator &it) {
-			map = it.map;
-			index = it.index;
+		Iterator &operator=(const Iterator &p_it) {
+			map = p_it.map;
+			index = p_it.index;
 			return *this;
 		}
 
@@ -70,15 +70,15 @@ public:
 		ValueType &operator*() { return map->_values[index]; }
 		operator ValueType *() { return &map->_values[index]; }
 
-		bool operator==(const Iterator &it) const { return map == it.map && index == it.index; }
-		bool operator!=(const Iterator &it) const { return map != it.map || index != it.index; }
+		bool operator==(const Iterator &p_it) const { return map == p_it.map && index == p_it.index; }
+		bool operator!=(const Iterator &p_it) const { return map != p_it.map || index != p_it.index; }
 
 		Iterator &operator++() {
 			index++;
 			return *this;
 		}
 		Iterator operator++(int) {
-			auto t = *this;
+			Iterator t = *this;
 			index++;
 			return t;
 		}
@@ -94,7 +94,7 @@ public:
 
 	bool is_empty() { return _values.is_empty(); }
 	size_t size() { return _values.size(); }
-	void reserve(const size_t p_new_cap) { _values.reserve(p_new_cap); }
+	void reserve(size_t p_new_cap) { _values.reserve(p_new_cap); }
 
 protected:
 	static constexpr IndexType INVALID = std::numeric_limits<IndexType>::max();
@@ -106,20 +106,20 @@ protected:
 	// If the index has not been initialized, add an empty element at
 	// the end of the values array, and set the index to its position.
 	ValueType &get_value(KeyType p_idx) {
-		IndexValue *valIdx = p_idx < LinearCount ? &_linearIndexes[p_idx] : _inflectionIndexes.getptr(p_idx);
-		if (valIdx == nullptr || valIdx->value == INVALID) {
+		IndexValue *val_idx = p_idx < LinearCount ? &_linear_indexes[p_idx] : _inflection_indexes.getptr(p_idx);
+		if (val_idx == nullptr || val_idx->value == INVALID) {
 			_values.push_back({});
-			if (valIdx == nullptr) {
-				valIdx = &_inflectionIndexes.insert(p_idx, {})->value;
+			if (val_idx == nullptr) {
+				val_idx = &_inflection_indexes.insert(p_idx, {})->value;
 			}
-			valIdx->value = _values.size() - 1;
+			val_idx->value = _values.size() - 1;
 		}
-		return _values[valIdx->value];
+		return _values[val_idx->value];
 	}
 
 	TightLocalVector<ValueType> _values;
-	HashMap<KeyType, IndexValue> _inflectionIndexes;
-	IndexValue _linearIndexes[LinearCount];
+	HashMap<KeyType, IndexValue> _inflection_indexes;
+	IndexValue _linear_indexes[LinearCount];
 };
 
 #endif // INFLECTION_MAP_H

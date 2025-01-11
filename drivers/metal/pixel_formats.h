@@ -57,7 +57,6 @@
 #import "inflection_map.h"
 #import "metal_device_properties.h"
 
-#import "core/templates/local_vector.h"
 #import "servers/rendering/rendering_device.h"
 
 #import <Metal/Metal.h>
@@ -405,7 +404,7 @@ protected:
 
 	id<MTLDevice> device;
 	InflectionMap<DataFormat, DataFormatDesc, RD::DATA_FORMAT_MAX> _data_format_descs;
-	InflectionMap<uint16_t, MTLFormatDesc, MTLPixelFormatX32_Stencil8 + 2> _mtl_pixel_format_descs; // The actual last enum value is not available on iOS
+	InflectionMap<uint16_t, MTLFormatDesc, MTLPixelFormatX32_Stencil8 + 2> _mtl_pixel_format_descs; // The actual last enum value is not available on iOS.
 	TightLocalVector<MTLFormatDesc> _mtl_vertex_format_descs;
 };
 

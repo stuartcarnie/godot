@@ -585,7 +585,7 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 	// MTLPixelFormatInvalid must come first. Use addMTLPixelFormatDescImpl to avoid guard code.
 	addMTLPixelFormatDescImpl(MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLViewClass::None, kMTLFmtCapsNone, "MTLPixelFormatInvalid");
 
-	// Ordinary 8-bit pixel formats
+	// Ordinary 8-bit pixel formats.
 	addMTLPixelFormatDesc(A8Unorm, Color8, All);
 	addMTLPixelFormatDesc(R8Unorm, Color8, All);
 	addMTLPixelFormatDescSRGB(R8Unorm_sRGB, Color8, All, R8Unorm);
@@ -755,7 +755,7 @@ void PixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc(X32_Stencil8, Depth32_Stencil8, DRM);
 }
 
-// If necessary, resize vector with empty elements
+// If necessary, resize vector with empty elements.
 void PixelFormats::addMTLVertexFormatDescImpl(MTLVertexFormat mtlVtxFmt, MTLFmtCaps vtxCap, const char *name) {
 	if (mtlVtxFmt >= _mtl_vertex_format_descs.size()) {
 		_mtl_vertex_format_descs.resize(mtlVtxFmt + 1);
@@ -868,7 +868,7 @@ MTLFmtCaps &PixelFormats::getMTLPixelFormatCapsIf(MTLPixelFormat mtlPixFmt, bool
 
 #define disableMTLPixFmtCapsIf(cond, mtlFmt, caps) flags::clear(getMTLPixelFormatCapsIf(MTLPixelFormat##mtlFmt, cond), kMTLFmtCaps##caps);
 
-// Modifies the format capability tables based on the capabilities of the specific MTLDevice
+// Modifies the format capability tables based on the capabilities of the specific MTLDevice.
 void PixelFormats::modifyMTLFormatCapabilities(const MetalFeatures &p_feat) {
 	bool noVulkanSupport = false; // Indicated supported in Metal but not Vulkan or SPIR-V.
 	bool notMac = !p_feat.supportsMac;
@@ -903,7 +903,7 @@ void PixelFormats::modifyMTLFormatCapabilities(const MetalFeatures &p_feat) {
 	// on macOS is the least-intrusive way to handle this in a Vulkan-friendly way.
 	disableMTLPixFmtCapsIf(p_feat.supportsMac, RGB9E5Float, Blend);
 
-	// RGB9E5Float cannot be used as a render target on the simulator
+	// RGB9E5Float cannot be used as a render target on the simulator.
 	disableMTLPixFmtCapsIf(TARGET_OS_SIMULATOR, RGB9E5Float, ColorAtt);
 
 	setMTLPixFmtCapsIf(iosOnly6, RG32Uint, RWC);
@@ -936,7 +936,7 @@ void PixelFormats::modifyMTLFormatCapabilities(const MetalFeatures &p_feat) {
 	enableMTLPixFmtCapsIf(floatFB, R32Float, Filter);
 	enableMTLPixFmtCapsIf(floatFB, RG32Float, Filter);
 	enableMTLPixFmtCapsIf(floatFB, RGBA32Float, Filter);
-	enableMTLPixFmtCapsIf(floatFB, RGBA32Float, Blend); // Undocumented by confirmed through testing
+	enableMTLPixFmtCapsIf(floatFB, RGBA32Float, Blend); // Undocumented by confirmed through testing.
 
 	bool noHDR_ASTC = p_feat.highestFamily < MTLGPUFamilyApple6;
 	setMTLPixFmtCapsIf(noHDR_ASTC, ASTC_4x4_HDR, None);
