@@ -79,7 +79,7 @@ void RenderingContextDriverMetal::driver_free(RenderingDeviceDriver *p_driver) {
 	memdelete(p_driver);
 }
 
-class API_AVAILABLE(macos(11.0), ios(14.0)) SurfaceLayer : public RenderingContextDriverMetal::Surface {
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) SurfaceLayer : public RenderingContextDriverMetal::Surface {
 	CAMetalLayer *__unsafe_unretained layer = nil;
 	LocalVector<MDFrameBuffer> frame_buffers;
 	LocalVector<id<MTLDrawable>> drawables;
@@ -180,7 +180,7 @@ public:
 	}
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0)) SurfaceOffscreen : public RenderingContextDriverMetal::Surface {
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) SurfaceOffscreen : public RenderingContextDriverMetal::Surface {
 	int frame_buffer_size = 3;
 	MDFrameBuffer *frame_buffers;
 	LocalVector<id<MTLTexture>> textures;
