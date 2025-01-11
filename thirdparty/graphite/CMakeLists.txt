@@ -3,8 +3,7 @@ godot_add_library(graphite FOLDER thirdparty STATIC)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(graphite PRIVATE')
-#   for file in list_files(cog, ['src', 'include/graphite2']):
-#       if file.name in ['direct_machine.cpp', 'call_machine.cpp']: continue
+#   for file in list_files(cog, ['src', 'include/graphite2'], exclude=['src/FileFace.cpp', 'src/call_machine.cpp', 'src/direct_machine.cpp']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
@@ -19,7 +18,6 @@ target_sources(graphite PRIVATE
         src/Decompressor.cpp
         src/Face.cpp
         src/FeatureMap.cpp
-        src/FileFace.cpp
         src/Font.cpp
         src/GlyphCache.cpp
         src/GlyphFace.cpp
@@ -44,11 +42,17 @@ target_sources(graphite PRIVATE
         src/json.cpp
 )
 # [[[end]]]
-if((${CMAKE_SYSTEM_NAME} STREQUAL "Windows") AND (${MSVC}))
-    target_sources(graphite PRIVATE src/call_machine.cpp)
-else()
-    target_sources(graphite PRIVATE src/direct_machine.cpp)
-endif()
-target_include_directories(graphite PUBLIC include)
-target_include_directories(graphite PRIVATE src)
-
+target_sources(graphite PRIVATE
+        $<IF:$<AND:$<PLATFORM_ID:Windows>,$<CXX_COMPILER_ID:MSVC>>,
+            # for windows with MSVC
+            src/call_machine.cpp,
+            # for everything else
+            src/direct_machine.cpp>
+)
+target_include_directories(graphite
+        PUBLIC include
+        PRIVATE src
+)
+target_compile_definitions(graphite
+        PUBLIC GRAPHITE2_STATIC GRAPHITE2_NTRACING GRAPHITE2_NFILEFACE
+)

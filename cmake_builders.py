@@ -859,7 +859,13 @@ def write_script_encryption_key(target):
 
 from fnmatch import fnmatch
 
-def list_files(cog, search_paths: str | list[str], exts: [str] = None, ginclude: str = None, gexclude: str = None, recursive: bool = False, all_files=False) -> [str]:
+def list_files(cog, search_paths: str | list[str], exts: [str] = None,
+               ginclude: str = None, gexclude: str = None,
+               recursive: bool = False, all_files=False,
+               exclude=None) -> [str]:
+    if exclude is None:
+        exclude = []
+
     base_path = pathlib.Path(cog.inFile).parent
 
     search_paths = [search_paths] if isinstance(search_paths, str) else search_paths
@@ -867,7 +873,11 @@ def list_files(cog, search_paths: str | list[str], exts: [str] = None, ginclude:
     exts = ['cpp', 'h', 'hpp', 'hh', 'mm', 'm', 'c', 'cc', 'cxx'] if exts is None else exts
     exts = [f'{ext}' if ext.startswith('.') else f'.{ext}' for ext in exts]
 
-    def is_ok(p: Path) -> bool: return fnmatch(p.name, ginclude) if ginclude else True and not fnmatch(p.name, gexclude) if gexclude else True
+    def is_ok(p: Path) -> bool:
+        # convert p to string to test if it is in exclude
+        if p.as_posix() in exclude:
+            return False
+        return fnmatch(p.name, ginclude) if ginclude else True and not fnmatch(p.name, gexclude) if gexclude else True
 
     res = []
     for search_path in search_paths:
