@@ -16,6 +16,8 @@ generate_file(make_app_splash ${GODOT_MAIN_EXECUTABLE_APP_SPLASH_SOURCE} ${GODOT
 set(GODOT_INTERFACE_INTERFACE_DUMP_OUTPUT ${CMAKE_BINARY_DIR}/include/core/extension/gdextension_interface_dump.gen.h)
 generate_file(gdextension_interface_dumper "${CMAKE_CURRENT_SOURCE_DIR}/../core/extension/gdextension_interface.h" "${GODOT_INTERFACE_INTERFACE_DUMP_OUTPUT}")
 
+add_custom_target(generate_main_app_files DEPENDS ${GODOT_MAIN_EXECUTABLE_APP_SPLASH_OUTPUT})
+
 # macOS specific
 
 # [[[cog
@@ -38,11 +40,12 @@ set(MACOS_RESOURCES
 
 add_executable(Godot MACOSX_BUNDLE
         ${GODOT_MAIN_EXECUTABLE_APP_ICON_OUTPUT}
-        ${GODOT_MAIN_EXECUTABLE_APP_SPLASH_OUTPUT}
         ${GODOT_PLATFORM_GENERATED_REGISTERED_APIS_OUTPUT}
         ${GODOT_INTERFACE_INTERFACE_DUMP_OUTPUT}
         ${MACOS_RESOURCES}
 )
+
+add_dependencies(Godot generate_main_app_files)
 
 set_target_properties(Godot PROPERTIES RESOURCE "${MACOS_RESOURCES}")
 
