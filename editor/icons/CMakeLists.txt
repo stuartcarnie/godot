@@ -495,6 +495,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         LinkOverlay.svg
         ListSelect.svg
         Load.svg
+        LocalVariable.svg
         Lock.svg
         LockViewport.svg
         Logo.svg
@@ -632,6 +633,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         PhysicalSkyMaterial.svg
         PhysicsMaterial.svg
         PickerCursor.svg
+        PickerCursorBg.svg
         PickerShapeCircle.svg
         PickerShapeRectangle.svg
         PickerShapeRectangleWheel.svg

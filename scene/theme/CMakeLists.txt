@@ -20,6 +20,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/close_hl.svg
         icons/color_picker_bar_arrow.svg
         icons/color_picker_cursor.svg
+        icons/color_picker_cursor_bg.svg
         icons/color_picker_overbright.svg
         icons/color_picker_pipette.svg
         icons/error_icon.svg

@@ -30,6 +30,8 @@ target_sources(godot-editor-export PRIVATE
         macho.h
         project_export.cpp
         project_export.h
+        project_zip_packer.cpp
+        project_zip_packer.h
 )
 # [[[end]]]
 target_link_libraries(godot-editor-export PRIVATE godot-config)
