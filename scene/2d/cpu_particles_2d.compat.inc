@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  DeviceUtils.kt                                                        */
+/*  cpu_particles_2d.compat.inc                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,32 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-/**
- * Contains utility methods for detecting specific devices.
- */
-@file:JvmName("DeviceUtils")
+#ifndef DISABLE_DEPRECATED
 
-package org.godotengine.godot.utils
-
-import android.os.Build
-
-/**
- * Returns true if running on Meta Horizon OS.
- */
-fun isHorizonOSDevice(): Boolean {
-	return "Oculus".equals(Build.BRAND, true)
+void CPUParticles2D::_restart_bind_compat_92089() {
+	restart(false);
 }
 
-/**
- * Returns true if running on PICO OS.
- */
-fun isPicoOSDevice(): Boolean {
-	return ("Pico".equals(Build.BRAND, true))
+void CPUParticles2D::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("restart"), &CPUParticles2D::_restart_bind_compat_92089);
 }
 
-/**
- * Returns true if running on a native Android XR device.
- */
-fun isNativeXRDevice(): Boolean {
-	return isHorizonOSDevice() || isPicoOSDevice()
-}
+#endif // DISABLE_DEPRECATED

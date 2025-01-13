@@ -62,6 +62,7 @@
 #import <Metal/Metal.h>
 #import <os/log.h>
 #import <os/signpost.h>
+#import <spirv.hpp>
 #import <spirv_msl.hpp>
 #import <spirv_parser.hpp>
 
