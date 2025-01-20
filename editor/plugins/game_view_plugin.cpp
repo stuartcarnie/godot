@@ -32,7 +32,9 @@
 
 #include "core/config/project_settings.h"
 #include "core/debugger/debugger_marshalls.h"
+#include "core/string/translation_server.h"
 #include "editor/debugger/editor_debugger_node.h"
+#include "editor/debugger/script_editor_debugger.h"
 #include "editor/editor_command_palette.h"
 #include "editor/editor_feature_profile.h"
 #include "editor/editor_interface.h"
@@ -203,6 +205,12 @@ void GameView::_sessions_changed() {
 	}
 
 	_update_debugger_buttons();
+
+	if (embedded_process->is_embedding_completed()) {
+		if (!embedded_script_debugger || !embedded_script_debugger->is_session_active() || embedded_script_debugger->get_remote_pid() != embedded_process->get_embedded_pid()) {
+			_attach_script_debugger();
+		}
+	}
 }
 
 void GameView::_instance_starting_static(int p_idx, List<String> &r_arguments) {
@@ -215,6 +223,11 @@ void GameView::_instance_starting(int p_idx, List<String> &r_arguments) {
 		return;
 	}
 	if (p_idx == 0 && embed_on_play && make_floating_on_play && !window_wrapper->get_window_enabled() && EditorNode::get_singleton()->is_multi_window_enabled()) {
+		// Set the Floating Window default title. Always considered in DEBUG mode, same as in Window::set_title.
+		String appname = GLOBAL_GET("application/config/name");
+		appname = vformat("%s (DEBUG)", TranslationServer::get_singleton()->translate(appname));
+		window_wrapper->set_window_title(appname);
+
 		window_wrapper->restore_window_from_saved_position(floating_window_rect, floating_window_screen, floating_window_screen_rect);
 	}
 
@@ -255,6 +268,8 @@ void GameView::_stop_pressed() {
 		return;
 	}
 
+	_detach_script_debugger();
+
 	EditorNode::get_singleton()->set_unfocused_low_processor_usage_mode_enabled(true);
 	embedded_process->reset();
 	_update_ui();
@@ -272,6 +287,7 @@ void GameView::_stop_pressed() {
 }
 
 void GameView::_embedding_completed() {
+	_attach_script_debugger();
 	_update_ui();
 }
 
@@ -563,6 +579,36 @@ void GameView::_update_floating_window_settings() {
 	}
 }
 
+void GameView::_attach_script_debugger() {
+	if (embedded_script_debugger) {
+		_detach_script_debugger();
+	}
+
+	embedded_script_debugger = nullptr;
+	for (int i = 0; EditorDebuggerNode::get_singleton()->get_debugger(i); i++) {
+		ScriptEditorDebugger *script_debugger = EditorDebuggerNode::get_singleton()->get_debugger(i);
+		if (script_debugger->is_session_active() && script_debugger->get_remote_pid() == embedded_process->get_embedded_pid()) {
+			embedded_script_debugger = script_debugger;
+			break;
+		}
+	}
+
+	if (embedded_script_debugger) {
+		embedded_script_debugger->connect("remote_window_title_changed", callable_mp(this, &GameView::_remote_window_title_changed));
+	}
+}
+
+void GameView::_detach_script_debugger() {
+	if (embedded_script_debugger) {
+		embedded_script_debugger->disconnect("remote_window_title_changed", callable_mp(this, &GameView::_remote_window_title_changed));
+		embedded_script_debugger = nullptr;
+	}
+}
+
+void GameView::_remote_window_title_changed(String title) {
+	window_wrapper->set_window_title(title);
+}
+
 void GameView::_update_arguments_for_instance(int p_idx, List<String> &r_arguments) {
 	if (p_idx != 0 || !embed_on_play || !DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_WINDOW_EMBEDDING)) {
 		return;
@@ -570,6 +616,7 @@ void GameView::_update_arguments_for_instance(int p_idx, List<String> &r_argumen
 
 	// Remove duplicates/unwanted parameters.
 	List<String>::Element *E = r_arguments.front();
+	List<String>::Element *user_args_element = nullptr;
 	while (E) {
 		List<String>::Element *N = E->next();
 
@@ -583,23 +630,26 @@ void GameView::_update_arguments_for_instance(int p_idx, List<String> &r_argumen
 			}
 		} else if (E->get() == "-f" || E->get() == "--fullscreen" || E->get() == "-m" || E->get() == "--maximized" || E->get() == "-t" || E->get() == "-always-on-top") {
 			r_arguments.erase(E);
+		} else if (E->get() == "--" || E->get() == "++") {
+			user_args_element = E;
+			break;
 		}
 
 		E = N;
 	}
 
 	// Add the editor window's native ID so the started game can directly set it as its parent.
-	r_arguments.push_back("--wid");
-	r_arguments.push_back(itos(DisplayServer::get_singleton()->window_get_native_handle(DisplayServer::WINDOW_HANDLE, get_window()->get_window_id())));
+	List<String>::Element *N = r_arguments.insert_before(user_args_element, "--wid");
+	N = r_arguments.insert_after(N, itos(DisplayServer::get_singleton()->window_get_native_handle(DisplayServer::WINDOW_HANDLE, get_window()->get_window_id())));
 
 	// Be sure to have the correct window size in the embedded_process control.
 	_update_embed_window_size();
 
 	Rect2i rect = embedded_process->get_screen_embedded_window_rect();
-	r_arguments.push_back("--position");
-	r_arguments.push_back(itos(rect.position.x) + "," + itos(rect.position.y));
-	r_arguments.push_back("--resolution");
-	r_arguments.push_back(itos(rect.size.x) + "x" + itos(rect.size.y));
+	N = r_arguments.insert_after(N, "--position");
+	N = r_arguments.insert_after(N, itos(rect.position.x) + "," + itos(rect.position.y));
+	N = r_arguments.insert_after(N, "--resolution");
+	r_arguments.insert_after(N, itos(rect.size.x) + "x" + itos(rect.size.y));
 }
 
 void GameView::_window_before_closing() {
