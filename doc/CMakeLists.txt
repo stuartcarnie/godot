@@ -732,6 +732,11 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/SplitContainer.xml
         classes/SpotLight3D.xml
         classes/SpringArm3D.xml
+        classes/SpringBoneCollision3D.xml
+        classes/SpringBoneCollisionCapsule3D.xml
+        classes/SpringBoneCollisionPlane3D.xml
+        classes/SpringBoneCollisionSphere3D.xml
+        classes/SpringBoneSimulator3D.xml
         classes/Sprite2D.xml
         classes/Sprite3D.xml
         classes/SpriteBase3D.xml

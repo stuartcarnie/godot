@@ -78,6 +78,16 @@ target_sources(godot-scene-3d PRIVATE
         skeleton_modifier_3d.h
         soft_body_3d.cpp
         soft_body_3d.h
+        spring_bone_collision_3d.cpp
+        spring_bone_collision_3d.h
+        spring_bone_collision_capsule_3d.cpp
+        spring_bone_collision_capsule_3d.h
+        spring_bone_collision_plane_3d.cpp
+        spring_bone_collision_plane_3d.h
+        spring_bone_collision_sphere_3d.cpp
+        spring_bone_collision_sphere_3d.h
+        spring_bone_simulator_3d.cpp
+        spring_bone_simulator_3d.h
         sprite_3d.cpp
         sprite_3d.h
         velocity_tracker_3d.cpp

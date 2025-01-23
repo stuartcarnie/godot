@@ -10,6 +10,8 @@ godot_add_library(godot-module-etcpak FOLDER modules STATIC)
 target_sources(godot-module-etcpak PRIVATE
         image_compress_etcpak.cpp
         image_compress_etcpak.h
+        image_decompress_etcpak.cpp
+        image_decompress_etcpak.h
         register_types.cpp
         register_types.h
 )

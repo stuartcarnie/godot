@@ -769,6 +769,11 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         SplitContainer.svg
         SpotLight3D.svg
         SpringArm3D.svg
+        SpringBoneCollision3D.svg
+        SpringBoneCollisionCapsule3D.svg
+        SpringBoneCollisionPlane3D.svg
+        SpringBoneCollisionSphere3D.svg
+        SpringBoneSimulator3D.svg
         Sprite2D.svg
         Sprite3D.svg
         SpriteFrames.svg
@@ -808,6 +813,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Texture2DArray.svg
         Texture3D.svg
         TextureButton.svg
+        TexturePreviewChannels.svg
         TextureProgressBar.svg
         TextureRect.svg
         Theme.svg

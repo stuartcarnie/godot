@@ -78,5 +78,5 @@ target_sources(godot-scene-2d PRIVATE
         visible_on_screen_notifier_2d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-2d PUBLIC godot-templates)
+target_link_libraries(godot-scene-2d PUBLIC godot-templates clipper2)
 

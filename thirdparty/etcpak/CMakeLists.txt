@@ -8,6 +8,8 @@ godot_add_library(etcpak FOLDER thirdparty STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(etcpak PRIVATE
+        DecodeRGB.cpp
+        DecodeRGB.hpp
         Dither.cpp
         Dither.hpp
         ForceInline.hpp

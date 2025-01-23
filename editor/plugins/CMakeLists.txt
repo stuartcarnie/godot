@@ -47,6 +47,8 @@ target_sources(godot-editor-plugins PRIVATE
         collision_polygon_2d_editor_plugin.h
         collision_shape_2d_editor_plugin.cpp
         collision_shape_2d_editor_plugin.h
+        color_channel_selector.cpp
+        color_channel_selector.h
         control_editor_plugin.cpp
         control_editor_plugin.h
         curve_editor_plugin.cpp
