@@ -280,6 +280,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         FileTree.svg
         FilenameFilter.svg
         Filesystem.svg
+        FixedSize.svg
         FlipWinding.svg
         FlowContainer.svg
         FogMaterial.svg
@@ -786,6 +787,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         StatusSuccess.svg
         StatusWarning.svg
         Stop.svg
+        Stretch.svg
         String.svg
         StringName.svg
         StyleBoxEmpty.svg
