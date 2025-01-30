@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  spring_bone_collision_3d.h                                            */
+/*  uid_upgrade_tool.h                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,45 +28,55 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SPRING_BONE_COLLISION_3D_H
-#define SPRING_BONE_COLLISION_3D_H
+#ifndef UID_UPGRADE_TOOL_H
+#define UID_UPGRADE_TOOL_H
 
-#include "scene/3d/skeleton_3d.h"
+#include "scene/gui/dialogs.h"
 
-class SpringBoneCollision3D : public Node3D {
-	GDCLASS(SpringBoneCollision3D, Node3D);
+class EditorFileSystemDirectory;
 
-	String bone_name;
-	int bone = -1;
+class UIDUpgradeTool : public Object {
+	GDCLASS(UIDUpgradeTool, Object);
 
-	Vector3 position_offset;
-	Quaternion rotation_offset;
+	inline static UIDUpgradeTool *singleton = nullptr;
+
+	static constexpr const char *UPGRADE_FINISHED = "upgrade_finished";
+	static constexpr const char *META_RESAVE_PATHS = "resave_paths";
+
+	void _add_files(EditorFileSystemDirectory *p_dir, Vector<String> &r_resave_paths);
 
 protected:
-	PackedStringArray get_configuration_warnings() const override;
-
-	void _validate_property(PropertyInfo &p_property) const;
 	static void _bind_methods();
 
-	virtual Vector3 _collide(const Transform3D &p_center, float p_bone_radius, float p_bone_length, const Vector3 &p_current) const;
-
 public:
-	Skeleton3D *get_skeleton() const;
+	static constexpr const char *META_UID_UPGRADE_TOOL = "uid_upgrade_tool";
+	static constexpr const char *META_RUN_ON_RESTART = "run_on_restart";
 
-	void set_bone_name(const String &p_name);
-	String get_bone_name() const;
-	void set_bone(int p_bone);
-	int get_bone() const;
+	static UIDUpgradeTool *get_singleton() { return singleton; }
 
-	void set_position_offset(const Vector3 &p_offset);
-	Vector3 get_position_offset() const;
-	void set_rotation_offset(const Quaternion &p_offset);
-	Quaternion get_rotation_offset() const;
+	void prepare_upgrade();
+	void begin_upgrade();
+	void finish_upgrade();
 
-	void sync_pose();
-	Transform3D get_transform_from_skeleton(const Transform3D &p_center) const;
-
-	Vector3 collide(const Transform3D &p_center, float p_bone_radius, float p_bone_length, const Vector3 &p_current) const;
+	UIDUpgradeTool();
+	~UIDUpgradeTool();
 };
 
-#endif // SPRING_BONE_COLLISION_3D_H
+class UIDUpgradeDialog : public ConfirmationDialog {
+	GDCLASS(UIDUpgradeDialog, ConfirmationDialog);
+
+	static constexpr const char *UID_UPGRADE_LEARN_MORE = "uid_upgrade_learn_more";
+
+	Button *learn_more_button = nullptr;
+
+protected:
+	void _on_custom_action(const String &p_action);
+	void _notification(int p_what);
+
+public:
+	void popup_on_demand();
+
+	UIDUpgradeDialog();
+};
+
+#endif // UID_UPGRADE_TOOL_H
