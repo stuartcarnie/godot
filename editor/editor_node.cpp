@@ -1470,15 +1470,10 @@ void EditorNode::save_resource_as(const Ref<Resource> &p_resource, const String 
 		file->add_filter("*." + E, E.to_upper());
 		preferred.push_back(E);
 	}
-	// Lowest priority extension.
+	// Lowest provided extension priority.
 	List<String>::Element *res_element = preferred.find("res");
 	if (res_element) {
 		preferred.move_to_back(res_element);
-	}
-	// Highest priority extension.
-	List<String>::Element *tres_element = preferred.find("tres");
-	if (tres_element) {
-		preferred.move_to_front(tres_element);
 	}
 
 	if (!p_at_path.is_empty()) {
@@ -2074,6 +2069,13 @@ void EditorNode::restart_editor(bool p_goto_project_manager) {
 
 	if (p_goto_project_manager) {
 		args.push_back("--project-manager");
+
+		// Setup working directory.
+		const String exec_dir = OS::get_singleton()->get_executable_path().get_base_dir();
+		if (!exec_dir.is_empty()) {
+			args.push_back("--path");
+			args.push_back(exec_dir);
+		}
 	} else {
 		args.push_back("--path");
 		args.push_back(ProjectSettings::get_singleton()->get_resource_path());
