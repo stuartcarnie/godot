@@ -2063,8 +2063,8 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 		bin_data.set_uses_argument_buffers(false);
 	}
 	msl_options.force_active_argument_buffer_resources = true;
-	// We can't use this, as we have to add the descriptor sets via compiler.add_msl_resource_binding
-	// msl_options.pad_argument_buffer_resources = true; // Same as MoltenVK when using argument buffers.
+	// We can't use this, as we have to add the descriptor sets via compiler.add_msl_resource_binding.
+	// msl_options.pad_argument_buffer_resources = true;
 	msl_options.texture_buffer_native = true; // Enable texture buffer support.
 	msl_options.use_framebuffer_fetch_subpasses = false;
 	msl_options.pad_fragment_output_components = true;

@@ -1377,8 +1377,6 @@ Rect2i DisplayServerX11::screen_get_usable_rect(int p_screen) const {
 					}
 
 					if (desktop_valid) {
-						use_simple_method = false;
-
 						// Handle bad window errors silently because there's no other way to check
 						// that one of the windows has been destroyed in the meantime.
 						int (*oldHandler)(Display *, XErrorEvent *) = XSetErrorHandler(&bad_window_error_handler);
@@ -1406,6 +1404,8 @@ Rect2i DisplayServerX11::screen_get_usable_rect(int p_screen) const {
 								}
 							}
 							if (!g_bad_window && strut_found && (format == 32) && (strut_len >= 4) && strut_data) {
+								use_simple_method = false;
+
 								long *struts = (long *)strut_data;
 
 								long left = struts[0];
@@ -4767,6 +4767,13 @@ void DisplayServerX11::process_events() {
 
 				// Have we failed to set fullscreen while the window was unmapped?
 				_validate_mode_on_map(window_id);
+
+				// On KDE Plasma, when the parent window of an embedded process is restored after being minimized,
+				// only the embedded window receives the Map notification, causing it to
+				// appear without its parent.
+				if (wd.embed_parent) {
+					XMapWindow(x11_display, wd.embed_parent);
+				}
 			} break;
 
 			case Expose: {
@@ -6269,7 +6276,7 @@ DisplayServerX11::WindowID DisplayServerX11::_create_window(WindowMode p_mode, V
 			}
 		}
 
-		if (wd.is_popup || wd.no_focus || wd.embed_parent) {
+		if (wd.is_popup || wd.no_focus || (wd.embed_parent && !kde5_embed_workaround)) {
 			// Set Utility type to disable fade animations.
 			Atom type_atom = XInternAtom(x11_display, "_NET_WM_WINDOW_TYPE_UTILITY", False);
 			Atom wt_atom = XInternAtom(x11_display, "_NET_WM_WINDOW_TYPE", False);
@@ -6415,6 +6422,7 @@ DisplayServerX11::DisplayServerX11(const String &p_rendering_driver, WindowMode 
 	KeyMappingX11::initialize();
 
 	xwayland = OS::get_singleton()->get_environment("XDG_SESSION_TYPE").to_lower() == "wayland";
+	kde5_embed_workaround = OS::get_singleton()->get_environment("XDG_CURRENT_DESKTOP").to_lower() == "kde" && OS::get_singleton()->get_environment("KDE_SESSION_VERSION") == "5";
 
 	native_menu = memnew(NativeMenu);
 	context = p_context;
