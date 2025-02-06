@@ -214,6 +214,8 @@ target_sources(godot-editor PRIVATE
         shader_globals_editor.h
         surface_upgrade_tool.cpp
         surface_upgrade_tool.h
+        uid_upgrade_tool.cpp
+        uid_upgrade_tool.h
         window_wrapper.cpp
         window_wrapper.h
 )

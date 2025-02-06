@@ -8,7 +8,6 @@
 # ]]]
 set_abs(GODOT_MODULE_BETSY_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         CrossPlatformSettings_piece_all.glsl
-        UavCrossPlatform_piece_all.glsl
         alpha_stitch.glsl
         bc1.glsl
         bc4.glsl

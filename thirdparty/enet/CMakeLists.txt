@@ -3,8 +3,7 @@ godot_add_library(enet FOLDER thirdparty STATIC)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(enet PRIVATE')
-#   for file in list_files(cog, ['.', 'enet']):
-#       if file.name == 'godot.cpp': continue
+#   for file in list_files(cog, ['.', 'enet'], gexclude='enet_godot.cpp'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
@@ -13,8 +12,8 @@ target_sources(enet PRIVATE
         compress.c
         enet/callbacks.h
         enet/enet.h
-        enet/godot.h
-        enet/godot_ext.h
+        enet/enet_godot.h
+        enet/enet_godot_ext.h
         enet/list.h
         enet/protocol.h
         enet/time.h

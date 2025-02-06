@@ -18,10 +18,7 @@ target_sources(godot-module-enet PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_sources(godot-module-enet PRIVATE
-        ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/enet/godot.cpp
-)
+set(ENET_GODOT_SRC ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/enet/enet_godot.cpp)
+target_sources(godot-module-enet PRIVATE ${ENET_GODOT_SRC})
+set_source_files_properties(${ENET_GODOT_SRC} PROPERTIES COMPILE_OPTIONS $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
 target_link_libraries(godot-module-enet PUBLIC godot-object godot-io godot-crypto enet)
-set_source_files_properties(${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/enet/godot.cpp PROPERTIES COMPILE_OPTIONS
-        $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>
-)
