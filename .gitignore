@@ -365,6 +365,7 @@ cpp.hint
 # macOS
 .DS_Store
 __MACOSX
+Godot.app
 xcode*/
 
 # Windows
