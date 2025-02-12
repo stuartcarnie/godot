@@ -2986,7 +2986,8 @@ Error DisplayServerWindows::embed_process(WindowID p_window, OS::ProcessID p_pid
 	// (e.g., a screen to the left of the main screen).
 	const Rect2i adjusted_rect = Rect2i(p_rect.position + _get_screens_origin(), p_rect.size);
 
-	SetWindowPos(ep->window_handle, nullptr, adjusted_rect.position.x, adjusted_rect.position.y, adjusted_rect.size.x, adjusted_rect.size.y, SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+	// Use HWND_BOTTOM to prevent reordering of the embedded window over another popup.
+	SetWindowPos(ep->window_handle, HWND_BOTTOM, adjusted_rect.position.x, adjusted_rect.position.y, adjusted_rect.size.x, adjusted_rect.size.y, SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
 
 	if (ep->is_visible != p_visible) {
 		if (p_visible) {
@@ -6171,6 +6172,15 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 		}
 
 		wd.parent_hwnd = p_parent_hwnd;
+
+		// Detach the input queue from the parent window.
+		// This prevents the embedded window from waiting on the main window's input queue,
+		// causing lags input lags when resizing or moving the main window.
+		if (p_parent_hwnd) {
+			DWORD mainThreadId = GetWindowThreadProcessId(owner_hwnd, nullptr);
+			DWORD embeddedThreadId = GetCurrentThreadId();
+			AttachThreadInput(embeddedThreadId, mainThreadId, FALSE);
+		}
 
 		if (p_mode == WINDOW_MODE_FULLSCREEN || p_mode == WINDOW_MODE_EXCLUSIVE_FULLSCREEN) {
 			wd.fullscreen = true;
