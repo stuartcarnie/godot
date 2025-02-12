@@ -1,0 +1,7 @@
+id: no-await-in-promise-all
+language: cpp
+rule:
+  pattern: GDVIRTUAL_CALL($$$ARGS)
+  inside:
+    kind: case_statement
+    stopBy: end
