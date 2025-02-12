@@ -1810,7 +1810,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 				msec = N->get().to_int();
 				N = N->next();
 			}
-			OS::get_singleton()->wait_for_debugger(msec);
+			if (msec > 0) {
+				OS::get_singleton()->wait_for_debugger(msec);
+			}
 #endif
 		} else if (arg == "--" || arg == "++") {
 			adding_user_args = true;
