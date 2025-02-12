@@ -2188,6 +2188,51 @@ Vector<uint8_t> RenderingDeviceDriverMetal::shader_compile_binary_from_spirv(Vec
 				switch (basetype) {
 					case BT::Struct: {
 						primary.dataType = MTLDataTypePointer;
+						// We need to determine if the struct is a runtime array, as Metal doesn't support
+						// defining a struct with a runtime or dynamic array as a member.
+						//
+						// An example of this in GLSL is:
+						//
+						// struct ParticleEmission {
+						//   vec3 velocity;
+						//   uint flags;
+						// };
+						//
+						// layout(set = 1, binding = 2, std430) restrict buffer SourceEmission {
+						//   int particle_count;
+						//   uint pad0;
+						//   uint pad1;
+						//   uint pad2;
+						//   ParticleEmission data[];
+						// }
+						// src_particles;
+						//
+						// The minimum size of SourceEmission is 16 bytes when binding a buffer.
+						// With a single element in data, it would be 32 bytes.
+						//
+						// However, when this is converted to Metal, note the data member is an array of size 1:
+						//
+						// struct ParticleEmission {
+						//   float3 velocity;
+						//   uint flags;
+						// };
+						//
+						// struct SourceEmission {
+						//   int particle_count;
+						//   uint pad0;
+						//   uint pad1;
+						//   uint pad2;
+						//   ParticleEmission data[1];
+						// };
+						//
+						// This means that the minimum size of the struct when binding an "empty" array is 32 bytes.
+						//
+						//						size_t struct_sz = compiler.get_declared_struct_size(a_type);
+						//						size_t struct_array_sz = compiler.get_declared_struct_size_runtime_array(a_type, 1);
+						//						size_t struct_array_stride = struct_array_sz - compiler.get_declared_struct_size_runtime_array(a_type, 0);
+						//						if (struct_array_stride > 0) {
+						//							print_verbose(vformat("%s size: %d, array stride: %d", String(name.c_str()), int(struct_sz), int(struct_array_stride)));
+						//						}
 					} break;
 
 					case BT::Image:
@@ -2477,7 +2522,11 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_bytecode(const Vect
 		cd->name = binary_data.shader_name;
 		cd->stage = shader_data.stage;
 		options.preserveInvariance = shader_data.is_position_invariant;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 150000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 180000 || __TV_OS_VERSION_MIN_REQUIRED >= 180000 || TARGET_OS_VISION
+		options.mathMode = MTLMathModeFast;
+#else
 		options.fastMathEnabled = YES;
+#endif
 		MDLibrary *library = [MDLibrary newLibraryWithCacheEntry:cd
 														  device:device
 														  source:source
