@@ -61,5 +61,5 @@ target_include_directories(thorvg PUBLIC AFTER
 target_link_libraries(thorvg PUBLIC png webp)
 target_compile_definitions(thorvg
         PUBLIC TVG_STATIC
-        PRIVATE THORVG_WEBP_LOADER_SUPPORT
+        PRIVATE THORVG_WEBP_LOADER_SUPPORT THORVG_FILE_IO_SUPPORT
 )
