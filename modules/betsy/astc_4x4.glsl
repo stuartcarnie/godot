@@ -558,31 +558,20 @@ uvec4 assemble_block(uint blockmode, uint color_endpoint_mode, uint partition_co
 
 	// weights ise
 	phy_blk.w = bitfieldReverse(wt_ise.x);
-
 	phy_blk.z = bitfieldReverse(wt_ise.y);
-//	phy_blk.z |= reverse_byte(wt_ise.y & 0xFFu) << 24;
-//	phy_blk.z |= reverse_byte((wt_ise.y >> 8u) & 0xFFu) << 16;
-//	phy_blk.z |= reverse_byte((wt_ise.y >> 16u) & 0xFFu) << 8;
-//	phy_blk.z |= reverse_byte((wt_ise.y >> 24u) & 0xFFu);
-
 	phy_blk.y = bitfieldReverse(wt_ise.z);
-//	phy_blk.y |= reverse_byte(wt_ise.z & 0xFFu) << 24;
-//	phy_blk.y |= reverse_byte((wt_ise.z >> 8u) & 0xFFu) << 16;
-//	phy_blk.y |= reverse_byte((wt_ise.z >> 16u) & 0xFFu) << 8;
-//	phy_blk.y |= reverse_byte((wt_ise.z >> 24u) & 0xFFu);
 
 	// blockmode & partition count
 	phy_blk.x = blockmode; // blockmode is 11 bit
 
 	// cem: color_endpoint_mode is 4 bit
-	phy_blk.x |= (color_endpoint_mode & 15u) << 13u;
+	phy_blk.x = bitfieldInsert(phy_blk.x, color_endpoint_mode, 13, 4);
 
 	// endpoints start from ( multi_part ? bits 29 : bits 17 )
-	phy_blk.x |= (ep_ise.x & 0x7FFFu) << 17u;
-	phy_blk.y = (ep_ise.x >> 15u) & 0x1FFFFu;
-	phy_blk.y |= (ep_ise.y & 0x7FFFu) << 17u;
-	phy_blk.z |= (ep_ise.y >> 15u) & 0x1FFFFu;
-
+	phy_blk.x = bitfieldInsert(phy_blk.x, ep_ise.x, 17, 15);
+	phy_blk.y = bitfieldExtract(ep_ise.x, 15, 17);
+	phy_blk.y = bitfieldInsert(phy_blk.y, ep_ise.y, 17, 15);
+	phy_blk.z |= bitfieldExtract(ep_ise.y, 15, 17);
 	return phy_blk;
 }
 
@@ -604,11 +593,11 @@ uint assemble_blockmode(uint weight_quantmethod) {
 	uint r = (weight_quantmethod % 6u) + 2u; // "The weight ranges are encoded using a 3 bit value R"
 
 	// block mode
-	uint blockmode = (r >> uint(1)) & 3u;
-	blockmode |= (r & 1u) << 4u;
-	blockmode |= (a & 3u) << 5u;
-	blockmode |= (b & 3u) << 7u;
-	blockmode |= h << 9u;
+	uint blockmode = bitfieldExtract(r, 1, 2);
+	blockmode = bitfieldInsert(blockmode, r, 4, 1);
+	blockmode = bitfieldInsert(blockmode, a, 5, 2);
+	blockmode = bitfieldInsert(blockmode, b, 7, 2);
+	blockmode = bitfieldInsert(blockmode, h, 9, 1);
 	blockmode |= d << 10u;
 	return blockmode;
 }
@@ -676,12 +665,11 @@ uvec4 encode_block(vec4 texels[BLOCK_SIZE]) {
 
 void main() {
 	uint blockID = gl_GlobalInvocationID.y * uint(params.group_num_x) * THREAD_NUM_X + gl_GlobalInvocationID.x;
-	uint BlockNum = uint(((params.texel_width + DIM) - 1) / DIM);
 	vec4 texels[BLOCK_SIZE];
 	uvec2 blockPos;
 	for (int k = 0; k < BLOCK_SIZE; k++) {
-		blockPos.y = blockID / BlockNum;
-		blockPos.x = blockID - blockPos.y * BlockNum;
+		blockPos.y = blockID / params.group_num_x;
+		blockPos.x = blockID - blockPos.y * params.group_num_x;
 		uint y = uint(k / DIM);
 		uint x = uint(k) - y * DIM;
 		uvec2 pixelPos = blockPos * uvec2(DIM) + uvec2(x, y);
