@@ -2196,6 +2196,10 @@ void RenderingDeviceGraph::add_capture_timestamp(RDD::QueryPoolID p_query_pool, 
 	_add_command_to_graph(nullptr, nullptr, 0, command_index, command);
 }
 
+void RenderingDeviceGraph::add_gpu_capture_frame() {
+	gpu_capture_frame = true;
+}
+
 void RenderingDeviceGraph::add_synchronization() {
 	// Synchronization is only acknowledged if commands have been recorded on the graph already.
 	if (command_count > 0) {
@@ -2332,6 +2336,11 @@ void RenderingDeviceGraph::end(bool p_reorder_commands, bool p_full_barriers, RD
 	}
 
 	_wait_for_secondary_command_buffer_tasks();
+
+	if (gpu_capture_frame) {
+		driver->gpu_capture_next_frame();
+		gpu_capture_frame = false;
+	}
 
 	if (command_count > 0) {
 		int32_t current_label_index = -1;

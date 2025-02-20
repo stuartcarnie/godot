@@ -74,6 +74,7 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 
 	id<MTLCommandQueue> device_queue = nil;
 	id<MTLCaptureScope> device_scope = nil;
+	bool capture_active = false;
 
 	String pipeline_cache_id;
 
@@ -407,6 +408,7 @@ public:
 #pragma mark - Debug
 
 	virtual void command_insert_breadcrumb(CommandBufferID p_cmd_buffer, uint32_t p_data) override final;
+	virtual void gpu_capture_next_frame() override final;
 
 #pragma mark - Submission
 

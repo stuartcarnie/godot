@@ -7084,6 +7084,15 @@ String RenderingDevice::get_captured_timestamp_name(uint32_t p_index) const {
 	return frames[frame].timestamp_result_names[p_index];
 }
 
+/*********************/
+/**** GPU capture ****/
+/*********************/
+
+void RenderingDevice::gpu_capture_next_frame() {
+	draw_graph.add_gpu_capture_frame();
+}
+
+
 uint64_t RenderingDevice::limit_get(Limit p_limit) const {
 	return driver->limit_get(p_limit);
 }

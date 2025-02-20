@@ -61,8 +61,9 @@
 #undef MAX
 
 void MDCommandBuffer::begin() {
-	DEV_ASSERT(commandBuffer == nil);
-	commandBuffer = queue.commandBuffer;
+	DEV_ASSERT(commandBuffer == nil && !state_begin);
+	// commandBuffer = queue.commandBuffer;
+	state_begin = true;
 }
 
 void MDCommandBuffer::end() {
@@ -82,6 +83,7 @@ void MDCommandBuffer::commit() {
 	end();
 	[commandBuffer commit];
 	commandBuffer = nil;
+	state_begin = false;
 }
 
 void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
@@ -135,7 +137,7 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 				render.desc.colorAttachments[0].resolveTexture = res_tex;
 			}
 #endif
-			render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:render.desc];
+			render.encoder = [command_buffer() renderCommandEncoderWithDescriptor:render.desc];
 		}
 
 		if (render.pipeline != rp) {
@@ -160,7 +162,7 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 		type = MDCommandBufferStateType::Compute;
 
 		compute.pipeline = (MDComputePipeline *)p;
-		compute.encoder = commandBuffer.computeCommandEncoder;
+		compute.encoder = command_buffer().computeCommandEncoder;
 		[compute.encoder setComputePipelineState:compute.pipeline->state];
 	}
 }
@@ -180,7 +182,7 @@ id<MTLBlitCommandEncoder> MDCommandBuffer::blit_command_encoder() {
 	}
 
 	type = MDCommandBufferStateType::Blit;
-	blit.encoder = commandBuffer.blitCommandEncoder;
+	blit.encoder = command_buffer().blitCommandEncoder;
 	return blit.encoder;
 }
 
@@ -199,7 +201,7 @@ void MDCommandBuffer::encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDesc
 			break;
 	}
 
-	id<MTLRenderCommandEncoder> enc = [commandBuffer renderCommandEncoderWithDescriptor:p_desc];
+	id<MTLRenderCommandEncoder> enc = [command_buffer() renderCommandEncoderWithDescriptor:p_desc];
 	if (p_label != nil) {
 		[enc pushDebugGroup:p_label];
 		[enc popDebugGroup];
@@ -549,7 +551,7 @@ uint32_t MDCommandBuffer::_populate_vertices(simd::float4 *p_vertices, uint32_t 
 }
 
 void MDCommandBuffer::render_begin_pass(RDD::RenderPassID p_render_pass, RDD::FramebufferID p_frameBuffer, RDD::CommandBufferType p_cmd_buffer_type, const Rect2i &p_rect, VectorView<RDD::RenderPassClearValue> p_clear_values) {
-	DEV_ASSERT(commandBuffer != nil);
+	DEV_ASSERT(command_buffer() != nil);
 	end();
 
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
@@ -629,7 +631,7 @@ void MDCommandBuffer::_render_clear_render_area() {
 }
 
 void MDCommandBuffer::render_next_subpass() {
-	DEV_ASSERT(commandBuffer != nil);
+	DEV_ASSERT(command_buffer() != nil);
 
 	if (render.current_subpass == UINT32_MAX) {
 		render.current_subpass = 0;
@@ -716,7 +718,7 @@ void MDCommandBuffer::render_next_subpass() {
 		// the defaultRasterSampleCount from the pipeline's sample count.
 		render.desc = desc;
 	} else {
-		render.encoder = [commandBuffer renderCommandEncoderWithDescriptor:desc];
+		render.encoder = [command_buffer() renderCommandEncoderWithDescriptor:desc];
 
 		if (!render.is_rendering_entire_area) {
 			_render_clear_render_area();

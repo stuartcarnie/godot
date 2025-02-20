@@ -669,6 +669,9 @@ public:
 	/**** DEBUG *****/
 	/****************/
 	virtual void command_insert_breadcrumb(CommandBufferID p_cmd_buffer, uint32_t p_data) override final;
+
+	virtual void gpu_capture_next_frame() override final {};
+
 	void print_lost_device_info();
 	void on_device_lost() const;
 	static String get_vulkan_result(VkResult err);

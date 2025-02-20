@@ -1576,6 +1576,12 @@ public:
 	uint64_t get_captured_timestamp_cpu_time(uint32_t p_index) const;
 	String get_captured_timestamp_name(uint32_t p_index) const;
 
+	/*********************/
+	/**** GPU capture ****/
+	/*********************/
+public:
+	void gpu_capture_next_frame();
+
 	/****************/
 	/**** LIMITS ****/
 	/****************/

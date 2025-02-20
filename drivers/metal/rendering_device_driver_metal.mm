@@ -879,9 +879,15 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 	MDCommandBuffer *cmd_buffer = (MDCommandBuffer *)(p_cmd_buffers[size - 1].id);
 	Fence *fence = (Fence *)(p_cmd_fence.id);
 	if (fence != nullptr) {
-		[cmd_buffer->get_command_buffer() addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
+		id<MTLCommandBuffer> cb = cmd_buffer->get_command_buffer();
+		if (cb == nil) {
+			// If there is nothing to do, signal the fence immediately.
 			dispatch_semaphore_signal(fence->semaphore);
-		}];
+		} else {
+			[cb addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
+				dispatch_semaphore_signal(fence->semaphore);
+			}];
+		}
 	}
 
 	for (uint32_t i = 0; i < p_swap_chains.size(); i++) {
@@ -891,6 +897,11 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 	}
 
 	cmd_buffer->commit();
+
+	if (capture_active) {
+		[MTLCaptureManager.sharedCaptureManager stopCapture];
+		capture_active = false;
+	}
 
 	if (p_swap_chains.size() > 0) {
 		// Used as a signal that we're presenting, so this is the end of a frame.
@@ -3852,6 +3863,24 @@ void RenderingDeviceDriverMetal::command_end_label(CommandBufferID p_cmd_buffer)
 
 void RenderingDeviceDriverMetal::command_insert_breadcrumb(CommandBufferID p_cmd_buffer, uint32_t p_data) {
 	// TODO: Implement.
+}
+
+void RenderingDeviceDriverMetal::gpu_capture_next_frame() {
+	ERR_FAIL_COND_MSG(capture_active, "GPU capture already active");
+
+	if (![MTLCaptureManager.sharedCaptureManager supportsDestination:MTLCaptureDestinationDeveloperTools]) {
+		WARN_PRINT_ONCE("Xcode must be attached to capture a frame.");
+		return;
+	}
+
+	MTLCaptureDescriptor *desc = [MTLCaptureDescriptor new];
+	desc.destination = MTLCaptureDestinationDeveloperTools;
+	desc.captureObject = device_queue;
+	NSError *error = nil;
+	capture_active = [MTLCaptureManager.sharedCaptureManager startCaptureWithDescriptor:desc error:&error];
+	if (!capture_active) {
+		ERR_FAIL_MSG(String("Failed to start GPU capture: ") + error.localizedDescription.UTF8String);
+	}
 }
 
 #pragma mark - Submission

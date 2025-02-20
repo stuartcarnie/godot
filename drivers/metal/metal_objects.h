@@ -315,8 +315,17 @@ private:
 	RenderingDeviceDriverMetal *device_driver = nullptr;
 	id<MTLCommandQueue> queue = nil;
 	id<MTLCommandBuffer> commandBuffer = nil;
+	bool state_begin = false;
 
-	void _end_compute_dispatch();
+	_FORCE_INLINE_ id<MTLCommandBuffer> command_buffer() {
+		DEV_ASSERT(state_begin);
+		if (commandBuffer == nil) {
+			commandBuffer = queue.commandBuffer;
+		}
+		return commandBuffer;
+	}
+
+	void _end_compute_dispatch(); 
 	void _end_blit();
 
 #pragma mark - Render
