@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  subviewport_container.h                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,40 +28,27 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
-#include "retro_fx.h"
-#include "retro_fx_container.h"
-#include "shader_chain.h"
-#include "shader_graph.h"
-#include "slang_shader.h"
+#ifndef RETRO_FX_CONTAINER_H
+#define RETRO_FX_CONTAINER_H
 
-#include "editor/retro_fx_editor_plugin.h"
+#include "scene/gui/subviewport_container.h"
 
-static Ref<ResourceFormatLoaderSlangPreset> resource_loader_slang_preset;
+class RetroFXContainer : public SubViewportContainer {
+	GDCLASS(RetroFXContainer, SubViewportContainer);
 
-void initialize_retrofx_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_CLASS(RetroFX);
-		GDREGISTER_CLASS(RetroFXContainer);
+	String shader_path;
 
-		GDREGISTER_CLASS(SlangShader);
-		GDREGISTER_CLASS(ShaderGraph);
-		GDREGISTER_CLASS(ShaderPass);
-		GDREGISTER_CLASS(ShaderLUT);
+protected:
+	void _notification(int p_what);
+	static void _bind_methods();
 
-		GDREGISTER_CLASS(ShaderParameter);
-		GDREGISTER_CLASS(ShaderChain);
+public:
+	PackedStringArray get_configuration_warnings() const override;
 
-		resource_loader_slang_preset.instantiate();
-		ResourceLoader::add_resource_format_loader(resource_loader_slang_preset);
-	}
+	void set_shader_path(const String &p_path);
+	String get_shader_path() const;
 
-#if TOOLS_ENABLED
-	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		EditorPlugins::add_by_type<RetroFXEditorPlugin>();
-	}
-#endif
-}
+	RetroFXContainer();
+};
 
-void uninitialize_retrofx_module(ModuleInitializationLevel p_level) {
-}
+#endif // RETRO_FX_CONTAINER_H

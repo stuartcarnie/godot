@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  subviewport_container.cpp                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,40 +28,38 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
-#include "retro_fx.h"
 #include "retro_fx_container.h"
-#include "shader_chain.h"
-#include "shader_graph.h"
-#include "slang_shader.h"
 
-#include "editor/retro_fx_editor_plugin.h"
+#include "core/config/engine.h"
+#include "scene/main/viewport.h"
 
-static Ref<ResourceFormatLoaderSlangPreset> resource_loader_slang_preset;
+void RetroFXContainer::_notification(int p_what) {
+	switch (p_what) {
 
-void initialize_retrofx_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_CLASS(RetroFX);
-		GDREGISTER_CLASS(RetroFXContainer);
-
-		GDREGISTER_CLASS(SlangShader);
-		GDREGISTER_CLASS(ShaderGraph);
-		GDREGISTER_CLASS(ShaderPass);
-		GDREGISTER_CLASS(ShaderLUT);
-
-		GDREGISTER_CLASS(ShaderParameter);
-		GDREGISTER_CLASS(ShaderChain);
-
-		resource_loader_slang_preset.instantiate();
-		ResourceLoader::add_resource_format_loader(resource_loader_slang_preset);
 	}
-
-#if TOOLS_ENABLED
-	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		EditorPlugins::add_by_type<RetroFXEditorPlugin>();
-	}
-#endif
 }
 
-void uninitialize_retrofx_module(ModuleInitializationLevel p_level) {
+PackedStringArray RetroFXContainer::get_configuration_warnings() const {
+	PackedStringArray warnings = SubViewportContainer::get_configuration_warnings();
+
+	return warnings;
+}
+
+void RetroFXContainer::_bind_methods() {
+	// SubViewportContainer::_bind_methods();
+}
+
+// region properties
+
+void RetroFXContainer::set_shader_path(const String &p_path) {
+	shader_path = p_path;
+}
+
+String RetroFXContainer::get_shader_path() const {
+	return shader_path;
+}
+
+// endregion
+
+RetroFXContainer::RetroFXContainer(): SubViewportContainer() {
 }

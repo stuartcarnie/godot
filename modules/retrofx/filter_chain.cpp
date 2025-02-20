@@ -911,7 +911,8 @@ FilterChain::~FilterChain() {
 		RD::get_singleton()->free(checker_texture);
 	}
 
-	// we don't free index 0, as that is either a copy of linear or nearest
+	// Don't free index 0, as that is either a reference to linear or nearest, and is the default,
+	// when the filter is unspecified.
 	for (compiled::Filter i = compiled::Filter::LINEAR; i < compiled::Filter::MAX; ++i) {
 		for (compiled::Wrap j = compiled::Wrap::BORDER; j < compiled::Wrap::MAX; ++j) {
 			if (samplers[i][j].is_valid()) {

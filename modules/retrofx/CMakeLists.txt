@@ -37,6 +37,8 @@ target_sources(godot-module-retrofx PRIVATE
         register_types.h
         retro_fx.cpp
         retro_fx.h
+        retro_fx_container.cpp
+        retro_fx_container.h
         shader_chain.cpp
         shader_chain.h
         shader_container.cpp
@@ -72,6 +74,6 @@ if (WANT_EDITOR)
     # [[[end]]]
 endif ()
 
-target_link_libraries(godot-module-retrofx PUBLIC godot-object godot-server-renderer slang)
+target_link_libraries(godot-module-retrofx PUBLIC godot-object godot-server-renderer slang godot-scene)
 # disable -Wunused-variable for now, as it's too noisy
 target_compile_options(godot-module-retrofx PRIVATE -Wno-unused-variable -Wno-unused-private-field -fexceptions)
