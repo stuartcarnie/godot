@@ -212,7 +212,6 @@ public:
 
 	static Error (*_image_compress_bptc_rd_func)(Image *, UsedChannels p_channels);
 	static Error (*_image_compress_bc_rd_func)(Image *, UsedChannels p_channels);
-	static Error (*_image_compress_astc_rd_func)(Image *, UsedChannels p_channels, ASTCFormat p_format);
 
 	// External VRAM decompression function pointers.
 
