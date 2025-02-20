@@ -11,6 +11,16 @@ normal = "#define IS_NORMALMAP";
 
 #VERSION_DEFINES
 
+// #define TEXEL_VEC4
+
+#ifdef TEXEL_VEC4
+#define TEXEL_TYPE vec4
+#define TEXEL_READ(tex, idx) tex[idx]
+#else
+#define TEXEL_TYPE uint
+#define TEXEL_READ(tex, idx) (unpackUnorm4x8(tex[idx]) * 255.0)
+#endif
+
 #ifndef THREAD_NUM_X
 #define THREAD_NUM_X 8
 #endif
@@ -159,7 +169,7 @@ const int integer_from_quints[125] = int[](
 //
 // from [ARM:astc-encoder] quantization_and_transfer_table quant_and_xfer_tables
 #define WEIGHT_QUANTIZE_NUM 32
-const int scramble_tablescramble_table[12 * WEIGHT_QUANTIZE_NUM] = int[](
+const int scramble_table[12 * WEIGHT_QUANTIZE_NUM] = int[](
 		// quantization method 0, range 0..1
 		0, 1,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -197,8 +207,8 @@ const int scramble_tablescramble_table[12 * WEIGHT_QUANTIZE_NUM] = int[](
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
 
 // number must be <= 255; bitcount must be <= 8
-void orbits8_ptr(inout uvec4 outputs, inout uint bitoffset, uint number, uint bitcount) {
-	uint newpos = bitoffset + bitcount;
+void orbits8_ptr(inout uvec4 outputs, inout uint bitoffset, uint number, int bitcount) {
+	uint newpos = bitoffset + uint(bitcount);
 	uint nidx = newpos >> uint(5);
 	uint uidx = bitoffset >> uint(5);
 	uint bit_idx = bitoffset & 31u;
@@ -212,27 +222,15 @@ void orbits8_ptr(inout uvec4 outputs, inout uint bitoffset, uint number, uint bi
 	bitoffset = newpos;
 }
 
-void split_high_low(uint n, uint i, out int high, out uint low) {
-	uint low_mask = uint((1 << int(i)) - 1);
-	low = n & low_mask;
-	high = int((n >> i) & 255u);
-}
-
-/**
- * Reverse bits of a byte.
- */
-uint reverse_byte(uint p) {
-	p = bitfieldReverse(p & 0xFFu) >> 24; // reverse and shift back down
-//	p = ((p & 15u) << uint(4)) | ((p >> uint(4)) & 15u);
-//	p = ((p & 51u) << uint(2)) | ((p >> uint(2)) & 51u);
-//	p = ((p & 85u) << uint(1)) | ((p >> uint(1)) & 85u);
-	return p;
+void split_high_low(uint n, int i, out int high, out uint low) {
+	low = bitfieldExtract(n, 0, i);
+	high = int(bitfieldExtract(n, i, 8));
 }
 
 /**
  * Encode a group of 5 numbers using trits and bits.
  */
-void encode_trits(uint bitcount, uint b0, uint b1, uint b2, uint b3, uint b4, inout uvec4 outputs, inout uint outpos) {
+void encode_trits(int bitcount, uint b0, uint b1, uint b2, uint b3, uint b4, inout uvec4 outputs, inout uint outpos) {
 	int t0, t1, t2, t3, t4;
 	uint m0, m1, m2, m3, m4;
 
@@ -245,25 +243,25 @@ void encode_trits(uint bitcount, uint b0, uint b1, uint b2, uint b3, uint b4, in
 	uint packhigh = uint(integer_from_trits[((((t4 * 81) + (t3 * 27)) + (t2 * 9)) + (t1 * 3)) + t0]);
 
 	orbits8_ptr(outputs, outpos, m0, bitcount);
-	orbits8_ptr(outputs, outpos, packhigh & 3u, 2u);
+	orbits8_ptr(outputs, outpos, packhigh & 3u, 2);
 
 	orbits8_ptr(outputs, outpos, m1, bitcount);
-	orbits8_ptr(outputs, outpos, (packhigh >> 2u) & 3u, 2u);
+	orbits8_ptr(outputs, outpos, (packhigh >> 2u) & 3u, 2);
 
 	orbits8_ptr(outputs, outpos, m2, bitcount);
-	orbits8_ptr(outputs, outpos, (packhigh >> 4u) & 1u, 1u);
+	orbits8_ptr(outputs, outpos, (packhigh >> 4u) & 1u, 1);
 
 	orbits8_ptr(outputs, outpos, m3, bitcount);
-	orbits8_ptr(outputs, outpos, (packhigh >> 5u) & 3u, 2u);
+	orbits8_ptr(outputs, outpos, (packhigh >> 5u) & 3u, 2);
 
 	orbits8_ptr(outputs, outpos, m4, bitcount);
-	orbits8_ptr(outputs, outpos, (packhigh >> 7u) & 1u, 1u);
+	orbits8_ptr(outputs, outpos, (packhigh >> 7u) & 1u, 1);
 }
 
 /**
  * Encode a group of 3 numbers using quints and bits.
  */
-void encode_quints(uint bitcount, uint b0, uint b1, uint b2, inout uvec4 outputs, inout uint outpos) {
+void encode_quints(int bitcount, uint b0, uint b1, uint b2, inout uvec4 outputs, inout uint outpos) {
 	int q0, q1, q2;
 	uint m0, m1, m2;
 
@@ -274,18 +272,18 @@ void encode_quints(uint bitcount, uint b0, uint b1, uint b2, inout uvec4 outputs
 	uint packhigh = uint(integer_from_quints[((q2 * 25) + (q1 * 5)) + q0]);
 
 	orbits8_ptr(outputs, outpos, m0, bitcount);
-	orbits8_ptr(outputs, outpos, packhigh & 7u, 3u);
+	orbits8_ptr(outputs, outpos, packhigh & 7u, 3);
 
 	orbits8_ptr(outputs, outpos, m1, bitcount);
-	orbits8_ptr(outputs, outpos, (packhigh >> 3u) & 3u, 2u);
+	orbits8_ptr(outputs, outpos, (packhigh >> 3u) & 3u, 2);
 
 	orbits8_ptr(outputs, outpos, m2, bitcount);
-	orbits8_ptr(outputs, outpos, (packhigh >> 5u) & 3u, 2u);
+	orbits8_ptr(outputs, outpos, (packhigh >> 5u) & 3u, 2);
 }
 
 void bise_endpoints(uint numbers[8], int range, inout uvec4 outputs) {
 	uint bitpos = 0u;
-	uint bits = uint(bits_trits_quints_table[(range * 3) + 0]);
+	int bits = bits_trits_quints_table[(range * 3) + 0];
 	uint trits = uint(bits_trits_quints_table[(range * 3) + 1]);
 	uint quints = uint(bits_trits_quints_table[(range * 3) + 2]);
 
@@ -313,7 +311,7 @@ void bise_endpoints(uint numbers[8], int range, inout uvec4 outputs) {
 
 void bise_weights(uint numbers[X_GRIDS * Y_GRIDS], int range, inout uvec4 outputs) {
 	uint bitpos = 0u;
-	uint bits = uint(bits_trits_quints_table[(range * 3) + 0]);
+	int bits = bits_trits_quints_table[(range * 3) + 0];
 	uint trits = uint(bits_trits_quints_table[(range * 3) + 1]);
 	uint quints = uint(bits_trits_quints_table[(range * 3) + 2]);
 	if (trits == 1u) {
@@ -353,7 +351,7 @@ vec4 eigen_vector(mat4 m) {
 	vec4 v = vec4(0.26726f, 0.80178f, 0.53452f, 0.0f);
 
 	for (int i = 0; i < 8; i++) {
-		v *= m;
+		v = m * v;
 		if (length(v) < SMALL_VALUE) {
 			return v;
 		}
@@ -362,11 +360,11 @@ vec4 eigen_vector(mat4 m) {
 	return v;
 }
 
-void find_min_max(vec4 texels[BLOCK_SIZE], vec4 pt_mean, vec4 vec_k, out vec4 e0, out vec4 e1) {
+void find_min_max(TEXEL_TYPE texels[BLOCK_SIZE], vec4 pt_mean, vec4 vec_k, out vec4 e0, out vec4 e1) {
 	float a = 1e31f;
 	float b = -1e31f;
 	for (int i = 0; i < BLOCK_SIZE; i++) {
-		vec4 texel = texels[i] - pt_mean;
+		vec4 texel = TEXEL_READ(texels, i) - pt_mean;
 		float t = dot(texel, vec_k);
 		a = min(a, t);
 		b = max(b, t);
@@ -389,23 +387,35 @@ void find_min_max(vec4 texels[BLOCK_SIZE], vec4 pt_mean, vec4 vec_k, out vec4 e0
 #endif
 }
 
-void principal_component_analysis(vec4 texels[BLOCK_SIZE], out vec4 e0, out vec4 e1) {
+void principal_component_analysis(TEXEL_TYPE texels[BLOCK_SIZE], out vec4 e0, out vec4 e1) {
 	int i = 0;
 	vec4 pt_mean = vec4(0.0);
 	for (; i < BLOCK_SIZE; i++) {
+#ifdef TEXEL_VEC4
 		pt_mean += texels[i];
+#else
+		pt_mean += unpackUnorm4x8(texels[i]);
+#endif
 	}
 	pt_mean /= vec4(BLOCK_SIZE);
 
 	mat4 cov = mat4(vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0));
 	for (int k = 0; k < BLOCK_SIZE; k++) {
+#ifdef TEXEL_VEC4
 		vec4 texel = texels[k] - pt_mean;
+#else
+		vec4 texel = unpackUnorm4x8(texels[k]) - pt_mean;
+#endif
 		for (i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
 				cov[i][j] += (texel[i] * texel[j]);
 			}
 		}
 	}
+#ifndef TEXEL_VEC4
+	pt_mean *= 255.0;
+	cov *= 255.0 * 255.0;
+#endif
 	cov /= BLOCK_SIZE - 1;
 
 	vec4 vec_k = eigen_vector(cov);
@@ -475,17 +485,17 @@ const vec4 wt_grids[16] = vec4[](
 		vec4(0.222, 0.111, 0.444, 0.222),
 		vec4(0.111, 0.222, 0.222, 0.444));
 
-vec4 sample_texel(vec4 texels[BLOCK_SIZE], uvec4 index, vec4 coff) {
-	vec4 sum = texels[index.x] * coff.x;
-	sum += texels[index.y] * coff.y;
-	sum += texels[index.z] * coff.z;
-	sum += texels[index.w] * coff.w;
+vec4 sample_texel(TEXEL_TYPE texels[BLOCK_SIZE], uvec4 index, vec4 coff) {
+	vec4 sum = TEXEL_READ(texels, index.x) * coff.x;
+	sum += TEXEL_READ(texels, index.y) * coff.y;
+	sum += TEXEL_READ(texels, index.z) * coff.z;
+	sum += TEXEL_READ(texels, index.w) * coff.w;
 	return sum;
 }
 
 #endif
 
-void calculate_normal_weights(vec4 texels[BLOCK_SIZE], vec4 ep0, vec4 ep1, inout float projw[X_GRIDS * Y_GRIDS]) {
+void calculate_normal_weights(TEXEL_TYPE texels[BLOCK_SIZE], vec4 ep0, vec4 ep1, inout float projw[X_GRIDS * Y_GRIDS]) {
 	int i = 0;
 	vec4 vec_k = ep1 - ep0;
 	if (length(vec_k) < SMALL_VALUE) {
@@ -516,7 +526,7 @@ void calculate_normal_weights(vec4 texels[BLOCK_SIZE], vec4 ep0, vec4 ep1, inout
 #else
 		// ensure "X_GRIDS * Y_GRIDS == BLOCK_SIZE"
 		for (i = 0; i < X_GRIDS * Y_GRIDS; i++) {
-			vec4 texel = texels[i];
+			vec4 texel = TEXEL_READ(texels, i);
 			float w = dot(vec_k, texel - ep0);
 			minw = min(w, minw);
 			maxw = max(w, maxw);
@@ -542,7 +552,7 @@ void quantize_weights(
 	}
 }
 
-void calculate_quantized_weights(vec4 texels[BLOCK_SIZE], uint weight_range, vec4 ep0, vec4 ep1, out uint weights[X_GRIDS * Y_GRIDS]) {
+void calculate_quantized_weights(TEXEL_TYPE texels[BLOCK_SIZE], uint weight_range, vec4 ep0, vec4 ep1, out uint weights[X_GRIDS * Y_GRIDS]) {
 	float projw[X_GRIDS * Y_GRIDS];
 	calculate_normal_weights(texels, ep0, ep1, projw);
 	quantize_weights(projw, weight_range, weights);
@@ -617,13 +627,13 @@ uvec4 endpoint_ise(uint colorquant_index, vec4 ep0, vec4 ep1, uint endpoint_quan
 	return ep_ise;
 }
 
-uvec4 weight_ise(vec4 texels[16], uint weight_range, vec4 ep0, vec4 ep1, uint weight_quantmethod) {
+uvec4 weight_ise(TEXEL_TYPE texels[BLOCK_SIZE], uint weight_range, vec4 ep0, vec4 ep1, uint weight_quantmethod) {
 	// encode weights
 	uint wt_quantized[X_GRIDS * Y_GRIDS];
 	calculate_quantized_weights(texels, weight_range, ep0, ep1, wt_quantized);
 	for (int i = 0; i < X_GRIDS * Y_GRIDS; i++) {
 		int w = int(weight_quantmethod * WEIGHT_QUANTIZE_NUM + wt_quantized[i]);
-		wt_quantized[i] = uint(scramble_tablescramble_table[w]);
+		wt_quantized[i] = uint(scramble_table[w]);
 	}
 
 	// weights quantized ise encode
@@ -632,7 +642,7 @@ uvec4 weight_ise(vec4 texels[16], uint weight_range, vec4 ep0, vec4 ep1, uint we
 	return wt_ise;
 }
 
-uvec4 encode_block(vec4 texels[BLOCK_SIZE]) {
+uvec4 encode_block(TEXEL_TYPE texels[BLOCK_SIZE]) {
 	vec4 ep0, ep1;
 	principal_component_analysis(texels, ep0, ep1);
 
@@ -665,7 +675,7 @@ uvec4 encode_block(vec4 texels[BLOCK_SIZE]) {
 
 void main() {
 	uint blockID = gl_GlobalInvocationID.y * uint(params.group_num_x) * THREAD_NUM_X + gl_GlobalInvocationID.x;
-	vec4 texels[BLOCK_SIZE];
+	TEXEL_TYPE texels[BLOCK_SIZE];
 	uvec2 blockPos;
 	for (int k = 0; k < BLOCK_SIZE; k++) {
 		blockPos.y = blockID / params.group_num_x;
@@ -678,7 +688,11 @@ void main() {
 		texel.b = 1.0f;
 		texel.a = 1.0f;
 #endif
+#ifdef TEXEL_VEC4
 		texels[k] = texel * 255.0;
+#else
+		texels[k] = packUnorm4x8(texel);
+#endif
 	}
 	OutBuffer_1._data[blockID] = encode_block(texels);
 }
