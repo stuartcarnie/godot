@@ -4180,9 +4180,14 @@ RenderingDeviceDriverMetal::RenderingDeviceDriverMetal(RenderingContextDriverMet
 		archive_fail_on_miss = true;
 	}
 
+#if TARGET_OS_OSX
 	if (String res = OS::get_singleton()->get_environment("GODOT_MTL_SHADER_LOAD_STRATEGY"); res == U"lazy") {
 		_shader_load_strategy = ShaderLoadStrategy::LAZY;
 	}
+#else
+	// Always use the lazy strategy on other OSs like iOS, tvOS or visionOS.
+	_shader_load_strategy = ShaderLoadStrategy::LAZY;
+#endif
 }
 
 RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
