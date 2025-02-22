@@ -63,9 +63,11 @@ generate_file(make_editor_translations "${GODOT_EDITOR_TRANSLATIONS_SOURCE}" "${
 # ]]]
 set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         properties/ar.po
+        properties/cs.po
         properties/de.po
         properties/es.po
         properties/et.po
+        properties/fa.po
         properties/fr.po
         properties/ga.po
         properties/id.po
@@ -77,8 +79,10 @@ set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         properties/pt.po
         properties/pt_BR.po
         properties/ru.po
+        properties/ta.po
         properties/tr.po
         properties/uk.po
+        properties/vi.po
         properties/zh_CN.po
         properties/zh_TW.po
 )

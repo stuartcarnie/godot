@@ -23,6 +23,7 @@ target_sources(tests PRIVATE
         core/io/test_ip.h
         core/io/test_json.h
         core/io/test_json_native.h
+        core/io/test_logger.h
         core/io/test_marshalls.h
         core/io/test_packet_peer.h
         core/io/test_pck_packer.h
