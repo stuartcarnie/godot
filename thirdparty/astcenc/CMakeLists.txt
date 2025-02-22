@@ -44,3 +44,4 @@ target_sources(astcenc PRIVATE
 )
 # [[[end]]]
 target_include_directories(astcenc PUBLIC .)
+target_compile_options(astcenc PRIVATE $<$<CONFIG:Debug>:-O2>)
