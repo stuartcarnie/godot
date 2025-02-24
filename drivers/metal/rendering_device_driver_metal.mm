@@ -4185,7 +4185,7 @@ RenderingDeviceDriverMetal::RenderingDeviceDriverMetal(RenderingContextDriverMet
 		_shader_load_strategy = ShaderLoadStrategy::LAZY;
 	}
 #else
-	// Always use the lazy strategy on other OSs like iOS, tvOS or visionOS.
+	// Always use the lazy strategy on other OSs like iOS, tvOS, or visionOS.
 	_shader_load_strategy = ShaderLoadStrategy::LAZY;
 #endif
 }
