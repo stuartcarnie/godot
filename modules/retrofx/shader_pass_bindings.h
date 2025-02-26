@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 28/12/2024.
 //
 
-#ifndef SHADER_PASS_BINDINGS_H
-#define SHADER_PASS_BINDINGS_H
+#pragma once
 
 #include "servers/rendering/rendering_device.h"
 
@@ -74,10 +73,8 @@ struct Bindings {
 		if (ubo.ubo_buffer.is_valid()) {
 			p_rd->free(ubo.ubo_buffer);
 		}
-	};
+	}
 };
 
 } //namespace pass
 } //namespace shader
-
-#endif //SHADER_PASS_BINDINGS_H

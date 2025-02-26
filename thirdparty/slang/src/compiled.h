@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 5/8/2024.
 //
 
-#ifndef GODOT_COMPILED_H
-#define GODOT_COMPILED_H
+#pragma once
 
 #include <optional>
 #include <string>
@@ -413,5 +412,3 @@ struct Hashers {
 
 } //namespace compiled
 } //namespace slang
-
-#endif //GODOT_COMPILED_H

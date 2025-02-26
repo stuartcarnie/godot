@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 8/8/2024.
 //
 
-#ifndef GODOT_SHADER_GRAPH_H
-#define GODOT_SHADER_GRAPH_H
+#pragma once
 
 #include "slang_shader.h"
 
@@ -11,14 +10,16 @@
 #include "scene/resources/texture.h"
 
 enum ShaderPassScale {
-	NONE, SOURCE, ABSOLUTE, VIEWPORT,
+	NONE,
+	SOURCE,
+	ABSOLUTE,
+	VIEWPORT,
 };
 
 class ShaderLUT : public Resource {
 	GDCLASS(ShaderLUT, Resource);
 
 public:
-
 private:
 	String name;
 	Ref<Texture2D> texture;
@@ -79,9 +80,6 @@ private:
 
 	Vector<Ref<ShaderPass>> passes;
 	Vector<Ref<ShaderLUT>> luts;
-
 };
 
 VARIANT_ENUM_CAST(ShaderPassScale);
-
-#endif //GODOT_SHADER_GRAPH_H

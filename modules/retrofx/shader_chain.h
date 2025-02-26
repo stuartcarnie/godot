@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 1/1/2025.
 //
 
-#ifndef SHADER_CHAIN_H
-#define SHADER_CHAIN_H
+#pragma once
 
 #include "filter_chain.h"
 
@@ -80,5 +79,3 @@ public:
 	ShaderChain();
 	~ShaderChain();
 };
-
-#endif //SHADER_CHAIN_H

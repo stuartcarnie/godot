@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 11/8/2024.
 //
 
-#ifndef GODOT_RESOURCE_IMPORTER_SLANGP_H
-#define GODOT_RESOURCE_IMPORTER_SLANGP_H
+#pragma once
 
 #include "core/io/resource_importer.h"
 
@@ -37,5 +36,3 @@ public:
 	String get_resource_type(const String &p_path) const override;
 	virtual void get_dependencies(const String &p_path, List<String> *p_dependencies, bool p_add_types = false) override;
 };
-
-#endif //GODOT_RESOURCE_IMPORTER_SLANGP_H

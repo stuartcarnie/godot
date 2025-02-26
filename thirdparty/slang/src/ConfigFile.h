@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 4/8/2024.
 //
 
-#ifndef GODOT_CONFIGFILE_H
-#define GODOT_CONFIGFILE_H
+#pragma once
 
 #include "error.h"
 
@@ -30,5 +29,3 @@ public:
 };
 
 } //namespace slang
-
-#endif //GODOT_CONFIGFILE_H

@@ -28,12 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RETROFX_REGISTER_TYPES_H
-#define RETROFX_REGISTER_TYPES_H
+#pragma once
 
 #include "modules/register_module_types.h"
 
 void initialize_retrofx_module(ModuleInitializationLevel p_level);
 void uninitialize_retrofx_module(ModuleInitializationLevel p_level);
-
-#endif // RETROFX_REGISTER_TYPES_H

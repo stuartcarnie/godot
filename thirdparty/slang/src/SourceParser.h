@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 5/8/2024.
 //
 
-#ifndef GODOT_SOURCEPARSER_H
-#define GODOT_SOURCEPARSER_H
+#pragma once
 
 #include "ShaderParameter.h"
 #include "compiled.h"
@@ -60,5 +59,3 @@ public:
 };
 
 } //namespace slang
-
-#endif //GODOT_SOURCEPARSER_H

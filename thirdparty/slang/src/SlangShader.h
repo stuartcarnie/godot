@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 5/8/2024.
 //
 
-#ifndef GODOT_SLANGSHADER_H
-#define GODOT_SLANGSHADER_H
+#pragma once
 
 #include "ShaderPass.h"
 #include "compiled.h"
@@ -48,5 +47,3 @@ public:
 };
 
 } // namespace slang
-
-#endif //GODOT_SLANGSHADER_H

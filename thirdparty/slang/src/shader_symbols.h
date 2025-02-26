@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 12/8/2024.
 //
 
-#ifndef SLANG_SHADER_SYMBOLS_H
-#define SLANG_SHADER_SYMBOLS_H
+#pragma once
 
 #include "error.h"
 #include "shader_reflection.h"
@@ -43,5 +42,3 @@ public:
 };
 
 } //namespace slang
-
-#endif //SLANG_SHADER_SYMBOLS_H

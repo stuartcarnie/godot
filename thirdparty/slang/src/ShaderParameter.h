@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 6/8/2024.
 //
 
-#ifndef GODOT_SHADERPARAMETER_H
-#define GODOT_SHADERPARAMETER_H
+#pragma once
 
 #include <string>
 
@@ -36,5 +35,3 @@ struct ShaderParameter {
 };
 
 } //namespace slang
-
-#endif //GODOT_SHADERPARAMETER_H

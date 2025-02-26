@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 12/8/2024.
 //
 
-#ifndef SLANG_SHADER_REFLECTION_H
-#define SLANG_SHADER_REFLECTION_H
+#pragma once
 
 #include "compiled.h"
 
@@ -175,5 +174,3 @@ struct PushBindingDescriptor {
 };
 
 } //namespace slang
-
-#endif //SLANG_SHADER_REFLECTION_H

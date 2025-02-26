@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 6/8/2024.
 //
 
-#ifndef SLANG_ERROR_H
-#define SLANG_ERROR_H
+#pragma once
 
 #include <filesystem>
 #include <optional>
@@ -219,7 +218,4 @@ Result<T> err(const error::Error &p_error) {
 }
 
 } //namespace result
-
 } //namespace slang
-
-#endif //SLANG_ERROR_H

@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 7/8/2024.
 //
 
-#ifndef SLANG_SHADERPASSCOMPILER_H
-#define SLANG_SHADERPASSCOMPILER_H
+#pragma once
 
 #include "SlangShader.h"
 #include "error.h"
@@ -51,5 +50,3 @@ public:
 };
 
 } //namespace slang
-
-#endif //SLANG_SHADERPASSCOMPILER_H

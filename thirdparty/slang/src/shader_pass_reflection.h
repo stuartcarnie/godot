@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 13/8/2024.
 //
 
-#ifndef SLANG_SHADER_PASS_REFLECTION_H
-#define SLANG_SHADER_PASS_REFLECTION_H
+#pragma once
 
 #include "error.h"
 #include "shader_reflection.h"
@@ -89,5 +88,3 @@ struct ShaderPassReflection {
 };
 
 } //namespace slang
-
-#endif //SLANG_SHADER_PASS_REFLECTION_H

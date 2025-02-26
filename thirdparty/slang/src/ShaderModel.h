@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 5/8/2024.
 //
 
-#ifndef GODOT_SHADERMODEL_H
-#define GODOT_SHADERMODEL_H
+#pragma once
 
 #include "error.h"
 #include <filesystem>
@@ -98,5 +97,3 @@ struct ShaderModel {
 };
 
 } // namespace slang
-
-#endif //GODOT_SHADERMODEL_H

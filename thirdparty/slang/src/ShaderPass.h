@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 6/8/2024.
 //
 
-#ifndef GODOT_SHADERPASS_H
-#define GODOT_SHADERPASS_H
+#pragma once
 
 #include "ShaderModel.h"
 #include "SourceParser.h"
@@ -53,5 +52,3 @@ struct ShaderPass {
 };
 
 } // namespace slang
-
-#endif //GODOT_SHADERPASS_H

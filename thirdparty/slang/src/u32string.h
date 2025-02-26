@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 6/8/2024.
 //
 
-#ifndef SLANG_U32STRING_H
-#define SLANG_U32STRING_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -28,5 +27,3 @@ std::string to_utf8(const std::u32string &p_str);
 bool starts_with(const std::u32string &p_str, const std::u32string &p_prefix);
 std::u32string joined(const std::vector<std::u32string> &p_strs, std::u32string const &p_delimiter);
 } //namespace u32
-
-#endif //SLANG_U32STRING_H

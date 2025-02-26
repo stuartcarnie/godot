@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 10/8/2024.
 //
 
-#ifndef GODOT_RESOURCE_IMPORTER_SLANG_H
-#define GODOT_RESOURCE_IMPORTER_SLANG_H
+#pragma once
 
 #include "core/io/resource_importer.h"
 
@@ -28,6 +27,3 @@ public:
 
 	ResourceImporterSlang();
 };
-
-
-#endif //GODOT_RESOURCE_IMPORTER_SLANG_H

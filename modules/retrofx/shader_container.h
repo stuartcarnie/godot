@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 1/1/2025.
 //
 
-#ifndef SHADER_CONTAINER_H
-#define SHADER_CONTAINER_H
+#pragma once
 
 #include "core/io/file_access.h"
 #include "core/templates/vector.h"
@@ -23,7 +22,8 @@ public:
 class FileShaderContainer : public ShaderContainer {
 	compiled::Shader shader;
 
-	FileShaderContainer(compiled::Shader &&p_shader) : shader(std::move(p_shader)) {};
+	FileShaderContainer(compiled::Shader &&p_shader) :
+			shader(std::move(p_shader)) {}
 
 public:
 	const compiled::Shader &get_shader() const override {
@@ -47,5 +47,3 @@ public:
 
 	static std::optional<FileShaderContainer> create(const String &p_path);
 };
-
-#endif //SHADER_CONTAINER_H

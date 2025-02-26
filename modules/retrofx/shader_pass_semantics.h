@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 28/12/2024.
 //
 
-#ifndef SHADER_PASS_SEMANTICS_H
-#define SHADER_PASS_SEMANTICS_H
+#pragma once
 
 #include "core/templates/hash_map.h"
 
@@ -65,4 +64,3 @@ struct Semantics {
 
 } //namespace pass
 } //namespace shader
-#endif //SHADER_PASS_SEMANTICS_H

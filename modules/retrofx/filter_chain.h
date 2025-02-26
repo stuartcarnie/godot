@@ -2,8 +2,7 @@
 // Created by Stuart Carnie on 7/8/2024.
 //
 
-#ifndef GODOT_FILTER_CHAIN_H
-#define GODOT_FILTER_CHAIN_H
+#pragma once
 
 #include "constants.h"
 #include "shader_container.h"
@@ -81,8 +80,7 @@ class FilterChain {
 			frame_buffer = p_rd->framebuffer_create({ texture.rid }, p_fb_format);
 			p_rd->framebuffer_set_invalidation_callback(frame_buffer, [](void *p_ud) {
 				RenderTexture *rt = static_cast<RenderTexture *>(p_ud);
-				rt->frame_buffer = RID();
-			}, this);
+				rt->frame_buffer = RID(); }, this);
 		}
 
 		_FORCE_INLINE_ void free(RD *p_rd) {
@@ -228,7 +226,6 @@ public:
 
 	Rect2 get_output_bounds() const { return output_bounds; }
 
-
 	void set_parameter_value(uint32_t p_index, double p_value);
 	void set_parameter_value(const String &p_name, double p_value);
 
@@ -240,8 +237,7 @@ public:
 	///
 	/// @param p_linear <code>true</code> to default to linear filtering; otherwise, default to nearest.
 	void set_default_filtering_linear(bool p_linear);
+
 	FilterChain();
 	~FilterChain();
 };
-
-#endif //GODOT_FILTER_CHAIN_H
