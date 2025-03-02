@@ -1591,6 +1591,7 @@ void RenderingDeviceGraph::begin() {
 	command_synchronization_index = -1;
 	command_synchronization_pending = false;
 	command_label_index = -1;
+	gpu_capture_frame = false;
 	frames[frame].secondary_command_buffers_used = 0;
 	draw_instruction_list.index = 0;
 	compute_instruction_list.index = 0;

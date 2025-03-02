@@ -80,8 +80,12 @@ private:
 	void _update_shader_chain();
 
 protected:
-	void _notification(int p_what);
 	virtual Size2 get_minimum_size() const override;
+	void _notification(int p_what);
+
+	bool _set(const StringName &p_name, const Variant &p_value);
+	bool _get(const StringName &p_name, Variant &r_ret) const;
+	void _get_property_list(List<PropertyInfo> *p_list) const;
 	static void _bind_methods();
 
 public:

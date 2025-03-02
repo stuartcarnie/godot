@@ -84,11 +84,11 @@ class FilterChain {
 		}
 
 		_FORCE_INLINE_ void free(RD *p_rd) {
-			texture.free(p_rd);
 			if (frame_buffer.is_valid()) {
 				p_rd->free(frame_buffer);
 				frame_buffer = RID();
 			}
+			texture.free(p_rd);
 		}
 
 		_FORCE_INLINE_ bool is_valid() const {
@@ -155,6 +155,7 @@ class FilterChain {
 
 	Pass passes[MAX_SHADER_PASSES];
 	uint32_t passes_count = 0;
+	RID texture_rids[MAX_TEXTURES];
 	Texture textures[MAX_TEXTURES];
 	uint32_t textures_count = 0;
 
@@ -228,9 +229,11 @@ public:
 
 	void set_parameter_value(uint32_t p_index, double p_value);
 	void set_parameter_value(const String &p_name, double p_value);
+	bool get_parameter_value(uint32_t p_index, double &r_value) const;
+	bool get_parameter_value(const String &p_name, double &r_value) const;
 
 	void render(const RID p_source, const Size2 p_source_size, const RID p_target, const Size2 p_target_size);
-	void render_offscreen_passes(const RID p_source, const Size2 p_source_size);
+	void render_offscreen_passes();
 	void render_final_pass(const RID p_target, const Size2 p_target_size);
 
 	/// Sets the default filtering mode when a shader pass leaves the value unspecified.

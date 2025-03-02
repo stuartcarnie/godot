@@ -124,10 +124,27 @@ void FilterChain::set_parameter_value(const String &p_name, double p_value) {
 	parameters[*index] = p_value;
 }
 
-void FilterChain::resize_render_targets() {
-	if (!render_targets_need_resize) {
-		return;
+bool FilterChain::get_parameter_value(uint32_t p_index, double &r_value) const {
+	if (p_index >= parameters_count) {
+		return false;
 	}
+
+	r_value = parameters[p_index];
+	return true;
+}
+
+bool FilterChain::get_parameter_value(const String &p_name, double &r_value) const {
+	const uint32_t *index = parameters_map.getptr(p_name);
+	if (!index) {
+		return false;
+	}
+
+	r_value = parameters[*index];
+	return true;
+}
+
+void FilterChain::resize_render_targets() {
+	DEV_ASSERT(render_targets_need_resize);
 
 	RD *rd = RD::get_singleton();
 
@@ -207,14 +224,16 @@ void FilterChain::init_next_history_texture() {
 void FilterChain::prepare_next_frame(RID p_source_texture, TextureSize p_source_size) {
 	frame_count++;
 
-	resize_render_targets();
-	update_history();
+	if (render_targets_need_resize) {
+		resize_render_targets();
+	}
 
 	if (history_count == 0) {
 		// No need to copy, set the sourceTexture to Original / OriginalHistory0 semantic.
 		history_textures[0].rid = p_source_texture;
 		history_textures[0].size = p_source_size;
 	} else {
+		update_history();
 		init_next_history_texture();
 		Texture &texture = history_textures[0];
 
@@ -253,7 +272,6 @@ void FilterChain::update_buffers_for_passes() {
 				tb.uniform->set_id(1, *tb.texture);
 			}
 			pass.uniform_set = usc->get_cache_vec(pass.shader, 0, pass.bindings.uniforms);
-			rd->uniform_set_set_invalidation_callback(pass.uniform_set, [](void *p_ud) { ((Pass *)p_ud)->uniform_set = RID(); }, &pass);
 		}
 	}
 }
@@ -272,8 +290,6 @@ void FilterChain::blit_texture(RenderingDevice::DrawListID p_draw_list, RID p_sr
 }
 
 void FilterChain::render_final_pass(const RID p_target, const Size2 p_target_size) {
-	RendererRD::TextureStorage *texture_storage = RendererRD::TextureStorage::get_singleton();
-	//RID frame_buffer = texture_storage->render_target_get_rd_framebuffer(p_target);
 	RD *rd = RD::get_singleton();
 
 	RD::DrawListID dl = rd->draw_list_begin(p_target);
@@ -298,14 +314,14 @@ void FilterChain::render_final_pass(const RID p_target, const Size2 p_target_siz
 void FilterChain::render(
 		const RID p_source, const Size2 p_source_size,
 		const RID p_target, const Size2 p_target_size) {
-	render_offscreen_passes(p_source, p_source_size);
-	render_final_pass(p_target, p_target_size);
-}
-
-void FilterChain::render_offscreen_passes(const RID p_source, const Size2 p_source_size) {
 	prepare_next_frame(p_source, p_source_size);
 	update_buffers_for_passes();
 
+	render_offscreen_passes();
+	render_final_pass(p_target, p_target_size);
+}
+
+void FilterChain::render_offscreen_passes() {
 	if (!has_shader || passes_count == 0) {
 		return;
 	}
@@ -386,9 +402,7 @@ void FilterChain::set_default_filtering_linear(bool p_linear) {
 }
 
 void FilterChain::update_history() {
-	if (history_count == 0) {
-		return;
-	}
+	DEV_ASSERT(history_count > 0);
 
 	if (history_needs_init) {
 		init_history();
@@ -403,16 +417,16 @@ void FilterChain::update_history() {
 }
 
 void FilterChain::Pass::free_resources(RD *p_rd) {
+	uniform_set = RID(); // managed by uniform set cache
 	render_target.free(p_rd);
 	feedback_target.free(p_rd);
-	if (uniform_set.is_valid()) {
-		p_rd->free(uniform_set);
-	}
 	if (pipeline.is_valid()) {
 		p_rd->free(pipeline);
+		pipeline = RID();
 	}
 	if (shader.is_valid()) {
 		p_rd->free(shader);
+		shader = RID();
 	}
 	bindings.free(p_rd);
 }
@@ -424,6 +438,13 @@ void FilterChain::free_resources(RD *p_rd) {
 
 	for (uint32_t i = 0; i < history_count; i++) {
 		history_textures[i].free(p_rd);
+	}
+
+	RendererRD::TextureStorage *texture_storage = RendererRD::TextureStorage::get_singleton();
+	for (uint32_t i = 0; i < textures_count; i++) {
+		if (texture_rids[i].is_valid()) {
+			texture_storage->free(texture_rids[i]);
+		}
 	}
 
 	has_shader = false;
@@ -695,8 +716,7 @@ Error FilterChain::set_compiled_shader(const ShaderContainer &p_container) {
 }
 
 void FilterChain::load_luts(const ShaderContainer &p_container) {
-	RD *rd = RD::get_singleton();
-	RS *rs = RS::get_singleton();
+	RendererRD::TextureStorage *texture_storage = RendererRD::TextureStorage::get_singleton();
 
 	auto &images = p_container.get_shader().luts;
 	textures_count = images.size();
@@ -718,10 +738,9 @@ void FilterChain::load_luts(const ShaderContainer &p_container) {
 				print_error(vformat("Failed to load LUT: %s", path));
 				texture = get_checker_texture();
 			} else {
-				texture = rs->texture_2d_create(img);
-				texture = rs->texture_get_rd_texture(texture);
-				auto fmt = rd->texture_get_format(texture);
-
+				texture_rids[i] = texture_storage->texture_allocate();
+				texture_storage->texture_2d_initialize(texture_rids[i], img);
+				texture = texture_storage->texture_get_rd_texture(texture_rids[i]);
 				size = TextureSize(img->get_width(), img->get_height());
 			}
 		}
@@ -907,10 +926,6 @@ FilterChain::~FilterChain() {
 
 	free_resources(rd);
 
-	if (checker_texture.is_valid()) {
-		rd->free(checker_texture);
-	}
-
 	// Don't free index 0, as that is either a reference to linear or nearest, and is the default,
 	// when the filter is unspecified.
 	for (compiled::Filter i = compiled::Filter::LINEAR; i < compiled::Filter::MAX; ++i) {
@@ -921,18 +936,13 @@ FilterChain::~FilterChain() {
 		}
 	}
 
-	for (uint32_t i = 0; i < textures_count; i++) {
-		if (textures[i].rid.is_valid()) {
-			rd->free(textures[i].rid);
-		}
+	if (pipeline_state.uniform_set.is_valid()) {
+		rd->free(pipeline_state.uniform_set);
 	}
-
-	rd->free(shader_version);
-	rd->free(pipeline_state.shader);
-	rd->free(pipeline_state.pipeline);
-	rd->free(pipeline_state.vertex_buffer);
 	rd->free(pipeline_state.vertex_array);
-	rd->free(pipeline_state.uniform_set);
+	rd->free(pipeline_state.vertex_buffer);
+	rd->free(pipeline_state.pipeline);
+	final_blit_shader.version_free(shader_version);
 	if (checker_texture.is_valid()) {
 		rd->free(checker_texture);
 	}

@@ -178,7 +178,7 @@ result::Result<std::tuple<Compiler, Compiler>> ShaderPassCompiler::make_compiler
 }
 
 result::Result<std::vector<uint32_t>> ShaderPassCompiler::ir_for_pass(ShaderPass &p_pass, ShaderType type, const ShaderCompilerOptions &p_options) {
-	auto source = u32::to_utf8(type == ShaderType::VERTEX ? p_pass._parser.get_vert_source() : p_pass._parser.get_frag_source());
+	auto source = u32::to_ascii(type == ShaderType::VERTEX ? p_pass._parser.get_vert_source() : p_pass._parser.get_frag_source());
 
 	EShLanguage stage = type == ShaderType::VERTEX ? EShLangVertex : EShLangFragment;
 	int ClientInputSemanticsVersion = 100;

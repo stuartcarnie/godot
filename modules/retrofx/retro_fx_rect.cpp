@@ -195,6 +195,53 @@ void RetroFXRect::_update_shader_chain() {
 	queue_redraw();
 }
 
+bool RetroFXRect::_get(const StringName &p_name, Variant &r_ret) const {
+	Vector<String> parts = String(p_name).split("/", true, 2);
+	if (!shader_chain->has_shader_loaded() || parts.size() != 2 || parts[0] != "parameters") {
+		return false;
+	}
+
+	double value;
+	if (shader_chain->get_parameter_value_by_name(parts[1], value)) {
+		r_ret = value;
+		return true;
+	}
+
+	return false;
+}
+
+bool RetroFXRect::_set(const StringName &p_name, const Variant &p_value) {
+	Vector<String> parts = String(p_name).split("/", true, 2);
+
+	if (!shader_chain->has_shader_loaded() || parts.size() != 2 || parts[0] != "parameters") {
+		return false;
+	}
+
+	// for boolean values, convert to 0 or 1
+	double value = p_value;
+	if (Math::is_zero_approx(value)) {
+		value = 0.0;
+	} else if (Math::is_equal_approx(value, 1.0)) {
+		value = 1.0;
+	}
+
+	shader_chain->set_parameter_value_by_name(parts[1], value);
+
+	return true;
+}
+
+void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
+	if (!shader_chain->has_shader_loaded()) {
+		return;
+	}
+
+	TypedArray<ShaderParameter> params = shader_chain->get_parameters();
+	for (Ref<ShaderParameter> const param : params) {
+
+		p_list->push_back(PropertyInfo(Variant::FLOAT, vformat("parameters/%s", param->get_name()), PROPERTY_HINT_NONE));
+	}
+}
+
 void RetroFXRect::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_texture", "texture"), &RetroFXRect::set_texture);
 	ClassDB::bind_method(D_METHOD("get_texture"), &RetroFXRect::get_texture);
@@ -318,6 +365,9 @@ bool RetroFXRect::is_flipped_v() const {
 void RetroFXRect::set_shader_path(const String &p_path) {
 	shader_path = p_path;
 	shader_chain_error = shader_chain->load_from_file(p_path);
+
+	notify_property_list_changed();
+	emit_signal(CoreStringName(changed));
 }
 
 String RetroFXRect::get_shader_path() const {

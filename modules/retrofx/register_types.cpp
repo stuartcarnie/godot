@@ -62,6 +62,10 @@ void initialize_retrofx_module(ModuleInitializationLevel p_level) {
 }
 
 void uninitialize_retrofx_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
+
 	ResourceLoader::remove_resource_format_loader(resource_loader_slang_preset);
 	resource_loader_slang_preset.unref();
 }

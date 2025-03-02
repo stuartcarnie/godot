@@ -78,6 +78,7 @@ struct Bindings {
 
 		uniforms.clear();
 		textures.clear();
+		needs_texture_update = false;
 	}
 };
 
