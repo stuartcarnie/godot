@@ -99,11 +99,11 @@ result::Result<compiled::ShaderPass> ShaderPassCompiler::compile_pass(ShaderPass
 
 	Compiler vert_compiler = std::get<0>(compilers);
 	auto vert_src_c = vert_compiler->compile();
-	auto vert_src = u32::to_utf8(p_pass._parser.get_vert_source());
+	auto vert_src = u32::to_ascii(p_pass._parser.get_vert_source());
 
 	Compiler frag_compiler = std::get<1>(compilers);
 	auto frag_src_c = frag_compiler->compile();
-	auto frag_src = u32::to_utf8(p_pass._parser.get_frag_source());
+	auto frag_src = u32::to_ascii(p_pass._parser.get_frag_source());
 
 	auto sym_res = make_symbols();
 	if (sym_res.is_err()) {

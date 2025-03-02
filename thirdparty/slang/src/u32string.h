@@ -24,6 +24,7 @@ static std::u32string from_double(double p_value) {
 std::vector<std::u32string> split(const std::u32string &p_str, char32_t p_delimiter);
 std::u32string from_utf8(const std::string &p_str);
 std::string to_utf8(const std::u32string &p_str);
+std::string to_ascii(const std::u32string &p_str, char replacement = '?');
 bool starts_with(const std::u32string &p_str, const std::u32string &p_prefix);
 std::u32string joined(const std::vector<std::u32string> &p_strs, std::u32string const &p_delimiter);
 } //namespace u32

@@ -91,4 +91,53 @@ std::u32string joined(const std::vector<std::u32string> &p_strs, std::u32string 
 	return result;
 }
 
+#if defined(__aarch64__)
+#include <arm_neon.h>
+
+std::string to_ascii(const std::u32string& input, char replacement) {
+	std::string output(input.size(), '\0'); // Preallocate ASCII output.
+
+	size_t i = 0;
+	size_t len = input.size();
+
+	uint32x4_t ascii_mask = vdupq_n_u32(127); // ASCII max value
+	uint32x4_t replace_char = vdupq_n_u32(static_cast<uint32_t>(replacement)); // Replacement char
+
+	for (; i + 4 <= len; i += 4) {
+		uint32x4_t chunk = vld1q_u32(reinterpret_cast<const uint32_t*>(&input[i])); // Load 4 chars
+		uint32x4_t cmp = vcgtq_u32(chunk, ascii_mask); // Compare > 127
+		uint32x4_t result = vbslq_u32(cmp, replace_char, chunk); // Blend replacement if needed
+
+		alignas(16) uint32_t temp[4];
+		vst1q_u32(temp, result);
+
+		for (int j = 0; j < 4; j++) {
+			output[i + j] = static_cast<char>(temp[j]);
+		}
+	}
+
+	// Process remaining characters
+	for (; i < len; i++) {
+		output[i] = (input[i] <= 127) ? static_cast<char>(input[i]) : replacement;
+	}
+
+	return output;
+}
+#else
+std::string to_ascii(const std::u32string& input, char replacement) {
+	std::string output;
+	output.reserve(input.size()); // Reserve space for efficiency
+
+	for (char32_t ch : input) {
+		if (ch <= 127) { // ASCII range
+			output.push_back(static_cast<char>(ch));
+		} else {
+			output.push_back(replacement);
+		}
+	}
+
+	return output;
+}
+#endif
+
 } //namespace u32
