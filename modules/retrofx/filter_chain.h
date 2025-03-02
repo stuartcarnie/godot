@@ -39,8 +39,8 @@ class FilterChain {
 		TextureSize(Size2 p_size) :
 				TextureSize(p_size.width, p_size.height) {}
 
-		float width() const { return d.x; }
-		float height() const { return d.y; }
+		_FORCE_INLINE_ float width() const { return d.x; }
+		_FORCE_INLINE_ float height() const { return d.y; }
 
 	private:
 		Vector4 d;
@@ -237,6 +237,8 @@ public:
 	///
 	/// @param p_linear <code>true</code> to default to linear filtering; otherwise, default to nearest.
 	void set_default_filtering_linear(bool p_linear);
+
+	_FORCE_INLINE_ bool has_shader_loaded() const { return has_shader; }
 
 	FilterChain();
 	~FilterChain();

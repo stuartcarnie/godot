@@ -20,6 +20,11 @@ void BufferBinding::update_data() {
 	}
 }
 
+void BufferBinding::free(RD *p_rd) {
+	data.clear();
+	uniforms.clear();
+}
+
 void UBOBufferBinding::update(RD *p_rd) {
 	if (binding.is_empty()) {
 		return;
@@ -29,12 +34,24 @@ void UBOBufferBinding::update(RD *p_rd) {
 	p_rd->buffer_update(ubo_buffer, 0, binding.data.size(), binding.data.ptr());
 }
 
+void UBOBufferBinding::free(RD *p_rd) {
+	binding.free(p_rd);
+
+	if (ubo_buffer.is_valid()) {
+		p_rd->free(ubo_buffer);
+	}
+}
+
 void PushBufferBinding::update(RD *p_rd) {
 	if (binding.is_empty()) {
 		return;
 	}
 
 	binding.update_data();
+}
+
+void PushBufferBinding::free(RD *p_rd) {
+	binding.free(p_rd);
 }
 
 } // namespace pass

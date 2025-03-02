@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  texture_rect.h                                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,40 +28,84 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
-#include "retro_fx_rect.h"
+#pragma once
+
 #include "shader_chain.h"
-#include "shader_graph.h"
-#include "slang_shader.h"
 
-#include "editor/retro_fx_editor_plugin.h"
+#include "core/object/worker_thread_pool.h"
+#include "scene/gui/control.h"
+#include "scene/resources/texture_rd.h"
 
-static Ref<ResourceFormatLoaderSlangPreset> resource_loader_slang_preset;
+class RetroFXRect : public Control {
+	GDCLASS(RetroFXRect, Control);
 
-void initialize_retrofx_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_CLASS(RetroFXRect);
+public:
+	enum ExpandMode {
+		EXPAND_KEEP_SIZE,
+		EXPAND_IGNORE_SIZE,
+		EXPAND_FIT_WIDTH,
+		EXPAND_FIT_WIDTH_PROPORTIONAL,
+		EXPAND_FIT_HEIGHT,
+		EXPAND_FIT_HEIGHT_PROPORTIONAL,
+	};
 
-		GDREGISTER_CLASS(SlangShader);
-		GDREGISTER_CLASS(ShaderGraph);
-		GDREGISTER_CLASS(ShaderPass);
-		GDREGISTER_CLASS(ShaderLUT);
+	enum StretchMode {
+		STRETCH_SCALE,
+		STRETCH_TILE,
+		STRETCH_KEEP,
+		STRETCH_KEEP_CENTERED,
+		STRETCH_KEEP_ASPECT,
+		STRETCH_KEEP_ASPECT_CENTERED,
+		STRETCH_KEEP_ASPECT_COVERED,
+	};
 
-		GDREGISTER_CLASS(ShaderParameter);
-		GDREGISTER_CLASS(ShaderChain);
+private:
+	bool hflip = false;
+	bool vflip = false;
+	Ref<Texture2D> texture;
+	RID texture_rid;
+	ExpandMode expand_mode = EXPAND_KEEP_SIZE;
+	StretchMode stretch_mode = STRETCH_SCALE;
+	String shader_path;
 
-		resource_loader_slang_preset.instantiate();
-		ResourceLoader::add_resource_format_loader(resource_loader_slang_preset);
-	}
+	Ref<ShaderChain> shader_chain;
+	Error shader_chain_error = OK;
+	RD::FramebufferFormatID fb_format;
+	RID output_texture_rid;
+	Ref<Texture2DRD> output_texture;
+	RID output_fb;
 
-#if TOOLS_ENABLED
-	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		EditorPlugins::add_by_type<RetroFXEditorPlugin>();
-	}
-#endif
-}
+	void _texture_changed();
+	void _update_process();
+	void _update_shader_chain();
 
-void uninitialize_retrofx_module(ModuleInitializationLevel p_level) {
-	ResourceLoader::remove_resource_format_loader(resource_loader_slang_preset);
-	resource_loader_slang_preset.unref();
-}
+protected:
+	void _notification(int p_what);
+	virtual Size2 get_minimum_size() const override;
+	static void _bind_methods();
+
+public:
+	void set_texture(const Ref<Texture2D> &p_tex);
+	Ref<Texture2D> get_texture() const;
+
+	void set_expand_mode(ExpandMode p_mode);
+	ExpandMode get_expand_mode() const;
+
+	void set_stretch_mode(StretchMode p_mode);
+	StretchMode get_stretch_mode() const;
+
+	void set_flip_h(bool p_flip);
+	bool is_flipped_h() const;
+
+	void set_flip_v(bool p_flip);
+	bool is_flipped_v() const;
+
+	void set_shader_path(const String &p_path);
+	String get_shader_path() const;
+
+	RetroFXRect();
+	~RetroFXRect();
+};
+
+VARIANT_ENUM_CAST(RetroFXRect::ExpandMode);
+VARIANT_ENUM_CAST(RetroFXRect::StretchMode);

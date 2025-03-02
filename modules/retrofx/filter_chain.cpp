@@ -662,7 +662,7 @@ Error FilterChain::set_compiled_shader(const ShaderContainer &p_container) {
 
 			Vector<uint8_t> shader_data = rd->shader_compile_binary_from_spirv(stages, vformat("pass %d", pass_no));
 			ERR_FAIL_COND_V_MSG(shader_data.is_empty(), ERR_CANT_CREATE, "Failed to compile shader");
-			pass.shader = rd->shader_create_from_bytecode(shader_data, pass.shader);
+			pass.shader = rd->shader_create_from_bytecode(shader_data);
 			ERR_FAIL_COND_V_MSG(pass.shader.is_null(), ERR_CANT_CREATE, "Failed to create shader");
 		}
 
@@ -908,7 +908,7 @@ FilterChain::~FilterChain() {
 	free_resources(rd);
 
 	if (checker_texture.is_valid()) {
-		RD::get_singleton()->free(checker_texture);
+		rd->free(checker_texture);
 	}
 
 	// Don't free index 0, as that is either a reference to linear or nearest, and is the default,
@@ -916,14 +916,24 @@ FilterChain::~FilterChain() {
 	for (compiled::Filter i = compiled::Filter::LINEAR; i < compiled::Filter::MAX; ++i) {
 		for (compiled::Wrap j = compiled::Wrap::BORDER; j < compiled::Wrap::MAX; ++j) {
 			if (samplers[i][j].is_valid()) {
-				RD::get_singleton()->free(samplers[i][j]);
+				rd->free(samplers[i][j]);
 			}
 		}
 	}
 
 	for (uint32_t i = 0; i < textures_count; i++) {
 		if (textures[i].rid.is_valid()) {
-			RD::get_singleton()->free(textures[i].rid);
+			rd->free(textures[i].rid);
 		}
+	}
+
+	rd->free(shader_version);
+	rd->free(pipeline_state.shader);
+	rd->free(pipeline_state.pipeline);
+	rd->free(pipeline_state.vertex_buffer);
+	rd->free(pipeline_state.vertex_array);
+	rd->free(pipeline_state.uniform_set);
+	if (checker_texture.is_valid()) {
+		rd->free(checker_texture);
 	}
 }

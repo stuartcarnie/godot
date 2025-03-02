@@ -31,6 +31,7 @@ struct BufferBinding {
 	}
 
 	void update_data();
+	void free(RD *p_rd);
 };
 
 struct UBOBufferBinding {
@@ -38,12 +39,14 @@ struct UBOBufferBinding {
 	BufferBinding binding;
 
 	void update(RD *p_rd);
+	void free(RD *p_rd);
 };
 
 struct PushBufferBinding {
 	BufferBinding binding;
 
 	void update(RD *p_rd);
+	void free(RD *p_rd);
 };
 
 struct TextureBinding {
@@ -70,9 +73,11 @@ struct Bindings {
 	}
 
 	void free(RD *p_rd) {
-		if (ubo.ubo_buffer.is_valid()) {
-			p_rd->free(ubo.ubo_buffer);
-		}
+		ubo.free(p_rd);
+		push.free(p_rd);
+
+		uniforms.clear();
+		textures.clear();
 	}
 };
 
