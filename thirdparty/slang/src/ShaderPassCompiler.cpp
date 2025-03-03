@@ -75,7 +75,7 @@ result::Result<compiled::Shader> ShaderPassCompiler::compile(const ShaderCompile
 	for (auto &pass : passes) {
 		for (auto &tex : pass.textures) {
 			if (tex.semantic == STS::ORIGINAL_HISTORY) {
-				history_count = std::max(history_count, tex.index);
+				history_count = std::max(history_count, tex.index + 1);
 			}
 		}
 	}

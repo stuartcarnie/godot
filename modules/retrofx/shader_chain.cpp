@@ -47,11 +47,14 @@ Error ShaderChain::load_from_file(const String &p_path) {
 	}
 
 	FileShaderContainer container = std::move(res.value());
-	parameters.resize(container.get_shader().parameters.size());
-	for (const compiled::Parameter &param : container.get_shader().parameters) {
+	std::vector<slang::compiled::Parameter> const &params = container.get_shader().parameters;
+	parameter_name_to_index.reserve(params.size());
+	parameters.resize(params.size());
+	for (const compiled::Parameter &param : params) {
 		Ref<ShaderParameter> p;
 		p.instantiate(param);
 		parameters[param.index] = p;
+		parameter_name_to_index.insert(p->get_name(), param.index);
 	}
 
 	return filter_chain->set_compiled_shader(container);
@@ -59,6 +62,27 @@ Error ShaderChain::load_from_file(const String &p_path) {
 
 TypedArray<ShaderParameter> ShaderChain::get_parameters() const {
 	return parameters;
+}
+
+bool ShaderChain::get_default_parameter_value_by_index(uint32_t p_index, double &r_value) const {
+	if (p_index >= (uint32_t)parameters.size()) {
+		return false;
+	}
+
+	if (Ref<ShaderParameter> p = parameters[p_index]; p.is_valid()) {
+		r_value = p->get_initial();
+		return true;
+	}
+
+	return false;
+}
+
+bool ShaderChain::get_default_parameter_value_by_name(const String &p_name, double &r_value) const {
+	if (const uint32_t *index = parameter_name_to_index.getptr(p_name)) {
+		return get_default_parameter_value_by_index(*index, r_value);
+	}
+
+	return false;
 }
 
 ShaderChain::ShaderChain() {

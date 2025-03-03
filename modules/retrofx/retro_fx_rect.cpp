@@ -170,21 +170,24 @@ void RetroFXRect::_update_shader_chain() {
 	const Size2 size = get_size();
 	shader_chain->set_drawable_size(size);
 
-	if (output_texture_rid.is_valid()) {
-		rd->free(output_texture_rid);
-	}
-
 	if (output_fb.is_valid()) {
 		rd->free(output_fb);
+	}
+
+	if (rd->texture_is_valid(output_texture_rid)) {
+		output_texture->set_texture_rd_rid(RID());
+		rd->free(output_texture_rid);
+		output_texture_rid = RID();
 	}
 
 	RD::TextureFormat tf;
 	tf.format = RD::DATA_FORMAT_R8G8B8A8_UNORM;
 	tf.width = size.width;
 	tf.height = size.height;
-	tf.usage_bits = RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_CAN_COPY_FROM_BIT;
+	tf.usage_bits = RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_CAN_COPY_TO_BIT;
 	tf.texture_type = RD::TEXTURE_TYPE_2D;
 	output_texture_rid = rd->texture_create(tf, RD::TextureView());
+	rd->texture_clear(output_texture_rid, Color(0, 0, 0), 0, 1, 0, 1);
 	output_texture->set_texture_rd_rid(output_texture_rid);
 
 	output_fb = rd->framebuffer_create({ output_texture_rid });
@@ -240,6 +243,35 @@ void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
 
 		p_list->push_back(PropertyInfo(Variant::FLOAT, vformat("parameters/%s", param->get_name()), PROPERTY_HINT_NONE));
 	}
+}
+
+bool RetroFXRect::_property_can_revert(const StringName &p_name) const {
+	Vector<String> parts = String(p_name).split("/", true, 2);
+
+	if (!shader_chain->has_shader_loaded() || parts.size() != 2 || parts[0] != "parameters") {
+		return false;
+	}
+
+	if (double value; shader_chain->get_default_parameter_value_by_name(parts[1], value)) {
+		return true;
+	}
+
+	return false;
+}
+
+bool RetroFXRect::_property_get_revert(const StringName &p_name, Variant &r_property) const {
+	Vector<String> parts = String(p_name).split("/", true, 2);
+
+	if (!shader_chain->has_shader_loaded() || parts.size() != 2 || parts[0] != "parameters") {
+		return false;
+	}
+
+	if (double value; shader_chain->get_default_parameter_value_by_name(parts[1], value)) {
+		r_property = value;
+		return true;
+	}
+
+	return false;
 }
 
 void RetroFXRect::_bind_methods() {

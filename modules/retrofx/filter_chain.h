@@ -56,7 +56,7 @@ class FilterChain {
 			}
 			rid = p_rd->texture_create(p_format, RD::TextureView());
 			size = TextureSize(p_format.width, p_format.height);
-			p_rd->texture_clear(rid, Color(0, 0, 0, 1), 0, 1, 0, 1);
+			p_rd->texture_clear(rid, Color(0, 0, 0), 0, 1, 0, 1);
 		}
 
 		_FORCE_INLINE_ void free(RD *p_rd) {

@@ -154,6 +154,7 @@ void FilterChain::resize_render_targets() {
 
 	for (uint32_t i = 0; i < passes_count; i++) {
 		Pass &pass = passes[i];
+		pass.uniform_set = RID(); // clear it on resize, as it will need to be updated
 
 		Size2i pass_size;
 		if (!pass.is_scaled()) {
@@ -207,7 +208,7 @@ void FilterChain::resize_render_targets() {
 }
 
 void FilterChain::init_next_history_texture() {
-	CRASH_COND_MSG(history_count > 0, "Current shader does not require history textures");
+	DEV_ASSERT(history_count > 0); // Current shader does not require history textures.
 
 	// either no history, or we moved a texture of a different size in the front slot
 	if (history_textures[0].size.width() != source_rect.size.width || history_textures[0].size.height() != source_rect.size.height) {
@@ -228,11 +229,7 @@ void FilterChain::prepare_next_frame(RID p_source_texture, TextureSize p_source_
 		resize_render_targets();
 	}
 
-	if (history_count == 0) {
-		// No need to copy, set the sourceTexture to Original / OriginalHistory0 semantic.
-		history_textures[0].rid = p_source_texture;
-		history_textures[0].size = p_source_size;
-	} else {
+	if (history_count > 0) {
 		update_history();
 		init_next_history_texture();
 		Texture &texture = history_textures[0];
@@ -314,11 +311,22 @@ void FilterChain::render_final_pass(const RID p_target, const Size2 p_target_siz
 void FilterChain::render(
 		const RID p_source, const Size2 p_source_size,
 		const RID p_target, const Size2 p_target_size) {
+	if (history_count == 0) {
+		// No need to copy, set the sourceTexture to Original / OriginalHistory0 semantic.
+		history_textures[0].rid = p_source;
+		history_textures[0].size = p_source_size;
+	}
+
 	prepare_next_frame(p_source, p_source_size);
 	update_buffers_for_passes();
 
 	render_offscreen_passes();
 	render_final_pass(p_target, p_target_size);
+
+	if (history_count == 0) {
+		// We don't own p_source, so clear it so it isn't freed by the FilterChain.
+		history_textures[0].rid = RID();
+	}
 }
 
 void FilterChain::render_offscreen_passes() {
@@ -408,8 +416,9 @@ void FilterChain::update_history() {
 		init_history();
 	} else {
 		// shift history and move last texture into first position
-		Texture last = history_textures[history_count];
-		for (uint32_t k = history_count; k > 0; k--) {
+		uint32_t last_index = history_count - 1;
+		Texture last = history_textures[last_index];
+		for (uint32_t k = last_index; k > 0; k--) {
 			history_textures[k] = history_textures[k - 1];
 		}
 		history_textures[0] = last;

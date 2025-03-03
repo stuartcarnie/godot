@@ -54,6 +54,7 @@ class ShaderChain : public RefCounted {
 	GDCLASS(ShaderChain, RefCounted);
 
 	FilterChain *filter_chain;
+	HashMap<String, uint32_t> parameter_name_to_index;
 	TypedArray<ShaderParameter> parameters;
 
 protected:
@@ -75,6 +76,8 @@ public:
 	void set_parameter_value_by_name(const String &p_name, double p_value) { filter_chain->set_parameter_value(p_name, p_value); }
 	bool get_parameter_value_by_index(uint32_t p_index, double &r_value) const { return filter_chain->get_parameter_value(p_index, r_value); }
 	bool get_parameter_value_by_name(const String &p_name, double &r_value) const { return filter_chain->get_parameter_value(p_name, r_value); }
+	bool get_default_parameter_value_by_index(uint32_t p_index, double &r_value) const;
+	bool get_default_parameter_value_by_name(const String &p_name, double &r_value) const;
 
 	void render(const RID p_source, const Size2i p_source_size, const RID p_target, const Size2i p_target_size) {
 		filter_chain->render(p_source, p_source_size, p_target, p_target_size);
