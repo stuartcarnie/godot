@@ -696,7 +696,7 @@ void ShaderRD::_compile_version_start(Version *p_version, int p_group) {
 	}
 #endif
 
-	WorkerThreadPool::GroupID group_task = WorkerThreadPool::get_singleton()->add_template_group_task(this, &ShaderRD::_compile_variant, compile_data, group_to_variant_map[p_group].size(), -1, true, SNAME("ShaderCompilation"));
+	WorkerThreadPool::GroupID group_task = WorkerThreadPool::get_named_pool(SNAME("ShaderCompilationPool"))->add_template_group_task(this, &ShaderRD::_compile_variant, compile_data, group_to_variant_map[p_group].size(), -1, true, SNAME("ShaderCompilation"));
 	p_version->group_compilation_tasks.write[p_group] = group_task;
 }
 
@@ -712,7 +712,7 @@ void ShaderRD::_compile_version_end(Version *p_version, int p_group) {
 		}
 
 		WorkerThreadPool::GroupID group_task = p_version->group_compilation_tasks[p_group];
-		WorkerThreadPool::get_singleton()->wait_for_group_task_completion(group_task);
+		WorkerThreadPool::get_named_pool(SNAME("ShaderCompilationPool"))->wait_for_group_task_completion(group_task);
 		p_version->group_compilation_tasks.write[p_group] = 0;
 	} else {
 		if (p_version->dirty) {
