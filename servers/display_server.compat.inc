@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  joypad_apple.h                                                        */
+/*  display_server.compat.inc                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,45 +28,19 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "core/input/input.h"
+#ifndef DISABLE_DEPRECATED
 
-#define Key _QKey
-#import <GameController/GameController.h>
-#undef Key
+Error DisplayServer::_file_dialog_show_bind_compat_98194(const String &p_title, const String &p_current_directory, const String &p_filename, bool p_show_hidden, FileDialogMode p_mode, const Vector<String> &p_filters, const Callable &p_callback) {
+	return file_dialog_show(p_title, p_current_directory, p_filename, p_show_hidden, p_mode, p_filters, p_callback, MAIN_WINDOW_ID);
+}
 
-@class GCController;
-class RumbleContext;
+Error DisplayServer::_file_dialog_with_options_show_bind_compat_98194(const String &p_title, const String &p_current_directory, const String &p_root, const String &p_filename, bool p_show_hidden, FileDialogMode p_mode, const Vector<String> &p_filters, const TypedArray<Dictionary> &p_options, const Callable &p_callback) {
+	return file_dialog_with_options_show(p_title, p_current_directory, p_root, p_filename, p_show_hidden, p_mode, p_filters, p_options, p_callback, MAIN_WINDOW_ID);
+}
 
-struct GameController {
-	int joy_id;
-	GCController *controller;
-	RumbleContext *rumble_context API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) = nil;
-	NSInteger ff_effect_timestamp = 0;
-	bool force_feedback = false;
-	bool nintendo_button_layout = false;
+void DisplayServer::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("file_dialog_show", "title", "current_directory", "filename", "show_hidden", "mode", "filters", "callback"), &DisplayServer::_file_dialog_show_bind_compat_98194);
+	ClassDB::bind_compatibility_method(D_METHOD("file_dialog_with_options_show", "title", "current_directory", "root", "filename", "show_hidden", "mode", "filters", "options", "callback"), &DisplayServer::_file_dialog_with_options_show_bind_compat_98194);
+}
 
-	GameController(int p_joy_id, GCController *p_controller);
-	~GameController();
-};
-
-class JoypadApple {
-private:
-	id<NSObject> connect_observer = nil;
-	id<NSObject> disconnect_observer = nil;
-	HashMap<int, GameController *> joypads;
-	HashMap<GCController *, int> controller_to_joy_id;
-
-	GCControllerPlayerIndex get_free_player_index();
-
-	void add_joypad(GCController *p_controller);
-	void remove_joypad(GCController *p_controller);
-
-public:
-	JoypadApple();
-	~JoypadApple();
-
-	void joypad_vibration_start(GameController &p_joypad, float p_weak_magnitude, float p_strong_magnitude, float p_duration, uint64_t p_timestamp) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0));
-	void joypad_vibration_stop(GameController &p_joypad, uint64_t p_timestamp) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0));
-
-	void process_joypads();
-};
+#endif

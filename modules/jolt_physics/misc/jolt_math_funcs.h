@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  joypad_apple.h                                                        */
+/*  jolt_math_funcs.h                                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,45 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "core/input/input.h"
+#ifndef JOLT_MATH_FUNCS_H
+#define JOLT_MATH_FUNCS_H
 
-#define Key _QKey
-#import <GameController/GameController.h>
-#undef Key
+#include "core/math/transform_3d.h"
 
-@class GCController;
-class RumbleContext;
-
-struct GameController {
-	int joy_id;
-	GCController *controller;
-	RumbleContext *rumble_context API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) = nil;
-	NSInteger ff_effect_timestamp = 0;
-	bool force_feedback = false;
-	bool nintendo_button_layout = false;
-
-	GameController(int p_joy_id, GCController *p_controller);
-	~GameController();
-};
-
-class JoypadApple {
-private:
-	id<NSObject> connect_observer = nil;
-	id<NSObject> disconnect_observer = nil;
-	HashMap<int, GameController *> joypads;
-	HashMap<GCController *, int> controller_to_joy_id;
-
-	GCControllerPlayerIndex get_free_player_index();
-
-	void add_joypad(GCController *p_controller);
-	void remove_joypad(GCController *p_controller);
-
+class JoltMath {
 public:
-	JoypadApple();
-	~JoypadApple();
+	// Note that `p_basis` is mutated to be right-handed orthonormal.
+	static void decompose(Basis &p_basis, Vector3 &r_scale);
 
-	void joypad_vibration_start(GameController &p_joypad, float p_weak_magnitude, float p_strong_magnitude, float p_duration, uint64_t p_timestamp) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0));
-	void joypad_vibration_stop(GameController &p_joypad, uint64_t p_timestamp) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0));
+	// Note that `p_transform` is mutated to be right-handed orthonormal.
+	static _FORCE_INLINE_ void decompose(Transform3D &p_transform, Vector3 &r_scale) {
+		decompose(p_transform.basis, r_scale);
+	}
 
-	void process_joypads();
+	static _FORCE_INLINE_ void decomposed(const Basis &p_basis, Basis &r_new_basis, Vector3 &r_scale) {
+		Basis new_basis = p_basis;
+		decompose(new_basis, r_scale);
+		r_new_basis = new_basis;
+	}
+
+	static _FORCE_INLINE_ void decomposed(const Transform3D &p_transform, Transform3D &r_new_transform, Vector3 &r_scale) {
+		Transform3D new_transform;
+		decompose(new_transform, r_scale);
+		r_new_transform = new_transform;
+	}
 };
+
+#endif // JOLT_MATH_FUNCS_H
