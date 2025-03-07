@@ -18,7 +18,6 @@ using std::u32string, std::map;
 namespace fs = std::filesystem;
 
 class ConfigFile {
-private:
 	map<u32string, u32string> _data;
 
 public:

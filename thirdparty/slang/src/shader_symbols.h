@@ -34,7 +34,7 @@ public:
 	error::ErrorOpt add_float_parameter_semantic(int p_index, const std::string &p_name);
 
 	optional<ShaderBufferSemanticMapRef> get_buffer_semantic_for_uniform(const std::string &p_name) const;
-	bool texture_semantic_is_array(compiled::ShaderTextureSemantic p_semantic) const {
+	static bool texture_semantic_is_array(compiled::ShaderTextureSemantic p_semantic) {
 		return texture_semantic_arrays.find(p_semantic) != texture_semantic_arrays.end();
 	};
 	optional<ShaderBufferSemanticMapRef> get_texture_semantic_for_uniform_name(const std::string &p_name) const;

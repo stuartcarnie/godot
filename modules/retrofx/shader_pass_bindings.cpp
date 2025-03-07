@@ -4,8 +4,7 @@
 
 #include "shader_pass_bindings.h"
 
-namespace shader {
-namespace pass {
+namespace shader::pass {
 
 void BufferBinding::update_data() {
 	if (data.size() == 0) {
@@ -55,5 +54,4 @@ void PushBufferBinding::free(RD *p_rd) {
 	binding.free(p_rd);
 }
 
-} // namespace pass
-} //namespace shader
+}

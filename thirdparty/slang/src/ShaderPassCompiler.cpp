@@ -367,7 +367,6 @@ result::Result<ShaderPassReflection> ShaderPassCompiler::reflect(int p_pass_numb
 	// vertex Push binding
 	if (auto result = one_or_none(vs_res.push_constant_buffers); result.is_ok() && result.ok() != nullptr) {
 		auto &res = *result.take();
-		auto dset = p_vert->get_decoration(res.id, spv::DecorationDescriptorSet);
 		ref.push.size = std::max(ref.push.size, (int)p_vert->get_declared_struct_size(p_vert->get_type(res.base_type_id)));
 		ref.push.stage = STAGE_VERTEX;
 
@@ -381,7 +380,6 @@ result::Result<ShaderPassReflection> ShaderPassCompiler::reflect(int p_pass_numb
 	// fragment Push binding
 	if (auto result = one_or_none(fs_res.push_constant_buffers); result.is_ok() && result.ok() != nullptr) {
 		auto &res = *result.take();
-		auto dset = p_frag->get_decoration(res.id, spv::DecorationDescriptorSet);
 		ref.push.size = std::max(ref.push.size, (int)p_frag->get_declared_struct_size(p_frag->get_type(res.base_type_id)));
 		ref.push.stage |= STAGE_FRAGMENT;
 

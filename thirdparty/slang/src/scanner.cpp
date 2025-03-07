@@ -30,7 +30,7 @@ char32_t const *skip_whitespace(char32_t const *p_str, char32_t const *p_end) {
 }
 
 static bool is_identifier(char32_t c) {
-	return u_isalnum(c) || c == U'_';
+	return u_isalnum(c) || c == U'_' || c == U'-';
 }
 
 std::u32string scan_identifier(char32_t const *&ptr, char32_t const *end) {

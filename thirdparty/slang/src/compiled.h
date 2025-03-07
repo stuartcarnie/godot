@@ -10,8 +10,8 @@
 
 using std::optional;
 
-namespace slang {
-namespace compiled {
+namespace slang::compiled {
+
 enum class ScaleType {
 	Source,
 	Absolute,
@@ -21,9 +21,9 @@ enum class ScaleType {
 struct Scale {
 private:
 	Scale(ScaleType p_type, double p_val) :
-			type(p_type), scale(p_val) {}
+		type(p_type), scale(p_val) {}
 	Scale(ScaleType p_type, int p_val) :
-			type(p_type), size(p_val) {}
+		type(p_type), size(p_val) {}
 
 public:
 	ScaleType type;
@@ -293,7 +293,7 @@ struct BufferUniformDescriptor {
 
 	BufferUniformDescriptor() {}
 	BufferUniformDescriptor(ShaderBufferSemantic p_semantic, optional<int> p_index, std::string p_name, int p_size, int p_offset) :
-			semantic(p_semantic), index(p_index), name(p_name), size(p_size), offset(p_offset) {}
+		semantic(p_semantic), index(p_index), name(p_name), size(p_size), offset(p_offset) {}
 };
 
 struct TextureDescriptor {
@@ -306,7 +306,7 @@ struct TextureDescriptor {
 
 	TextureDescriptor() {}
 	TextureDescriptor(std::string p_name, ShaderTextureSemantic p_semantic, int p_binding, Wrap p_wrap, Filter p_filter, int p_index) :
-			name(p_name), semantic(p_semantic), binding(p_binding), wrap(p_wrap), filter(p_filter), index(p_index) {}
+		name(p_name), semantic(p_semantic), binding(p_binding), wrap(p_wrap), filter(p_filter), index(p_index) {}
 };
 
 enum Stage {
@@ -329,7 +329,7 @@ struct UBOBufferDescriptor {
 
 	UBOBufferDescriptor() {}
 	UBOBufferDescriptor(uint32_t p_binding, Stage p_stage, int p_size, std::vector<BufferUniformDescriptor> p_uniforms) :
-			binding(p_binding), stage(p_stage), size(p_size), uniforms(p_uniforms) {}
+		binding(p_binding), stage(p_stage), size(p_size), uniforms(p_uniforms) {}
 };
 
 struct PushBufferDescriptor {
@@ -343,7 +343,7 @@ struct PushBufferDescriptor {
 
 	PushBufferDescriptor() {}
 	PushBufferDescriptor(Stage p_stage, int p_size, std::vector<BufferUniformDescriptor> p_uniforms) :
-			stage(p_stage), size(p_size), uniforms(p_uniforms) {}
+		stage(p_stage), size(p_size), uniforms(p_uniforms) {}
 };
 
 struct OutputFormat {
@@ -410,5 +410,4 @@ struct Hashers {
 	}
 };
 
-} //namespace compiled
-} //namespace slang
+}

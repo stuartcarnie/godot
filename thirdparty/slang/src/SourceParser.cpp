@@ -73,7 +73,7 @@ error::ErrorOpt SourceParser::load(fs::path p_source_path, bool p_is_root) {
 				include_path = canonical(base_path / include_path);
 			}
 
-			if (_included.find(include_path) == _included.end()) {
+			if (!_included.contains(include_path)) {
 				auto err = load(include_path, false);
 				if (err.has_value()) {
 					return err;
@@ -175,7 +175,7 @@ variant<bool, error::Error> SourceParser::process_pragma(const u32string &p_line
 	return true;
 }
 
-u32string SourceParser::get_source(const u32string &p_stage) {
+u32string SourceParser::get_source(const u32string &p_stage) const {
 	std::vector<u32string> src;
 
 	bool keep = true;

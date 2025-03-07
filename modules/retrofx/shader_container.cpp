@@ -7,7 +7,6 @@
 #include <string>
 #include <SlangShader.h>
 #include <ShaderPassCompiler.h>
-#include <glslang/Public/ShaderLang.h>
 
 namespace fs = std::filesystem;
 
@@ -16,18 +15,16 @@ std::optional<FileShaderContainer> FileShaderContainer::create(const String &p_p
 
 	SlangShaderRef ref;
 	if (auto res = SlangShader::create(path); res.is_err()) {
-		// print_error(vformat("Failed to load shader %s : %s", p_path, res.take_err().to_string()));
+		print_error(vformat("Failed to load shader %s : %s", p_path, String(res.take_err().to_string().c_str())));
 		return std::nullopt;
 	} else {
 		ref = res.take();
 	}
 
-	// glslang::InitializeProcess();
-
 	ShaderPassCompiler compiler(ref);
 	auto res = compiler.compile(ShaderCompilerOptions());
 	if (res.is_err()) {
-		// print_error(vformat("Failed to compile shader %s : %s", p_path, res.take_err().to_string()));
+		print_error(vformat("Failed to compile shader %s : %s", p_path, String(res.take_err().to_string().c_str())));
 		return std::nullopt;
 	}
 

@@ -204,8 +204,7 @@ bool RetroFXRect::_get(const StringName &p_name, Variant &r_ret) const {
 		return false;
 	}
 
-	double value;
-	if (shader_chain->get_parameter_value_by_name(parts[1], value)) {
+	if (double value; shader_chain->get_parameter_value_by_name(parts[1], value)) {
 		r_ret = value;
 		return true;
 	}
@@ -220,7 +219,7 @@ bool RetroFXRect::_set(const StringName &p_name, const Variant &p_value) {
 		return false;
 	}
 
-	// for boolean values, convert to 0 or 1
+	// For boolean values, convert to 0 or 1
 	double value = p_value;
 	if (Math::is_zero_approx(value)) {
 		value = 0.0;
@@ -240,8 +239,27 @@ void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
 
 	TypedArray<ShaderParameter> params = shader_chain->get_parameters();
 	for (Ref<ShaderParameter> const param : params) {
+		if (param->is_boolean()) {
+			p_list->push_back(PropertyInfo(Variant::BOOL, vformat("parameters/%s", param->get_name()), PROPERTY_HINT_NONE));
+		} else {
+			Variant::Type type;
+			String hint_string;
+			const PropertyHint hint = Math::is_equal_approx(param->get_minimum(), param->get_maximum()) ? PROPERTY_HINT_NONE : PROPERTY_HINT_RANGE;
+			const bool has_step = !Math::is_zero_approx(param->get_step());
 
-		p_list->push_back(PropertyInfo(Variant::FLOAT, vformat("parameters/%s", param->get_name()), PROPERTY_HINT_NONE));
+			if (param->is_integer()) {
+				type = Variant::INT;
+				if (hint == PROPERTY_HINT_RANGE) {
+					hint_string = has_step ? vformat("%d,%d,%d", int(param->get_minimum()), int(param->get_maximum()), int(param->get_step())) : vformat("%d,%d", int(param->get_minimum()), int(param->get_maximum()));
+				}
+			} else {
+				type = Variant::FLOAT;
+				if (hint == PROPERTY_HINT_RANGE) {
+					hint_string = has_step ? vformat("%.2f,%.2f,%.2f", param->get_minimum(), param->get_maximum(), param->get_step()) : vformat("%.2f,%.2f", param->get_minimum(), param->get_maximum());
+				}
+			}
+			p_list->push_back(PropertyInfo(type, vformat("parameters/%s", param->get_name()), hint, hint_string));
+		}
 	}
 }
 

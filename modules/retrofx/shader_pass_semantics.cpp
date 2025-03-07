@@ -4,8 +4,7 @@
 
 #include "shader_pass_semantics.h"
 
-namespace shader {
-namespace pass {
+namespace shader::pass {
 
 compiled::ShaderBufferSemantic to_buffer_semantic(const compiled::ShaderTextureSemantic p_sem) {
 	switch (p_sem) {
@@ -24,5 +23,4 @@ compiled::ShaderBufferSemantic to_buffer_semantic(const compiled::ShaderTextureS
 	}
 }
 
-} //namespace pass
-} //namespace shader
+}

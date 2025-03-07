@@ -53,7 +53,7 @@ map<std::string, ShaderBufferSemanticMapRef> ShaderSymbols::semantic_uniform_nam
 };
 
 error::ErrorOpt ShaderSymbols::add_texture_semantic(compiled::ShaderTextureSemantic p_semantic, int p_index, const std::string &p_name) {
-	if (texture_semantic_map.find(p_name) != texture_semantic_map.end()) {
+	if (texture_semantic_map.contains(p_name)) {
 		char *raw_str = nullptr;
 		asprintf(&raw_str, "pass %d: alias %s already exists for texture semantic %s", p_index, p_name.c_str(), compiled::to_cstr(p_semantic));
 		std::unique_ptr<char, decltype(&free)> str(raw_str, free);
@@ -66,7 +66,7 @@ error::ErrorOpt ShaderSymbols::add_texture_semantic(compiled::ShaderTextureSeman
 }
 
 error::ErrorOpt ShaderSymbols::add_texture_buffer_semantic(compiled::ShaderBufferSemantic p_semantic, int p_index, const std::string &p_name) {
-	if (texture_uniform_semantic_map.find(p_name) != texture_uniform_semantic_map.end()) {
+	if (texture_uniform_semantic_map.contains(p_name)) {
 		char *raw_str = nullptr;
 		asprintf(&raw_str, "pass %d: alias %s already exists for texture buffer semantic %s", p_index, p_name.c_str(), compiled::to_cstr(p_semantic));
 		std::unique_ptr<char, decltype(&free)> str(raw_str, free);
@@ -78,7 +78,7 @@ error::ErrorOpt ShaderSymbols::add_texture_buffer_semantic(compiled::ShaderBuffe
 }
 
 error::ErrorOpt ShaderSymbols::add_float_parameter_semantic(int p_index, const std::string &p_name) {
-	if (float_parameter_semantic_map.find(p_name) != float_parameter_semantic_map.end()) {
+	if (float_parameter_semantic_map.contains(p_name)) {
 		char *raw_str = nullptr;
 		asprintf(&raw_str, "pass %d: float parameter %s already exists", p_index, p_name.c_str());
 		std::unique_ptr<char, decltype(&free)> str(raw_str, free);
@@ -120,7 +120,7 @@ optional<ShaderTextureSemanticMapRef> ShaderSymbols::get_texture_semantic_for_na
 
 optional<ShaderBufferSemanticMapRef> ShaderSymbols::find_texture_semantic_for_uniform_name(const std::string &p_name) const {
 	for (auto &it : texture_semantic_uniform_names) {
-		if (uniform_semantic_arrays.find(it.second) != uniform_semantic_arrays.end()) {
+		if (uniform_semantic_arrays.contains(it.second)) {
 			// An array texture may be referred to as PassOutput0, PassOutput1, etc
 			// if p_name starts with the semantic name, then it's a match
 			if (p_name.rfind(it.first, 0) == 0) {
@@ -137,7 +137,7 @@ optional<ShaderBufferSemanticMapRef> ShaderSymbols::find_texture_semantic_for_un
 
 optional<ShaderTextureSemanticMapRef> ShaderSymbols::find_texture_semantic_for_name(const std::string &p_name) const {
 	for (auto &it : texture_semantic_names) {
-		if (texture_semantic_arrays.find(it.second) != texture_semantic_arrays.end()) {
+		if (texture_semantic_arrays.contains(it.second)) {
 			// An array texture may be referred to as PassOutput0, PassOutput1, etc
 			// if p_name starts with the semantic name, then it's a match
 			if (p_name.rfind(it.first, 0) == 0) {

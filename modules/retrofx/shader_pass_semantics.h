@@ -8,8 +8,7 @@
 
 #include <compiled.h>
 
-namespace shader {
-namespace pass {
+namespace shader::pass {
 
 using namespace slang;
 
@@ -62,5 +61,4 @@ struct Semantics {
 	}
 };
 
-} //namespace pass
-} //namespace shader
+}

@@ -87,6 +87,8 @@ Wrap wrap_mode_from_string(optional<std::u32string> const &p_val) {
 
 char const *to_cstr(Filter p_val) {
 	switch (p_val) {
+		default:
+			return nullptr;
 		case Filter::UNSPECIFIED:
 			return "Unspecified";
 		case Filter::LINEAR:
@@ -98,6 +100,8 @@ char const *to_cstr(Filter p_val) {
 
 char const *to_cstr(Wrap p_val) {
 	switch (p_val) {
+		default:
+			return nullptr;
 		case Wrap::BORDER:
 			return "Border";
 		case Wrap::EDGE:
@@ -111,6 +115,8 @@ char const *to_cstr(Wrap p_val) {
 
 char const *to_cstr(ShaderTextureSemantic p_val) {
 	switch (p_val) {
+		default:
+			return nullptr;
 		case ShaderTextureSemantic::ORIGINAL:
 			return "Original";
 		case ShaderTextureSemantic::SOURCE:
@@ -160,6 +166,8 @@ std::string to_string(ShaderTextureSemantic p_val) {
 
 char const *to_cstr(ShaderBufferSemantic p_val) {
 	switch (p_val) {
+		default:
+			return nullptr;
 		case ShaderBufferSemantic::MVP:
 			return "MVP";
 		case ShaderBufferSemantic::OUTPUT_SIZE:

@@ -6,10 +6,7 @@
 
 #include "servers/rendering/rendering_device.h"
 
-#include <compiled.h>
-
-namespace shader {
-namespace pass {
+namespace shader::pass {
 
 struct UniformBinding {
 	void *data = nullptr;
@@ -82,5 +79,4 @@ struct Bindings {
 	}
 };
 
-} //namespace pass
-} //namespace shader
+}

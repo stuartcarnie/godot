@@ -253,7 +253,7 @@ void FilterChain::update_buffers_for_passes() {
 		pass.frame_direction = uint32_t(frame_direction);
 		pass.frame_count = frame_count;
 		if (pass.frame_count_mod != 0) {
-			pass.frame_count_mod %= pass.frame_count_mod;
+			pass.frame_count %= pass.frame_count_mod;
 		}
 
 		pass.bindings.ubo.update(rd);

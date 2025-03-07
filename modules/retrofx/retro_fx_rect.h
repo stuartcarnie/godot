@@ -112,7 +112,7 @@ public:
 	String get_shader_path() const;
 
 	RetroFXRect();
-	~RetroFXRect();
+	~RetroFXRect() override;
 };
 
 VARIANT_ENUM_CAST(RetroFXRect::ExpandMode);

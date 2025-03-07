@@ -31,7 +31,7 @@ class SourceParser {
 	optional<std::u32string> _vert_source;
 	optional<std::u32string> _frag_source;
 
-	std::u32string get_source(const std::u32string &p_stage);
+	std::u32string get_source(const std::u32string &p_stage) const;
 
 public:
 	optional<std::u32string> name;
