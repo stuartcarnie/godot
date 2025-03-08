@@ -26,6 +26,8 @@ target_sources(godot-module-jolt-physics PRIVATE
         jolt_physics_server_3d.h
         jolt_project_settings.cpp
         jolt_project_settings.h
+        misc/jolt_math_funcs.cpp
+        misc/jolt_math_funcs.h
         misc/jolt_stream_wrappers.h
         misc/jolt_type_conversions.h
         objects/jolt_area_3d.cpp

@@ -56,6 +56,8 @@ target_sources(godot-scene-gui PRIVATE
         item_list.h
         label.cpp
         label.h
+        licenses_dialog.cpp
+        licenses_dialog.h
         line_edit.cpp
         line_edit.h
         link_button.cpp

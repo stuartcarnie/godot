@@ -102,14 +102,6 @@ target_sources(godot-scene-3d PRIVATE
         voxelizer.h
         world_environment.cpp
         world_environment.h
-        xr_body_modifier_3d.cpp
-        xr_body_modifier_3d.h
-        xr_face_modifier_3d.cpp
-        xr_face_modifier_3d.h
-        xr_hand_modifier_3d.cpp
-        xr_hand_modifier_3d.h
-        xr_nodes.cpp
-        xr_nodes.h
 )
 # [[[end]]]
 target_link_libraries(godot-scene-3d PUBLIC godot-os godot-templates godot-thirdparty-misc zlib)
