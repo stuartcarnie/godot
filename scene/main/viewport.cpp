@@ -697,7 +697,7 @@ void Viewport::_process_picking() {
 		physics_picking_events.clear();
 		return;
 	}
-#ifndef _3D_DISABLED
+#ifndef XR_DISABLED
 	if (use_xr) {
 		if (XRServer::get_singleton() != nullptr) {
 			Ref<XRInterface> xr_interface = XRServer::get_singleton()->get_primary_interface();
@@ -708,7 +708,7 @@ void Viewport::_process_picking() {
 			}
 		}
 	}
-#endif
+#endif // XR_DISABLED
 
 	_drop_physics_mouseover(true);
 
@@ -1054,7 +1054,7 @@ bool Viewport::_set_size(const Size2i &p_size, const Size2 &p_size_2d_override, 
 }
 
 Size2i Viewport::_get_size() const {
-#ifndef _3D_DISABLED
+#ifndef XR_DISABLED
 	if (use_xr) {
 		if (XRServer::get_singleton() != nullptr) {
 			Ref<XRInterface> xr_interface = XRServer::get_singleton()->get_primary_interface();
@@ -1065,7 +1065,7 @@ Size2i Viewport::_get_size() const {
 		}
 		return Size2i();
 	}
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 
 	return size;
 }
@@ -2159,6 +2159,10 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 				set_input_as_handled();
 				return;
 			}
+		}
+
+		if (!Engine::get_singleton()->is_editor_hint() && !Engine::get_singleton()->is_project_manager_hint() && p_event->is_action_pressed("ui_toggle_licenses_dialog")) {
+			SceneTree::get_singleton()->set_licenses_dialog_visible(!SceneTree::get_singleton()->is_licenses_dialog_visible());
 		}
 
 		if (gui.key_focus && !gui.key_focus->is_visible_in_tree()) {

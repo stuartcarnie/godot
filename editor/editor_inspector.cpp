@@ -1888,6 +1888,15 @@ void EditorInspectorSection::gui_input(const Ref<InputEvent> &p_event) {
 	} else if (mb.is_valid() && !mb->is_pressed()) {
 		queue_redraw();
 	}
+
+	Ref<InputEventMouseMotion> mm = p_event;
+	if (mm.is_valid()) {
+		int header_height = _get_header_height();
+		Vector2 previous = mm->get_position() - mm->get_relative();
+		if ((mm->get_position().y >= header_height) != (previous.y >= header_height)) {
+			queue_redraw();
+		}
+	}
 }
 
 String EditorInspectorSection::get_section() const {
@@ -2090,7 +2099,7 @@ void EditorInspectorArray::_panel_gui_input(Ref<InputEvent> p_event, int p_index
 			popup_array_index_pressed = begin_array_index + p_index;
 			rmb_popup->set_item_disabled(OPTION_MOVE_UP, popup_array_index_pressed == 0);
 			rmb_popup->set_item_disabled(OPTION_MOVE_DOWN, popup_array_index_pressed == count - 1);
-			rmb_popup->set_position(get_screen_position() + mb->get_position());
+			rmb_popup->set_position(array_elements[p_index].panel->get_screen_position() + mb->get_position());
 			rmb_popup->reset_size();
 			rmb_popup->popup();
 		}

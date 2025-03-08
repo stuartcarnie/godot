@@ -7421,7 +7421,6 @@ Key TextEdit::_get_menu_action_accelerator(const String &p_action) {
 void TextEdit::_generate_context_menu() {
 	menu = memnew(PopupMenu);
 	add_child(menu, false, INTERNAL_MODE_FRONT);
-	menu->force_parent_owned();
 
 	menu_dir = memnew(PopupMenu);
 	menu_dir->add_radio_check_item(ETR("Same as Layout Direction"), MENU_DIR_INHERITED);
@@ -8597,7 +8596,7 @@ void TextEdit::_base_insert_text(int p_line, int p_char, const String &p_text, i
 	}
 
 	/* STEP 3: Separate dest string in pre and post text. */
-	String postinsert_text = text[p_line].substr(p_char, text[p_line].size());
+	String postinsert_text = text[p_line].substr(p_char);
 
 	substrings.write[0] = text[p_line].substr(0, p_char) + substrings[0];
 	substrings.write[substrings.size() - 1] += postinsert_text;
@@ -8661,7 +8660,7 @@ void TextEdit::_base_remove_text(int p_from_line, int p_from_column, int p_to_li
 	ERR_FAIL_COND(p_to_line == p_from_line && p_to_column < p_from_column); // 'from > to'.
 
 	String pre_text = text[p_from_line].substr(0, p_from_column);
-	String post_text = text[p_to_line].substr(p_to_column, text[p_to_line].length());
+	String post_text = text[p_to_line].substr(p_to_column);
 
 	text.remove_range(p_from_line, p_to_line);
 	text.set(p_from_line, pre_text + post_text, structured_text_parser(st_parser, st_args, pre_text + post_text));

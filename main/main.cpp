@@ -713,9 +713,9 @@ Error Main::test_setup() {
 
 	/** INITIALIZE SERVERS **/
 	register_server_types();
-#ifndef _3D_DISABLED
+#ifndef XR_DISABLED
 	XRServer::set_xr_mode(XRServer::XRMODE_OFF); // Skip in tests.
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 	initialize_modules(MODULE_INITIALIZATION_LEVEL_SERVERS);
 	GDExtensionManager::get_singleton()->initialize_extensions(GDExtension::INITIALIZATION_LEVEL_SERVERS);
 
@@ -1734,7 +1734,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 			OS::get_singleton()->disable_crash_handler();
 		} else if (arg == "--skip-breakpoints") {
 			skip_breakpoints = true;
-#ifndef _3D_DISABLED
+#ifndef XR_DISABLED
 		} else if (arg == "--xr-mode") {
 			if (N) {
 				String xr_mode = N->get().to_lower();
@@ -1753,7 +1753,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 				OS::get_singleton()->print("Missing --xr-mode argument, aborting.\n");
 				goto error;
 			}
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 		} else if (arg == "--benchmark") {
 			OS::get_singleton()->set_use_benchmark(true);
 		} else if (arg == "--benchmark-file") {
@@ -3225,7 +3225,7 @@ Error Main::setup2(bool p_show_boot_logo) {
 		OS::get_singleton()->benchmark_end_measure("Servers", "Audio");
 	}
 
-#ifndef _3D_DISABLED
+#ifndef XR_DISABLED
 	/* Initialize XR Server */
 
 	{
@@ -3235,7 +3235,7 @@ Error Main::setup2(bool p_show_boot_logo) {
 
 		OS::get_singleton()->benchmark_end_measure("Servers", "XR");
 	}
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 
 	OS::get_singleton()->benchmark_end_measure("Startup", "Servers");
 
@@ -4265,7 +4265,7 @@ int Main::start() {
 							Ref<DirAccess> da = DirAccess::open(local_game_path.substr(0, sep));
 							if (da.is_valid()) {
 								local_game_path = da->get_current_dir().path_join(
-										local_game_path.substr(sep + 1, local_game_path.length()));
+										local_game_path.substr(sep + 1));
 							}
 						}
 					}
@@ -4458,9 +4458,9 @@ bool Main::iteration() {
 	bool exit = false;
 
 	// process all our active interfaces
-#ifndef _3D_DISABLED
+#ifndef XR_DISABLED
 	XRServer::get_singleton()->_process();
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 
 	NavigationServer2D::get_singleton()->sync();
 	NavigationServer3D::get_singleton()->sync();
@@ -4714,13 +4714,13 @@ void Main::cleanup(bool p_force) {
 	//clear global shader variables before scene and other graphics stuff are deinitialized.
 	rendering_server->global_shader_parameters_clear();
 
-#ifndef _3D_DISABLED
+#ifndef XR_DISABLED
 	if (xr_server) {
 		// Now that we're unregistering properly in plugins we need to keep access to xr_server for a little longer
 		// We do however unset our primary interface
 		xr_server->set_primary_interface(Ref<XRInterface>());
 	}
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 
 #ifdef TOOLS_ENABLED
 	GDExtensionManager::get_singleton()->deinitialize_extensions(GDExtension::INITIALIZATION_LEVEL_EDITOR);
