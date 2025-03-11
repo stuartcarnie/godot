@@ -4,6 +4,7 @@
     "editor_build": @EDITOR_BUILD@,
     "modules_enabled_by_default" : true,
     "disable_3d" : false,
+    "disable_xr": @DISABLE_XR_B@,
     "vulkan" : @WANT_VULKAN_B@,
     "metal" : @WANT_METAL_B@,
     "openxr" : @WANT_OPENXR_B@,
