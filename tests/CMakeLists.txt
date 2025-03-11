@@ -76,6 +76,7 @@ target_sources(tests PRIVATE
         core/templates/test_oa_hash_map.h
         core/templates/test_paged_array.h
         core/templates/test_rid.h
+        core/templates/test_span.h
         core/templates/test_vector.h
         core/test_crypto.h
         core/test_ctz.h

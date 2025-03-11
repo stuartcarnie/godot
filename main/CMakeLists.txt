@@ -99,12 +99,12 @@ target_include_directories(Godot PUBLIC
 )
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-set_target_properties(Godot PROPERTIES
-        XCODE_ATTRIBUTE_INFOPLIST_FILE ${CMAKE_SOURCE_DIR}/misc/dist/macos_tools.app/Contents/Info.plist
-        XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ${CMAKE_SOURCE_DIR}/misc/dist/macos/editor.entitlements
-        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${APPLE_BUNDLE_IDENTIFIER}
-        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/misc/dist/macos_tools.app/Contents/Info.plist
-)
+    set_target_properties(Godot PROPERTIES
+            XCODE_ATTRIBUTE_INFOPLIST_FILE ${CMAKE_SOURCE_DIR}/misc/dist/macos_tools.app/Contents/Info.plist
+            XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ${CMAKE_SOURCE_DIR}/misc/dist/macos/editor_debug.entitlements
+            XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${APPLE_BUNDLE_IDENTIFIER}
+            MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/misc/dist/macos_tools.app/Contents/Info.plist
+    )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set_target_properties(Godot PROPERTIES
             XCODE_ATTRIBUTE_INFOPLIST_FILE ${CMAKE_SOURCE_DIR}/misc/dist/ios/Info.plist

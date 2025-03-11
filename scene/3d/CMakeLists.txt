@@ -1,5 +1,9 @@
 add_subdirectory(physics)
 
+if (NOT DISABLE_XR)
+    add_subdirectory(xr)
+endif ()
+
 godot_add_library(godot-scene-3d FOLDER scene STATIC)
 # [[[cog
 #   import cog

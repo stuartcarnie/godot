@@ -53,6 +53,11 @@ set_property(CACHE PRECISION PROPERTY STRINGS single double)
 option(ENABLE_MINIZIP "Enable ZIP archive support using minizip" ON)
 option(ENABLE_BROTLI "Enable Brotli for decompresson and WOFF2 fonts support" ON)
 option(DISABLE_EXCEPTIONS "Force disabling exception handling code" ON)
+option(DISABLE_XR "Disable XR nodes and server" OFF)
+
+if (DISABLE_XR)
+    add_compile_definitions(DISABLE_XR)
+endif ()
 
 # Custom modules
 
@@ -410,6 +415,7 @@ block(SCOPE_FOR VARIABLES)
     json_bool(EDITOR_BUILD ${WANT_EDITOR})
     json_bool(WANT_OPENXR_B ${WANT_OPENXR})
     json_bool(WANT_VULKAN_B ${WANT_VULKAN})
+    json_bool(DISABLE_XR_B ${DISABLE_XR})
     json_bool(WANT_METAL_B ${WANT_METAL})
     # custom modules
     json_bool(WANT_RETROFX_B ${WANT_RETROFX})

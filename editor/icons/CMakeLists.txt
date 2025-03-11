@@ -228,6 +228,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         DirectionalLight2D.svg
         DirectionalLight3D.svg
         DistractionFree.svg
+        DragHandle.svg
         Duplicate.svg
         Edit.svg
         EditAddRemove.svg
@@ -485,7 +486,6 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Label.svg
         Label3D.svg
         LabelSettings.svg
-        LicensesDialog.svg
         LightOccluder2D.svg
         LightmapGI.svg
         LightmapGIData.svg
@@ -591,6 +591,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         OneWayTile.svg
         Onion.svg
         OptionButton.svg
+        Orientation.svg
         OverbrightIndicator.svg
         Override.svg
         PackedByteArray.svg
@@ -702,6 +703,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Rect2i.svg
         Rectangle.svg
         RectangleShape2D.svg
+        Redo.svg
         ReferenceRect.svg
         ReflectionProbe.svg
         RegionEdit.svg

@@ -9,8 +9,8 @@ if(${WANT_COREMIDI})
     #   cog.outl(')')
     # ]]]
     target_sources(coremidi PRIVATE
-            midi_driver_coremidi.cpp
             midi_driver_coremidi.h
+            midi_driver_coremidi.mm
     )
     # [[[end]]]
 

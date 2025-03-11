@@ -189,6 +189,8 @@ target_sources(godot-editor PRIVATE
         project_manager.h
         project_settings_editor.cpp
         project_settings_editor.h
+        project_upgrade_tool.cpp
+        project_upgrade_tool.h
         property_selector.cpp
         property_selector.h
         register_editor_types.cpp
@@ -212,10 +214,6 @@ target_sources(godot-editor PRIVATE
         shader_create_dialog.h
         shader_globals_editor.cpp
         shader_globals_editor.h
-        surface_upgrade_tool.cpp
-        surface_upgrade_tool.h
-        uid_upgrade_tool.cpp
-        uid_upgrade_tool.h
         window_wrapper.cpp
         window_wrapper.h
 )

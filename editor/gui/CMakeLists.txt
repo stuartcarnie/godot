@@ -36,6 +36,8 @@ target_sources(godot-editor-gui PRIVATE
         editor_zoom_widget.h
         scene_tree_editor.cpp
         scene_tree_editor.h
+        touch_actions_panel.cpp
+        touch_actions_panel.h
 )
 # [[[end]]]
 target_link_libraries(godot-editor-gui PRIVATE godot-config)
