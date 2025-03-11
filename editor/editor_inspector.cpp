@@ -33,6 +33,7 @@
 
 #include "core/os/keyboard.h"
 #include "editor/add_metadata_dialog.h"
+#include "editor/debugger/editor_debugger_inspector.h"
 #include "editor/doc_tools.h"
 #include "editor/editor_feature_profile.h"
 #include "editor/editor_main_screen.h"
@@ -615,6 +616,16 @@ Object *EditorProperty::get_edited_object() {
 
 StringName EditorProperty::get_edited_property() const {
 	return property;
+}
+
+Variant EditorProperty::get_edited_property_display_value() const {
+	ERR_FAIL_NULL_V(object, Variant());
+	Control *control = Object::cast_to<Control>(object);
+	if (checkable && !checked && control && String(property).begins_with("theme_override_")) {
+		return control->get_used_theme_item(property);
+	} else {
+		return get_edited_property_value();
+	}
 }
 
 EditorInspector *EditorProperty::get_parent_inspector() const {
@@ -4282,6 +4293,10 @@ void EditorInspector::_edit_set(const String &p_name, const Variant &p_value, bo
 		Object::cast_to<MultiNodeEdit>(object)->set_property_field(p_name, p_value, p_changed_field);
 		_edit_request_change(object, p_name);
 		emit_signal(_prop_edited, p_name);
+	} else if (Object::cast_to<EditorDebuggerRemoteObjects>(object)) {
+		Object::cast_to<EditorDebuggerRemoteObjects>(object)->set_property_field(p_name, p_value, p_changed_field);
+		_edit_request_change(object, p_name);
+		emit_signal(_prop_edited, p_name);
 	} else {
 		undo_redo->create_action(vformat(TTR("Set %s"), p_name), UndoRedo::MERGE_ENDS);
 		undo_redo->add_do_property(object, p_name, p_value);
@@ -4461,13 +4476,26 @@ void EditorInspector::_property_checked(const String &p_path, bool p_checked) {
 			_edit_set(p_path, Variant(), false, "");
 		} else {
 			Variant to_create;
-			List<PropertyInfo> pinfo;
-			object->get_property_list(&pinfo);
-			for (const PropertyInfo &E : pinfo) {
-				if (E.name == p_path) {
-					Callable::CallError ce;
-					Variant::construct(E.type, to_create, nullptr, 0, ce);
-					break;
+			Control *control = Object::cast_to<Control>(object);
+			bool skip = false;
+			if (control && p_path.begins_with("theme_override_")) {
+				to_create = control->get_used_theme_item(p_path);
+				Ref<Resource> resource = to_create;
+				if (resource.is_valid()) {
+					to_create = resource->duplicate();
+				}
+				skip = true;
+			}
+
+			if (!skip) {
+				List<PropertyInfo> pinfo;
+				object->get_property_list(&pinfo);
+				for (const PropertyInfo &E : pinfo) {
+					if (E.name == p_path) {
+						Callable::CallError ce;
+						Variant::construct(E.type, to_create, nullptr, 0, ce);
+						break;
+					}
 				}
 			}
 			_edit_set(p_path, to_create, false, "");
