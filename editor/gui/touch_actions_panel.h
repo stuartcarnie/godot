@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  uid_upgrade_tool.h                                                    */
+/*  touch_actions_panel.h                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,52 +28,44 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef TOUCH_ACTIONS_PANEL_H
+#define TOUCH_ACTIONS_PANEL_H
 
-#include "scene/gui/dialogs.h"
+#include "scene/gui/panel_container.h"
 
-class EditorFileSystemDirectory;
+class BoxContainer;
+class Button;
+class TextureRect;
 
-class UIDUpgradeTool : public Object {
-	GDCLASS(UIDUpgradeTool, Object);
+class TouchActionsPanel : public PanelContainer {
+	GDCLASS(TouchActionsPanel, PanelContainer);
 
-	inline static UIDUpgradeTool *singleton = nullptr;
+private:
+	BoxContainer *box = nullptr;
+	Button *save_button = nullptr;
+	Button *delete_button = nullptr;
+	Button *undo_button = nullptr;
+	Button *redo_button = nullptr;
 
-	static constexpr const char *UPGRADE_FINISHED = "upgrade_finished";
-	static constexpr const char *META_RESAVE_PATHS = "resave_paths";
+	TextureRect *drag_handle = nullptr;
+	Button *layout_toggle_button = nullptr;
+	Button *lock_panel_button = nullptr;
 
-	void _add_files(EditorFileSystemDirectory *p_dir, Vector<String> &r_resave_paths);
+	bool lock_panel_position = false;
+	bool dragging = false;
+	Vector2 drag_offset;
 
-protected:
-	static void _bind_methods();
-
-public:
-	static constexpr const char *META_UID_UPGRADE_TOOL = "uid_upgrade_tool";
-	static constexpr const char *META_RUN_ON_RESTART = "run_on_restart";
-
-	static UIDUpgradeTool *get_singleton() { return singleton; }
-
-	void prepare_upgrade();
-	void begin_upgrade();
-	void finish_upgrade();
-
-	UIDUpgradeTool();
-	~UIDUpgradeTool();
-};
-
-class UIDUpgradeDialog : public ConfirmationDialog {
-	GDCLASS(UIDUpgradeDialog, ConfirmationDialog);
-
-	static constexpr const char *UID_UPGRADE_LEARN_MORE = "uid_upgrade_learn_more";
-
-	Button *learn_more_button = nullptr;
-
-protected:
-	void _on_custom_action(const String &p_action);
 	void _notification(int p_what);
 
-public:
-	void popup_on_demand();
+	void _simulate_editor_shortcut(const String &p_shortcut_name);
+	void _simulate_key_press(Key p_keycode);
+	void _on_drag_handle_gui_input(const Ref<InputEvent> &p_event);
+	void _switch_layout();
+	void _lock_panel_toggled(bool p_pressed);
+	Button *_add_new_action_button(const String &p_shortcut, Key p_keycode = Key::NONE);
 
-	UIDUpgradeDialog();
+public:
+	TouchActionsPanel();
 };
+
+#endif // TOUCH_ACTIONS_PANEL_H
