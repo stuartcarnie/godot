@@ -5491,6 +5491,36 @@ void Node3DEditorViewport::_set_lock_view_rotation(bool p_lock_rotation) {
 	}
 }
 
+void Node3DEditorViewport::_add_advanced_debug_draw_mode_item(PopupMenu *p_popup, const String &p_name, int p_value, SupportedRenderingMethods p_rendering_methods, const String &p_tooltip) {
+	display_submenu->add_radio_check_item(p_name, p_value);
+
+	bool disabled = false;
+	String disabled_tooltip;
+	switch (p_rendering_methods) {
+		case SupportedRenderingMethods::ALL:
+			break;
+		case SupportedRenderingMethods::FORWARD_PLUS_MOBILE:
+			disabled = OS::get_singleton()->get_current_rendering_method() == "gl_compatibility";
+			disabled_tooltip = TTR("This debug draw mode is not supported when using the Compatibility rendering method.");
+			break;
+		case SupportedRenderingMethods::FORWARD_PLUS:
+			disabled = OS::get_singleton()->get_current_rendering_method() == "gl_compatibility" || OS::get_singleton()->get_current_rendering_method() == "mobile";
+			disabled_tooltip = TTR("This debug draw mode is not supported when using the Mobile or Compatibility rendering methods.");
+			break;
+	}
+
+	display_submenu->set_item_disabled(-1, disabled);
+	String tooltip = p_tooltip;
+	if (disabled) {
+		if (tooltip.is_empty()) {
+			tooltip = disabled_tooltip;
+		} else {
+			tooltip += "\n\n" + disabled_tooltip;
+		}
+	}
+	display_submenu->set_item_tooltip(-1, tooltip);
+}
+
 Node3DEditorViewport::Node3DEditorViewport(Node3DEditor *p_spatial_editor, int p_index) {
 	cpu_time_history_index = 0;
 	gpu_time_history_index = 0;
@@ -5573,38 +5603,59 @@ Node3DEditorViewport::Node3DEditorViewport(Node3DEditor *p_spatial_editor, int p
 
 	display_submenu = memnew(PopupMenu);
 	display_submenu->set_hide_on_checkable_item_selection(false);
-	display_submenu->add_radio_check_item(TTR("Directional Shadow Splits"), VIEW_DISPLAY_DEBUG_PSSM_SPLITS);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Directional Shadow Splits"), VIEW_DISPLAY_DEBUG_PSSM_SPLITS, SupportedRenderingMethods::FORWARD_PLUS_MOBILE,
+			TTR("Displays directional shadow splits in different colors to make adjusting split thresholds easier. \nRed: 1st split (closest to the camera), Green: 2nd split, Blue: 3rd split, Yellow: 4th split (furthest from the camera)"));
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("Normal Buffer"), VIEW_DISPLAY_NORMAL_BUFFER);
+	// TRANSLATORS: "Normal" as in "normal vector", not "normal life".
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Normal Buffer"), VIEW_DISPLAY_NORMAL_BUFFER, SupportedRenderingMethods::FORWARD_PLUS);
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("Shadow Atlas"), VIEW_DISPLAY_DEBUG_SHADOW_ATLAS);
-	display_submenu->add_radio_check_item(TTR("Directional Shadow Map"), VIEW_DISPLAY_DEBUG_DIRECTIONAL_SHADOW_ATLAS);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Shadow Atlas"), VIEW_DISPLAY_DEBUG_SHADOW_ATLAS, SupportedRenderingMethods::ALL,
+			TTR("Displays the shadow atlas used for positional (omni/spot) shadow mapping.\nRequires a visible OmniLight3D or SpotLight3D node with shadows enabled to have a visible effect."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Directional Shadow Map"), VIEW_DISPLAY_DEBUG_DIRECTIONAL_SHADOW_ATLAS, SupportedRenderingMethods::ALL,
+			TTR("Displays the shadow map used for directional shadow mapping.\nRequires a visible DirectionalLight3D node with shadows enabled to have a visible effect."));
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("Decal Atlas"), VIEW_DISPLAY_DEBUG_DECAL_ATLAS);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Decal Atlas"), VIEW_DISPLAY_DEBUG_DECAL_ATLAS, SupportedRenderingMethods::FORWARD_PLUS_MOBILE);
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("VoxelGI Lighting"), VIEW_DISPLAY_DEBUG_VOXEL_GI_LIGHTING);
-	display_submenu->add_radio_check_item(TTR("VoxelGI Albedo"), VIEW_DISPLAY_DEBUG_VOXEL_GI_ALBEDO);
-	display_submenu->add_radio_check_item(TTR("VoxelGI Emission"), VIEW_DISPLAY_DEBUG_VOXEL_GI_EMISSION);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("VoxelGI Lighting"), VIEW_DISPLAY_DEBUG_VOXEL_GI_LIGHTING, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Requires a visible VoxelGI node that has been baked to have a visible effect."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("VoxelGI Albedo"), VIEW_DISPLAY_DEBUG_VOXEL_GI_ALBEDO, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Requires a visible VoxelGI node that has been baked to have a visible effect."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("VoxelGI Emission"), VIEW_DISPLAY_DEBUG_VOXEL_GI_EMISSION, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Requires a visible VoxelGI node that has been baked to have a visible effect."));
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("SDFGI Cascades"), VIEW_DISPLAY_DEBUG_SDFGI);
-	display_submenu->add_radio_check_item(TTR("SDFGI Probes"), VIEW_DISPLAY_DEBUG_SDFGI_PROBES);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("SDFGI Cascades"), VIEW_DISPLAY_DEBUG_SDFGI, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Requires SDFGI to be enabled in Environment to have a visible effect."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("SDFGI Probes"), VIEW_DISPLAY_DEBUG_SDFGI_PROBES, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Requires SDFGI to be enabled in Environment to have a visible effect."));
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("Scene Luminance"), VIEW_DISPLAY_DEBUG_SCENE_LUMINANCE);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Scene Luminance"), VIEW_DISPLAY_DEBUG_SCENE_LUMINANCE, SupportedRenderingMethods::FORWARD_PLUS_MOBILE,
+			TTR("Displays the scene luminance computed from the 3D buffer. This is used for Auto Exposure calculation.\nRequires Auto Exposure to be enabled in CameraAttributes to have a visible effect."));
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("SSAO"), VIEW_DISPLAY_DEBUG_SSAO);
-	display_submenu->add_radio_check_item(TTR("SSIL"), VIEW_DISPLAY_DEBUG_SSIL);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("SSAO"), VIEW_DISPLAY_DEBUG_SSAO, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Displays the screen-space ambient occlusion buffer. Requires SSAO to be enabled in Environment to have a visible effect."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("SSIL"), VIEW_DISPLAY_DEBUG_SSIL, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Displays the screen-space indirect lighting buffer. Requires SSIL to be enabled in Environment to have a visible effect."));
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("VoxelGI/SDFGI Buffer"), VIEW_DISPLAY_DEBUG_GI_BUFFER);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("VoxelGI/SDFGI Buffer"), VIEW_DISPLAY_DEBUG_GI_BUFFER, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Requires SDFGI or VoxelGI to be enabled to have a visible effect."));
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("Disable Mesh LOD"), VIEW_DISPLAY_DEBUG_DISABLE_LOD);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Disable Mesh LOD"), VIEW_DISPLAY_DEBUG_DISABLE_LOD, SupportedRenderingMethods::ALL,
+			TTR("Renders all meshes with their highest level of detail regardless of their distance from the camera."));
 	display_submenu->add_separator();
-	display_submenu->add_radio_check_item(TTR("OmniLight3D Cluster"), VIEW_DISPLAY_DEBUG_CLUSTER_OMNI_LIGHTS);
-	display_submenu->add_radio_check_item(TTR("SpotLight3D Cluster"), VIEW_DISPLAY_DEBUG_CLUSTER_SPOT_LIGHTS);
-	display_submenu->add_radio_check_item(TTR("Decal Cluster"), VIEW_DISPLAY_DEBUG_CLUSTER_DECALS);
-	display_submenu->add_radio_check_item(TTR("ReflectionProbe Cluster"), VIEW_DISPLAY_DEBUG_CLUSTER_REFLECTION_PROBES);
-	display_submenu->add_radio_check_item(TTR("Occlusion Culling Buffer"), VIEW_DISPLAY_DEBUG_OCCLUDERS);
-	display_submenu->add_radio_check_item(TTR("Motion Vectors"), VIEW_DISPLAY_MOTION_VECTORS);
-	display_submenu->add_radio_check_item(TTR("Internal Buffer"), VIEW_DISPLAY_INTERNAL_BUFFER);
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("OmniLight3D Cluster"), VIEW_DISPLAY_DEBUG_CLUSTER_OMNI_LIGHTS, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Highlights tiles of pixels that are affected by at least one OmniLight3D."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("SpotLight3D Cluster"), VIEW_DISPLAY_DEBUG_CLUSTER_SPOT_LIGHTS, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Highlights tiles of pixels that are affected by at least one SpotLight3D."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Decal Cluster"), VIEW_DISPLAY_DEBUG_CLUSTER_DECALS, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Highlights tiles of pixels that are affected by at least one Decal."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("ReflectionProbe Cluster"), VIEW_DISPLAY_DEBUG_CLUSTER_REFLECTION_PROBES, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Highlights tiles of pixels that are affected by at least one ReflectionProbe."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Occlusion Culling Buffer"), VIEW_DISPLAY_DEBUG_OCCLUDERS, SupportedRenderingMethods::FORWARD_PLUS_MOBILE,
+			TTR("Represents occluders with black pixels. Requires occlusion culling to be enabled to have a visible effect."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Motion Vectors"), VIEW_DISPLAY_MOTION_VECTORS, SupportedRenderingMethods::FORWARD_PLUS,
+			TTR("Represents motion vectors with colored lines in the direction of motion. Gray dots represent areas with no per-pixel motion."));
+	_add_advanced_debug_draw_mode_item(display_submenu, TTR("Internal Buffer"), VIEW_DISPLAY_INTERNAL_BUFFER, SupportedRenderingMethods::FORWARD_PLUS_MOBILE,
+			TTR("Shows the scene rendered in linear colorspace before any tonemapping or post-processing."));
 	view_display_menu->get_popup()->add_submenu_node_item(TTR("Display Advanced..."), display_submenu, VIEW_DISPLAY_ADVANCED);
 
 	view_display_menu->get_popup()->add_separator();
@@ -5635,26 +5686,6 @@ Node3DEditorViewport::Node3DEditorViewport(Node3DEditor *p_spatial_editor, int p
 	view_display_menu->get_popup()->connect(SceneStringName(id_pressed), callable_mp(this, &Node3DEditorViewport::_menu_option));
 	display_submenu->connect(SceneStringName(id_pressed), callable_mp(this, &Node3DEditorViewport::_menu_option));
 	view_display_menu->set_disable_shortcuts(true);
-
-	// TODO: Re-evaluate with new OpenGL3 renderer, and implement.
-	//if (OS::get_singleton()->get_current_video_driver() == OS::RENDERING_DRIVER_OPENGL3) {
-	if (false) {
-		// Alternate display modes only work when using the Vulkan renderer; make this explicit.
-		const int normal_idx = view_display_menu->get_popup()->get_item_index(VIEW_DISPLAY_NORMAL);
-		const int wireframe_idx = view_display_menu->get_popup()->get_item_index(VIEW_DISPLAY_WIREFRAME);
-		const int overdraw_idx = view_display_menu->get_popup()->get_item_index(VIEW_DISPLAY_OVERDRAW);
-		const int shadeless_idx = view_display_menu->get_popup()->get_item_index(VIEW_DISPLAY_UNSHADED);
-		const String unsupported_tooltip = TTR("Not available when using the OpenGL renderer.");
-
-		view_display_menu->get_popup()->set_item_disabled(normal_idx, true);
-		view_display_menu->get_popup()->set_item_tooltip(normal_idx, unsupported_tooltip);
-		view_display_menu->get_popup()->set_item_disabled(wireframe_idx, true);
-		view_display_menu->get_popup()->set_item_tooltip(wireframe_idx, unsupported_tooltip);
-		view_display_menu->get_popup()->set_item_disabled(overdraw_idx, true);
-		view_display_menu->get_popup()->set_item_tooltip(overdraw_idx, unsupported_tooltip);
-		view_display_menu->get_popup()->set_item_disabled(shadeless_idx, true);
-		view_display_menu->get_popup()->set_item_tooltip(shadeless_idx, unsupported_tooltip);
-	}
 
 	// Registering with Key::NONE intentionally creates an empty Array.
 	register_shortcut_action("spatial_editor/viewport_orbit_modifier_1", TTRC("Viewport Orbit Modifier 1"), Key::NONE);
@@ -6395,38 +6426,34 @@ void Node3DEditor::_generate_selection_boxes() {
 	const Color selection_box_color = EDITOR_GET("editors/3d/selection_box_color");
 	const Color active_selection_box_color = EDITOR_GET("editors/3d/active_selection_box_color");
 
-	Ref<StandardMaterial3D> mat = memnew(StandardMaterial3D);
-	mat->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
-	mat->set_flag(StandardMaterial3D::FLAG_DISABLE_FOG, true);
-	mat->set_albedo(selection_box_color);
-	mat->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
-	st->set_material(mat);
+	selection_box_mat->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
+	selection_box_mat->set_flag(StandardMaterial3D::FLAG_DISABLE_FOG, true);
+	selection_box_mat->set_albedo(selection_box_color);
+	selection_box_mat->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+	st->set_material(selection_box_mat);
 	selection_box = st->commit();
 
-	Ref<StandardMaterial3D> mat_xray = memnew(StandardMaterial3D);
-	mat_xray->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
-	mat_xray->set_flag(StandardMaterial3D::FLAG_DISABLE_FOG, true);
-	mat_xray->set_flag(StandardMaterial3D::FLAG_DISABLE_DEPTH_TEST, true);
-	mat_xray->set_albedo(selection_box_color * Color(1, 1, 1, 0.15));
-	mat_xray->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
-	st_xray->set_material(mat_xray);
+	selection_box_mat_xray->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
+	selection_box_mat_xray->set_flag(StandardMaterial3D::FLAG_DISABLE_FOG, true);
+	selection_box_mat_xray->set_flag(StandardMaterial3D::FLAG_DISABLE_DEPTH_TEST, true);
+	selection_box_mat_xray->set_albedo(selection_box_color * Color(1, 1, 1, 0.15));
+	selection_box_mat_xray->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+	st_xray->set_material(selection_box_mat_xray);
 	selection_box_xray = st_xray->commit();
 
-	Ref<StandardMaterial3D> active_mat = memnew(StandardMaterial3D);
-	active_mat->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
-	active_mat->set_flag(StandardMaterial3D::FLAG_DISABLE_FOG, true);
-	active_mat->set_albedo(active_selection_box_color);
-	active_mat->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
-	active_st->set_material(active_mat);
+	active_selection_box_mat->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
+	active_selection_box_mat->set_flag(StandardMaterial3D::FLAG_DISABLE_FOG, true);
+	active_selection_box_mat->set_albedo(active_selection_box_color);
+	active_selection_box_mat->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+	active_st->set_material(active_selection_box_mat);
 	active_selection_box = active_st->commit();
 
-	Ref<StandardMaterial3D> active_mat_xray = memnew(StandardMaterial3D);
-	active_mat_xray->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
-	active_mat_xray->set_flag(StandardMaterial3D::FLAG_DISABLE_FOG, true);
-	active_mat_xray->set_flag(StandardMaterial3D::FLAG_DISABLE_DEPTH_TEST, true);
-	active_mat_xray->set_albedo(active_selection_box_color * Color(1, 1, 1, 0.15));
-	active_mat_xray->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
-	active_st_xray->set_material(active_mat_xray);
+	active_selection_box_mat_xray->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
+	active_selection_box_mat_xray->set_flag(StandardMaterial3D::FLAG_DISABLE_FOG, true);
+	active_selection_box_mat_xray->set_flag(StandardMaterial3D::FLAG_DISABLE_DEPTH_TEST, true);
+	active_selection_box_mat_xray->set_albedo(active_selection_box_color * Color(1, 1, 1, 0.15));
+	active_selection_box_mat_xray->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+	active_st_xray->set_material(active_selection_box_mat_xray);
 	active_selection_box_xray = active_st_xray->commit();
 }
 
@@ -8282,8 +8309,21 @@ void Node3DEditor::_notification(int p_what) {
 		} break;
 
 		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
-			// Update grid color by rebuilding grid.
 			if (EditorSettings::get_singleton()->check_changed_settings_in_group("editors/3d")) {
+				const Color selection_box_color = EDITOR_GET("editors/3d/selection_box_color");
+				const Color active_selection_box_color = EDITOR_GET("editors/3d/active_selection_box_color");
+
+				if (selection_box_color != selection_box_mat->get_albedo()) {
+					selection_box_mat->set_albedo(selection_box_color);
+					selection_box_mat_xray->set_albedo(selection_box_color * Color(1, 1, 1, 0.15));
+				}
+
+				if (active_selection_box_color != active_selection_box_mat->get_albedo()) {
+					active_selection_box_mat->set_albedo(active_selection_box_color);
+					active_selection_box_mat_xray->set_albedo(active_selection_box_color * Color(1, 1, 1, 0.15));
+				}
+
+				// Update grid color by rebuilding grid.
 				_finish_grid();
 				_init_grid();
 			}

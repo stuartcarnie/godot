@@ -471,7 +471,7 @@ public:
 	Vector<String> split(const char *p_splitter = "", bool p_allow_empty = true, int p_maxsplit = 0) const;
 	Vector<String> rsplit(const String &p_splitter = "", bool p_allow_empty = true, int p_maxsplit = 0) const;
 	Vector<String> rsplit(const char *p_splitter = "", bool p_allow_empty = true, int p_maxsplit = 0) const;
-	Vector<String> split_spaces() const;
+	Vector<String> split_spaces(int p_maxsplit = 0) const;
 	Vector<double> split_floats(const String &p_splitter, bool p_allow_empty = true) const;
 	Vector<float> split_floats_mk(const Vector<String> &p_splitters, bool p_allow_empty = true) const;
 	Vector<int> split_ints(const String &p_splitter, bool p_allow_empty = true) const;
@@ -651,6 +651,10 @@ public:
 		parse_utf32(p_cstr);
 	}
 };
+
+// Zero-constructing String initializes _cowdata.ptr() to nullptr and thus empty.
+template <>
+struct is_zero_constructible<String> : std::true_type {};
 
 bool operator==(const char *p_chr, const String &p_str);
 bool operator==(const wchar_t *p_chr, const String &p_str);

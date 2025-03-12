@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  macos_utils.cpp                                                       */
+/*  camera_2d_editor_plugin.h                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,53 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifdef MACOS_ENABLED
+#pragma once
 
-#import "macos_utils.h"
+#include "editor/plugins/editor_plugin.h"
 
-#include "core/string/print_string.h"
+class Camera2D;
+class Label;
+class MenuButton;
 
-#import <CoreFoundation/CoreFoundation.h>
-#import <CoreServices/CoreServices.h>
+class Camera2DEditor : public Control {
+	GDCLASS(Camera2DEditor, Control);
 
-bool macos_is_app_bundle_installed(const String &p_bundle_id) {
-	CFStringRef bundle_id = CFStringCreateWithCString(nullptr, p_bundle_id.utf8().get_data(), kCFStringEncodingUTF8);
-	CFArrayRef result = LSCopyApplicationURLsForBundleIdentifier(bundle_id, nullptr);
-	CFRelease(bundle_id);
+	enum Menu {
+		MENU_SNAP_LIMITS_TO_VIEWPORT,
+	};
 
-	if (result) {
-		if (CFArrayGetCount(result) > 0) {
-			CFRelease(result);
-			return true;
-		} else {
-			CFRelease(result);
-			return false;
-		}
-	} else {
-		return false;
-	}
-}
+	Camera2D *selected_camera = nullptr;
 
-#endif
+	friend class Camera2DEditorPlugin;
+	MenuButton *options = nullptr;
+
+	void _menu_option(int p_option);
+	void _snap_limits_to_viewport();
+	void _undo_snap_limits_to_viewport(const Rect2 &p_prev_rect);
+
+protected:
+	static void _bind_methods();
+	void _notification(int p_what);
+
+public:
+	void edit(Camera2D *p_camera);
+	Camera2DEditor();
+};
+
+class Camera2DEditorPlugin : public EditorPlugin {
+	GDCLASS(Camera2DEditorPlugin, EditorPlugin);
+
+	Camera2DEditor *camera_2d_editor = nullptr;
+
+	Label *approach_to_move_rect = nullptr;
+
+	void _editor_theme_changed();
+	void _update_approach_text_visibility();
+
+public:
+	virtual void edit(Object *p_object) override;
+	virtual bool handles(Object *p_object) const override;
+	virtual void make_visible(bool p_visible) override;
+
+	Camera2DEditorPlugin();
+};
