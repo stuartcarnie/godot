@@ -1093,13 +1093,13 @@ void MDUniformSet::bind_uniforms_direct(MDShader *p_shader, MDCommandBuffer::Ren
 
 	for (uint32_t i = 0; i < MIN(uniforms.size(), set.uniforms.size()); i++) {
 		RDD::BoundUniform const &uniform = uniforms[i];
-		UniformInfo ui = set.uniforms[i];
+		const UniformInfo &ui = set.uniforms[i];
 
 		static const RDC::ShaderStage stage_usages[2] = { RDC::ShaderStage::SHADER_STAGE_VERTEX, RDC::ShaderStage::SHADER_STAGE_FRAGMENT };
 		for (const RDC::ShaderStage stage : stage_usages) {
 			ShaderStageUsage const stage_usage = ShaderStageUsage(1 << stage);
 
-			BindingInfo *bi = ui.bindings.getptr(stage);
+			const BindingInfo *bi = ui.bindings.getptr(stage);
 			if (bi == nullptr) {
 				// No binding for this stage.
 				continue;
@@ -1133,7 +1133,7 @@ void MDUniformSet::bind_uniforms_direct(MDShader *p_shader, MDCommandBuffer::Ren
 						samplers[j] = sampler;
 						textures[j] = texture;
 					}
-					BindingInfo *sbi = ui.bindings_secondary.getptr(stage);
+					const BindingInfo *sbi = ui.bindings_secondary.getptr(stage);
 					if (sbi) {
 						if (stage == RDD::SHADER_STAGE_VERTEX) {
 							[enc setVertexSamplerStates:samplers withRange:NSMakeRange(sbi->index, count)];
@@ -1179,7 +1179,7 @@ void MDUniformSet::bind_uniforms_direct(MDShader *p_shader, MDCommandBuffer::Ren
 							[enc setFragmentTexture:obj atIndex:bi->index];
 						}
 
-						BindingInfo *sbi = ui.bindings_secondary.getptr(stage);
+						const BindingInfo *sbi = ui.bindings_secondary.getptr(stage);
 						if (sbi) {
 							id<MTLTexture> tex = obj.parentTexture ? obj.parentTexture : obj;
 							id<MTLBuffer> buf = tex.buffer;
@@ -1295,12 +1295,12 @@ void MDUniformSet::bind_uniforms_direct(MDShader *p_shader, MDCommandBuffer::Com
 
 	for (uint32_t i = 0; i < uniforms.size(); i++) {
 		RDD::BoundUniform const &uniform = uniforms[i];
-		UniformInfo ui = set.uniforms[i];
+		const UniformInfo &ui = set.uniforms[i];
 
 		const RDC::ShaderStage stage = RDC::ShaderStage::SHADER_STAGE_COMPUTE;
 		const ShaderStageUsage stage_usage = ShaderStageUsage(1 << stage);
 
-		BindingInfo *bi = ui.bindings.getptr(stage);
+		const BindingInfo *bi = ui.bindings.getptr(stage);
 		if (bi == nullptr) {
 			// No binding for this stage.
 			continue;
@@ -1330,7 +1330,7 @@ void MDUniformSet::bind_uniforms_direct(MDShader *p_shader, MDCommandBuffer::Com
 					samplers[j] = sampler;
 					textures[j] = texture;
 				}
-				BindingInfo *sbi = ui.bindings_secondary.getptr(stage);
+				const BindingInfo *sbi = ui.bindings_secondary.getptr(stage);
 				if (sbi) {
 					[enc setSamplerStates:samplers withRange:NSMakeRange(sbi->index, count)];
 				}
@@ -1356,7 +1356,7 @@ void MDUniformSet::bind_uniforms_direct(MDShader *p_shader, MDCommandBuffer::Com
 					id<MTLTexture> obj = rid::get(uniform.ids[0]);
 					[enc setTexture:obj atIndex:bi->index];
 
-					BindingInfo *sbi = ui.bindings_secondary.getptr(stage);
+					const BindingInfo *sbi = ui.bindings_secondary.getptr(stage);
 					if (sbi) {
 						id<MTLTexture> tex = obj.parentTexture ? obj.parentTexture : obj;
 						id<MTLBuffer> buf = tex.buffer;

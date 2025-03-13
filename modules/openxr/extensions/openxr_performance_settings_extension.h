@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  nav_base.h                                                            */
+/*  openxr_performance_settings_extension.h                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,38 +30,35 @@
 
 #pragma once
 
-#include "nav_rid.h"
-#include "nav_utils.h"
+#include "../openxr_interface.h"
+#include "../util.h"
+#include "openxr_extension_wrapper.h"
 
-#include "servers/navigation/navigation_utilities.h"
-
-class NavMap;
-
-class NavBase : public NavRid {
-protected:
-	uint32_t navigation_layers = 1;
-	real_t enter_cost = 0.0;
-	real_t travel_cost = 1.0;
-	ObjectID owner_id;
-	NavigationUtilities::PathSegmentType type;
-
+class OpenXRPerformanceSettingsExtension : public OpenXRExtensionWrapper {
 public:
-	NavigationUtilities::PathSegmentType get_type() const { return type; }
+	static OpenXRPerformanceSettingsExtension *get_singleton();
 
-	virtual void set_use_edge_connections(bool p_enabled) {}
-	virtual bool get_use_edge_connections() const { return false; }
+	OpenXRPerformanceSettingsExtension();
+	virtual ~OpenXRPerformanceSettingsExtension() override;
 
-	virtual void set_navigation_layers(uint32_t p_navigation_layers) {}
-	uint32_t get_navigation_layers() const { return navigation_layers; }
+	virtual HashMap<String, bool *> get_requested_extensions() override;
 
-	virtual void set_enter_cost(real_t p_enter_cost) {}
-	real_t get_enter_cost() const { return enter_cost; }
+	virtual void on_instance_created(const XrInstance p_instance) override;
+	virtual bool on_event_polled(const XrEventDataBuffer &event) override;
 
-	virtual void set_travel_cost(real_t p_travel_cost) {}
-	real_t get_travel_cost() const { return travel_cost; }
+	bool is_available();
 
-	virtual void set_owner_id(ObjectID p_owner_id) {}
-	ObjectID get_owner_id() const { return owner_id; }
+	void set_cpu_level(OpenXRInterface::PerfSettingsLevel p_level);
+	void set_gpu_level(OpenXRInterface::PerfSettingsLevel p_level);
 
-	virtual ~NavBase() {}
+private:
+	static OpenXRPerformanceSettingsExtension *singleton;
+
+	bool available = false;
+
+	XrPerfSettingsLevelEXT level_to_openxr(OpenXRInterface::PerfSettingsLevel p_level);
+	OpenXRInterface::PerfSettingsSubDomain openxr_to_sub_domain(XrPerfSettingsSubDomainEXT p_sub_domain);
+	OpenXRInterface::PerfSettingsNotificationLevel openxr_to_notification_level(XrPerfSettingsNotificationLevelEXT p_notification_level);
+
+	EXT_PROTO_XRRESULT_FUNC3(xrPerfSettingsSetPerformanceLevelEXT, (XrSession), session, (XrPerfSettingsDomainEXT), domain, (XrPerfSettingsLevelEXT), level)
 };

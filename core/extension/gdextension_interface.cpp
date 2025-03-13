@@ -243,23 +243,23 @@ GDExtensionInterfaceFunctionPtr gdextension_get_proc_address(const char *p_name)
 
 #ifndef DISABLE_DEPRECATED
 static void gdextension_get_godot_version(GDExtensionGodotVersion *r_godot_version) {
-	r_godot_version->major = VERSION_MAJOR;
-	r_godot_version->minor = VERSION_MINOR;
-	r_godot_version->patch = VERSION_PATCH;
-	r_godot_version->string = VERSION_FULL_NAME;
+	r_godot_version->major = GODOT_VERSION_MAJOR;
+	r_godot_version->minor = GODOT_VERSION_MINOR;
+	r_godot_version->patch = GODOT_VERSION_PATCH;
+	r_godot_version->string = GODOT_VERSION_FULL_NAME;
 }
 #endif
 
 static void gdextension_get_godot_version2(GDExtensionGodotVersion2 *r_godot_version) {
-	r_godot_version->major = VERSION_MAJOR;
-	r_godot_version->minor = VERSION_MINOR;
-	r_godot_version->patch = VERSION_PATCH;
-	r_godot_version->hex = VERSION_HEX;
-	r_godot_version->status = VERSION_STATUS;
-	r_godot_version->build = VERSION_BUILD;
-	r_godot_version->hash = VERSION_HASH;
-	r_godot_version->timestamp = VERSION_TIMESTAMP;
-	r_godot_version->string = VERSION_FULL_NAME;
+	r_godot_version->major = GODOT_VERSION_MAJOR;
+	r_godot_version->minor = GODOT_VERSION_MINOR;
+	r_godot_version->patch = GODOT_VERSION_PATCH;
+	r_godot_version->hex = GODOT_VERSION_HEX;
+	r_godot_version->status = GODOT_VERSION_STATUS;
+	r_godot_version->build = GODOT_VERSION_BUILD;
+	r_godot_version->hash = GODOT_VERSION_HASH;
+	r_godot_version->timestamp = GODOT_VERSION_TIMESTAMP;
+	r_godot_version->string = GODOT_VERSION_FULL_NAME;
 }
 
 // Memory Functions
@@ -1555,11 +1555,8 @@ static void gdextension_placeholder_script_instance_update(GDExtensionScriptInst
 		properties_list.push_back(PropertyInfo::from_dict(d));
 	}
 
-	List<Variant> keys;
-	values.get_key_list(&keys);
-
-	for (const Variant &E : keys) {
-		values_map.insert(E, values[E]);
+	for (const KeyValue<Variant, Variant> &kv : values) {
+		values_map.insert(kv.key, kv.value);
 	}
 
 	placeholder->update(properties_list, values_map);

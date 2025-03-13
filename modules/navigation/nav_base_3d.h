@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  nav_link.h                                                            */
+/*  nav_base_3d.h                                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,70 +30,38 @@
 
 #pragma once
 
-#include "3d/nav_base_iteration_3d.h"
-#include "nav_base.h"
-#include "nav_utils.h"
+#include "nav_rid_3d.h"
+#include "nav_utils_3d.h"
 
-struct NavLinkIteration : NavBaseIteration {
-	bool bidirectional = true;
-	Vector3 start_position;
-	Vector3 end_position;
+#include "servers/navigation/navigation_utilities.h"
 
-	Vector3 get_start_position() const { return start_position; }
-	Vector3 get_end_position() const { return end_position; }
-	bool is_bidirectional() const { return bidirectional; }
-};
+class NavMap3D;
 
-#include "core/templates/self_list.h"
-
-class NavLink : public NavBase {
-	NavMap *map = nullptr;
-	bool bidirectional = true;
-	Vector3 start_position;
-	Vector3 end_position;
-	bool enabled = true;
-
-	bool link_dirty = true;
-
-	SelfList<NavLink> sync_dirty_request_list_element;
+class NavBase3D : public NavRid3D {
+protected:
+	uint32_t navigation_layers = 1;
+	real_t enter_cost = 0.0;
+	real_t travel_cost = 1.0;
+	ObjectID owner_id;
+	NavigationUtilities::PathSegmentType type;
 
 public:
-	NavLink();
-	~NavLink();
+	NavigationUtilities::PathSegmentType get_type() const { return type; }
 
-	void set_map(NavMap *p_map);
-	NavMap *get_map() const {
-		return map;
-	}
+	virtual void set_use_edge_connections(bool p_enabled) {}
+	virtual bool get_use_edge_connections() const { return false; }
 
-	void set_enabled(bool p_enabled);
-	bool get_enabled() const { return enabled; }
+	virtual void set_navigation_layers(uint32_t p_navigation_layers) {}
+	uint32_t get_navigation_layers() const { return navigation_layers; }
 
-	void set_bidirectional(bool p_bidirectional);
-	bool is_bidirectional() const {
-		return bidirectional;
-	}
+	virtual void set_enter_cost(real_t p_enter_cost) {}
+	real_t get_enter_cost() const { return enter_cost; }
 
-	void set_start_position(Vector3 p_position);
-	Vector3 get_start_position() const {
-		return start_position;
-	}
+	virtual void set_travel_cost(real_t p_travel_cost) {}
+	real_t get_travel_cost() const { return travel_cost; }
 
-	void set_end_position(Vector3 p_position);
-	Vector3 get_end_position() const {
-		return end_position;
-	}
+	virtual void set_owner_id(ObjectID p_owner_id) {}
+	ObjectID get_owner_id() const { return owner_id; }
 
-	// NavBase properties.
-	virtual void set_navigation_layers(uint32_t p_navigation_layers) override;
-	virtual void set_enter_cost(real_t p_enter_cost) override;
-	virtual void set_travel_cost(real_t p_travel_cost) override;
-	virtual void set_owner_id(ObjectID p_owner_id) override;
-
-	bool is_dirty() const;
-	void sync();
-	void request_sync();
-	void cancel_sync_request();
-
-	void get_iteration_update(NavLinkIteration &r_iteration);
+	virtual ~NavBase3D() {}
 };

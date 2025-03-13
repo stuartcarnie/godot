@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  script_debugger.h                                                     */
+/*  nav_obstacle_3d.h                                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,57 +30,79 @@
 
 #pragma once
 
-#include "core/object/script_language.h"
-#include "core/string/string_name.h"
-#include "core/templates/hash_set.h"
-#include "core/templates/vector.h"
+#include "nav_rid_3d.h"
 
-class ScriptDebugger {
-	typedef ScriptLanguage::StackInfo StackInfo;
+#include "core/object/class_db.h"
+#include "core/templates/self_list.h"
 
-	bool skip_breakpoints = false;
-	bool ignore_error_breaks = false;
+class NavAgent3D;
+class NavMap3D;
 
-	HashMap<int, HashSet<StringName>> breakpoints;
+class NavObstacle3D : public NavRid3D {
+	NavAgent3D *agent = nullptr;
+	NavMap3D *map = nullptr;
+	Vector3 velocity;
+	Vector3 position;
+	Vector<Vector3> vertices;
 
-	static thread_local int lines_left;
-	static thread_local int depth;
-	static thread_local ScriptLanguage *break_lang;
-	static thread_local Vector<StackInfo> error_stack_info;
+	real_t radius = 0.0;
+	real_t height = 0.0;
+
+	bool avoidance_enabled = false;
+	bool use_3d_avoidance = false;
+	uint32_t avoidance_layers = 1;
+
+	bool obstacle_dirty = true;
+
+	uint32_t last_map_iteration_id = 0;
+	bool paused = false;
+
+	SelfList<NavObstacle3D> sync_dirty_request_list_element;
 
 public:
-	void set_lines_left(int p_left);
-	_ALWAYS_INLINE_ int get_lines_left() const {
-		return lines_left;
-	}
+	NavObstacle3D();
+	~NavObstacle3D();
 
-	void set_depth(int p_depth);
-	_ALWAYS_INLINE_ int get_depth() const {
-		return depth;
-	}
+	void set_avoidance_enabled(bool p_enabled);
+	bool is_avoidance_enabled() { return avoidance_enabled; }
 
-	String breakpoint_find_source(const String &p_source) const;
-	void set_break_language(ScriptLanguage *p_lang) { break_lang = p_lang; }
-	ScriptLanguage *get_break_language() { return break_lang; }
-	void set_skip_breakpoints(bool p_skip_breakpoints);
-	bool is_skipping_breakpoints();
-	void set_ignore_error_breaks(bool p_ignore);
-	bool is_ignoring_error_breaks();
-	void insert_breakpoint(int p_line, const StringName &p_source);
-	void remove_breakpoint(int p_line, const StringName &p_source);
-	_ALWAYS_INLINE_ bool is_breakpoint(int p_line, const StringName &p_source) const {
-		if (likely(!breakpoints.has(p_line))) {
-			return false;
-		}
-		return breakpoints[p_line].has(p_source);
-	}
-	void clear_breakpoints();
-	const HashMap<int, HashSet<StringName>> &get_breakpoints() const { return breakpoints; }
+	void set_use_3d_avoidance(bool p_enabled);
+	bool get_use_3d_avoidance() { return use_3d_avoidance; }
 
-	void debug(ScriptLanguage *p_lang, bool p_can_continue = true, bool p_is_error_breakpoint = false);
-	ScriptLanguage *get_break_language() const;
+	void set_map(NavMap3D *p_map);
+	NavMap3D *get_map() { return map; }
 
-	void send_error(const String &p_func, const String &p_file, int p_line, const String &p_err, const String &p_descr, bool p_editor_notify, ErrorHandlerType p_type, const Vector<StackInfo> &p_stack_info);
-	Vector<StackInfo> get_error_stack_info() const;
-	ScriptDebugger() {}
+	void set_agent(NavAgent3D *p_agent);
+	NavAgent3D *get_agent() { return agent; }
+
+	void set_position(const Vector3 p_position);
+	const Vector3 &get_position() const { return position; }
+
+	void set_radius(real_t p_radius);
+	real_t get_radius() const { return radius; }
+
+	void set_height(const real_t p_height);
+	real_t get_height() const { return height; }
+
+	void set_velocity(const Vector3 p_velocity);
+	const Vector3 &get_velocity() const { return velocity; }
+
+	void set_vertices(const Vector<Vector3> &p_vertices);
+	const Vector<Vector3> &get_vertices() const { return vertices; }
+
+	bool is_map_changed();
+
+	void set_avoidance_layers(uint32_t p_layers);
+	uint32_t get_avoidance_layers() const { return avoidance_layers; }
+
+	void set_paused(bool p_paused);
+	bool get_paused() const;
+
+	bool is_dirty() const;
+	void sync();
+	void request_sync();
+	void cancel_sync_request();
+
+private:
+	void internal_update_agent();
 };
