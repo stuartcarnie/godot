@@ -48,6 +48,8 @@ target_sources(godot-module-openxr-extensions PRIVATE
         openxr_mxink_extension.h
         openxr_palm_pose_extension.cpp
         openxr_palm_pose_extension.h
+        openxr_performance_settings_extension.cpp
+        openxr_performance_settings_extension.h
         openxr_pico_controller_extension.cpp
         openxr_pico_controller_extension.h
         openxr_valve_analog_threshold_extension.cpp

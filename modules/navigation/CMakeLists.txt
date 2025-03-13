@@ -25,19 +25,19 @@ target_sources(godot-module-navigation PRIVATE
         3d/nav_region_iteration_3d.h
         3d/navigation_mesh_generator.cpp
         3d/navigation_mesh_generator.h
-        nav_agent.cpp
-        nav_agent.h
-        nav_base.h
-        nav_link.cpp
-        nav_link.h
-        nav_map.cpp
-        nav_map.h
-        nav_obstacle.cpp
-        nav_obstacle.h
-        nav_region.cpp
-        nav_region.h
-        nav_rid.h
-        nav_utils.h
+        nav_agent_3d.cpp
+        nav_agent_3d.h
+        nav_base_3d.h
+        nav_link_3d.cpp
+        nav_link_3d.h
+        nav_map_3d.cpp
+        nav_map_3d.h
+        nav_obstacle_3d.cpp
+        nav_obstacle_3d.h
+        nav_region_3d.cpp
+        nav_region_3d.h
+        nav_rid_3d.h
+        nav_utils_3d.h
         register_types.cpp
         register_types.h
 )

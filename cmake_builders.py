@@ -97,6 +97,11 @@ class Environment:
     def module_dependencies(self) -> OrderedDict:
         return self.__dict__['module_dependencies']
 
+    def Detect(self, cmd: str) -> str:
+        import shutil
+        # execute the which command to find the executable
+        return shutil.which(cmd)
+
 
 # endregion
 
@@ -381,28 +386,28 @@ def cmd_make_editor_icons_action(source: str, target: str) -> int:
 @check_output
 @source_target
 def cmd_make_editor_translations(source: [str], target: str) -> int:
-    make_editor_translations_header(target=[target], source=source, env=None)
+    make_translations_header(target=[target], source=[Target(p) for p in source], env=env)
     return 0
 
 
 @check_output
 @source_target
 def cmd_make_editor_properties_translations(source: [str], target: str) -> int:
-    make_property_translations_header(target=[target], source=source, env=None)
+    make_translations_header(target=[target], source=[Target(p) for p in source], env=env)
     return 0
 
 
 @check_output
 @source_target
 def cmd_make_editor_documentation_translations(source: [str], target: str) -> int:
-    make_doc_translations_header(target=[target], source=source, env=None)
+    make_translations_header(target=[target], source=[Target(p) for p in source], env=env)
     return 0
 
 
 @check_output
 @source_target
 def cmd_make_extractable_translations_header(source: [str], target: str) -> int:
-    make_extractable_translations_header(target=[target], source=source, env=None)
+    make_translations_header(target=[target], source=[Target(p) for p in source], env=env)
     return 0
 
 
@@ -418,17 +423,17 @@ def version_info_builder(target, source, env: Environment):
     with methods.generated_wrapper(target) as file:
         file.write(
             """\
-#define VERSION_SHORT_NAME "{short_name}"
-#define VERSION_NAME "{name}"
-#define VERSION_MAJOR {major}
-#define VERSION_MINOR {minor}
-#define VERSION_PATCH {patch}
-#define VERSION_STATUS "{status}"
-#define VERSION_BUILD "{build}"
-#define VERSION_MODULE_CONFIG "{module_config}"
-#define VERSION_WEBSITE "{website}"
-#define VERSION_DOCS_BRANCH "{docs_branch}"
-#define VERSION_DOCS_URL "https://docs.godotengine.org/en/" VERSION_DOCS_BRANCH
+#define GODOT_VERSION_SHORT_NAME "{short_name}"
+#define GODOT_VERSION_NAME "{name}"
+#define GODOT_VERSION_MAJOR {major}
+#define GODOT_VERSION_MINOR {minor}
+#define GODOT_VERSION_PATCH {patch}
+#define GODOT_VERSION_STATUS "{status}"
+#define GODOT_VERSION_BUILD "{build}"
+#define GODOT_VERSION_MODULE_CONFIG "{module_config}"
+#define GODOT_VERSION_WEBSITE "{website}"
+#define GODOT_VERSION_DOCS_BRANCH "{docs_branch}"
+#define GODOT_VERSION_DOCS_URL "https://docs.godotengine.org/en/" GODOT_VERSION_DOCS_BRANCH
 """.format(
                 **env.version_info
             )
@@ -437,16 +442,15 @@ def version_info_builder(target, source, env: Environment):
 
 # Generate version hash
 def version_hash_builder(target, source, env: Environment):
+    version_info = methods.get_git_info()
     with methods.generated_wrapper(target) as file:
         file.write(
             """\
 #include "core/version.h"
 
-const char *const VERSION_HASH = "{git_hash}";
-const uint64_t VERSION_TIMESTAMP = {git_timestamp};
-""".format(
-                **env.version_info
-            )
+const char *const GODOT_VERSION_HASH = "{git_hash}";
+const uint64_t GODOT_VERSION_TIMESTAMP = {git_timestamp};
+""".format(**version_info)
         )
 
 

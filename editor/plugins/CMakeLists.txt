@@ -37,6 +37,8 @@ target_sources(godot-editor-plugins PRIVATE
         bit_map_editor_plugin.h
         bone_map_editor_plugin.cpp
         bone_map_editor_plugin.h
+        camera_2d_editor_plugin.cpp
+        camera_2d_editor_plugin.h
         camera_3d_editor_plugin.cpp
         camera_3d_editor_plugin.h
         canvas_item_editor_plugin.cpp

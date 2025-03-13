@@ -68,7 +68,7 @@ target_sources(harfbuzz PRIVATE
         src/hb-subset-instancer-iup.cc
         src/hb-subset-instancer-solver.cc
         src/hb-subset-plan.cc
-        src/hb-subset-repacker.cc
+        src/hb-subset-serialize.cc
         src/hb-subset.cc
         src/hb-ucd.cc
         src/hb-unicode.cc

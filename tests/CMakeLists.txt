@@ -144,6 +144,7 @@ target_sources(tests PRIVATE
         scene/test_visual_shader.h
         scene/test_window.h
         servers/rendering/test_shader_preprocessor.h
+        servers/test_nav_heap.h
         servers/test_navigation_server_2d.h
         servers/test_navigation_server_3d.h
         servers/test_text_server.h
