@@ -3747,8 +3747,13 @@ void Node::_bind_methods() {
 
 		mi.name = "rpc";
 		ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "rpc", &Node::_rpc_bind, mi);
+	}
 
-		mi.arguments.push_front(PropertyInfo(Variant::INT, "peer_id"));
+	{
+		MethodInfo mi;
+
+		mi.arguments.push_back(PropertyInfo(Variant::INT, "peer_id"));
+		mi.arguments.push_back(PropertyInfo(Variant::STRING_NAME, "method"));
 
 		mi.name = "rpc_id";
 		ClassDB::bind_vararg_method(METHOD_FLAGS_DEFAULT, "rpc_id", &Node::_rpc_id_bind, mi);
@@ -3811,6 +3816,7 @@ void Node::_bind_methods() {
 	BIND_CONSTANT(NOTIFICATION_WM_DPI_CHANGE);
 	BIND_CONSTANT(NOTIFICATION_VP_MOUSE_ENTER);
 	BIND_CONSTANT(NOTIFICATION_VP_MOUSE_EXIT);
+	BIND_CONSTANT(NOTIFICATION_WM_POSITION_CHANGED);
 	BIND_CONSTANT(NOTIFICATION_OS_MEMORY_WARNING);
 	BIND_CONSTANT(NOTIFICATION_TRANSLATION_CHANGED);
 	BIND_CONSTANT(NOTIFICATION_WM_ABOUT);

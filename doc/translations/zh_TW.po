@@ -45949,12 +45949,6 @@ msgid ""
 msgstr "[LineEdit] 中游標的列位置。設定後文字可能會滾動以適應它。"
 
 msgid ""
-"If [code]true[/code], the [LineEdit] will always show the caret, even if "
-"focus is lost."
-msgstr ""
-"如果為 [code]true[/code]，則該 [LineEdit] 會始終顯示游標，即使焦點丟失。"
-
-msgid ""
 "Allow moving caret, selecting and removing the individual composite character "
 "components.\n"
 "[b]Note:[/b] [kbd]Backspace[/kbd] is always removing individual composite "
