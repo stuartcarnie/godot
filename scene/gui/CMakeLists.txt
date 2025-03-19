@@ -28,6 +28,8 @@ target_sources(godot-scene-gui PRIVATE
         color_mode.h
         color_picker.cpp
         color_picker.h
+        color_picker_shape.cpp
+        color_picker_shape.h
         color_rect.cpp
         color_rect.h
         container.cpp

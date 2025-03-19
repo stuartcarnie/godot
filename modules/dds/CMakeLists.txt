@@ -8,6 +8,9 @@ godot_add_library(godot-module-dds FOLDER modules STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-module-dds PRIVATE
+        dds_enums.h
+        image_saver_dds.cpp
+        image_saver_dds.h
         register_types.cpp
         register_types.h
         texture_loader_dds.cpp

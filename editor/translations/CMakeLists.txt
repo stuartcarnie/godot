@@ -42,6 +42,7 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         editor/sk.po
         editor/sv.po
         editor/th.po
+        editor/tok.po
         editor/tr.po
         editor/uk.po
         editor/vi.po

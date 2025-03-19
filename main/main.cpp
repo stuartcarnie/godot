@@ -1890,7 +1890,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	extern char **environ;
 	for (char **env = environ; *env; ++env) {
 		if (strncasecmp(*env, "GODOT_P_", 8) == 0) {
-			String env_var(*env, strchr(*env, '=') - *env);
+			String env_var = String::ascii(Span(*env, strchr(*env, '=') - *env));
 			String env_val = OS::get_singleton()->get_environment(env_var);
 			env_var = env_var.substr(8, env_var.length() - 8);
 			env_var = env_var.replace("__", "/");
