@@ -39,19 +39,7 @@ void RetroFXRect::_notification(int p_what) {
 			_update_process();
 		} break;
 		case NOTIFICATION_INTERNAL_PROCESS: {
-			if (texture.is_null() || output_fb.is_null()) {
-				return;
-			}
-			// TODO(sgc): shader_chain should accept a `Texture2D`, so that it defers this to the
-			//  FilterChain, which will have separate versions for RenderingDevice and GLES3
-			// If the texture is a ViewportTexture, this ensures that
-			auto info = RendererRD::TextureStorage::get_singleton()->canvas_texture_get_info(texture->get_rid(), RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED, false, false);
-
-			shader_chain->render(texture_rid, texture->get_size(), output_fb, get_size());
-
-			// TODO(sgc): should check if Slang shader uses `time` and only call `redraw_request` if it does
-			//  Potentially feedback and history might require redraw too.
-			RenderingServerDefault::redraw_request();
+			_internal_process();
 		} break;
 		case NOTIFICATION_DRAW: {
 			if (texture.is_null()) {
@@ -128,6 +116,23 @@ void RetroFXRect::_notification(int p_what) {
 	}
 }
 
+void RetroFXRect::_internal_process() {
+	if (texture.is_null() || output_fb.is_null()) {
+		return;
+	}
+	// TODO(sgc): shader_chain should accept a `Texture2D`, so that it defers this to the
+	//  FilterChain, which will have separate versions for RenderingDevice and GLES3
+	// If the texture is a ViewportTexture, this ensures that
+	auto info = RendererRD::TextureStorage::get_singleton()->canvas_texture_get_info(texture->get_rid(), RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED, false, false);
+
+	shader_chain->render(texture_rid, texture->get_size(), output_fb, get_size());
+
+	// TODO(sgc): should check if Slang shader uses `time` and only call `redraw_request` if it does
+	//  Potentially feedback and history might require redraw too.
+	RenderingServerDefault::redraw_request();
+}
+
+
 void RetroFXRect::_update_process() {
 	set_process_internal(true);
 }
@@ -198,10 +203,20 @@ void RetroFXRect::_update_shader_chain() {
 	queue_redraw();
 }
 
+void RetroFXRect::_toggle_pause() {
+	set_process_internal(!is_processing_internal());
+}
+
+
 bool RetroFXRect::_get(const StringName &p_name, Variant &r_ret) const {
 	Vector<String> parts = String(p_name).split("/", true, 2);
 	if (!shader_chain->has_shader_loaded() || parts.size() != 2 || parts[0] != "parameters") {
 		return false;
+	}
+
+	if (parts[1] == "_pause") {
+		r_ret = callable_mp(const_cast<RetroFXRect *>(this), &RetroFXRect::_toggle_pause);
+		return true;
 	}
 
 	if (double value; shader_chain->get_parameter_value_by_name(parts[1], value)) {
@@ -229,6 +244,10 @@ bool RetroFXRect::_set(const StringName &p_name, const Variant &p_value) {
 
 	shader_chain->set_parameter_value_by_name(parts[1], value);
 
+	if (!is_processing_internal()) {
+		_internal_process();
+	}
+
 	return true;
 }
 
@@ -236,6 +255,9 @@ void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
 	if (!shader_chain->has_shader_loaded()) {
 		return;
 	}
+
+	// Add a pause button
+	p_list->push_back(PropertyInfo(Variant::CALLABLE, "parameters/_pause", PROPERTY_HINT_TOOL_BUTTON, "Toggle Pause", PROPERTY_USAGE_EDITOR));
 
 	TypedArray<ShaderParameter> params = shader_chain->get_parameters();
 	for (Ref<ShaderParameter> const param : params) {
@@ -415,6 +437,10 @@ bool RetroFXRect::is_flipped_v() const {
 void RetroFXRect::set_shader_path(const String &p_path) {
 	shader_path = p_path;
 	shader_chain_error = shader_chain->load_from_file(p_path);
+
+	if (!is_processing_internal()) {
+		_internal_process();
+	}
 
 	notify_property_list_changed();
 	emit_signal(CoreStringName(changed));

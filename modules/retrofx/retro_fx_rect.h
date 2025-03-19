@@ -62,6 +62,7 @@ public:
 private:
 	bool hflip = false;
 	bool vflip = false;
+	bool paused = false;
 	Ref<Texture2D> texture;
 	RID texture_rid;
 	ExpandMode expand_mode = EXPAND_KEEP_SIZE;
@@ -78,6 +79,8 @@ private:
 	void _texture_changed();
 	void _update_process();
 	void _update_shader_chain();
+	void _toggle_pause();
+	void _internal_process();
 
 protected:
 	virtual Size2 get_minimum_size() const override;
@@ -88,7 +91,6 @@ protected:
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 	bool _property_can_revert(const StringName &p_name) const;
 	bool _property_get_revert(const StringName &p_name, Variant &r_property) const;
-
 
 	static void _bind_methods();
 
