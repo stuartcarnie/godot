@@ -12,13 +12,12 @@ target_sources(godot-module-openxr-extensions PRIVATE
         openxr_composition_layer_depth_extension.h
         openxr_composition_layer_extension.cpp
         openxr_composition_layer_extension.h
-        openxr_composition_layer_provider.h
         openxr_debug_utils_extension.cpp
         openxr_debug_utils_extension.h
         openxr_dpad_binding_extension.cpp
         openxr_dpad_binding_extension.h
+        openxr_extension_wrapper.cpp
         openxr_extension_wrapper.h
-        openxr_extension_wrapper_extension.cpp
         openxr_extension_wrapper_extension.h
         openxr_eye_gaze_interaction.cpp
         openxr_eye_gaze_interaction.h

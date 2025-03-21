@@ -66,6 +66,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         AudioBusSolo.svg
         AudioListener2D.svg
         AudioListener3D.svg
+        AudioMute.svg
         AudioStream.svg
         AudioStreamGenerator.svg
         AudioStreamMP3.svg
