@@ -43,6 +43,8 @@
 #include "core/config/project_settings.h"
 #endif
 
+static bool disable_worker_pool = false;
+
 void ShaderRD::_add_stage(const char *p_code, StageType p_stage_type) {
 	Vector<String> lines = String(p_code).split("\n");
 
@@ -684,7 +686,7 @@ void ShaderRD::_compile_version_start(Version *p_version, int p_group) {
 	{
 		static std::atomic<int64_t> group_task = 1;
 
-		if (String v = OS::get_singleton()->get_environment("GODOT_SHADER_DISABLE_WORKER"); v == "1") {
+		if (disable_worker_pool) {
 			for (uint32_t i = 0; i < group_to_variant_map[p_group].size(); i++) {
 				_compile_variant(i, compile_data);
 			}
@@ -701,7 +703,7 @@ void ShaderRD::_compile_version_start(Version *p_version, int p_group) {
 
 void ShaderRD::_compile_version_end(Version *p_version, int p_group) {
 #ifdef TOOLS_ENABLED
-	bool using_worker_pool = OS::get_singleton()->get_environment("GODOT_SHADER_DISABLE_WORKER") != "1";
+	bool using_worker_pool = !disable_worker_pool;
 #else
 	bool using_worker_pool = true;
 #endif
@@ -902,6 +904,12 @@ bool ShaderRD::is_group_enabled(int p_group) const {
 bool ShaderRD::shader_cache_cleanup_on_start = false;
 
 ShaderRD::ShaderRD() {
+	static std::once_flag check_worker_pool_env;
+	std::call_once(check_worker_pool_env, []() {
+		if (OS::get_singleton()->get_environment("GODOT_SHADER_DISABLE_WORKER") == "1") {
+			disable_worker_pool = true;
+		}
+	});
 	// Do not feel forced to use this, in most cases it makes little to no difference.
 	bool use_32_threads = false;
 	if (RD::get_singleton()->get_device_vendor_name() == "NVIDIA") {
