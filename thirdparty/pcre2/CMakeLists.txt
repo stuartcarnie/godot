@@ -3,6 +3,7 @@ set(PCRE2_SOURCES
         src/pcre2_chartables.c
         src/pcre2_chkdint.c
         src/pcre2_compile.c
+        src/pcre2_compile_class.c
         src/pcre2_config.c
         src/pcre2_context.c
         src/pcre2_convert.c
@@ -11,7 +12,7 @@ set(PCRE2_SOURCES
         src/pcre2_extuni.c
         src/pcre2_find_bracket.c
         src/pcre2_jit_compile.c
-        # "pcre2_jit_match.c", "pcre2_jit_misc.c", # these files are included in pcre2_jit_compile.c.
+        # "pcre2_jit_match.c", "pcre2_jit_misc.c", # Included in `pcre2_jit_compile.c`.
         src/pcre2_maketables.c
         src/pcre2_match.c
         src/pcre2_match_data.c
@@ -26,6 +27,7 @@ set(PCRE2_SOURCES
         src/pcre2_substring.c
         src/pcre2_tables.c
         src/pcre2_ucd.c
+        # "pcre2_ucptables.c", # Included in `pcre2_tables.c`.
         src/pcre2_valid_utf.c
         src/pcre2_xclass.c
 )
