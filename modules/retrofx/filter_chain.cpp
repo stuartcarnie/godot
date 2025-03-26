@@ -238,7 +238,7 @@ void FilterChain::prepare_next_frame(RID p_source_texture, TextureSize p_source_
 				p_source_texture, texture.rid,
 				Vector3(source_rect.position.x, source_rect.position.y, 0),
 				Vector3(0, 0, 0),
-				Vector3(source_rect.size.width, source_rect.size.height, 0),
+				Vector3(source_rect.size.width, source_rect.size.height, 1),
 				0, 0, 0, 0);
 	}
 }
