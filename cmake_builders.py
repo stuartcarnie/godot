@@ -121,6 +121,8 @@ env["modules_enabled_by_default"] = True
 
 # fake options
 env["disable_3d"] = False
+env["disable_physics_2d"] = False
+env["disable_physics_3d"] = False
 env["openxr"] = True
 env["opengl3"] = True
 env["minizip"] = True
@@ -243,22 +245,21 @@ def source_target(func):
 @check_output
 @source_target
 def cmd_glsl(source: str, target: str) -> int:
-    build_rd_header(source, target, None)
+    build_rd_header(target, source)
     return 0
 
 
 @check_output
 @source_target
 def cmd_gles3(source: str, target: str) -> int:
-    build_gles3_header(source, include="drivers/gles3/shader_gles3.h", class_suffix="GLES3",
-                       optional_output_filename=target)
+    build_gles3_header(target, source,)
     return 0
 
 
 @check_output
 @source_target
 def cmd_glsl_raw(source: str, target: str) -> int:
-    build_raw_header(filename=source, optional_output_filename=target)
+    build_raw_header(target, source)
     return 0
 
 

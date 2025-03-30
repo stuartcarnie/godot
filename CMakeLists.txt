@@ -418,6 +418,8 @@ block(SCOPE_FOR VARIABLES)
     json_bool(WANT_OPENXR_B ${WANT_OPENXR})
     json_bool(WANT_VULKAN_B ${WANT_VULKAN})
     json_bool(DISABLE_XR_B ${DISABLE_XR})
+    json_bool(DISABLE_PHYSICS_2D_B ${DISABLE_PHYSICS_2D})
+    json_bool(DISABLE_PHYSICS_3D_B ${DISABLE_PHYSICS_3D})
     json_bool(WANT_METAL_B ${WANT_METAL})
     # custom modules
     json_bool(WANT_RETROFX_B ${WANT_RETROFX})

@@ -4,6 +4,8 @@
     "editor_build": @EDITOR_BUILD@,
     "modules_enabled_by_default" : true,
     "disable_3d" : false,
+    "disable_physics_2d": @DISABLE_PHYSICS_2D_B@,
+    "disable_physics_3d": @DISABLE_PHYSICS_3D_B@,
     "disable_xr": @DISABLE_XR_B@,
     "vulkan" : @WANT_VULKAN_B@,
     "metal" : @WANT_METAL_B@,

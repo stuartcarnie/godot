@@ -1,17 +1,13 @@
-godot_add_library(godot-module-navigation FOLDER modules STATIC)
+godot_add_library(godot-module-navigation-3d FOLDER modules STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-module-navigation PRIVATE')
-#   for file in list_files(cog, ['.', '2d', '3d']):
+#   cog.outl('target_sources(godot-module-navigation-3d PRIVATE')
+#   for file in list_files(cog, ['.', '3d']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-module-navigation PRIVATE
-        2d/godot_navigation_server_2d.cpp
-        2d/godot_navigation_server_2d.h
-        2d/nav_mesh_generator_2d.cpp
-        2d/nav_mesh_generator_2d.h
+target_sources(godot-module-navigation-3d PRIVATE
         3d/godot_navigation_server_3d.cpp
         3d/godot_navigation_server_3d.h
         3d/nav_base_iteration_3d.h
@@ -47,15 +43,15 @@ if (WANT_EDITOR)
     # [[[cog
     #   import cog
     #   from cmake_builders import list_files
-    #   cog.outl('target_sources(godot-module-navigation PRIVATE')
+    #   cog.outl('target_sources(godot-module-navigation-3d PRIVATE')
     #   for file in list_files(cog, 'editor'):
     #       cog.outl(f'        {file}')
     #   cog.outl(')')
     # ]]]
-    target_sources(godot-module-navigation PRIVATE
+    target_sources(godot-module-navigation-3d PRIVATE
             editor/navigation_mesh_editor_plugin.cpp
             editor/navigation_mesh_editor_plugin.h
     )
     # [[[end]]]
 endif ()
-target_link_libraries(godot-module-navigation PUBLIC core rvo2 recast-navigation zlib clipper2)
+target_link_libraries(godot-module-navigation-3d PUBLIC core rvo2 recast-navigation zlib clipper2)
