@@ -28,4 +28,4 @@ target_sources(godot-editor-plugins-tiles PRIVATE
         tiles_editor_plugin.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-plugins-tiles PRIVATE godot-config)
+target_link_libraries(godot-editor-plugins-tiles PRIVATE godot-core)

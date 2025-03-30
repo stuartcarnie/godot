@@ -17,7 +17,7 @@ if (${WANT_ALSA} AND ${ALSA_FOUND})
     # [[[end]]]
 
     target_compile_definitions(driver-alsa PUBLIC ALSA_ENABLED=1 PULSEAUDIO_ENABLED=1)
-    target_link_libraries(driver-alsa PUBLIC linuxbsd-headers ${ALSA_LIBRARIES} godot-error)
+    target_link_libraries(driver-alsa PUBLIC linuxbsd-headers ${ALSA_LIBRARIES} godot-core)
 
     #Inform that pulse audio is available
     if (${WANT_PULSEAUDIO} AND ${PULSEAUDIO_FOUND})

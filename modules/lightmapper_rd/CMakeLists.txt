@@ -41,7 +41,7 @@ target_sources(godot-module-lightmapper-rd PRIVATE
 # [[[end]]]
 
 target_link_libraries(godot-module-lightmapper-rd PUBLIC
-        godot-object
+        godot-core
         $<$<BOOL:${WANT_VULKAN}>:vulkan>
         $<$<BOOL:${WANT_METAL}>:metal>
 )

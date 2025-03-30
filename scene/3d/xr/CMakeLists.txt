@@ -18,4 +18,4 @@ target_sources(godot-scene-3d-xr PRIVATE
         xr_nodes.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-3d-xr PRIVATE godot-config)
+target_link_libraries(godot-scene-3d-xr PRIVATE godot-core)

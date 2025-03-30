@@ -12,4 +12,4 @@ target_sources(godot-module-meshoptimizer PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-meshoptimizer PUBLIC godot-object meshoptimizer)
+target_link_libraries(godot-module-meshoptimizer PUBLIC godot-core meshoptimizer)

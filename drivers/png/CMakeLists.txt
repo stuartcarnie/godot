@@ -17,4 +17,4 @@ target_sources(driver-png PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(driver-png PUBLIC godot-io png)
+target_link_libraries(driver-png PUBLIC godot-core png)

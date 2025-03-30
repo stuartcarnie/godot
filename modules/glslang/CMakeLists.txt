@@ -12,4 +12,4 @@ target_sources(godot-module-glslang PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-glslang PUBLIC godot-object godot-glslang)
+target_link_libraries(godot-module-glslang PUBLIC godot-core godot-glslang)

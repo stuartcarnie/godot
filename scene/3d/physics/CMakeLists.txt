@@ -26,6 +26,8 @@ target_sources(godot-scene-3d-physics PRIVATE
         kinematic_collision_3d.h
         physical_bone_3d.cpp
         physical_bone_3d.h
+        physical_bone_simulator_3d.cpp
+        physical_bone_simulator_3d.h
         physics_body_3d.cpp
         physics_body_3d.h
         ray_cast_3d.cpp
@@ -34,6 +36,8 @@ target_sources(godot-scene-3d-physics PRIVATE
         rigid_body_3d.h
         shape_cast_3d.cpp
         shape_cast_3d.h
+        soft_body_3d.cpp
+        soft_body_3d.h
         spring_arm_3d.cpp
         spring_arm_3d.h
         static_body_3d.cpp
@@ -42,4 +46,4 @@ target_sources(godot-scene-3d-physics PRIVATE
         vehicle_body_3d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-3d-physics PRIVATE godot-config)
+target_link_libraries(godot-scene-3d-physics PRIVATE godot-core)

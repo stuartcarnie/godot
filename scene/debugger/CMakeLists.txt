@@ -12,4 +12,4 @@ target_sources(godot-scene-debugger PRIVATE
         scene_debugger.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-debugger PUBLIC godot-object)
+target_link_libraries(godot-scene-debugger PUBLIC godot-core)

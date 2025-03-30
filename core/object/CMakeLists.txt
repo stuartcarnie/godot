@@ -17,7 +17,7 @@ set(GENERATED_MODULES_REGISTER_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/modules/regist
 set(GODOT_CUSTOM_ENGINE_MODULES_DIRECTORY "")
 generate_enabled_modules_and_register("${GODOT_ENGINE_ROOT_DIRECTORY}/modules/" "${GODOT_CUSTOM_ENGINE_MODULES_DIRECTORY}" "${GENERATED_MODULES_ENABLED_OUTPUT}" "${GENERATED_MODULES_REGISTER_OUTPUT}")
 
-godot_add_library(godot-object FOLDER core STATIC
+target_sources(godot-core PRIVATE
         ${GODOT_CORE_OBJECT_DISABLED_CLASSES_OUTPUT}
         ${GODOT_INTERFACE_INTERFACE_DUMP_OUTPUT}
         ${GODOT_INTERFACE_WRAPPERS_OUTPUT}
@@ -29,12 +29,12 @@ godot_add_library(godot-object FOLDER core STATIC
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-object PRIVATE')
+#   cog.outl('target_sources(godot-core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-object PRIVATE
+target_sources(godot-core PRIVATE
         callable_method_pointer.cpp
         callable_method_pointer.h
         class_db.cpp
@@ -60,25 +60,25 @@ target_sources(godot-object PRIVATE
         worker_thread_pool.h
 )
 # [[[end]]]
-target_include_directories(godot-object PUBLIC
+target_include_directories(godot-core PUBLIC
         ${GODOT_ENGINE_ROOT_DIRECTORY}
         ${CMAKE_BINARY_INCLUDE_DIR})
 
-target_include_directories(godot-object PRIVATE
+target_include_directories(godot-core PRIVATE
         ${CMAKE_BINARY_INCLUDE_DIR}/modules
         ${GODOT_ENGINE_ROOT_DIRECTORY}/modules)
 
-target_compile_definitions(godot-object PUBLIC
+target_compile_definitions(godot-core PUBLIC
         $<${WANT_DEBUG_FEATURES}:DEBUG_ENABLED>)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_include_directories(godot-object PUBLIC ${GODOT_SOURCE_ROOT_PLATFORM_DIR}/windows)
+    target_include_directories(godot-core PUBLIC ${GODOT_SOURCE_ROOT_PLATFORM_DIR}/windows)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_include_directories(godot-object PUBLIC ${GODOT_SOURCE_ROOT_PLATFORM_DIR}/macos)
+    target_include_directories(godot-core PUBLIC ${GODOT_SOURCE_ROOT_PLATFORM_DIR}/macos)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    target_include_directories(godot-object PUBLIC ${GODOT_SOURCE_ROOT_PLATFORM_DIR}/ios)
+    target_include_directories(godot-core PUBLIC ${GODOT_SOURCE_ROOT_PLATFORM_DIR}/ios)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_include_directories(godot-object PUBLIC ${GODOT_SOURCE_ROOT_PLATFORM_DIR}/linuxbsd)
+    target_include_directories(godot-core PUBLIC ${GODOT_SOURCE_ROOT_PLATFORM_DIR}/linuxbsd)
 else ()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif ()

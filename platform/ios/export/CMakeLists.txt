@@ -28,7 +28,7 @@ target_sources(platform-ios-export PRIVATE
         godot_plugin_config.h
 )
 # [[[end]]]
-target_link_libraries(platform-ios-export PRIVATE godot-config)
+target_link_libraries(platform-ios-export PRIVATE godot-core)
 target_include_directories(platform-ios-export
         PRIVATE
         ${CMAKE_BINARY_DIR}/include/platform/ios/export

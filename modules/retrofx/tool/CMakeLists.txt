@@ -11,20 +11,7 @@ target_sources(slang-tool PRIVATE
 )
 target_link_libraries(slang-tool PUBLIC
         driver-unix
-        godot-config
         godot-core
-        godot-crypto
-        godot-debugger
-        godot-error
-        godot-extension
-        godot-input
-        godot-io
-        godot-math
-        godot-object
-        godot-os
-        godot-string
-        godot-templates
-        godot-variant
         godot-module-slang
         godot-module-regex
         $<LINK_LIBRARY:FRAMEWORK,Foundation.framework>

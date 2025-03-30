@@ -30,4 +30,4 @@ target_sources(godot-server-xr PRIVATE
         xr_vrs.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-xr PUBLIC godot-math godot-object godot-os godot-server-renderer)
+target_link_libraries(godot-server-xr PUBLIC godot-core godot-server-renderer)

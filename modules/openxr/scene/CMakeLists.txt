@@ -22,4 +22,4 @@ target_sources(godot-module-openxr-scene PRIVATE
         openxr_visibility_mask.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-openxr-scene PUBLIC godot-object openxr)
+target_link_libraries(godot-module-openxr-scene PUBLIC godot-core openxr)

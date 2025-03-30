@@ -12,4 +12,4 @@ target_sources(godot-server-display PRIVATE
         native_menu.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-display PUBLIC godot-io)
+target_link_libraries(godot-server-display PUBLIC godot-core)

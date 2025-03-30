@@ -36,7 +36,9 @@ target_sources(godot-scene-2d-physics PRIVATE
         shape_cast_2d.h
         static_body_2d.cpp
         static_body_2d.h
+        touch_screen_button.cpp
+        touch_screen_button.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-2d-physics PRIVATE godot-config)
+target_link_libraries(godot-scene-2d-physics PRIVATE godot-core)
 

@@ -16,4 +16,4 @@ target_sources(godot-module-etcpak PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-etcpak PUBLIC godot-io etcpak)
+target_link_libraries(godot-module-etcpak PUBLIC godot-core etcpak)

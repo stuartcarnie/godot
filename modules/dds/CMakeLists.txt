@@ -17,4 +17,4 @@ target_sources(godot-module-dds PRIVATE
         texture_loader_dds.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-dds PUBLIC godot-io)
+target_link_libraries(godot-module-dds PUBLIC godot-core)

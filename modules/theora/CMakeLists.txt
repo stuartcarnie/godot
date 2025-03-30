@@ -14,4 +14,4 @@ target_sources(godot-module-theora PRIVATE
         video_stream_theora.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-theora PUBLIC godot-object theora vorbis)
+target_link_libraries(godot-module-theora PUBLIC godot-core theora vorbis)

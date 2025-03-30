@@ -80,4 +80,4 @@ target_sources(godot-editor-plugins-gizmos PRIVATE
         voxel_gi_gizmo_plugin.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-plugins-gizmos PRIVATE godot-config)
+target_link_libraries(godot-editor-plugins-gizmos PRIVATE godot-core)

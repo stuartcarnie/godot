@@ -43,4 +43,4 @@ target_sources(godot-module-physics-2D PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-physics-2D PRIVATE godot-math)
+target_link_libraries(godot-module-physics-2D PRIVATE godot-core)

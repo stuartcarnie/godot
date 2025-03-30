@@ -42,4 +42,4 @@ target_sources(godot-editor-import PRIVATE
         resource_importer_wav.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-import PRIVATE godot-config)
+target_link_libraries(godot-editor-import PRIVATE godot-core)

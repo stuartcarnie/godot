@@ -154,7 +154,7 @@ target_sources(godot-server-rendering-renderer_rd PRIVATE
         uniform_set_cache_rd.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-rendering-renderer_rd PUBLIC godot-templates godot-os godot-glslang spirv-reflect)
+target_link_libraries(godot-server-rendering-renderer_rd PUBLIC godot-core godot-glslang spirv-reflect)
 
 target_compile_definitions(godot-server-rendering-renderer_rd
         PRIVATE

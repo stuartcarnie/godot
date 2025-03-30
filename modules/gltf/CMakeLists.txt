@@ -1,31 +1,15 @@
+add_subdirectory(extensions)
+
 godot_add_library(godot-module-gltf FOLDER modules STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(godot-module-gltf PRIVATE')
-#   for file in list_files(cog, ['.', 'extensions', 'extensions/physics', 'structures']):
+#   for file in list_files(cog, ['.', 'structures']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
 target_sources(godot-module-gltf PRIVATE
-        extensions/gltf_document_extension.cpp
-        extensions/gltf_document_extension.h
-        extensions/gltf_document_extension_convert_importer_mesh.cpp
-        extensions/gltf_document_extension_convert_importer_mesh.h
-        extensions/gltf_document_extension_texture_ktx.cpp
-        extensions/gltf_document_extension_texture_ktx.h
-        extensions/gltf_document_extension_texture_webp.cpp
-        extensions/gltf_document_extension_texture_webp.h
-        extensions/gltf_light.cpp
-        extensions/gltf_light.h
-        extensions/gltf_spec_gloss.cpp
-        extensions/gltf_spec_gloss.h
-        extensions/physics/gltf_document_extension_physics.cpp
-        extensions/physics/gltf_document_extension_physics.h
-        extensions/physics/gltf_physics_body.cpp
-        extensions/physics/gltf_physics_body.h
-        extensions/physics/gltf_physics_shape.cpp
-        extensions/physics/gltf_physics_shape.h
         gltf_defines.h
         gltf_document.cpp
         gltf_document.h
@@ -85,7 +69,7 @@ if (WANT_EDITOR)
 	# [[[end]]]
 endif ()
 
-target_link_libraries(godot-module-gltf PUBLIC godot-object minizip)
+target_link_libraries(godot-module-gltf PUBLIC godot-core minizip)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	target_link_libraries(godot-module-gltf PRIVATE shlwapi)
 endif()

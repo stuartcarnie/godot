@@ -58,4 +58,4 @@ if (WANT_EDITOR)
     )
     # [[[end]]]
 endif ()
-target_link_libraries(godot-module-navigation PUBLIC godot-object rvo2 recast-navigation zlib clipper2)
+target_link_libraries(godot-module-navigation PUBLIC godot-core rvo2 recast-navigation zlib clipper2)

@@ -1,13 +1,12 @@
-godot_add_library(godot-os FOLDER core STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-os PRIVATE')
+#   cog.outl('target_sources(godot-core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-os PRIVATE
+target_sources(godot-core PRIVATE
         condition_variable.h
         keyboard.cpp
         keyboard.h
@@ -35,4 +34,3 @@ target_sources(godot-os PRIVATE
         time_enums.h
 )
 # [[[end]]]
-target_link_libraries(godot-os PUBLIC godot-object)

@@ -16,4 +16,4 @@ target_sources(godot-module-zip PRIVATE
         zip_reader.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-zip PUBLIC godot-object godot-io minizip)
+target_link_libraries(godot-module-zip PUBLIC godot-core minizip)

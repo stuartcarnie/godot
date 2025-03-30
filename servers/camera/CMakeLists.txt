@@ -12,4 +12,4 @@ target_sources(godot-server-camera PRIVATE
         camera_feed.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-camera PUBLIC godot-io)
+target_link_libraries(godot-server-camera PUBLIC godot-core)

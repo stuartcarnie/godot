@@ -40,4 +40,4 @@ target_sources(godot-editor-gui PRIVATE
         touch_actions_panel.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-gui PRIVATE godot-config)
+target_link_libraries(godot-editor-gui PRIVATE godot-core)

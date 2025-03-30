@@ -14,4 +14,4 @@ target_sources(godot-module-tga PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-tga PUBLIC godot-object)
+target_link_libraries(godot-module-tga PUBLIC godot-core)

@@ -15,8 +15,7 @@ generate_license_file(${GODOT_CORE_CONFIG_COPYRIGHT_SOURCE} ${GODOT_CORE_CONFIG_
 set(GODOT_SCRIPT_ENCRYPTION_GENERATE_HEADER ${CMAKE_BINARY_INCLUDE_DIR}/core/script_encryption_key.gen.cpp)
 generate_script_encryption_header("" ${GODOT_SCRIPT_ENCRYPTION_GENERATE_HEADER})
 
-godot_add_library(godot-config FOLDER core STATIC)
-target_sources(godot-config PRIVATE
+target_sources(godot-core PRIVATE
         ${GODOT_CORE_AUTHORS_SOURCE_OUTPUT}
         ${GODOT_CORE_DONORS_SOURCE_OUTPUT}
         ${GODOT_CORE_CONFIG_LICENSE_OUTPUT}
@@ -25,12 +24,12 @@ target_sources(godot-config PRIVATE
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-config PRIVATE')
+#   cog.outl('target_sources(godot-core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-config PRIVATE
+target_sources(godot-core PRIVATE
         engine.cpp
         engine.h
         project_settings.cpp
@@ -38,10 +37,9 @@ target_sources(godot-config PRIVATE
 )
 # [[[end]]]
 
-target_include_directories(godot-config PUBLIC ${CMAKE_BINARY_INCLUDE_DIR})
-target_link_libraries(godot-config PUBLIC godot-string godot-object)
+target_include_directories(godot-core PUBLIC ${CMAKE_BINARY_INCLUDE_DIR})
 
-target_compile_definitions(godot-config
+target_compile_definitions(godot-core
         PRIVATE
         $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:OPENGL_FOUND}>>:GLES3_ENABLED=1>
         $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>

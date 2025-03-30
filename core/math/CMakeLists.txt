@@ -1,13 +1,12 @@
-godot_add_library(godot-math FOLDER core STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-math PRIVATE')
+#   cog.outl('target_sources(godot-core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-math PRIVATE
+target_sources(godot-core PRIVATE
         a_star.cpp
         a_star.h
         a_star_grid_2d.cpp
@@ -84,10 +83,9 @@ target_sources(godot-math PRIVATE
         vector4i.h
 )
 # [[[end]]]
-target_include_directories(godot-math PUBLIC ${GODOT_ENGINE_ROOT_DIRECTORY})
-target_link_libraries(godot-math PUBLIC godot-object clipper2)
+target_link_libraries(godot-core PUBLIC clipper2)
 
-target_sources(godot-math PUBLIC
+target_sources(godot-core PUBLIC
         FILE_SET HEADERS
         FILES
         a_star.h

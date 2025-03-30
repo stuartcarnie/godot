@@ -4,7 +4,7 @@ set_target_properties(metal-tools PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_
 target_sources(metal-tools PRIVATE main.mm)
 target_compile_options(metal-tools PRIVATE -fexceptions)
 target_link_libraries(metal-tools PUBLIC
-        godot-templates
+        godot-core
         zstd
 #        cxxopts
         "-framework Foundation"

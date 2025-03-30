@@ -35,4 +35,4 @@ if (WANT_EDITOR)
 	# [[[end]]]
 endif ()
 
-target_link_libraries(godot-module-fbx PUBLIC godot-object ufbx)
+target_link_libraries(godot-module-fbx PUBLIC godot-core ufbx)

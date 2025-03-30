@@ -12,4 +12,4 @@ target_sources(godot-module-xatlas-unwrap PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-xatlas-unwrap PUBLIC godot-object xatlas)
+target_link_libraries(godot-module-xatlas-unwrap PUBLIC godot-core xatlas)

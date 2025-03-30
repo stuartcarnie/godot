@@ -13,6 +13,6 @@ target_sources(driver-apple PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(driver-apple PUBLIC godot-error)
+target_link_libraries(driver-apple PUBLIC godot-core)
 
 group_target_sources(driver-apple)

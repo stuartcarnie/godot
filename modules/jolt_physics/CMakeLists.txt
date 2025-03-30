@@ -100,7 +100,7 @@ target_sources(godot-module-jolt-physics PRIVATE
         spaces/jolt_temp_allocator.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-jolt-physics PUBLIC godot-object jolt-physics)
+target_link_libraries(godot-module-jolt-physics PUBLIC godot-core jolt-physics)
 target_compile_definitions(godot-module-jolt-physics
         PUBLIC
         $<${WANT_EDITOR}:JPH_DEBUG_RENDERER>

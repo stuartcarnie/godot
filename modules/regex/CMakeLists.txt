@@ -14,5 +14,5 @@ target_sources(godot-module-regex PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-regex PUBLIC godot-object pcre2_w16 pcre2_w32)
+target_link_libraries(godot-module-regex PUBLIC godot-core pcre2_w16 pcre2_w32)
 target_compile_definitions(godot-module-regex PRIVATE PCRE2_CODE_UNIT_WIDTH=0)

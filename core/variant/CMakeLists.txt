@@ -1,13 +1,12 @@
-godot_add_library(godot-variant FOLDER core STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-variant PRIVATE')
+#   cog.outl('target_sources(godot-core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-variant PRIVATE
+target_sources(godot-core PRIVATE
         array.cpp
         array.h
         binder_common.h
@@ -43,4 +42,3 @@ target_sources(godot-variant PRIVATE
         variant_utility.h
 )
 # [[[end]]]
-target_link_libraries(godot-variant PUBLIC godot-object)

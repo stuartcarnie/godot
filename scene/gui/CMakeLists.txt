@@ -124,4 +124,4 @@ target_sources(godot-scene-gui PRIVATE
         view_panner.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-gui PUBLIC godot-input godot-server-audio)
+target_link_libraries(godot-scene-gui PUBLIC godot-core godot-server-audio)

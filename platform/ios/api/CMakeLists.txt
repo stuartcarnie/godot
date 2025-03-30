@@ -13,4 +13,4 @@ target_sources(platform-ios-api PRIVATE
         api.h
 )
 # [[[end]]]
-target_link_libraries(platform-ios-api PRIVATE godot-config)
+target_link_libraries(platform-ios-api PRIVATE godot-core)

@@ -16,4 +16,4 @@ target_sources(godot-module-minimp3 PRIVATE
         resource_importer_mp3.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-minimp3 PUBLIC godot-object minimp3)
+target_link_libraries(godot-module-minimp3 PUBLIC godot-core minimp3)

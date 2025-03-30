@@ -48,6 +48,6 @@ target_sources(drivers PRIVATE
         register_driver_types.h
 )
 # [[[end]]]
-target_link_libraries(drivers PUBLIC godot-extension driver-png)
+target_link_libraries(drivers PUBLIC godot-core driver-png)
 
 group_target_sources(drivers)

@@ -15,6 +15,6 @@ if (${WANT_PULSEAUDIO} AND ${PULSEAUDIO_FOUND})
             pulse-so_wrap.h
     )
     # [[[end]]]
-    target_link_libraries(driver-pulseaudio PUBLIC godot-os)
+    target_link_libraries(driver-pulseaudio PUBLIC godot-core)
     target_compile_definitions(driver-pulseaudio PUBLIC PULSEAUDIO_ENABLED=1)
 endif ()

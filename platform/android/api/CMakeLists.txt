@@ -15,4 +15,4 @@ target_sources(platform-android-api PRIVATE
         jni_singleton.h
 )
 # [[[end]]]
-target_link_libraries(platform-android-api PRIVATE godot-config)
+target_link_libraries(platform-android-api PRIVATE godot-core)

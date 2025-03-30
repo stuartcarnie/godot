@@ -30,4 +30,4 @@ if (WANT_EDITOR)
     )
     # [[[end]]]
 endif ()
-target_link_libraries(godot-module-gridmap PUBLIC godot-object minizip)
+target_link_libraries(godot-module-gridmap PUBLIC godot-core minizip)

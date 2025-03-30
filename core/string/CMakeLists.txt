@@ -1,13 +1,12 @@
-godot_add_library(godot-string FOLDER core STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-string PRIVATE')
+#   cog.outl('target_sources(godot-core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-string PRIVATE
+target_sources(godot-core PRIVATE
         char_utils.h
         fuzzy_search.cpp
         fuzzy_search.h
@@ -36,5 +35,4 @@ target_sources(godot-string PRIVATE
         ustring.h
 )
 # [[[end]]]
-target_include_directories(godot-string PUBLIC ${GODOT_ENGINE_ROOT_DIRECTORY})
-target_link_libraries(godot-string PUBLIC godot-object godot-thirdparty-misc)
+target_link_libraries(godot-core PRIVATE godot-thirdparty-misc)

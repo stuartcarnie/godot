@@ -62,5 +62,5 @@ add_subdirectory(action_map)
 add_subdirectory(extensions)
 add_subdirectory(scene)
 
-target_link_libraries(godot-module-openxr PUBLIC godot-object godot-core openxr godot-server-renderer zlib)
+target_link_libraries(godot-module-openxr PUBLIC godot-core openxr godot-server-renderer zlib)
 set_property(TARGET godot-module-openxr PROPERTY CXX_STANDARD 17)

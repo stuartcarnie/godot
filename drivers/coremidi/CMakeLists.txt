@@ -15,7 +15,7 @@ if(${WANT_COREMIDI})
     # [[[end]]]
 
     target_compile_definitions(coremidi PUBLIC COREMIDI_ENABLED=1)
-    target_link_libraries(coremidi PUBLIC godot-error)
+    target_link_libraries(coremidi PUBLIC godot-core)
 
     group_target_sources(coremidi)
 endif()

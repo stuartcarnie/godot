@@ -16,4 +16,4 @@ target_sources(godot-server-movie-writer PRIVATE
         movie_writer_pngwav.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-movie-writer PUBLIC godot-templates)
+target_link_libraries(godot-server-movie-writer PUBLIC godot-core)

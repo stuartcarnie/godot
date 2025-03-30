@@ -71,7 +71,7 @@ target_sources(godot-module-openxr-extensions
 
 target_link_libraries(godot-module-openxr-extensions
         PUBLIC
-        godot-object openxr
+        godot-core openxr
         $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:${OPENGL_FOUND}>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},Darwin>>>:driver-gles3>
         $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:driver-vulkan>
         $<$<BOOL:${WANT_METAL}>:metal>

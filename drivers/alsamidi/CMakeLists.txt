@@ -13,6 +13,6 @@ if (${WANT_ALSA} AND ${ALSA_FOUND})
             midi_driver_alsamidi.h
     )
     # [[[end]]]
-    target_link_libraries(driver-alsa-midi PUBLIC linuxbsd-headers ${ALSA_LIBRARIES} godot-error)
+    target_link_libraries(driver-alsa-midi PUBLIC linuxbsd-headers ${ALSA_LIBRARIES} godot-core)
     target_compile_definitions(driver-alsa-midi PUBLIC ALSAMIDI_ENABLED=1)
 endif ()

@@ -192,4 +192,4 @@ target_sources(godot-editor-plugins PRIVATE
         voxel_gi_editor_plugin.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-plugins PRIVATE godot-config clipper2)
+target_link_libraries(godot-editor-plugins PRIVATE godot-core clipper2)

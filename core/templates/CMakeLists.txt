@@ -1,13 +1,12 @@
-godot_add_library(godot-templates FOLDER core STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-templates PRIVATE')
+#   cog.outl('target_sources(godot-core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-templates PRIVATE
+target_sources(godot-core PRIVATE
         a_hash_map.cpp
         a_hash_map.h
         bin_sorted_array.h
@@ -46,4 +45,3 @@ target_sources(godot-templates PRIVATE
         vset.h
 )
 # [[[end]]]
-target_link_libraries(godot-templates PUBLIC godot-object)

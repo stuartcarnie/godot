@@ -12,4 +12,4 @@ target_sources(godot-server-debugger PRIVATE
         servers_debugger.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-debugger PUBLIC godot-debugger)
+target_link_libraries(godot-server-debugger PUBLIC godot-core)

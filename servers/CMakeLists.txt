@@ -54,11 +54,7 @@ target_sources(godot-servers PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-servers PUBLIC
-        godot-object
-        godot-input
-        godot-io
-        godot-config
-        godot-math
+        godot-core
         godot-server-audio
         godot-server-camera
         godot-server-renderer

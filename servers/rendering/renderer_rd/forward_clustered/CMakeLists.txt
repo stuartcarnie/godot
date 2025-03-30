@@ -15,4 +15,4 @@ target_sources(godot-server-rendering-renderer_rd-forward_clustered PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-server-rendering-renderer_rd-forward_clustered PRIVATE godot-config)
+target_link_libraries(godot-server-rendering-renderer_rd-forward_clustered PRIVATE godot-core)

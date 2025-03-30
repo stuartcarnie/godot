@@ -14,4 +14,4 @@ target_sources(godot-module-astcenc PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-astcenc PUBLIC godot-io astcenc)
+target_link_libraries(godot-module-astcenc PUBLIC godot-core astcenc)

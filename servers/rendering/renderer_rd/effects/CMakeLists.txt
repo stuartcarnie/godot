@@ -42,7 +42,7 @@ target_sources(godot-server-rendering-renderer_rd-effects PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-server-rendering-renderer_rd-effects PRIVATE godot-config)
+target_link_libraries(godot-server-rendering-renderer_rd-effects PRIVATE godot-core)
 
 set_property(
         SOURCE metal_fx.mm

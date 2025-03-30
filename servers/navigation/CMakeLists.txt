@@ -21,4 +21,4 @@ target_sources(godot-server-navigation PRIVATE
         navigation_utilities.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-navigation PUBLIC godot-object)
+target_link_libraries(godot-server-navigation PUBLIC godot-core)

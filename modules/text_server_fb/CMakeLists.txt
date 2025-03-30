@@ -16,4 +16,4 @@ target_sources(godot-module-text-server-fb PRIVATE
         thorvg_svg_in_ot.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-text-server-fb PUBLIC godot-object thorvg freetype msdfgen)
+target_link_libraries(godot-module-text-server-fb PUBLIC godot-core thorvg freetype msdfgen)

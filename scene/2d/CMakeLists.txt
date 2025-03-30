@@ -72,11 +72,9 @@ target_sources(godot-scene-2d PRIVATE
         tile_map.h
         tile_map_layer.cpp
         tile_map_layer.h
-        touch_screen_button.cpp
-        touch_screen_button.h
         visible_on_screen_notifier_2d.cpp
         visible_on_screen_notifier_2d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-2d PUBLIC godot-templates clipper2)
+target_link_libraries(godot-scene-2d PUBLIC godot-core clipper2)
 

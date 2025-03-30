@@ -24,7 +24,7 @@ target_sources(metal PRIVATE
 # [[[end]]]
 target_compile_features(metal PRIVATE cxx_std_20)
 set_target_properties(metal PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
-target_link_libraries(metal PUBLIC godot-error godot-os spirv-cross)
+target_link_libraries(metal PUBLIC godot-core spirv-cross)
 target_compile_definitions(metal PUBLIC METAL_ENABLED=1 RD_ENABLED=1)
 target_compile_options(metal PRIVATE -fexceptions)
 # disable -Wunused-variable for now, as it's too noisy

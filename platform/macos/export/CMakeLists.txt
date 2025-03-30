@@ -26,7 +26,7 @@ target_sources(platform-macos-export PRIVATE
         export_plugin.h
 )
 # [[[end]]]
-target_link_libraries(platform-macos-export PRIVATE godot-config)
+target_link_libraries(platform-macos-export PRIVATE godot-core)
 target_include_directories(platform-macos-export
         PRIVATE
         ${CMAKE_BINARY_DIR}/include/platform/macos/export

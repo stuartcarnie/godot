@@ -54,6 +54,8 @@ option(ENABLE_MINIZIP "Enable ZIP archive support using minizip" ON)
 option(ENABLE_BROTLI "Enable Brotli for decompresson and WOFF2 fonts support" ON)
 option(DISABLE_EXCEPTIONS "Force disabling exception handling code" ON)
 option(DISABLE_XR "Disable XR nodes and server" OFF)
+option(DISABLE_PHYSICS_2D "Disable 2D physics" OFF)
+option(DISABLE_PHYSICS_3D "Disable 3D physics" OFF)
 
 if (DISABLE_XR)
     add_compile_definitions(DISABLE_XR)

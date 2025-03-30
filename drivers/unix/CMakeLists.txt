@@ -26,4 +26,4 @@ target_sources(driver-unix PRIVATE
         thread_posix.h
 )
 # [[[end]]]
-target_link_libraries(driver-unix PUBLIC godot-io)
+target_link_libraries(driver-unix PUBLIC godot-core)

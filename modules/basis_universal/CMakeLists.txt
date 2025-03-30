@@ -14,4 +14,4 @@ target_sources(godot-module-basis-universal PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-basis-universal PUBLIC godot-object basis_universal)
+target_link_libraries(godot-module-basis-universal PUBLIC godot-core basis_universal)

@@ -114,5 +114,5 @@ target_sources(godot-scene-theme PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-scene-theme PUBLIC godot-object godot-scene-resources)
+target_link_libraries(godot-scene-theme PUBLIC godot-core godot-scene-resources)
 target_include_directories(godot-scene-theme PRIVATE ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme)

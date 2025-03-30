@@ -1,3 +1,5 @@
+godot_add_library(godot-core FOLDER core STATIC)
+
 add_subdirectory(object)
 add_subdirectory(math)
 add_subdirectory(string)
@@ -12,7 +14,6 @@ add_subdirectory(io)
 add_subdirectory(os)
 add_subdirectory(variant)
 
-godot_add_library(godot-core FOLDER core STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -37,8 +38,6 @@ target_sources(godot-core PRIVATE
         version.h
 )
 # [[[end]]]
-
-target_link_libraries(godot-core PUBLIC godot-object)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(godot-core PUBLIC platform-linuxbsd)

@@ -26,4 +26,4 @@ target_sources(godot-server-rendering-dummy PRIVATE
         storage/utilities.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-rendering-dummy PRIVATE godot-os)
+target_link_libraries(godot-server-rendering-dummy PRIVATE godot-core)

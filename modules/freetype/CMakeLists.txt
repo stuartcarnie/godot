@@ -12,4 +12,4 @@ target_sources(godot-module-freetype PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-freetype PUBLIC godot-object freetype)
+target_link_libraries(godot-module-freetype PUBLIC godot-core freetype)

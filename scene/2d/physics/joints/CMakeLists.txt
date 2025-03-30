@@ -18,5 +18,5 @@ target_sources(godot-scene-2d-physics-joints PRIVATE
         pin_joint_2d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-2d-physics-joints PRIVATE godot-config)
+target_link_libraries(godot-scene-2d-physics-joints PRIVATE godot-core)
 

@@ -167,7 +167,7 @@ target_sources(mbedtls PRIVATE
 )
 target_include_directories(mbedtls PUBLIC include)
 target_compile_definitions(mbedtls PRIVATE MBEDTLS_CONFIG_FILE="godot_module_mbedtls_config.h")
-target_link_libraries(mbedtls godot-config)
+target_link_libraries(mbedtls godot-core)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(mbedtls bcrypt)
 endif()

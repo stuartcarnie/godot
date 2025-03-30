@@ -36,4 +36,4 @@ if (WANT_EDITOR)
     )
     # [[[end]]]
 endif ()
-target_link_libraries(godot-module-noise PUBLIC godot-object)
+target_link_libraries(godot-module-noise PUBLIC godot-core)
