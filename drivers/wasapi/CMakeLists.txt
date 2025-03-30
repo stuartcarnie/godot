@@ -14,6 +14,6 @@ if (${WANT_WASAPI})
     )
     # [[[end]]]
 
-    target_link_libraries(driver-wasapi PUBLIC godot-core)
+    target_link_libraries(driver-wasapi PUBLIC core)
     target_include_directories(driver-wasapi PRIVATE ${GODOT_ENGINE_ROOT_DIRECTORY})
 endif ()

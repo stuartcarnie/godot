@@ -14,4 +14,4 @@ target_sources(godot-module-ogg PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-ogg PUBLIC godot-core ogg)
+target_link_libraries(godot-module-ogg PUBLIC core ogg)

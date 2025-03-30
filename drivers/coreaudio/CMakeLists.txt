@@ -15,7 +15,7 @@ if(${WANT_COREAUDIO})
     # [[[end]]]
 
     target_compile_definitions(coreaudio PUBLIC COREAUDIO_ENABLED=1)
-    target_link_libraries(coreaudio PUBLIC godot-core)
+    target_link_libraries(coreaudio PRIVATE core)
 
     group_target_sources(coreaudio)
 endif()

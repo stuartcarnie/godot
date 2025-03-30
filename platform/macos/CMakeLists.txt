@@ -58,7 +58,7 @@ target_sources(platform-macos PRIVATE
 
 if(${WANT_OPENGL} AND ${OPENGL_FOUND})
     target_link_libraries(platform-macos PUBLIC OpenGL::GL)
-    target_link_libraries(platform-macos PUBLIC driver-gles3 glad)
+    target_link_libraries(platform-macos PUBLIC gles3 glad)
     target_link_libraries(platform-macos PRIVATE angle)
     target_compile_definitions(platform-macos PRIVATE GLES3_ENABLED=1)
 endif()

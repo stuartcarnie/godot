@@ -18,7 +18,7 @@ target_sources(godot-editor-project_manager PRIVATE
         quick_settings_dialog.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-project_manager PRIVATE godot-core)
+target_link_libraries(godot-editor-project_manager PRIVATE core)
 target_compile_definitions(godot-editor-project_manager
         PRIVATE
         $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:OPENGL_FOUND}>>:GLES3_ENABLED=1>

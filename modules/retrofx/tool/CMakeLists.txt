@@ -11,7 +11,7 @@ target_sources(slang-tool PRIVATE
 )
 target_link_libraries(slang-tool PUBLIC
         driver-unix
-        godot-core
+        core
         godot-module-slang
         godot-module-regex
         $<LINK_LIBRARY:FRAMEWORK,Foundation.framework>

@@ -39,7 +39,7 @@ if (WANT_EDITOR)
     )
     # [[[end]]]
 endif ()
-target_link_libraries(godot-module-websocket PUBLIC godot-core wslay zlib)
+target_link_libraries(godot-module-websocket PUBLIC core wslay zlib)
 set_target_properties(godot-module-websocket PROPERTIES
         CXX_STANDARD            17
         CXX_STANDARD_REQUIRED   ON

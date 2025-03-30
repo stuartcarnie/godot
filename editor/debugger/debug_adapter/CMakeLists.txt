@@ -17,4 +17,4 @@ target_sources(godot-editor-debugger-debug_adapter PRIVATE
         debug_adapter_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-debugger-debug_adapter PRIVATE godot-core)
+target_link_libraries(godot-editor-debugger-debug_adapter PRIVATE core)

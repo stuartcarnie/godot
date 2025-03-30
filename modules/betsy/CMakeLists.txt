@@ -43,7 +43,7 @@ target_sources(godot-module-betsy PRIVATE
 # [[[end]]]
 
 target_link_libraries(godot-module-betsy PUBLIC
-        godot-core
+        core
         $<$<BOOL:${WANT_VULKAN}>:vulkan>
         $<$<BOOL:${WANT_METAL}>:metal>
 )

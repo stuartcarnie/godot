@@ -53,24 +53,25 @@ function(godot_add_library LIBRARY_NAME)
 endfunction()
 
 function(group_sources)
-    foreach(f ${ARGN})
-        get_filename_component(abs_path ${f} REALPATH )
-        get_filename_component(filename ${f} NAME )
-        string (REPLACE ${filename} "" abs_path ${abs_path})
+    foreach (f ${ARGN})
+        cmake_path(ABSOLUTE_PATH f OUTPUT_VARIABLE abs_path)
+        cmake_path(GET f FILENAME filename)
+        cmake_path(GET f PARENT_PATH parent_path)
+        # string(REPLACE ${filename} "" abs_path ${abs_path})
         source_group("" FILES ${f})
-        if(abs_path)
-            #strip of the cmake source dir
-            string(REPLACE ${CMAKE_CURRENT_BINARY_DIR} "Generated Files" rel_path ${abs_path}) #in case of generated files
+        if (parent_path)
+            # strip of the cmake source dir
+            string(REPLACE ${CMAKE_CURRENT_BINARY_DIR} "Generated Files" rel_path ${parent_path}) #in case of generated files
             string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} "" rel_path ${rel_path})
             if (rel_path)
                 string(REPLACE ${CMAKE_SOURCE_DIR} "" rel_path ${rel_path})
-            endif()
+            endif ()
             if (rel_path)
                 string(REPLACE "/" "\\" group ${rel_path})
                 source_group(${group} FILES ${f})
-            endif(rel_path)
-        endif(abs_path)
-    endforeach(f)
+            endif (rel_path)
+        endif (parent_path)
+    endforeach (f)
 endfunction(group_sources)
 
 

@@ -1,12 +1,12 @@
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-core PRIVATE')
+#   cog.outl('target_sources(core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-core PRIVATE
+target_sources(core PRIVATE
         a_hash_map.cpp
         a_hash_map.h
         bin_sorted_array.h

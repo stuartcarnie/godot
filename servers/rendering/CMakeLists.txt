@@ -69,5 +69,5 @@ target_sources(godot-server-renderer PRIVATE
 )
 # [[[end]]]
 target_include_directories(godot-server-renderer PUBLIC ${CMAKE_BINARY_INCLUDE_DIR}) #Some other targets depend on specific generated shaders
-target_link_libraries(godot-server-renderer PUBLIC godot-core godot-glslang spirv-reflect)
+target_link_libraries(godot-server-renderer PUBLIC core godot-glslang spirv-reflect)
 

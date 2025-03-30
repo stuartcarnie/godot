@@ -219,7 +219,7 @@ target_sources(godot-editor PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-editor PUBLIC godot-core godot-core minizip)
+target_link_libraries(godot-editor PUBLIC core minizip)
 target_link_libraries(godot-editor PRIVATE godot-doc godot-editor-icons godot-editor-themes godot-editor-translations)
 target_include_directories(godot-editor PRIVATE
         ${CMAKE_BINARY_INCLUDE_DIR}/editor

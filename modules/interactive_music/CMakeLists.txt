@@ -35,4 +35,4 @@ if (WANT_EDITOR)
     # [[[end]]]
 endif ()
 
-target_link_libraries(godot-module-interactive_music PRIVATE godot-core)
+target_link_libraries(godot-module-interactive_music PRIVATE core)

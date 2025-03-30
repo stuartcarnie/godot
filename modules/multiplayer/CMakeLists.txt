@@ -48,4 +48,4 @@ if (WANT_EDITOR)
     )
     # [[[end]]]
 endif ()
-target_link_libraries(godot-module-multiplayer PUBLIC godot-core zlib)
+target_link_libraries(godot-module-multiplayer PUBLIC core zlib)

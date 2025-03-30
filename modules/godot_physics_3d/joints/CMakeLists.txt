@@ -22,4 +22,4 @@ target_sources(godot-module-physics-3D-joints PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-module-physics-3D-joints PUBLIC godot-core)
+target_link_libraries(godot-module-physics-3D-joints PUBLIC core)

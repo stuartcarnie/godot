@@ -2,16 +2,16 @@ set(GODOT_CORE_IO_CA_CERTIFICATES_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/cer
 set(GODOT_CORE_IO_CA_CERTIFICATES_DESTINATION ${CMAKE_BINARY_INCLUDE_DIR}/core/io/certs_compressed.gen.h)
 generate_file(certs_header ${GODOT_CORE_IO_CA_CERTIFICATES_SOURCE} ${GODOT_CORE_IO_CA_CERTIFICATES_DESTINATION})
 
-target_sources(godot-core PRIVATE ${GODOT_CORE_IO_CA_CERTIFICATES_DESTINATION})
+target_sources(core PRIVATE ${GODOT_CORE_IO_CA_CERTIFICATES_DESTINATION})
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-core PRIVATE')
+#   cog.outl('target_sources(core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-core PRIVATE
+target_sources(core PRIVATE
         compression.cpp
         compression.h
         config_file.cpp
@@ -100,7 +100,7 @@ target_sources(godot-core PRIVATE
         zip_io.h
 )
 # [[[end]]]
-target_link_libraries(godot-core
+target_link_libraries(core
         PRIVATE
         zstd
         zlib
@@ -109,7 +109,7 @@ target_link_libraries(godot-core
         PRIVATE
         $<$<BOOL:${ENABLE_BROTLI}>:brotli>
 )
-target_compile_definitions(godot-core
+target_compile_definitions(core
         PUBLIC
         $<$<BOOL:${enable_minizip}>:MINIZIP_ENABLED=1>
 
@@ -117,4 +117,4 @@ target_compile_definitions(godot-core
         $<$<BOOL:${ENABLE_BROTLI}>:BROTLI_ENABLED>
 )
 
-# target_include_directories(godot-core PUBLIC ${CMAKE_BINARY_INCLUDE_DIR})
+# target_include_directories(core PUBLIC ${CMAKE_BINARY_INCLUDE_DIR})

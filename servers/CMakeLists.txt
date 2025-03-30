@@ -54,7 +54,7 @@ target_sources(godot-servers PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-servers PUBLIC
-        godot-core
+        core
         godot-server-audio
         godot-server-camera
         godot-server-renderer

@@ -14,4 +14,4 @@ target_sources(godot-module-jpg PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-jpg PUBLIC godot-core jpeg-compressor)
+target_link_libraries(godot-module-jpg PUBLIC core jpeg-compressor)

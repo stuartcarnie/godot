@@ -104,4 +104,4 @@ target_sources(godot-scene-3d PRIVATE
         world_environment.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-3d PUBLIC godot-core godot-thirdparty-misc zlib)
+target_link_libraries(godot-scene-3d PUBLIC core godot-thirdparty-misc zlib)

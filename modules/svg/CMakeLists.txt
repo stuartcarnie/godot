@@ -14,4 +14,4 @@ target_sources(godot-module-svg PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-svg PUBLIC godot-core thorvg)
+target_link_libraries(godot-module-svg PUBLIC core thorvg)

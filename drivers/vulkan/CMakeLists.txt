@@ -18,7 +18,7 @@ if (${WANT_VULKAN} AND ${VULKAN_FOUND})
             vulkan_hooks.h
     )
     # [[[end]]]
-    target_link_libraries(driver-vulkan PUBLIC godot-core vulkan)
+    target_link_libraries(driver-vulkan PUBLIC core vulkan)
     target_compile_definitions(driver-vulkan PUBLIC VULKAN_ENABLED=1 RD_ENABLED=1)
 
     group_target_sources(driver-vulkan)

@@ -14,6 +14,6 @@ if (${WANT_WINMIDI})
     )
     # [[[end]]]
 
-    target_link_libraries(driver-winmidi PUBLIC godot-core)
+    target_link_libraries(driver-winmidi PUBLIC core)
     target_include_directories(driver-winmidi PRIVATE ${GODOT_ENGINE_ROOT_DIRECTORY})
 endif ()

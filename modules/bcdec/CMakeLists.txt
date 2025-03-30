@@ -14,4 +14,4 @@ target_sources(godot-module-bcdec PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-bcdec PUBLIC godot-core godot-thirdparty-misc)
+target_link_libraries(godot-module-bcdec PUBLIC core godot-thirdparty-misc)

@@ -22,4 +22,4 @@ target_sources(driver-windows PRIVATE
         thread_windows.h
 )
 # [[[end]]]
-target_link_libraries(driver-windows PUBLIC godot-core)
+target_link_libraries(driver-windows PUBLIC core)

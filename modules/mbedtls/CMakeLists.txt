@@ -30,7 +30,7 @@ if (WANT_TESTS)
     )
 endif ()
 
-target_link_libraries(godot-module-mbedtls PUBLIC godot-core mbedtls godot-core)
+target_link_libraries(godot-module-mbedtls PUBLIC core mbedtls core)
 target_compile_definitions(godot-module-mbedtls
         PRIVATE
         $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED=1 DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS>)

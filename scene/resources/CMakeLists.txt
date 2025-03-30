@@ -135,5 +135,5 @@ target_sources(godot-scene-resources PRIVATE
         world_2d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-resources PUBLIC godot-core godot-scene-main)
+target_link_libraries(godot-scene-resources PUBLIC core godot-scene-main)
 target_include_directories(godot-scene-resources PUBLIC ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme)

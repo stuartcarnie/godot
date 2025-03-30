@@ -12,4 +12,4 @@ target_sources(godot-module-msdfgen PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-msdfgen PUBLIC godot-core msdfgen)
+target_link_libraries(godot-module-msdfgen PUBLIC core msdfgen)

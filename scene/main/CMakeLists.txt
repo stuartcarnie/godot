@@ -40,4 +40,4 @@ target_sources(godot-scene-main PRIVATE
         window.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-main PUBLIC godot-core godot-scene-debugger godot-scene-animation godot-scene-gui)
+target_link_libraries(godot-scene-main PUBLIC core godot-scene-debugger godot-scene-animation godot-scene-gui)

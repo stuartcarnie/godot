@@ -22,4 +22,4 @@ target_sources(godot-server-audio PRIVATE
         audio_stream.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-audio PRIVATE godot-core)
+target_link_libraries(godot-server-audio PRIVATE core)

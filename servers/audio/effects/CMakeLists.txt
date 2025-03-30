@@ -50,4 +50,4 @@ target_sources(godot-server-audio-effects PRIVATE
         reverb_filter.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-audio-effects PRIVATE godot-core)
+target_link_libraries(godot-server-audio-effects PRIVATE core)

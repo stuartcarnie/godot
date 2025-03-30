@@ -72,6 +72,6 @@ if (WANT_EDITOR)
     # [[[end]]]
 endif ()
 
-target_link_libraries(godot-module-retrofx PUBLIC godot-core godot-server-renderer slang godot-scene)
+target_link_libraries(godot-module-retrofx PUBLIC core godot-server-renderer slang godot-scene)
 # disable -Wunused-variable for now, as it's too noisy
 target_compile_options(godot-module-retrofx PRIVATE -Wno-unused-variable -Wno-unused-private-field -fexceptions)

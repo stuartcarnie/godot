@@ -31,4 +31,4 @@ target_sources(godot-editor-debugger PRIVATE
         script_editor_debugger.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-debugger PRIVATE godot-core)
+target_link_libraries(godot-editor-debugger PRIVATE core)

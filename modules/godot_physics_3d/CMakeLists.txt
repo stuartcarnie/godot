@@ -49,4 +49,4 @@ target_sources(godot-module-physics-3D PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-module-physics-3D PUBLIC godot-core)
+target_link_libraries(godot-module-physics-3D PUBLIC core)

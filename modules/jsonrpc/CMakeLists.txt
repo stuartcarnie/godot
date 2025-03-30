@@ -14,4 +14,4 @@ target_sources(godot-module-jsonrpc PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-jsonrpc PUBLIC godot-core)
+target_link_libraries(godot-module-jsonrpc PUBLIC core)

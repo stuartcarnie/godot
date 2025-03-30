@@ -15,4 +15,4 @@ target_sources(godot-module-cvtt PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-module-cvtt PUBLIC godot-core cvtt)
+target_link_libraries(godot-module-cvtt PUBLIC core cvtt)

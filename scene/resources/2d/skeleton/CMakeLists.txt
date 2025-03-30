@@ -29,4 +29,4 @@ target_sources(godot-scene-resources-2d-skeleton PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-scene-resources-2d-skeleton PRIVATE godot-core)
+target_link_libraries(godot-scene-resources-2d-skeleton PRIVATE core)

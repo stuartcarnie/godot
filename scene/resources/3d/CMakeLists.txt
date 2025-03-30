@@ -46,4 +46,4 @@ target_sources(godot-scene-resources-3d PRIVATE
         world_boundary_shape_3d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-resources-3d PUBLIC godot-core)
+target_link_libraries(godot-scene-resources-3d PUBLIC core)

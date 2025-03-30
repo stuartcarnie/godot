@@ -46,4 +46,4 @@ target_sources(godot-scene-3d-physics PRIVATE
         vehicle_body_3d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-3d-physics PRIVATE godot-core)
+target_link_libraries(godot-scene-3d-physics PRIVATE core)

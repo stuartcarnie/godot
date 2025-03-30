@@ -12,4 +12,4 @@ target_sources(godot-module-vhacd PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-vhacd PUBLIC godot-core vhacd)
+target_link_libraries(godot-module-vhacd PUBLIC core vhacd)

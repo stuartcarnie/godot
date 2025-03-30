@@ -1,3 +1,5 @@
+godot_add_library(drivers STATIC)
+
 if (WANT_ALSA)
     find_package(ALSA)
 endif ()
@@ -34,7 +36,6 @@ endif ()
 
 add_subdirectory(wasapi)
 
-godot_add_library(drivers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -48,6 +49,6 @@ target_sources(drivers PRIVATE
         register_driver_types.h
 )
 # [[[end]]]
-target_link_libraries(drivers PUBLIC godot-core driver-png)
+target_link_libraries(drivers PUBLIC core)
 
 group_target_sources(drivers)

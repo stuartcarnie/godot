@@ -124,7 +124,7 @@ if (WANT_TESTS)
     # [[[end]]]
 endif ()
 
-target_link_libraries(godot-module-gdscript PUBLIC godot-core minizip)
+target_link_libraries(godot-module-gdscript PUBLIC core minizip)
 set_property(TARGET godot-module-gdscript PROPERTY CXX_STANDARD 17)
 if (MSVC)
     # This is a very unfortunate workaround -- in release, this file essentially hangs compilation with MSVC.

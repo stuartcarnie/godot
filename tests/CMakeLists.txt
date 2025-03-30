@@ -160,7 +160,7 @@ target_sources(tests PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(tests PRIVATE godot-core doctest)
+target_link_libraries(tests PRIVATE core doctest)
 target_compile_definitions(tests
         PRIVATE
         $<$<BOOL:${DISABLE_EXCEPTIONS}>:DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS>

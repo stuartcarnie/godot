@@ -25,7 +25,7 @@ target_sources(godot-module-text-server-adv PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-module-text-server-adv PUBLIC godot-core thorvg harfbuzz freetype msdfgen icu4c)
+target_link_libraries(godot-module-text-server-adv PUBLIC core thorvg harfbuzz freetype msdfgen icu4c)
 target_compile_definitions(godot-module-text-server-adv PRIVATE
 		$<${WANT_EDITOR}:ICU_STATIC_DATA=1>
 		-DICU_DATA_NAME=${ICU4C_DAT_NAME}

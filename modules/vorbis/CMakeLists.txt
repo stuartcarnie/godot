@@ -16,4 +16,4 @@ target_sources(godot-module-vorbis PRIVATE
         resource_importer_ogg_vorbis.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-vorbis PUBLIC godot-core vorbis)
+target_link_libraries(godot-module-vorbis PUBLIC core vorbis)

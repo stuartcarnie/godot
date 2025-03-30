@@ -35,7 +35,7 @@ target_sources(miniupnpc PRIVATE
         src/miniupnpc.c
         src/connecthostport.c
 )
-target_link_libraries(miniupnpc godot-core)
+target_link_libraries(miniupnpc core)
 target_include_directories(miniupnpc
         PUBLIC include
         PRIVATE include/miniupnpc

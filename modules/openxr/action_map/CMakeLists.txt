@@ -24,4 +24,4 @@ target_sources(godot-module-openxr-action_map PRIVATE
         openxr_interaction_profile_metadata.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-openxr-action_map PUBLIC godot-core openxr)
+target_link_libraries(godot-module-openxr-action_map PUBLIC core openxr)

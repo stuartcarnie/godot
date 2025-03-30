@@ -18,5 +18,5 @@ target_sources(godot-server-rendering-renderer_rd-environment PRIVATE
 # [[[end]]]
 
 target_link_libraries(godot-server-rendering-renderer_rd-environment
-        PRIVATE godot-core
+        PRIVATE core
 )

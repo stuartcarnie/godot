@@ -13,4 +13,4 @@ target_sources(godot-server-text PRIVATE
         text_server_extension.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-text PUBLIC godot-core)
+target_link_libraries(godot-server-text PUBLIC core)

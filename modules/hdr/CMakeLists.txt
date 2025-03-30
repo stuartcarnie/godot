@@ -14,4 +14,4 @@ target_sources(godot-module-hdr PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-hdr PUBLIC godot-core)
+target_link_libraries(godot-module-hdr PUBLIC core)

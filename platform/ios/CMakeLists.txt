@@ -48,7 +48,7 @@ target_sources(platform-ios PRIVATE
 
 if(${WANT_OPENGL})
     target_link_libraries(platform-ios PUBLIC OpenGLES3::ES3)
-    target_link_libraries(platform-ios PUBLIC driver-gles3)
+    target_link_libraries(platform-ios PUBLIC gles3)
     target_link_libraries(platform-ios PRIVATE angle)
     target_compile_definitions(platform-ios PRIVATE GLES3_ENABLED=1)
 endif()

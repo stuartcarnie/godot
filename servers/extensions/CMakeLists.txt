@@ -14,4 +14,4 @@ target_sources(godot-server-extensions PRIVATE
         physics_server_3d_extension.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-extensions PUBLIC godot-core)
+target_link_libraries(godot-server-extensions PUBLIC core)

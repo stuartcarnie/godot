@@ -28,4 +28,4 @@ target_sources(godot-scene PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-scene PUBLIC godot-core godot-scene-resources godot-scene-audio)
+target_link_libraries(godot-scene PUBLIC core godot-scene-resources godot-scene-audio)

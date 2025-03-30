@@ -1,13 +1,12 @@
-godot_add_library(driver-unix FOLDER drivers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(driver-unix PRIVATE')
+#   cog.outl('target_sources(drivers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(driver-unix PRIVATE
+target_sources(drivers PRIVATE
         dir_access_unix.cpp
         dir_access_unix.h
         file_access_unix.cpp
@@ -26,4 +25,3 @@ target_sources(driver-unix PRIVATE
         thread_posix.h
 )
 # [[[end]]]
-target_link_libraries(driver-unix PUBLIC godot-core)

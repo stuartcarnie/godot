@@ -38,4 +38,4 @@ target_sources(godot-scene-resources-2d PRIVATE
         world_boundary_shape_2d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-resources-2d PUBLIC godot-core)
+target_link_libraries(godot-scene-resources-2d PUBLIC core)

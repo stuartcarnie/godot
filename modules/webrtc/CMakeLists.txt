@@ -26,4 +26,4 @@ target_sources(godot-module-webrtc PRIVATE
         webrtc_peer_connection_js.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-webrtc PUBLIC godot-core)
+target_link_libraries(godot-module-webrtc PUBLIC core)

@@ -68,4 +68,4 @@ target_sources(godot-editor-themes PRIVATE
 # [[[end]]]
 target_sources(godot-editor-themes PRIVATE ${GODOT_EDITOR_BUILTIN_FONTS_HEADER})
 target_include_directories(godot-editor-themes PRIVATE ${CMAKE_BINARY_INCLUDE_DIR})
-target_link_libraries(godot-editor-themes PRIVATE godot-core godot-editor-icons)
+target_link_libraries(godot-editor-themes PRIVATE core godot-editor-icons)

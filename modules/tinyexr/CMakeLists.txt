@@ -16,4 +16,4 @@ target_sources(godot-module-tinyexr PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-tinyexr PUBLIC godot-core tinyexr zlib)
+target_link_libraries(godot-module-tinyexr PUBLIC core tinyexr zlib)

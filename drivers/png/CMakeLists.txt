@@ -1,13 +1,12 @@
-godot_add_library(driver-png FOLDER drivers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(driver-png PRIVATE')
+#   cog.outl('target_sources(drivers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(driver-png PRIVATE
+target_sources(drivers PRIVATE
         image_loader_png.cpp
         image_loader_png.h
         png_driver_common.cpp
@@ -17,4 +16,4 @@ target_sources(driver-png PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(driver-png PUBLIC godot-core png)
+target_link_libraries(drivers PUBLIC png)

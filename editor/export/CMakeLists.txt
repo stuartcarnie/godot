@@ -34,4 +34,4 @@ target_sources(godot-editor-export PRIVATE
         project_zip_packer.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-export PRIVATE godot-core)
+target_link_libraries(godot-editor-export PRIVATE core)

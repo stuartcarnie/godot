@@ -33,4 +33,4 @@ if (WANT_EDITOR)
     # [[[end]]]
 endif ()
 
-target_link_libraries(godot-module-csg PUBLIC godot-core godot-thirdparty-misc zlib manifold)
+target_link_libraries(godot-module-csg PUBLIC core godot-thirdparty-misc zlib manifold)

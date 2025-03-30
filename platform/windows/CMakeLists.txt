@@ -56,7 +56,7 @@ target_link_libraries(platform-windows PUBLIC dinput8 dxguid dwrite avrt dwmapi 
 
 if(${WANT_OPENGL} AND ${OPENGL_FOUND})
     target_link_libraries(platform-windows PUBLIC OpenGL::GL)
-	target_link_libraries(platform-windows PUBLIC driver-gles3)
+	target_link_libraries(platform-windows PUBLIC gles3)
 endif()
 
 if(${WANT_VULKAN} AND ${VULKAN_FOUND})

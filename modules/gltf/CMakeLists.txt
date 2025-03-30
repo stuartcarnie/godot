@@ -69,7 +69,7 @@ if (WANT_EDITOR)
 	# [[[end]]]
 endif ()
 
-target_link_libraries(godot-module-gltf PUBLIC godot-core minizip)
+target_link_libraries(godot-module-gltf PUBLIC core minizip)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	target_link_libraries(godot-module-gltf PRIVATE shlwapi)
 endif()

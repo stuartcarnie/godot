@@ -26,4 +26,4 @@ target_sources(godot-editor-import-3d PRIVATE
         scene_import_settings.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-import-3d PRIVATE godot-core)
+target_link_libraries(godot-editor-import-3d PRIVATE core)

@@ -21,4 +21,4 @@ target_sources(godot-module-enet PRIVATE
 set(ENET_GODOT_SRC ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/enet/enet_godot.cpp)
 target_sources(godot-module-enet PRIVATE ${ENET_GODOT_SRC})
 set_source_files_properties(${ENET_GODOT_SRC} PROPERTIES COMPILE_OPTIONS $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
-target_link_libraries(godot-module-enet PUBLIC godot-core godot-core enet)
+target_link_libraries(godot-module-enet PUBLIC core core enet)

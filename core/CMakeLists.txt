@@ -1,4 +1,4 @@
-godot_add_library(godot-core FOLDER core STATIC)
+godot_add_library(core STATIC)
 
 add_subdirectory(object)
 add_subdirectory(math)
@@ -17,12 +17,12 @@ add_subdirectory(variant)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-core PRIVATE')
+#   cog.outl('target_sources(core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-core PRIVATE
+target_sources(core PRIVATE
         core_bind.cpp
         core_bind.h
         core_constants.cpp
@@ -40,15 +40,15 @@ target_sources(godot-core PRIVATE
 # [[[end]]]
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(godot-core PUBLIC platform-linuxbsd)
+    target_link_libraries(core PUBLIC platform-linuxbsd)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(godot-core PUBLIC platform-windows)
+    target_link_libraries(core PUBLIC platform-windows)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(godot-core PUBLIC platform-macos)
+    target_link_libraries(core PUBLIC platform-macos)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    target_link_libraries(godot-core PUBLIC platform-ios)
+    target_link_libraries(core PUBLIC platform-ios)
 else ()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif ()
 
-group_target_sources(godot-core)
+group_target_sources(core)

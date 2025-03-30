@@ -17,4 +17,4 @@ target_sources(godot-module-webxr PRIVATE
         webxr_interface_js.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-webxr PUBLIC godot-core)
+target_link_libraries(godot-module-webxr PUBLIC core)

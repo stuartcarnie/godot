@@ -18,4 +18,4 @@ target_sources(godot-module-webp PRIVATE
         webp_common.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-webp PUBLIC godot-core webp)
+target_link_libraries(godot-module-webp PUBLIC core webp)

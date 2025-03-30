@@ -29,4 +29,4 @@ target_sources(godot-module-gltf-extensions PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-module-gltf-extensions PUBLIC godot-core)
+target_link_libraries(godot-module-gltf-extensions PUBLIC core)

@@ -119,7 +119,7 @@ endif()
 if(${WANT_OPENGL} AND ${OPENGL_FOUND})
     target_compile_definitions(platform-linuxbsd PUBLIC GLES3_ENABLED=1)
     target_link_libraries(platform-linuxbsd PUBLIC OpenGL::GL)
-    target_link_libraries(platform-linuxbsd PUBLIC driver-gles3)
+    target_link_libraries(platform-linuxbsd PUBLIC gles3)
 endif()
 
 if(${WANT_X11} AND ${X11_FOUND})

@@ -8,4 +8,4 @@ target_sources(godot-module-camera PRIVATE
         register_types.h
 )
 
-target_link_libraries(godot-module-camera PUBLIC godot-core)
+target_link_libraries(godot-module-camera PUBLIC core)

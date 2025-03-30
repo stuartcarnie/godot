@@ -40,5 +40,5 @@ target_sources(godot-scene-2d-physics PRIVATE
         touch_screen_button.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-2d-physics PRIVATE godot-core)
+target_link_libraries(godot-scene-2d-physics PRIVATE core)
 

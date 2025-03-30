@@ -31,5 +31,5 @@ target_sources(godot-scene-animation PRIVATE
         tween.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-animation PUBLIC godot-core godot-scene-2d godot-scene-3d)
+target_link_libraries(godot-scene-animation PUBLIC core godot-scene-2d godot-scene-3d)
 set_property(TARGET godot-scene-animation PROPERTY CXX_STANDARD 17)

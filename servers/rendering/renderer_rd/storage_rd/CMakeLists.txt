@@ -32,4 +32,4 @@ target_sources(godot-server-rendering-renderer_rd-storage_rd PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-server-rendering-renderer_rd-storage_rd PRIVATE godot-core)
+target_link_libraries(godot-server-rendering-renderer_rd-storage_rd PRIVATE core)

@@ -14,4 +14,4 @@ target_sources(godot-module-bmp PRIVATE
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-bmp PUBLIC godot-core)
+target_link_libraries(godot-module-bmp PUBLIC core)

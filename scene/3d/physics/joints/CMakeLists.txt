@@ -22,5 +22,5 @@ target_sources(godot-scene-3d-physics-joints PRIVATE
         slider_joint_3d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-3d-physics-joints PRIVATE godot-core)
+target_link_libraries(godot-scene-3d-physics-joints PRIVATE core)
 

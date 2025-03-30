@@ -1,12 +1,12 @@
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-core PRIVATE')
+#   cog.outl('target_sources(core PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-core PRIVATE
+target_sources(core PRIVATE
         char_utils.h
         fuzzy_search.cpp
         fuzzy_search.h
@@ -35,4 +35,4 @@ target_sources(godot-core PRIVATE
         ustring.h
 )
 # [[[end]]]
-target_link_libraries(godot-core PRIVATE godot-thirdparty-misc)
+target_link_libraries(core PRIVATE godot-thirdparty-misc)
