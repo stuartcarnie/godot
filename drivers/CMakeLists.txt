@@ -21,20 +21,19 @@ if (${WANT_OPENGL} AND ${OPENGL_FOUND})
     endif ()
     add_subdirectory(egl)
 endif ()
+if (ENABLE_METAL)
+    add_subdirectory(metal)
+endif ()
 add_subdirectory(png)
 add_subdirectory(pulseaudio)
 add_subdirectory(unix)
+add_subdirectory(vulkan)
+add_subdirectory(wasapi)
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_subdirectory(windows)
     add_subdirectory(winmidi)
 endif ()
-add_subdirectory(vulkan)
 
-if (ENABLE_METAL)
-    add_subdirectory(metal)
-endif ()
-
-add_subdirectory(wasapi)
 
 # [[[cog
 #   import cog

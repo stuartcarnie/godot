@@ -1,13 +1,12 @@
-godot_add_library(godot-editor-project_manager FOLDER export)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-project_manager PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-project_manager PRIVATE
+target_sources(editor PRIVATE
         project_dialog.cpp
         project_dialog.h
         project_list.cpp
@@ -18,8 +17,7 @@ target_sources(godot-editor-project_manager PRIVATE
         quick_settings_dialog.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-project_manager PRIVATE core)
-target_compile_definitions(godot-editor-project_manager
+target_compile_definitions(editor
         PRIVATE
         $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:OPENGL_FOUND}>>:GLES3_ENABLED=1>
         $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>

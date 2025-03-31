@@ -1,13 +1,12 @@
-godot_add_library(godot-editor-plugins-gizmos FOLDER plugins)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-plugins-gizmos PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-plugins-gizmos PRIVATE
+target_sources(editor PRIVATE
         audio_listener_3d_gizmo_plugin.cpp
         audio_listener_3d_gizmo_plugin.h
         audio_stream_player_3d_gizmo_plugin.cpp
@@ -80,4 +79,3 @@ target_sources(godot-editor-plugins-gizmos PRIVATE
         voxel_gi_gizmo_plugin.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-plugins-gizmos PRIVATE core)

@@ -1,14 +1,13 @@
 add_subdirectory(debug_adapter)
-godot_add_library(godot-editor-debugger FOLDER debugger)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-debugger PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-debugger PRIVATE
+target_sources(editor PRIVATE
         editor_debugger_inspector.cpp
         editor_debugger_inspector.h
         editor_debugger_node.cpp
@@ -31,4 +30,3 @@ target_sources(godot-editor-debugger PRIVATE
         script_editor_debugger.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-debugger PRIVATE core)

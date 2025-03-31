@@ -981,7 +981,12 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
 generate_editor_icons_header("${GODOT_EDITOR_ICONS_SOURCE}" "${GENERATED_EDITOR_ICONS_HEADER}"
         "${CMAKE_BINARY_DIR}/include/editor/themes/editor_icons_cmd.txt")
 
-add_library(godot-editor-icons INTERFACE ${GENERATED_EDITOR_ICONS_HEADER})
+add_custom_target(editor-icons-generated
+        DEPENDS
+        ${GENERATED_EDITOR_ICONS_HEADER})
+add_dependencies(editor editor-icons-generated)
+
+target_sources(editor INTERFACE ${GENERATED_EDITOR_ICONS_HEADER})
 
 # export to parent
 set(GODOT_EDITOR_ICONS_SOURCE ${GODOT_EDITOR_ICONS_SOURCE} PARENT_SCOPE)

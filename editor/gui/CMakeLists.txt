@@ -1,13 +1,12 @@
-godot_add_library(godot-editor-gui FOLDER gui)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-gui PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-gui PRIVATE
+target_sources(editor PRIVATE
         editor_bottom_panel.cpp
         editor_bottom_panel.h
         editor_dir_dialog.cpp
@@ -40,4 +39,3 @@ target_sources(godot-editor-gui PRIVATE
         touch_actions_panel.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-gui PRIVATE core)

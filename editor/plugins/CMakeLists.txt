@@ -1,16 +1,15 @@
 add_subdirectory(gizmos)
 add_subdirectory(tiles)
 
-godot_add_library(godot-editor-plugins FOLDER plugins)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-plugins PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-plugins PRIVATE
+target_sources(editor PRIVATE
         abstract_polygon_2d_editor.cpp
         abstract_polygon_2d_editor.h
         animation_blend_space_1d_editor.cpp
@@ -192,4 +191,3 @@ target_sources(godot-editor-plugins PRIVATE
         voxel_gi_editor_plugin.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-plugins PRIVATE core clipper2)

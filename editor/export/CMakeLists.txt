@@ -1,13 +1,12 @@
-godot_add_library(godot-editor-export FOLDER export)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-export PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-export PRIVATE
+target_sources(editor PRIVATE
         codesign.cpp
         codesign.h
         editor_export.cpp
@@ -34,4 +33,3 @@ target_sources(godot-editor-export PRIVATE
         project_zip_packer.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-export PRIVATE core)

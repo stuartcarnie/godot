@@ -1,13 +1,12 @@
-godot_add_library(godot-editor-plugins-tiles FOLDER plugins)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-plugins-tiles PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-plugins-tiles PRIVATE
+target_sources(editor PRIVATE
         atlas_merging_dialog.cpp
         atlas_merging_dialog.h
         tile_atlas_view.cpp
@@ -28,4 +27,3 @@ target_sources(godot-editor-plugins-tiles PRIVATE
         tiles_editor_plugin.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-plugins-tiles PRIVATE core)

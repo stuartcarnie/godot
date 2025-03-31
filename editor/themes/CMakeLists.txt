@@ -42,16 +42,20 @@ set(GODOT_EDITOR_BUILTIN_FONTS_HEADER ${CMAKE_BINARY_INCLUDE_DIR}/editor/themes/
 generate_editor_themes_fonts("${GODOT_EDITOR_FONTS_SOURCE}" "${GODOT_EDITOR_BUILTIN_FONTS_HEADER}"
         "${CMAKE_BINARY_DIR}/include/editor/themes/editor_fonts_cmd.txt")
 
-godot_add_library(godot-editor-themes FOLDER themes)
+add_custom_target(editor-themes-generated
+        DEPENDS
+        ${GODOT_EDITOR_BUILTIN_FONTS_HEADER})
+add_dependencies(editor editor-themes-generated)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-themes PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-themes PRIVATE
+target_sources(editor PRIVATE
         editor_color_map.cpp
         editor_color_map.h
         editor_fonts.cpp
@@ -66,6 +70,5 @@ target_sources(godot-editor-themes PRIVATE
         editor_theme_manager.h
 )
 # [[[end]]]
-target_sources(godot-editor-themes PRIVATE ${GODOT_EDITOR_BUILTIN_FONTS_HEADER})
-target_include_directories(godot-editor-themes PRIVATE ${CMAKE_BINARY_INCLUDE_DIR})
-target_link_libraries(godot-editor-themes PRIVATE core godot-editor-icons)
+target_sources(editor PRIVATE ${GODOT_EDITOR_BUILTIN_FONTS_HEADER})
+target_include_directories(editor PRIVATE ${CMAKE_BINARY_INCLUDE_DIR})

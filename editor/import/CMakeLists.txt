@@ -1,15 +1,14 @@
 add_subdirectory(3d)
 
-godot_add_library(godot-editor-import FOLDER import)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-import PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-import PRIVATE
+target_sources(editor PRIVATE
         audio_stream_import_settings.cpp
         audio_stream_import_settings.h
         dynamic_font_import_settings.cpp
@@ -42,4 +41,3 @@ target_sources(godot-editor-import PRIVATE
         resource_importer_wav.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-import PRIVATE core)

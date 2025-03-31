@@ -1,13 +1,12 @@
-godot_add_library(godot-editor-import-3d FOLDER import/3d)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-import-3d PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-import-3d PRIVATE
+target_sources(editor PRIVATE
         collada.cpp
         collada.h
         editor_import_collada.cpp
@@ -26,4 +25,3 @@ target_sources(godot-editor-import-3d PRIVATE
         scene_import_settings.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-import-3d PRIVATE core)

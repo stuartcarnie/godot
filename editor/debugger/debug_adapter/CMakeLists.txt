@@ -1,13 +1,12 @@
-godot_add_library(godot-editor-debugger-debug_adapter FOLDER debugger)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor-debugger-debug_adapter PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor-debugger-debug_adapter PRIVATE
+target_sources(editor PRIVATE
         debug_adapter_parser.cpp
         debug_adapter_parser.h
         debug_adapter_protocol.cpp
@@ -17,4 +16,3 @@ target_sources(godot-editor-debugger-debug_adapter PRIVATE
         debug_adapter_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-editor-debugger-debug_adapter PRIVATE core)

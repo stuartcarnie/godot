@@ -1,3 +1,5 @@
+godot_add_library(editor STATIC)
+
 add_subdirectory(debugger)
 add_subdirectory(export)
 add_subdirectory(gui)
@@ -30,20 +32,23 @@ generate_godot_editor_platform_exporters("${EXPORT_PLATFORM_SOURCE_PLATFORMS}" "
 set(GENERATED_EDITOR_DOC_DATA_CLASSES_PATH ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc_data_class_path.gen.h)
 generate_document_class_paths("${GENERATED_EDITOR_DOC_DATA_CLASSES_PATH}")
 
-godot_add_library(godot-editor FOLDER editor STATIC
+target_sources(editor
+        PRIVATE
         ${GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT}
         ${GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT}
         ${GENERATED_PLATFORM_EXPORTERS_OUTPUT}
-        ${GENERATED_EDITOR_DOC_DATA_CLASSES_PATH})
+        ${GENERATED_EDITOR_DOC_DATA_CLASSES_PATH}
+)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-editor PRIVATE')
+#   cog.outl('target_sources(editor PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-editor PRIVATE
+target_sources(editor PRIVATE
         action_map_editor.cpp
         action_map_editor.h
         add_metadata_dialog.cpp
@@ -219,14 +224,14 @@ target_sources(godot-editor PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-editor PUBLIC core minizip)
-target_link_libraries(godot-editor PRIVATE godot-doc godot-editor-icons godot-editor-themes godot-editor-translations)
-target_include_directories(godot-editor PRIVATE
+target_link_libraries(editor PUBLIC core minizip)
+target_link_libraries(editor PRIVATE godot-doc)
+target_include_directories(editor PRIVATE
         ${CMAKE_BINARY_INCLUDE_DIR}/editor
         ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_definitions(godot-editor PRIVATE
+target_compile_definitions(editor PRIVATE
         $<$<BOOL:${WANT_ENGINE_UPDATE_CHECK}>:ENGINE_UPDATE_CHECK_ENABLED>
 )
-set_property(TARGET godot-editor PROPERTY CXX_STANDARD 17)
+set_property(TARGET editor PROPERTY CXX_STANDARD 17)
 
-group_target_sources(godot-editor)
+group_target_sources(editor)
