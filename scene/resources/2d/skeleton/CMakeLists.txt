@@ -1,13 +1,12 @@
-godot_add_library(godot-scene-resources-2d-skeleton FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-resources-2d-skeleton PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-resources-2d-skeleton PRIVATE
+target_sources(scene PRIVATE
         skeleton_modification_2d.cpp
         skeleton_modification_2d.h
         skeleton_modification_2d_ccdik.cpp
@@ -29,4 +28,3 @@ target_sources(godot-scene-resources-2d-skeleton PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-scene-resources-2d-skeleton PRIVATE core)

@@ -1,13 +1,12 @@
-godot_add_library(godot-scene-gui FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-gui PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-gui PRIVATE
+target_sources(scene PRIVATE
         aspect_ratio_container.cpp
         aspect_ratio_container.h
         base_button.cpp
@@ -124,4 +123,4 @@ target_sources(godot-scene-gui PRIVATE
         view_panner.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-gui PUBLIC core godot-server-audio)
+target_link_libraries(scene PUBLIC godot-server-audio)

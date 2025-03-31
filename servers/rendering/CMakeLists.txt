@@ -4,17 +4,15 @@ add_subdirectory(dummy)
 add_subdirectory(renderer_rd)
 add_subdirectory(storage)
 
-godot_add_library(godot-server-renderer FOLDER servers STATIC)
-
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-renderer PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-renderer PRIVATE
+target_sources(servers PRIVATE
         instance_uniforms.cpp
         instance_uniforms.h
         renderer_canvas_cull.cpp
@@ -68,6 +66,5 @@ target_sources(godot-server-renderer PRIVATE
         shader_warnings.h
 )
 # [[[end]]]
-target_include_directories(godot-server-renderer PUBLIC ${CMAKE_BINARY_INCLUDE_DIR}) #Some other targets depend on specific generated shaders
-target_link_libraries(godot-server-renderer PUBLIC core godot-glslang spirv-reflect)
+target_include_directories(servers PUBLIC ${CMAKE_BINARY_INCLUDE_DIR}) #Some other targets depend on specific generated shaders
 

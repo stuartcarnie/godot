@@ -4,16 +4,15 @@ if (NOT DISABLE_XR)
     add_subdirectory(xr)
 endif ()
 
-godot_add_library(godot-scene-3d FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-3d PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-3d PRIVATE
+target_sources(scene PRIVATE
         audio_listener_3d.cpp
         audio_listener_3d.h
         audio_stream_player_3d.cpp
@@ -104,4 +103,4 @@ target_sources(godot-scene-3d PRIVATE
         world_environment.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-3d PUBLIC core godot-thirdparty-misc zlib)
+target_link_libraries(scene PUBLIC godot-thirdparty-misc zlib)

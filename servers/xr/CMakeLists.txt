@@ -1,13 +1,12 @@
-godot_add_library(godot-server-xr FOLDER servers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-xr PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-xr PRIVATE
+target_sources(servers PRIVATE
         xr_body_tracker.cpp
         xr_body_tracker.h
         xr_controller_tracker.cpp
@@ -30,4 +29,3 @@ target_sources(godot-server-xr PRIVATE
         xr_vrs.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-xr PUBLIC core godot-server-renderer)

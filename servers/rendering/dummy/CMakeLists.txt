@@ -1,13 +1,12 @@
-godot_add_library(godot-server-rendering-dummy FOLDER servers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-rendering-dummy PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, ['environment', '.', 'storage']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-rendering-dummy PRIVATE
+target_sources(servers PRIVATE
         environment/fog.h
         environment/gi.h
         rasterizer_canvas_dummy.h
@@ -26,4 +25,3 @@ target_sources(godot-server-rendering-dummy PRIVATE
         storage/utilities.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-rendering-dummy PRIVATE core)

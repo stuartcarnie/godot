@@ -1,13 +1,12 @@
-godot_add_library(godot-server-audio-effects FOLDER servers/audio STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-audio-effects PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-audio-effects PRIVATE
+target_sources(servers PRIVATE
         audio_effect_amplify.cpp
         audio_effect_amplify.h
         audio_effect_capture.cpp
@@ -50,4 +49,3 @@ target_sources(godot-server-audio-effects PRIVATE
         reverb_filter.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-audio-effects PRIVATE core)

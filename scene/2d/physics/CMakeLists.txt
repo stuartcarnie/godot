@@ -1,15 +1,14 @@
 add_subdirectory(joints)
 
-godot_add_library(godot-scene-2d-physics FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-2d-physics PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-2d-physics PRIVATE
+target_sources(scene PRIVATE
         animatable_body_2d.cpp
         animatable_body_2d.h
         area_2d.cpp
@@ -40,5 +39,4 @@ target_sources(godot-scene-2d-physics PRIVATE
         touch_screen_button.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-2d-physics PRIVATE core)
 

@@ -1,13 +1,12 @@
-godot_add_library(godot-scene-2d-physics-joints FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-2d-physics-joints PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-2d-physics-joints PRIVATE
+target_sources(scene PRIVATE
         damped_spring_joint_2d.cpp
         damped_spring_joint_2d.h
         groove_joint_2d.cpp
@@ -18,5 +17,4 @@ target_sources(godot-scene-2d-physics-joints PRIVATE
         pin_joint_2d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-2d-physics-joints PRIVATE core)
 

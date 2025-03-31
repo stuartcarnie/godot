@@ -1,4 +1,4 @@
-godot_add_library(godot-module-gltf-extensions FOLDER scene STATIC)
+godot_add_library(godot-module-gltf-extensions STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files

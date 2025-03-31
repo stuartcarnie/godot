@@ -1,4 +1,4 @@
-godot_add_library(godot-module-physics-2D FOLDER servers STATIC)
+godot_add_library(godot-module-physics-2D FOLDER modules STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files

@@ -1,4 +1,4 @@
-godot_add_library(godot-module-physics-3D-joints FOLDER servers STATIC)
+godot_add_library(godot-module-physics-3D-joints FOLDER modules STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files

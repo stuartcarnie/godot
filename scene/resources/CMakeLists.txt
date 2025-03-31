@@ -2,19 +2,24 @@ set(RESOURCES_DEFAULT_FONT_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/fonts/Open
 set(RESOURCES_DEFAULT_FONT_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme/default_font.gen.h)
 generate_file(resource_scene_make_fonts_header ${RESOURCES_DEFAULT_FONT_SOURCE} ${RESOURCES_DEFAULT_FONT_OUTPUT})
 
+add_custom_target(scene-fonts-generated
+        DEPENDS
+        ${RESOURCES_DEFAULT_FONT_OUTPUT})
+target_sources(scene PRIVATE ${RESOURCES_DEFAULT_FONT_OUTPUT})
+add_dependencies(scene scene-fonts-generated)
+
 add_subdirectory(2d)
 add_subdirectory(3d)
 
-godot_add_library(godot-scene-resources FOLDER scene STATIC ${RESOURCES_DEFAULT_FONT_OUTPUT})
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-resources PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-resources PRIVATE
+target_sources(scene PRIVATE
         animated_texture.cpp
         animated_texture.h
         animation.cpp
@@ -135,5 +140,4 @@ target_sources(godot-scene-resources PRIVATE
         world_2d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-resources PUBLIC core godot-scene-main)
-target_include_directories(godot-scene-resources PUBLIC ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme)
+target_include_directories(scene PUBLIC ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme)

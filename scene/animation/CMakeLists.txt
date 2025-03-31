@@ -1,13 +1,12 @@
-godot_add_library(godot-scene-animation FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-animation PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-animation PRIVATE
+target_sources(scene PRIVATE
         animation_blend_space_1d.cpp
         animation_blend_space_1d.h
         animation_blend_space_2d.cpp
@@ -31,5 +30,3 @@ target_sources(godot-scene-animation PRIVATE
         tween.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-animation PUBLIC core godot-scene-2d godot-scene-3d)
-set_property(TARGET godot-scene-animation PROPERTY CXX_STANDARD 17)

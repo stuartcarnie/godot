@@ -1,15 +1,14 @@
 add_subdirectory(physics)
 
-godot_add_library(godot-scene-2d FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-2d PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-2d PRIVATE
+target_sources(scene PRIVATE
         animated_sprite_2d.cpp
         animated_sprite_2d.h
         audio_listener_2d.cpp
@@ -76,5 +75,5 @@ target_sources(godot-scene-2d PRIVATE
         visible_on_screen_notifier_2d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-2d PUBLIC core clipper2)
+target_link_libraries(scene PUBLIC clipper2)
 

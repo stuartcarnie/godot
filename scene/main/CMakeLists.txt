@@ -1,13 +1,12 @@
-godot_add_library(godot-scene-main FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-main PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-main PRIVATE
+target_sources(scene PRIVATE
         canvas_item.cpp
         canvas_item.h
         canvas_layer.cpp
@@ -40,4 +39,3 @@ target_sources(godot-scene-main PRIVATE
         window.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-main PUBLIC core godot-scene-debugger godot-scene-animation godot-scene-gui)

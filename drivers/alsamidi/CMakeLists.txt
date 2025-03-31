@@ -1,5 +1,5 @@
 if (${WANT_ALSA} AND ${ALSA_FOUND})
-    godot_add_library(alsamidi FOLDER drivers STATIC)
+    godot_add_library(alsamidi STATIC)
     # [[[cog
     #   import cog
     #   from cmake_builders import list_files

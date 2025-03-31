@@ -1,15 +1,14 @@
 add_subdirectory(skeleton)
 
-godot_add_library(godot-scene-resources-2d FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-resources-2d PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-resources-2d PRIVATE
+target_sources(scene PRIVATE
         capsule_shape_2d.cpp
         capsule_shape_2d.h
         circle_shape_2d.cpp
@@ -38,4 +37,3 @@ target_sources(godot-scene-resources-2d PRIVATE
         world_boundary_shape_2d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-resources-2d PUBLIC core)

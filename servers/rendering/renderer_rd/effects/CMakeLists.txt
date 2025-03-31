@@ -1,13 +1,12 @@
-godot_add_library(godot-server-rendering-renderer_rd-effects FOLDER rendering STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-rendering-renderer_rd-effects PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-rendering-renderer_rd-effects PRIVATE
+target_sources(servers PRIVATE
         bokeh_dof.cpp
         bokeh_dof.h
         copy_effects.cpp
@@ -41,8 +40,6 @@ target_sources(godot-server-rendering-renderer_rd-effects PRIVATE
         vrs.h
 )
 # [[[end]]]
-
-target_link_libraries(godot-server-rendering-renderer_rd-effects PRIVATE core)
 
 set_property(
         SOURCE metal_fx.mm

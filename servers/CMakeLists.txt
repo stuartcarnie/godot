@@ -1,3 +1,5 @@
+godot_add_library(servers STATIC)
+
 add_subdirectory(audio)
 add_subdirectory(camera)
 add_subdirectory(debugger)
@@ -9,16 +11,15 @@ add_subdirectory(rendering)
 add_subdirectory(text)
 add_subdirectory(xr)
 
-godot_add_library(godot-servers FOLDER servers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-servers PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-servers PRIVATE
+target_sources(servers PRIVATE
         audio_server.cpp
         audio_server.h
         camera_server.cpp
@@ -53,7 +54,7 @@ target_sources(godot-servers PRIVATE
         xr_server.h
 )
 # [[[end]]]
-target_link_libraries(godot-servers PUBLIC
+target_link_libraries(servers PUBLIC
         core
         godot-server-audio
         godot-server-camera
@@ -68,9 +69,11 @@ target_link_libraries(godot-servers PUBLIC
         $<$<BOOL:${WANT_METAL}>:metal>
 )
 
-target_compile_definitions(godot-servers
+target_compile_definitions(servers
         PRIVATE
         $<$<BOOL:${WANT_DYNAMIC_CORE_SHADERS}>:DYNAMIC_CORE_SHADERS GODOT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}">
         $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
 )
+
+group_target_sources(servers)

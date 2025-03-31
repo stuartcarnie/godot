@@ -1,13 +1,12 @@
-godot_add_library(godot-server-rendering-renderer_rd-storage_rd FOLDER rendering STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-rendering-renderer_rd-storage_rd PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-rendering-renderer_rd-storage_rd PRIVATE
+target_sources(servers PRIVATE
         forward_id_storage.cpp
         forward_id_storage.h
         light_storage.cpp
@@ -31,5 +30,3 @@ target_sources(godot-server-rendering-renderer_rd-storage_rd PRIVATE
         utilities.h
 )
 # [[[end]]]
-
-target_link_libraries(godot-server-rendering-renderer_rd-storage_rd PRIVATE core)

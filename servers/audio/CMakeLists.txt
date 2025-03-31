@@ -1,15 +1,14 @@
 add_subdirectory(effects)
 
-godot_add_library(godot-server-audio FOLDER servers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-audio PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-audio PRIVATE
+target_sources(servers PRIVATE
         audio_driver_dummy.cpp
         audio_driver_dummy.h
         audio_effect.cpp
@@ -22,4 +21,3 @@ target_sources(godot-server-audio PRIVATE
         audio_stream.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-audio PRIVATE core)

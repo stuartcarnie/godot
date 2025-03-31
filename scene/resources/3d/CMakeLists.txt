@@ -1,13 +1,12 @@
-godot_add_library(godot-scene-resources-3d FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-resources-3d PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-resources-3d PRIVATE
+target_sources(scene PRIVATE
         box_shape_3d.cpp
         box_shape_3d.h
         capsule_shape_3d.cpp
@@ -46,4 +45,3 @@ target_sources(godot-scene-resources-3d PRIVATE
         world_boundary_shape_3d.h
 )
 # [[[end]]]
-target_link_libraries(godot-scene-resources-3d PUBLIC core)

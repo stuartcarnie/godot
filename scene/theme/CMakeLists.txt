@@ -95,16 +95,21 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
 set(RESOURCES_SCENE_DEFAULT_GENERATED_ICONS ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme/default_theme_icons.gen.h)
 generate_file(resource_make_default_theme_icons "${RESOURCE_DEFAULT_THEME_SOURCE}" "${RESOURCES_SCENE_DEFAULT_GENERATED_ICONS}")
 
-godot_add_library(godot-scene-theme FOLDER scene STATIC ${RESOURCES_SCENE_DEFAULT_GENERATED_ICONS})
+add_custom_target(scene-icons-generated
+        DEPENDS
+        ${RESOURCES_SCENE_DEFAULT_GENERATED_ICONS}
+)
+add_dependencies(scene scene-icons-generated)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene-theme PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene-theme PRIVATE
+target_sources(scene PRIVATE
         default_theme.cpp
         default_theme.h
         theme_db.cpp
@@ -114,5 +119,4 @@ target_sources(godot-scene-theme PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-scene-theme PUBLIC core godot-scene-resources)
-target_include_directories(godot-scene-theme PRIVATE ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme)
+target_include_directories(scene PRIVATE ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme)

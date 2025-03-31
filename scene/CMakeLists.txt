@@ -1,3 +1,5 @@
+godot_add_library(scene STATIC)
+
 add_subdirectory(2d)
 add_subdirectory(3d)
 add_subdirectory(animation)
@@ -8,16 +10,15 @@ add_subdirectory(main)
 add_subdirectory(resources)
 add_subdirectory(theme)
 
-godot_add_library(godot-scene FOLDER scene STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-scene PRIVATE')
+#   cog.outl('target_sources(scene PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-scene PRIVATE
+target_sources(scene PRIVATE
         property_list_helper.cpp
         property_list_helper.h
         property_utils.cpp
@@ -28,4 +29,6 @@ target_sources(godot-scene PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-scene PUBLIC core godot-scene-resources godot-scene-audio)
+target_link_libraries(scene PUBLIC core)
+
+group_target_sources(scene)

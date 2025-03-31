@@ -1,13 +1,12 @@
-godot_add_library(godot-server-rendering-storage FOLDER servers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-rendering-storage PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-rendering-storage PRIVATE
+target_sources(servers PRIVATE
         camera_attributes_storage.cpp
         camera_attributes_storage.h
         compositor_storage.cpp
@@ -31,5 +30,3 @@ target_sources(godot-server-rendering-storage PRIVATE
         variant_converters.h
 )
 # [[[end]]]
-
-target_link_libraries(godot-server-rendering-storage PRIVATE core)

@@ -87,8 +87,6 @@ string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} ${RENDERER_RD_SERVER_INCLUDE_DIR} REN
 string(REPLACE "glsl" "glsl.gen.h" RENDERER_RD_SERVER_SHADERS_GENERATED "${RENDERER_RD_SERVER_SHADERS_GENERATED}")
 generate_shader_sources(glsl "${RENDERER_RD_SERVER_SHADERS}" "${RENDERER_RD_SERVER_SHADERS_GENERATED}")
 
-add_custom_target(generate_renderer_rd_shaders DEPENDS ${RENDERER_RD_SERVER_SHADERS_GENERATED})
-
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -115,7 +113,19 @@ string(REPLACE ${CMAKE_CURRENT_SOURCE_DIR} ${RENDERER_RD_SERVER_INCLUDE_DIR} REN
 string(REPLACE "glsl" "glsl.gen.h" RENDERER_RD_SERVER_SHADERS_INC_GENERATED "${RENDERER_RD_SERVER_SHADERS_INC_GENERATED}")
 generate_shader_sources(glsl_raw "${RENDERER_RD_SERVER_SHADERS_INC}" "${RENDERER_RD_SERVER_SHADERS_INC_GENERATED}")
 
-add_custom_target(generate_renderer_rd_shaders_raw DEPENDS ${RENDERER_RD_SERVER_SHADERS_INC_GENERATED})
+add_custom_target(servers-renderer_rd-generated
+        DEPENDS
+        ${RENDERER_RD_SERVER_SHADERS_GENERATED}
+        ${RENDERER_RD_SERVER_SHADERS_INC_GENERATED}
+)
+
+target_sources(servers
+        PRIVATE
+        ${RENDERER_RD_SERVER_SHADERS_GENERATED}
+        ${RENDERER_RD_SERVER_SHADERS_INC_GENERATED}
+)
+
+add_dependencies(servers servers-renderer_rd-generated)
 
 add_subdirectory(effects)
 add_subdirectory(environment)
@@ -123,18 +133,15 @@ add_subdirectory(forward_clustered)
 add_subdirectory(forward_mobile)
 add_subdirectory(storage_rd)
 
-godot_add_library(godot-server-rendering-renderer_rd FOLDER servers STATIC)
-add_dependencies(godot-server-rendering-renderer_rd generate_renderer_rd_shaders generate_renderer_rd_shaders_raw)
-
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-rendering-renderer_rd PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-rendering-renderer_rd PRIVATE
+target_sources(servers PRIVATE
         cluster_builder_rd.cpp
         cluster_builder_rd.h
         framebuffer_cache_rd.cpp
@@ -154,9 +161,9 @@ target_sources(godot-server-rendering-renderer_rd PRIVATE
         uniform_set_cache_rd.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-rendering-renderer_rd PUBLIC core godot-glslang spirv-reflect)
+target_link_libraries(servers PUBLIC godot-glslang spirv-reflect)
 
-target_compile_definitions(godot-server-rendering-renderer_rd
+target_compile_definitions(servers
         PRIVATE
         $<$<BOOL:${WANT_DYNAMIC_CORE_SHADERS}>:DYNAMIC_CORE_SHADERS GODOT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}">
 )

@@ -1,13 +1,12 @@
-godot_add_library(godot-server-navigation FOLDER servers STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-server-navigation PRIVATE')
+#   cog.outl('target_sources(servers PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-server-navigation PRIVATE
+target_sources(servers PRIVATE
         nav_heap.h
         navigation_globals.h
         navigation_path_query_parameters_2d.cpp
@@ -21,4 +20,3 @@ target_sources(godot-server-navigation PRIVATE
         navigation_utilities.h
 )
 # [[[end]]]
-target_link_libraries(godot-server-navigation PUBLIC core)
