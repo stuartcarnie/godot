@@ -10,8 +10,8 @@ target_sources(slang-tool PRIVATE
         ../../../platform/macos/dir_access_macos.mm
 )
 target_link_libraries(slang-tool PUBLIC
-        driver-unix
         core
+        drivers
         godot-module-slang
         godot-module-regex
         $<LINK_LIBRARY:FRAMEWORK,Foundation.framework>

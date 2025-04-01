@@ -79,8 +79,8 @@ target_include_directories(platform-linuxbsd PRIVATE
                                              ${CMAKE_BINARY_INCLUDE_DIR}/platform/linuxbsd)
 target_include_directories(platform-linuxbsd PUBLIC ${PLATFORM_LINUXBSD_SOURCE_DIR})
 
-#Depends on a single generated shader from godot-server-renderer
-target_link_libraries(platform-linuxbsd PUBLIC ${DBUS_LIBRARIES} driver-unix godot-server-renderer)
+# Depends on a single generated shader from servers
+target_link_libraries(platform-linuxbsd PUBLIC ${DBUS_LIBRARIES} drivers servers)
 
 #Required to always be enabled on linux 
 target_compile_definitions(platform-linuxbsd PUBLIC JOYDEV_ENABLED=1 ALSAMIDI_ENABLED=1)

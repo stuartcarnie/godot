@@ -56,15 +56,6 @@ target_sources(servers PRIVATE
 # [[[end]]]
 target_link_libraries(servers PUBLIC
         core
-        godot-server-audio
-        godot-server-camera
-        godot-server-renderer
-        godot-server-navigation
-        godot-server-movie-writer
-        godot-server-debugger
-        godot-server-xr
-        godot-server-extensions
-        godot-server-text
         $<$<BOOL:${WANT_VULKAN}>:vulkan>
         $<$<BOOL:${WANT_METAL}>:metal>
 )

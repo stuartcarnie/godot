@@ -76,7 +76,7 @@ target_link_libraries(godot-module-openxr
         $<$<BOOL:${WANT_METAL}>:metal>
 )
 
-target_link_libraries(godot-module-openxr PUBLIC core openxr godot-server-renderer zlib)
+target_link_libraries(godot-module-openxr PUBLIC core openxr servers zlib)
 set_property(TARGET godot-module-openxr PROPERTY CXX_STANDARD 17)
 
 group_target_sources(godot-module-openxr)
