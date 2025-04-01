@@ -15,3 +15,4 @@ target_sources(godot-module-tga PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-tga PUBLIC core)
+group_target_sources(godot-module-tga)

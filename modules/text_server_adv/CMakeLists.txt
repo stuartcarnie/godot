@@ -31,3 +31,4 @@ target_compile_definitions(godot-module-text-server-adv PRIVATE
 		-DICU_DATA_NAME=${ICU4C_DAT_NAME}
 )
 target_include_directories(godot-module-text-server-adv PRIVATE ${CMAKE_BINARY_INCLUDE_DIR}/thirdparty/icu4c)
+group_target_sources(godot-module-text-server-adv)

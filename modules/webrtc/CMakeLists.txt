@@ -27,3 +27,4 @@ target_sources(godot-module-webrtc PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-webrtc PUBLIC core)
+group_target_sources(godot-module-webrtc)

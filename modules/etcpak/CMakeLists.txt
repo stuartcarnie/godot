@@ -17,3 +17,4 @@ target_sources(godot-module-etcpak PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-etcpak PUBLIC core etcpak)
+group_target_sources(godot-module-etcpak)

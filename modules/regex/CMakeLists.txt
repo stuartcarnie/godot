@@ -16,3 +16,4 @@ target_sources(godot-module-regex PRIVATE
 # [[[end]]]
 target_link_libraries(godot-module-regex PUBLIC core pcre2_w16 pcre2_w32)
 target_compile_definitions(godot-module-regex PRIVATE PCRE2_CODE_UNIT_WIDTH=0)
+group_target_sources(godot-module-regex)

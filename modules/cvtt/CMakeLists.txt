@@ -16,3 +16,4 @@ target_sources(godot-module-cvtt PRIVATE
 # [[[end]]]
 
 target_link_libraries(godot-module-cvtt PUBLIC core cvtt)
+group_target_sources(godot-module-cvtt)

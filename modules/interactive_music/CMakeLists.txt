@@ -36,3 +36,4 @@ if (WANT_EDITOR)
 endif ()
 
 target_link_libraries(godot-module-interactive_music PRIVATE core)
+group_target_sources(godot-module-interactive_music)

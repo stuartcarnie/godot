@@ -13,3 +13,4 @@ target_sources(godot-module-meshoptimizer PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-meshoptimizer PUBLIC core meshoptimizer)
+group_target_sources(godot-module-meshoptimizer)

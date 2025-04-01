@@ -15,3 +15,4 @@ target_sources(godot-module-mobile-vr PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-mobile-vr PUBLIC core)
+group_target_sources(godot-module-mobile-vr)

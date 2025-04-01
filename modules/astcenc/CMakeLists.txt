@@ -15,3 +15,4 @@ target_sources(godot-module-astcenc PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-astcenc PUBLIC core astcenc)
+group_target_sources(godot-module-astcenc)

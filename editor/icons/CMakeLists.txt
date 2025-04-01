@@ -984,6 +984,9 @@ generate_editor_icons_header("${GODOT_EDITOR_ICONS_SOURCE}" "${GENERATED_EDITOR_
 add_custom_target(editor-icons-generated
         DEPENDS
         ${GENERATED_EDITOR_ICONS_HEADER})
+set_target_properties(editor-icons-generated PROPERTIES FOLDER "generated")
+group_target_sources(editor-icons-generated)
+
 add_dependencies(editor editor-icons-generated)
 
 target_sources(editor INTERFACE ${GENERATED_EDITOR_ICONS_HEADER})

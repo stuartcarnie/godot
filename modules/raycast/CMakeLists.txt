@@ -19,3 +19,4 @@ target_sources(godot-module-raycast PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-raycast PUBLIC core embree)
+group_target_sources(godot-module-raycast)

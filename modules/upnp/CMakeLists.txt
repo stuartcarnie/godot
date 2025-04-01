@@ -21,3 +21,4 @@ target_sources(godot-module-upnp PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-upnp PUBLIC core miniupnpc)
+group_target_sources(godot-module-upnp)

@@ -1,13 +1,12 @@
-godot_add_library(godot-module-openxr-extensions FOLDER modules STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-module-openxr-extensions PRIVATE')
+#   cog.outl('target_sources(godot-module-openxr PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-module-openxr-extensions PRIVATE
+target_sources(godot-module-openxr PRIVATE
         openxr_composition_layer_depth_extension.cpp
         openxr_composition_layer_depth_extension.h
         openxr_composition_layer_extension.cpp
@@ -61,18 +60,3 @@ target_sources(godot-module-openxr-extensions PRIVATE
         openxr_wmr_controller_extension.h
 )
 # [[[end]]]
-
-target_sources(godot-module-openxr-extensions
-        PRIVATE
-        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:${OPENGL_FOUND}>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},Darwin>>>:platform/openxr_opengl_extension.cpp>
-        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:platform/openxr_vulkan_extension.cpp>
-        $<$<BOOL:${WANT_METAL}>:platform/openxr_metal_extension.mm>
-)
-
-target_link_libraries(godot-module-openxr-extensions
-        PUBLIC
-        core openxr
-        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:${OPENGL_FOUND}>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},Darwin>>>:gles3>
-        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:driver-vulkan>
-        $<$<BOOL:${WANT_METAL}>:metal>
-)

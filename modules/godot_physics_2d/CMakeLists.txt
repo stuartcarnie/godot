@@ -44,3 +44,4 @@ target_sources(godot-module-physics-2D PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-physics-2D PRIVATE core)
+group_target_sources(godot-module-physics-2D)

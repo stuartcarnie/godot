@@ -36,3 +36,4 @@ if (WANT_EDITOR)
 endif ()
 
 target_link_libraries(godot-module-fbx PUBLIC core ufbx)
+group_target_sources(godot-module-fbx)

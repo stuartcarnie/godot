@@ -99,6 +99,8 @@ add_custom_target(scene-icons-generated
         DEPENDS
         ${RESOURCES_SCENE_DEFAULT_GENERATED_ICONS}
 )
+set_target_properties(scene-icons-generated PROPERTIES FOLDER "generated")
+
 add_dependencies(scene scene-icons-generated)
 
 # [[[cog

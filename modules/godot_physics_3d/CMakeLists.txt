@@ -1,6 +1,7 @@
+godot_add_library(godot-module-physics-3D FOLDER modules STATIC)
+
 add_subdirectory(joints)
 
-godot_add_library(godot-module-physics-3D FOLDER modules STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -50,3 +51,5 @@ target_sources(godot-module-physics-3D PRIVATE
 # [[[end]]]
 
 target_link_libraries(godot-module-physics-3D PUBLIC core)
+
+group_target_sources(godot-module-physics-3D)

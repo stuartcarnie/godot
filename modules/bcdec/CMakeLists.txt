@@ -15,3 +15,4 @@ target_sources(godot-module-bcdec PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-bcdec PUBLIC core godot-thirdparty-misc)
+group_target_sources(godot-module-bcdec)

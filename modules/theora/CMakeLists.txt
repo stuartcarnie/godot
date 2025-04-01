@@ -15,3 +15,4 @@ target_sources(godot-module-theora PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-theora PUBLIC core theora vorbis)
+group_target_sources(godot-module-theora)

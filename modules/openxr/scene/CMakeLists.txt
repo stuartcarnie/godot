@@ -1,13 +1,12 @@
-godot_add_library(godot-module-openxr-scene FOLDER modules STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-module-openxr-scene PRIVATE')
+#   cog.outl('target_sources(godot-module-openxr PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-module-openxr-scene PRIVATE
+target_sources(godot-module-openxr PRIVATE
         openxr_composition_layer.cpp
         openxr_composition_layer.h
         openxr_composition_layer_cylinder.cpp
@@ -22,4 +21,3 @@ target_sources(godot-module-openxr-scene PRIVATE
         openxr_visibility_mask.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-openxr-scene PUBLIC core openxr)

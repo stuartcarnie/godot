@@ -21,6 +21,7 @@ string(REPLACE "glsl" "glsl.gen.h" GODOT_MODULE_BETSY_SHADERS_GENERATED "${GODOT
 generate_shader_sources(glsl_raw "${GODOT_MODULE_BETSY_SHADERS}" "${GODOT_MODULE_BETSY_SHADERS_GENERATED}")
 
 add_custom_target(generate_betsy_shaders DEPENDS ${GODOT_MODULE_BETSY_SHADERS_GENERATED})
+set_target_properties(generate_betsy_shaders PROPERTIES FOLDER "generated")
 
 #Apply them to the library
 godot_add_library(godot-module-betsy FOLDER modules STATIC)
@@ -53,3 +54,5 @@ target_compile_definitions(godot-module-betsy
         $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
 )
+
+group_target_sources(godot-module-betsy)

@@ -13,3 +13,4 @@ target_sources(godot-module-freetype PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-freetype PUBLIC core freetype)
+group_target_sources(godot-module-freetype)

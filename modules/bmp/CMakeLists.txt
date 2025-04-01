@@ -15,3 +15,4 @@ target_sources(godot-module-bmp PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-bmp PUBLIC core)
+group_target_sources(godot-module-bmp)

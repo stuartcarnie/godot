@@ -1,6 +1,7 @@
+godot_add_library(godot-module-gltf FOLDER modules STATIC)
+
 add_subdirectory(extensions)
 
-godot_add_library(godot-module-gltf FOLDER modules STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -73,3 +74,5 @@ target_link_libraries(godot-module-gltf PUBLIC core minizip)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	target_link_libraries(godot-module-gltf PRIVATE shlwapi)
 endif()
+
+group_target_sources(godot-module-gltf)

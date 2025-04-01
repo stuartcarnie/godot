@@ -13,3 +13,4 @@ target_sources(godot-module-glslang PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-glslang PUBLIC core godot-glslang)
+group_target_sources(godot-module-glslang)

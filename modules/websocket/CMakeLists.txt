@@ -44,3 +44,4 @@ set_target_properties(godot-module-websocket PROPERTIES
         CXX_STANDARD            17
         CXX_STANDARD_REQUIRED   ON
 )
+group_target_sources(godot-module-websocket)

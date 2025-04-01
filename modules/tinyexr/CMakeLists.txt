@@ -17,3 +17,4 @@ target_sources(godot-module-tinyexr PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-tinyexr PUBLIC core tinyexr zlib)
+group_target_sources(godot-module-tinyexr)

@@ -40,7 +40,7 @@ add_subdirectory(meshoptimizer)
 add_subdirectory(minimp3)
 add_subdirectory(mobile_vr)
 
-# TODO: broken
+# TODO: Not implemented
 # add_subdirectory(mono)
 
 add_subdirectory(msdfgen)

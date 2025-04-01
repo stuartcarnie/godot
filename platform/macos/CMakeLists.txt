@@ -1,13 +1,13 @@
-godot_add_library(platform-macos FOLDER platform)
+godot_add_library(macos FOLDER platform)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(platform-macos PRIVATE')
+#   cog.outl('target_sources(macos PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(platform-macos PRIVATE
+target_sources(macos PRIVATE
         crash_handler_macos.h
         crash_handler_macos.mm
         dir_access_macos.h
@@ -57,31 +57,31 @@ target_sources(platform-macos PRIVATE
 # [[[end]]]
 
 if(${WANT_OPENGL} AND ${OPENGL_FOUND})
-    target_link_libraries(platform-macos PUBLIC OpenGL::GL)
-    target_link_libraries(platform-macos PUBLIC gles3 glad)
-    target_link_libraries(platform-macos PRIVATE angle)
-    target_compile_definitions(platform-macos PRIVATE GLES3_ENABLED=1)
+    target_link_libraries(macos PUBLIC OpenGL::GL)
+    target_link_libraries(macos PUBLIC gles3 glad)
+    target_link_libraries(macos PRIVATE angle)
+    target_compile_definitions(macos PRIVATE GLES3_ENABLED=1)
 endif()
 
 if(${WANT_VULKAN} AND ${VULKAN_FOUND})
-    target_link_libraries(platform-macos PUBLIC driver-vulkan vulkan MoltenVK)
-    target_compile_definitions(platform-macos PRIVATE VULKAN_ENABLED=1)
+    target_link_libraries(macos PUBLIC driver-vulkan vulkan MoltenVK)
+    target_compile_definitions(macos PRIVATE VULKAN_ENABLED=1)
 endif()
 
-target_link_libraries(platform-macos
+target_link_libraries(macos
         PUBLIC
         $<$<BOOL:${WANT_METAL}>:metal>
 )
-target_compile_definitions(platform-macos
+target_compile_definitions(macos
         PUBLIC
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
         $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
         $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
 )
 
-target_compile_options(platform-macos PRIVATE -Wunguarded-availability)
+target_compile_options(macos PRIVATE -Wunguarded-availability)
 
-target_link_libraries(platform-macos PUBLIC
+target_link_libraries(macos PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,Cocoa.framework>
         $<LINK_LIBRARY:FRAMEWORK,Carbon.framework>
         $<LINK_LIBRARY:FRAMEWORK,AudioUnit.framework>
@@ -102,4 +102,4 @@ target_link_libraries(platform-macos PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,UniformTypeIdentifiers.framework>
 )
 
-group_target_sources(platform-macos)
+group_target_sources(macos)

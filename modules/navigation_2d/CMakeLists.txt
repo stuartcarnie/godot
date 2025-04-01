@@ -40,3 +40,4 @@ target_sources(godot-module-navigation-2d PRIVATE
 # [[[end]]]
 
 target_link_libraries(godot-module-navigation-2d PUBLIC core rvo2)
+group_target_sources(godot-module-navigation-2d)

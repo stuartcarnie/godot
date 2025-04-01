@@ -31,3 +31,4 @@ if (WANT_EDITOR)
     # [[[end]]]
 endif ()
 target_link_libraries(godot-module-gridmap PUBLIC core minizip)
+group_target_sources(godot-module-gridmap)

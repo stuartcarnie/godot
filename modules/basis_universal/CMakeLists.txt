@@ -15,3 +15,4 @@ target_sources(godot-module-basis-universal PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-basis-universal PUBLIC core basis_universal)
+group_target_sources(godot-module-basis-universal)

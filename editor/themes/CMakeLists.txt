@@ -45,6 +45,8 @@ generate_editor_themes_fonts("${GODOT_EDITOR_FONTS_SOURCE}" "${GODOT_EDITOR_BUIL
 add_custom_target(editor-themes-generated
         DEPENDS
         ${GODOT_EDITOR_BUILTIN_FONTS_HEADER})
+set_target_properties(editor-themes-generated PROPERTIES FOLDER "generated")
+
 add_dependencies(editor editor-themes-generated)
 
 # [[[cog
@@ -72,3 +74,6 @@ target_sources(editor PRIVATE
 # [[[end]]]
 target_sources(editor PRIVATE ${GODOT_EDITOR_BUILTIN_FONTS_HEADER})
 target_include_directories(editor PRIVATE ${CMAKE_BINARY_INCLUDE_DIR})
+
+set_target_properties(editor-themes-generated PROPERTIES FOLDER "editor/generated")
+group_target_sources(editor-themes-generated)

@@ -15,3 +15,4 @@ target_sources(godot-module-ogg PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-ogg PUBLIC core ogg)
+group_target_sources(godot-module-ogg)

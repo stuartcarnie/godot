@@ -25,6 +25,7 @@ add_custom_target(core-generated DEPENDS
         ${GODOT_CONFIG_VERSION_HASH_OUTPUT}
         ${GENERATED_MODULES_ENABLED_OUTPUT}
         ${GENERATED_MODULES_REGISTER_OUTPUT})
+set_target_properties(core-generated PROPERTIES FOLDER "generated")
 
 add_dependencies(core core-generated)
 

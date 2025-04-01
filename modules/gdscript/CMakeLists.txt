@@ -142,3 +142,4 @@ target_compile_definitions(godot-module-gdscript
         PRIVATE
         $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED=1>
 )
+group_target_sources(godot-module-gdscript)

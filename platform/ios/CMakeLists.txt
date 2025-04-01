@@ -1,14 +1,14 @@
 add_subdirectory(api)
-godot_add_library(platform-ios)
+godot_add_library(ios)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(platform-ios PRIVATE')
+#   cog.outl('target_sources(ios PRIVATE')
 #   for file in list_files(cog, '.'):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(platform-ios PRIVATE
+target_sources(ios PRIVATE
         app_delegate.h
         app_delegate.mm
         device_metrics.h
@@ -47,36 +47,36 @@ target_sources(platform-ios PRIVATE
 # [[[end]]]
 
 if(${WANT_OPENGL})
-    target_link_libraries(platform-ios PUBLIC OpenGLES3::ES3)
-    target_link_libraries(platform-ios PUBLIC gles3)
-    target_link_libraries(platform-ios PRIVATE angle)
-    target_compile_definitions(platform-ios PRIVATE GLES3_ENABLED=1)
+    target_link_libraries(ios PUBLIC OpenGLES3::ES3)
+    target_link_libraries(ios PUBLIC gles3)
+    target_link_libraries(ios PRIVATE angle)
+    target_compile_definitions(ios PRIVATE GLES3_ENABLED=1)
 endif()
 
 if(${WANT_VULKAN} AND ${VULKAN_FOUND})
-    target_link_libraries(platform-ios PUBLIC driver-vulkan vulkan
+    target_link_libraries(ios PUBLIC driver-vulkan vulkan
             $<LINK_LIBRARY:FRAMEWORK,${MOLTENVK_FOUND}>)
-    target_compile_definitions(platform-ios PRIVATE VULKAN_ENABLED=1)
+    target_compile_definitions(ios PRIVATE VULKAN_ENABLED=1)
 endif()
 
-target_link_libraries(platform-ios
+target_link_libraries(ios
         PUBLIC
         $<$<BOOL:${WANT_METAL}>:metal>
 )
-target_compile_definitions(platform-ios
+target_compile_definitions(ios
         PUBLIC
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>
         $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
         $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
 )
-target_compile_options(platform-ios PRIVATE -fmodules)
+target_compile_options(ios PRIVATE -fmodules)
 
 #add_custom_target(libgodot
-#        COMMAND libtool -static -o libgodot.a $<TARGET_FILE:platform-ios>
+#        COMMAND libtool -static -o libgodot.a $<TARGET_FILE:ios>
 #)
 #add_dependencies(libgodot ${GODOT_LIBRARIES})
 
-target_link_libraries(platform-ios PUBLIC
+target_link_libraries(ios PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,CoreHaptics.framework>
         $<LINK_LIBRARY:FRAMEWORK,GameController.framework>
         $<LINK_LIBRARY:FRAMEWORK,AudioToolbox.framework>

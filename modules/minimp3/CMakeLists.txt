@@ -17,3 +17,4 @@ target_sources(godot-module-minimp3 PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-minimp3 PUBLIC core minimp3)
+group_target_sources(godot-module-minimp3)

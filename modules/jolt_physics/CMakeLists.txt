@@ -107,3 +107,5 @@ target_compile_definitions(godot-module-jolt-physics
         $<${WANT_DEV_BUILD}:JPH_ENABLE_ASSERTS>
         $<${WANT_DOUBLE_PRECISION}:JPH_DOUBLE_PRECISION>
 )
+
+group_target_sources(godot-module-jolt-physics)

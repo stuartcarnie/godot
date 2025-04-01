@@ -15,3 +15,4 @@ target_sources(godot-module-jpg PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-jpg PUBLIC core jpeg-compressor)
+group_target_sources(godot-module-jpg)

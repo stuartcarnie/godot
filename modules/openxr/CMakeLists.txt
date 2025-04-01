@@ -62,5 +62,21 @@ add_subdirectory(action_map)
 add_subdirectory(extensions)
 add_subdirectory(scene)
 
+target_sources(godot-module-openxr
+        PRIVATE
+        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:${OPENGL_FOUND}>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},Darwin>>>:extensions/platform/openxr_opengl_extension.cpp>
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:extensions/platform/openxr_vulkan_extension.cpp>
+        $<$<BOOL:${WANT_METAL}>:extensions/platform/openxr_metal_extension.mm>
+)
+
+target_link_libraries(godot-module-openxr
+        PUBLIC
+        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:${OPENGL_FOUND}>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},Darwin>>>:gles3>
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:driver-vulkan>
+        $<$<BOOL:${WANT_METAL}>:metal>
+)
+
 target_link_libraries(godot-module-openxr PUBLIC core openxr godot-server-renderer zlib)
 set_property(TARGET godot-module-openxr PROPERTY CXX_STANDARD 17)
+
+group_target_sources(godot-module-openxr)

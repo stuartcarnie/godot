@@ -17,6 +17,7 @@ string(REPLACE "glsl" "glsl.gen.h" SHADERS_GENERATED "${SHADERS_GENERATED}")
 generate_shader_sources(glsl "${SHADERS}" "${SHADERS_GENERATED}")
 
 add_custom_target(generate_retrofx_rd_shaders DEPENDS ${SHADERS_GENERATED})
+set_target_properties(generate_retrofx_rd_shaders PROPERTIES FOLDER "generated")
 
 godot_add_library(godot-module-retrofx FOLDER modules STATIC)
 add_dependencies(godot-module-retrofx generate_retrofx_rd_shaders)
@@ -75,3 +76,4 @@ endif ()
 target_link_libraries(godot-module-retrofx PUBLIC core godot-server-renderer slang godot-scene)
 # disable -Wunused-variable for now, as it's too noisy
 target_compile_options(godot-module-retrofx PRIVATE -Wno-unused-variable -Wno-unused-private-field -fexceptions)
+group_target_sources(godot-module-retrofx)

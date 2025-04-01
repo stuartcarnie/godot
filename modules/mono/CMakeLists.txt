@@ -287,3 +287,5 @@ set(GODOT_MODULE_MONO_GODOTSHARP_SOURCE
 godot_add_library(godot-module-mono FOLDER modules STATIC ${GODOT_MODULE_MONO_SOURCE})
 target_link_libraries(godot-module-mono PUBLIC core)
 set_property(TARGET godot-module-mono PROPERTY CXX_STANDARD 17)
+
+group_target_sources(godot-module-mono)

@@ -118,6 +118,7 @@ add_custom_target(servers-renderer_rd-generated
         ${RENDERER_RD_SERVER_SHADERS_GENERATED}
         ${RENDERER_RD_SERVER_SHADERS_INC_GENERATED}
 )
+set_target_properties(servers-renderer_rd-generated PROPERTIES FOLDER "generated")
 
 target_sources(servers
         PRIVATE

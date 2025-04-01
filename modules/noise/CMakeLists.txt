@@ -37,3 +37,4 @@ if (WANT_EDITOR)
     # [[[end]]]
 endif ()
 target_link_libraries(godot-module-noise PUBLIC core)
+group_target_sources(godot-module-noise)

@@ -17,3 +17,4 @@ target_sources(godot-module-text-server-fb PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-text-server-fb PUBLIC core thorvg freetype msdfgen)
+group_target_sources(godot-module-text-server-fb)

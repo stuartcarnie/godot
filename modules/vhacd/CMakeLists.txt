@@ -13,3 +13,4 @@ target_sources(godot-module-vhacd PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-vhacd PUBLIC core vhacd)
+group_target_sources(godot-module-vhacd)

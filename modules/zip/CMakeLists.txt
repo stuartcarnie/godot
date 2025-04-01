@@ -17,3 +17,4 @@ target_sources(godot-module-zip PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-zip PUBLIC core minizip)
+group_target_sources(godot-module-zip)

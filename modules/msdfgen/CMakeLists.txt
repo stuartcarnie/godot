@@ -13,3 +13,4 @@ target_sources(godot-module-msdfgen PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-msdfgen PUBLIC core msdfgen)
+group_target_sources(godot-module-msdfgen)

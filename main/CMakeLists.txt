@@ -17,6 +17,7 @@ set(GODOT_INTERFACE_INTERFACE_DUMP_OUTPUT ${CMAKE_BINARY_DIR}/include/core/exten
 generate_file(gdextension_interface_dumper "${CMAKE_CURRENT_SOURCE_DIR}/../core/extension/gdextension_interface.h" "${GODOT_INTERFACE_INTERFACE_DUMP_OUTPUT}")
 
 add_custom_target(generate_main_app_files DEPENDS ${GODOT_MAIN_EXECUTABLE_APP_SPLASH_OUTPUT})
+set_target_properties(generate_main_app_files PROPERTIES FOLDER "generated")
 
 # macOS specific
 

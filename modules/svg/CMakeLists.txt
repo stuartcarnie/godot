@@ -15,3 +15,4 @@ target_sources(godot-module-svg PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-svg PUBLIC core thorvg)
+group_target_sources(godot-module-svg)

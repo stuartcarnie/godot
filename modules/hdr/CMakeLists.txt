@@ -15,3 +15,4 @@ target_sources(godot-module-hdr PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-hdr PUBLIC core)
+group_target_sources(godot-module-hdr)

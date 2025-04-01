@@ -20,6 +20,7 @@ string(REPLACE "glsl" "glsl.gen.h" GODOT_MODULE_LIGHTMAPPER_RD_SHADERS_GENERATED
 generate_shader_sources(glsl_raw "${GODOT_MODULE_LIGHTMAPPER_RD_SHADERS}" "${GODOT_MODULE_LIGHTMAPPER_RD_SHADERS_GENERATED}")
 
 add_custom_target(generate_lightmapper_rd_shaders DEPENDS ${GODOT_MODULE_LIGHTMAPPER_RD_SHADERS_GENERATED})
+set_target_properties(generate_lightmapper_rd_shaders PROPERTIES FOLDER "generated")
 
 godot_add_library(godot-module-lightmapper-rd FOLDER modules STATIC)
 add_dependencies(godot-module-lightmapper-rd generate_lightmapper_rd_shaders)
@@ -51,3 +52,5 @@ target_compile_definitions(godot-module-lightmapper-rd
         $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
 )
+
+group_target_sources(godot-module-lightmapper-rd)

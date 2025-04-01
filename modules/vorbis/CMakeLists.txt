@@ -17,3 +17,4 @@ target_sources(godot-module-vorbis PRIVATE
 )
 # [[[end]]]
 target_link_libraries(godot-module-vorbis PUBLIC core vorbis)
+group_target_sources(godot-module-vorbis)

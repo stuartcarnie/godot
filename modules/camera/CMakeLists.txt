@@ -9,3 +9,4 @@ target_sources(godot-module-camera PRIVATE
 )
 
 target_link_libraries(godot-module-camera PUBLIC core)
+group_target_sources(godot-module-camera)

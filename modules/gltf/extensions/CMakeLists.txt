@@ -1,13 +1,12 @@
-godot_add_library(godot-module-gltf-extensions STATIC)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
-#   cog.outl('target_sources(godot-module-gltf-extensions PRIVATE')
+#   cog.outl('target_sources(godot-module-gltf PRIVATE')
 #   for file in list_files(cog, ['.', 'physics']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
-target_sources(godot-module-gltf-extensions PRIVATE
+target_sources(godot-module-gltf PRIVATE
         gltf_document_extension.cpp
         gltf_document_extension.h
         gltf_document_extension_convert_importer_mesh.cpp
@@ -29,4 +28,3 @@ target_sources(godot-module-gltf-extensions PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(godot-module-gltf-extensions PUBLIC core)

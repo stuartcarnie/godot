@@ -36,6 +36,8 @@ string(REPLACE "glsl" "glsl.gen.h" GLES3_GLSL_SHADERS_GENERATED "${GLES3_GLSL_SH
 generate_shader_sources(gles3 "${GLES3_GLSL_SHADERS}" "${GLES3_GLSL_SHADERS_GENERATED}")
 
 add_custom_target(generate_gles3_shaders DEPENDS ${GLES3_GLSL_SHADERS_GENERATED})
+set_target_properties(generate_gles3_shaders PROPERTIES FOLDER "generated")
+
 
 godot_add_library(gles3 FOLDER drivers STATIC)
 add_dependencies(gles3 generate_gles3_shaders)

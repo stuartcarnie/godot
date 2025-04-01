@@ -49,3 +49,4 @@ if (WANT_EDITOR)
     # [[[end]]]
 endif ()
 target_link_libraries(godot-module-multiplayer PUBLIC core zlib)
+group_target_sources(godot-module-multiplayer)
