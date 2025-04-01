@@ -208,7 +208,7 @@ void FilterChain::resize_render_targets() {
 }
 
 void FilterChain::init_next_history_texture() {
-	DEV_ASSERT(history_count > 0); // Current shader does not require history textures.
+	CRASH_COND_MSG(history_count == 0, "Shader does not require history textures");
 
 	// either no history, or we moved a texture of a different size in the front slot
 	if (history_textures[0].size.width() != source_rect.size.width || history_textures[0].size.height() != source_rect.size.height) {
