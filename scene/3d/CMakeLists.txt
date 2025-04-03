@@ -1,3 +1,4 @@
+add_subdirectory(navigation)
 add_subdirectory(physics)
 
 if (NOT DISABLE_XR)
@@ -51,14 +52,6 @@ target_sources(scene PRIVATE
         mesh_instance_3d.h
         multimesh_instance_3d.cpp
         multimesh_instance_3d.h
-        navigation_agent_3d.cpp
-        navigation_agent_3d.h
-        navigation_link_3d.cpp
-        navigation_link_3d.h
-        navigation_obstacle_3d.cpp
-        navigation_obstacle_3d.h
-        navigation_region_3d.cpp
-        navigation_region_3d.h
         node_3d.cpp
         node_3d.h
         occluder_instance_3d.cpp

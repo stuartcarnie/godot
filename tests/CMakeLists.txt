@@ -51,6 +51,7 @@ target_sources(tests PRIVATE
         core/math/test_rect2i.h
         core/math/test_transform_2d.h
         core/math/test_transform_3d.h
+        core/math/test_triangle_mesh.h
         core/math/test_vector2.h
         core/math/test_vector2i.h
         core/math/test_vector3.h

@@ -1,3 +1,4 @@
+add_subdirectory(navigation)
 add_subdirectory(physics)
 
 # [[[cog
@@ -41,14 +42,6 @@ target_sources(scene PRIVATE
         mesh_instance_2d.h
         multimesh_instance_2d.cpp
         multimesh_instance_2d.h
-        navigation_agent_2d.cpp
-        navigation_agent_2d.h
-        navigation_link_2d.cpp
-        navigation_link_2d.h
-        navigation_obstacle_2d.cpp
-        navigation_obstacle_2d.h
-        navigation_region_2d.cpp
-        navigation_region_2d.h
         node_2d.cpp
         node_2d.h
         parallax_2d.cpp

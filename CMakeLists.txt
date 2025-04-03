@@ -53,12 +53,16 @@ set_property(CACHE PRECISION PROPERTY STRINGS single double)
 option(ENABLE_MINIZIP "Enable ZIP archive support using minizip" ON)
 option(ENABLE_BROTLI "Enable Brotli for decompresson and WOFF2 fonts support" ON)
 option(DISABLE_EXCEPTIONS "Force disabling exception handling code" ON)
+
+option(DISABLE_3D "Disable 3D nodes for a smaller executable" OFF)
+option(DISABLE_PHYSICS_2D "Disable 2D physics nodes and server" OFF)
+option(DISABLE_PHYSICS_3D "Disable 3D physics nodes and server" OFF)
+option(DISABLE_NAVIGATION_2D "Disable 2D navigation features" OFF)
+option(DISABLE_NAVIGATION_3D "Disable 3D navigation features" OFF)
 option(DISABLE_XR "Disable XR nodes and server" OFF)
-option(DISABLE_PHYSICS_2D "Disable 2D physics" OFF)
-option(DISABLE_PHYSICS_3D "Disable 3D physics" OFF)
 
 if (DISABLE_XR)
-    add_compile_definitions(DISABLE_XR)
+    add_compile_definitions(XR_DISABLED)
 endif ()
 
 # Custom modules
@@ -420,6 +424,8 @@ block(SCOPE_FOR VARIABLES)
     json_bool(DISABLE_XR_B ${DISABLE_XR})
     json_bool(DISABLE_PHYSICS_2D_B ${DISABLE_PHYSICS_2D})
     json_bool(DISABLE_PHYSICS_3D_B ${DISABLE_PHYSICS_3D})
+    json_bool(DISABLE_NAVIGATION_2D_B ${DISABLE_NAVIGATION_2D})
+    json_bool(DISABLE_NAVIGATION_3D_B ${DISABLE_NAVIGATION_3D})
     json_bool(WANT_METAL_B ${WANT_METAL})
     # custom modules
     json_bool(WANT_RETROFX_B ${WANT_RETROFX})
