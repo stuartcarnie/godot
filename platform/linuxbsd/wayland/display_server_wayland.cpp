@@ -245,37 +245,62 @@ String DisplayServerWayland::get_name() const {
 
 #ifdef SPEECHD_ENABLED
 
+void DisplayServerWayland::initialize_tts() const {
+	const_cast<DisplayServerWayland *>(this)->tts = memnew(TTS_Linux);
+}
+
 bool DisplayServerWayland::tts_is_speaking() const {
+	if (unlikely(!tts)) {
+		initialize_tts();
+	}
 	ERR_FAIL_NULL_V(tts, false);
 	return tts->is_speaking();
 }
 
 bool DisplayServerWayland::tts_is_paused() const {
+	if (unlikely(!tts)) {
+		initialize_tts();
+	}
 	ERR_FAIL_NULL_V(tts, false);
 	return tts->is_paused();
 }
 
 TypedArray<Dictionary> DisplayServerWayland::tts_get_voices() const {
+	if (unlikely(!tts)) {
+		initialize_tts();
+	}
 	ERR_FAIL_NULL_V(tts, TypedArray<Dictionary>());
 	return tts->get_voices();
 }
 
 void DisplayServerWayland::tts_speak(const String &p_text, const String &p_voice, int p_volume, float p_pitch, float p_rate, int p_utterance_id, bool p_interrupt) {
+	if (unlikely(!tts)) {
+		initialize_tts();
+	}
 	ERR_FAIL_NULL(tts);
 	tts->speak(p_text, p_voice, p_volume, p_pitch, p_rate, p_utterance_id, p_interrupt);
 }
 
 void DisplayServerWayland::tts_pause() {
+	if (unlikely(!tts)) {
+		initialize_tts();
+	}
 	ERR_FAIL_NULL(tts);
 	tts->pause();
 }
 
 void DisplayServerWayland::tts_resume() {
+	if (unlikely(!tts)) {
+		initialize_tts();
+	}
 	ERR_FAIL_NULL(tts);
 	tts->resume();
 }
 
 void DisplayServerWayland::tts_stop() {
+	if (unlikely(!tts)) {
+		initialize_tts();
+	}
 	ERR_FAIL_NULL(tts);
 	tts->stop();
 }
@@ -1117,6 +1142,10 @@ void DisplayServerWayland::cursor_set_custom_image(const Ref<Resource> &p_cursor
 	}
 }
 
+bool DisplayServerWayland::get_swap_cancel_ok() {
+	return swap_cancel_ok;
+}
+
 int DisplayServerWayland::keyboard_get_layout_count() const {
 	MutexLock mutex_lock(wayland_thread.mutex);
 
@@ -1425,6 +1454,10 @@ DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, Win
 	r_error = ERR_UNAVAILABLE;
 	context = p_context;
 
+	String current_desk = OS::get_singleton()->get_environment("XDG_CURRENT_DESKTOP").to_lower();
+	String session_desk = OS::get_singleton()->get_environment("XDG_SESSION_DESKTOP").to_lower();
+	swap_cancel_ok = (current_desk.contains("kde") || session_desk.contains("kde") || current_desk.contains("lxqt") || session_desk.contains("lxqt"));
+
 	Error thread_err = wayland_thread.init();
 
 	if (thread_err != OK) {
@@ -1439,7 +1472,10 @@ DisplayServerWayland::DisplayServerWayland(const String &p_rendering_driver, Win
 
 #ifdef SPEECHD_ENABLED
 	// Init TTS
-	tts = memnew(TTS_Linux);
+	bool tts_enabled = GLOBAL_GET("audio/general/text_to_speech");
+	if (tts_enabled) {
+		initialize_tts();
+	}
 #endif
 
 	rendering_driver = p_rendering_driver;

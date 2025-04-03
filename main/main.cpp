@@ -72,28 +72,36 @@
 #include "servers/display_server.h"
 #include "servers/movie_writer/movie_writer.h"
 #include "servers/movie_writer/movie_writer_mjpeg.h"
-#include "servers/navigation_server_3d.h"
-#include "servers/navigation_server_3d_dummy.h"
 #include "servers/register_server_types.h"
 #include "servers/rendering/rendering_server_default.h"
 #include "servers/text/text_server_dummy.h"
 #include "servers/text_server.h"
 
 // 2D
+#ifndef NAVIGATION_2D_DISABLED
 #include "servers/navigation_server_2d.h"
 #include "servers/navigation_server_2d_dummy.h"
+#endif // NAVIGATION_2D_DISABLED
+
 #ifndef PHYSICS_2D_DISABLED
 #include "servers/physics_server_2d.h"
 #include "servers/physics_server_2d_dummy.h"
 #endif // PHYSICS_2D_DISABLED
 
+// 3D
+#ifndef NAVIGATION_3D_DISABLED
+#include "servers/navigation_server_3d.h"
+#include "servers/navigation_server_3d_dummy.h"
+#endif // NAVIGATION_3D_DISABLED
+
 #ifndef PHYSICS_3D_DISABLED
 #include "servers/physics_server_3d.h"
 #include "servers/physics_server_3d_dummy.h"
 #endif // PHYSICS_3D_DISABLED
-#ifndef _3D_DISABLED
+
+#ifndef XR_DISABLED
 #include "servers/xr_server.h"
-#endif // _3D_DISABLED
+#endif // XR_DISABLED
 
 #ifdef TESTS_ENABLED
 #include "tests/test_main.h"
@@ -754,8 +762,12 @@ Error Main::test_setup() {
 	// Default theme will be initialized later, after modules and ScriptServer are ready.
 	initialize_theme_db();
 
+#ifndef NAVIGATION_3D_DISABLED
 	NavigationServer3DManager::initialize_server();
+#endif // NAVIGATION_3D_DISABLED
+#ifndef NAVIGATION_2D_DISABLED
 	NavigationServer2DManager::initialize_server();
+#endif // NAVIGATION_2D_DISABLED
 
 	register_scene_types();
 	register_driver_types();
@@ -839,8 +851,12 @@ void Main::test_cleanup() {
 
 	finalize_theme_db();
 
+#ifndef NAVIGATION_2D_DISABLED
 	NavigationServer2DManager::finalize_server();
+#endif // NAVIGATION_2D_DISABLED
+#ifndef NAVIGATION_3D_DISABLED
 	NavigationServer3DManager::finalize_server();
+#endif // NAVIGATION_3D_DISABLED
 
 	GDExtensionManager::get_singleton()->deinitialize_extensions(GDExtension::INITIALIZATION_LEVEL_SERVERS);
 	uninitialize_modules(MODULE_INITIALIZATION_LEVEL_SERVERS);
@@ -2122,7 +2138,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		OS::get_singleton()->add_logger(memnew(RotatedFileLogger(base_path, max_files)));
 	}
 
-	if (main_args.size() == 0 && String(GLOBAL_GET("application/run/main_scene")) == "") {
+	if (main_args.is_empty() && String(GLOBAL_GET("application/run/main_scene")) == "") {
 #ifdef TOOLS_ENABLED
 		if (!editor && !project_manager) {
 #endif
@@ -3525,10 +3541,16 @@ Error Main::setup2(bool p_show_boot_logo) {
 	// Default theme will be initialized later, after modules and ScriptServer are ready.
 	initialize_theme_db();
 
+#if !defined(NAVIGATION_2D_DISABLED) || !defined(NAVIGATION_3D_DISABLED)
 	MAIN_PRINT("Main: Load Navigation");
+#endif // !defined(NAVIGATION_2D_DISABLED) || !defined(NAVIGATION_3D_DISABLED)
 
+#ifndef NAVIGATION_3D_DISABLED
 	NavigationServer3DManager::initialize_server();
+#endif // NAVIGATION_3D_DISABLED
+#ifndef NAVIGATION_2D_DISABLED
 	NavigationServer2DManager::initialize_server();
+#endif // NAVIGATION_2D_DISABLED
 
 	register_scene_types();
 	register_driver_types();
@@ -4131,20 +4153,33 @@ int Main::start() {
 		if (debug_paths) {
 			sml->set_debug_paths_hint(true);
 		}
+
 		if (debug_navigation) {
 			sml->set_debug_navigation_hint(true);
+#ifndef NAVIGATION_2D_DISABLED
 			NavigationServer2D::get_singleton()->set_debug_navigation_enabled(true);
+#endif // NAVIGATION_2D_DISABLED
+#ifndef NAVIGATION_3D_DISABLED
 			NavigationServer3D::get_singleton()->set_debug_navigation_enabled(true);
+#endif // NAVIGATION_3D_DISABLED
 		}
 		if (debug_avoidance) {
+#ifndef NAVIGATION_2D_DISABLED
 			NavigationServer2D::get_singleton()->set_debug_avoidance_enabled(true);
+#endif // NAVIGATION_2D_DISABLED
+#ifndef NAVIGATION_3D_DISABLED
 			NavigationServer3D::get_singleton()->set_debug_avoidance_enabled(true);
+#endif // NAVIGATION_3D_DISABLED
 		}
 		if (debug_navigation || debug_avoidance) {
+#ifndef NAVIGATION_2D_DISABLED
 			NavigationServer2D::get_singleton()->set_active(true);
 			NavigationServer2D::get_singleton()->set_debug_enabled(true);
+#endif // NAVIGATION_2D_DISABLED
+#ifndef NAVIGATION_3D_DISABLED
 			NavigationServer3D::get_singleton()->set_active(true);
 			NavigationServer3D::get_singleton()->set_debug_enabled(true);
+#endif // NAVIGATION_3D_DISABLED
 		}
 		if (debug_canvas_item_redraw) {
 			RenderingServer::get_singleton()->canvas_item_set_debug_redraw(true);
@@ -4575,7 +4610,9 @@ bool Main::iteration() {
 
 	uint64_t physics_process_ticks = 0;
 	uint64_t process_ticks = 0;
+#if !defined(NAVIGATION_2D_DISABLED) || !defined(NAVIGATION_3D_DISABLED)
 	uint64_t navigation_process_ticks = 0;
+#endif // !defined(NAVIGATION_2D_DISABLED) || !defined(NAVIGATION_3D_DISABLED)
 
 	frame += ticks_elapsed;
 
@@ -4594,8 +4631,12 @@ bool Main::iteration() {
 	XRServer::get_singleton()->_process();
 #endif // XR_DISABLED
 
+#ifndef NAVIGATION_2D_DISABLED
 	NavigationServer2D::get_singleton()->sync();
+#endif // NAVIGATION_2D_DISABLED
+#ifndef NAVIGATION_3D_DISABLED
 	NavigationServer3D::get_singleton()->sync();
+#endif // NAVIGATION_3D_DISABLED
 
 	for (int iters = 0; iters < advance.physics_steps; ++iters) {
 		if (Input::get_singleton()->is_agile_input_event_flushing()) {
@@ -4635,15 +4676,21 @@ bool Main::iteration() {
 			break;
 		}
 
+#if !defined(NAVIGATION_2D_DISABLED) || !defined(NAVIGATION_3D_DISABLED)
 		uint64_t navigation_begin = OS::get_singleton()->get_ticks_usec();
 
-		NavigationServer2D::get_singleton()->process(physics_step * time_scale);
-		NavigationServer3D::get_singleton()->process(physics_step * time_scale);
+#ifndef NAVIGATION_2D_DISABLED
+		NavigationServer2D::get_singleton()->physics_process(physics_step * time_scale);
+#endif // NAVIGATION_2D_DISABLED
+#ifndef NAVIGATION_3D_DISABLED
+		NavigationServer3D::get_singleton()->physics_process(physics_step * time_scale);
+#endif // NAVIGATION_3D_DISABLED
 
 		navigation_process_ticks = MAX(navigation_process_ticks, OS::get_singleton()->get_ticks_usec() - navigation_begin); // keep the largest one for reference
 		navigation_process_max = MAX(OS::get_singleton()->get_ticks_usec() - navigation_begin, navigation_process_max);
 
 		message_queue->flush();
+#endif // !defined(NAVIGATION_2D_DISABLED) || !defined(NAVIGATION_3D_DISABLED)
 
 #ifndef PHYSICS_3D_DISABLED
 		PhysicsServer3D::get_singleton()->end_sync();
@@ -4675,6 +4722,13 @@ bool Main::iteration() {
 		exit = true;
 	}
 	message_queue->flush();
+
+#ifndef NAVIGATION_2D_DISABLED
+	NavigationServer2D::get_singleton()->process(process_step * time_scale);
+#endif // NAVIGATION_2D_DISABLED
+#ifndef NAVIGATION_3D_DISABLED
+	NavigationServer3D::get_singleton()->process(process_step * time_scale);
+#endif // NAVIGATION_3D_DISABLED
 
 	RenderingServer::get_singleton()->sync(); //sync if still drawing from previous frames.
 
@@ -4879,9 +4933,13 @@ void Main::cleanup(bool p_force) {
 
 	finalize_theme_db();
 
-	// Before deinitializing server extensions, finalize servers which may be loaded as extensions.
+// Before deinitializing server extensions, finalize servers which may be loaded as extensions.
+#ifndef NAVIGATION_2D_DISABLED
 	NavigationServer2DManager::finalize_server();
+#endif // NAVIGATION_2D_DISABLED
+#ifndef NAVIGATION_3D_DISABLED
 	NavigationServer3DManager::finalize_server();
+#endif // NAVIGATION_3D_DISABLED
 	finalize_physics();
 
 	GDExtensionManager::get_singleton()->deinitialize_extensions(GDExtension::INITIALIZATION_LEVEL_SERVERS);
