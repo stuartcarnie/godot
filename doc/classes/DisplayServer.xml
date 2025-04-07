@@ -1204,6 +1204,14 @@
 				[b]Note:[/b] On iOS, this method has no effect if [member ProjectSettings.display/window/handheld/orientation] is not set to [constant SCREEN_SENSOR].
 			</description>
 		</method>
+		<method name="set_hardware_keyboard_connection_change_callback">
+			<return type="void" />
+			<param index="0" name="callable" type="Callable" />
+			<description>
+				Sets the [param callable] that should be called when hardware keyboard is connected/disconnected. [param callable] should accept a single [bool] parameter indicating whether the keyboard is connected (true) or disconnected (false).
+				[b]Note:[/b] This method is only implemented on Android.
+			</description>
+		</method>
 		<method name="set_icon">
 			<return type="void" />
 			<param index="0" name="image" type="Image" />
@@ -1958,6 +1966,9 @@
 		<constant name="FEATURE_NATIVE_COLOR_PICKER" value="32" enum="Feature">
 			Display server supports native color picker. [b]Linux (X11/Wayland)[/b]
 		</constant>
+		<constant name="FEATURE_SELF_FITTING_WINDOWS" value="33" enum="Feature">
+			Display server automatically fits popups according to the screen boundaries. Window nodes should not attempt to do that themselves.
+		</constant>
 		<constant name="MOUSE_MODE_VISIBLE" value="0" enum="MouseMode">
 			Makes the mouse cursor visible if it is hidden.
 		</constant>
@@ -2177,11 +2188,14 @@
 			[b]Note:[/b] This flag is implemented only on Windows (11).
 		</constant>
 		<constant name="WINDOW_FLAG_EXCLUDE_FROM_CAPTURE" value="9" enum="WindowFlags">
-			Windows is excluded from screenshots taken by [method screen_get_image], [method screen_get_image_rect], and [method screen_get_pixel].
+			Window is excluded from screenshots taken by [method screen_get_image], [method screen_get_image_rect], and [method screen_get_pixel].
 			[b]Note:[/b] This flag is implemented on macOS and Windows.
-			[b]Note:[/b] Setting this flag will [b]NOT[/b] prevent other apps from capturing an image, it should not be used as a security measure.
+			[b]Note:[/b] Setting this flag will [b]NOT[/b] prevent other apps from capturing an image. It should not be used as a security measure.
 		</constant>
-		<constant name="WINDOW_FLAG_MAX" value="10" enum="WindowFlags">
+		<constant name="WINDOW_FLAG_POPUP_WM_HINT" value="10" enum="WindowFlags">
+			Signals the window manager that this window is supposed to be an implementation-defined "popup" (usually a floating, borderless, untileable and immovable child window).
+		</constant>
+		<constant name="WINDOW_FLAG_MAX" value="11" enum="WindowFlags">
 			Max value of the [enum WindowFlags].
 		</constant>
 		<constant name="WINDOW_EVENT_MOUSE_ENTER" value="0" enum="WindowEvent">
@@ -2210,6 +2224,10 @@
 		<constant name="WINDOW_EVENT_TITLEBAR_CHANGE" value="7" enum="WindowEvent">
 			Sent when the window title bar decoration is changed (e.g. [constant WINDOW_FLAG_EXTEND_TO_TITLE] is set or window entered/exited full screen mode).
 			[b]Note:[/b] This flag is implemented only on macOS.
+		</constant>
+		<constant name="WINDOW_EVENT_FORCE_CLOSE" value="8" enum="WindowEvent">
+			Sent when the window has been forcibly closed by the Display Server. The window shall immediately hide and clean any internal rendering references.
+			[b]Note:[/b] This flag is implemented only on Linux (Wayland).
 		</constant>
 		<constant name="WINDOW_EDGE_TOP_LEFT" value="0" enum="WindowResizeEdge">
 			Top-left edge of a window.
