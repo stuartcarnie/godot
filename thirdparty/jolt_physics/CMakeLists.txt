@@ -123,14 +123,9 @@ target_sources(jolt-physics PRIVATE
     Jolt/Skeleton/Skeleton.cpp
     Jolt/Skeleton/SkeletonMapper.cpp
     Jolt/Skeleton/SkeletonPose.cpp
-    Jolt/TriangleGrouper/TriangleGrouperClosestCentroid.cpp
-    Jolt/TriangleGrouper/TriangleGrouperMorton.cpp
     Jolt/TriangleSplitter/TriangleSplitter.cpp
     Jolt/TriangleSplitter/TriangleSplitterBinning.cpp
-    Jolt/TriangleSplitter/TriangleSplitterFixedLeafSize.cpp
-    Jolt/TriangleSplitter/TriangleSplitterLongestAxis.cpp
     Jolt/TriangleSplitter/TriangleSplitterMean.cpp
-    Jolt/TriangleSplitter/TriangleSplitterMorton.cpp
 )
 
 target_compile_definitions(jolt-physics

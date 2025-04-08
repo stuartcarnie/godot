@@ -126,6 +126,12 @@ public:
         file.write(f"""\
 		setup(_vertex_code, _fragment_code, _compute_code, "{class_name}");
 	}}
+""")
+        file.write(f"""\
+protected:
+#ifdef DYNAMIC_CORE_SHADERS
+    char const * rel_shader_path() const override {{ return "{os.path.relpath(shader)}"; }}
+#endif
 }};
 """)
 
