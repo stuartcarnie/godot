@@ -49,6 +49,7 @@ target_sources(macos PRIVATE
         os_macos.mm
         platform_config.h
         platform_gl.h
+        platform_thread.h
         rendering_context_driver_vulkan_macos.h
         rendering_context_driver_vulkan_macos.mm
         tts_macos.h

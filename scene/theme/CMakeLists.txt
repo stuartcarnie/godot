@@ -11,6 +11,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/arrow_down.svg
         icons/arrow_left.svg
         icons/arrow_right.svg
+        icons/arrow_up.svg
         icons/bookmark.svg
         icons/breakpoint.svg
         icons/checked.svg

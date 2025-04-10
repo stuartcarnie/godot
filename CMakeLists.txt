@@ -60,6 +60,8 @@ option(DISABLE_PHYSICS_3D "Disable 3D physics nodes and server" OFF)
 option(DISABLE_NAVIGATION_2D "Disable 2D navigation features" OFF)
 option(DISABLE_NAVIGATION_3D "Disable 3D navigation features" OFF)
 option(DISABLE_XR "Disable XR nodes and server" OFF)
+# TODO(sgc): Add support to enable compiling with AccessKit
+option(ENABLE_ACCESSKIT "Use AccessKit C SDK" OFF)
 
 if (DISABLE_XR)
     add_compile_definitions(XR_DISABLED)

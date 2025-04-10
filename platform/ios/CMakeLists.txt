@@ -37,6 +37,7 @@ target_sources(ios PRIVATE
         os_ios.mm
         platform_config.h
         platform_gl.h
+        platform_thread.h
         rendering_context_driver_vulkan_ios.h
         rendering_context_driver_vulkan_ios.mm
         tts_ios.h

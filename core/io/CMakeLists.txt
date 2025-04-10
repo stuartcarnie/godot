@@ -1,8 +1,3 @@
-set(GODOT_CORE_IO_CA_CERTIFICATES_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/certs/ca-certificates.crt)
-set(GODOT_CORE_IO_CA_CERTIFICATES_DESTINATION ${CMAKE_BINARY_INCLUDE_DIR}/core/io/certs_compressed.gen.h)
-generate_file(certs_header ${GODOT_CORE_IO_CA_CERTIFICATES_SOURCE} ${GODOT_CORE_IO_CA_CERTIFICATES_DESTINATION})
-
-target_sources(core PRIVATE ${GODOT_CORE_IO_CA_CERTIFICATES_DESTINATION})
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files

@@ -287,6 +287,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         FlowContainer.svg
         FogMaterial.svg
         FogVolume.svg
+        FoldableContainer.svg
         Folder.svg
         FolderBigThumb.svg
         FolderBrowse.svg
@@ -343,6 +344,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Group.svg
         GroupViewport.svg
         Groups.svg
+        GuiArrowUp.svg
         GuiChecked.svg
         GuiCheckedDisabled.svg
         GuiClose.svg

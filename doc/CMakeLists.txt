@@ -350,6 +350,8 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/FlowContainer.xml
         classes/FogMaterial.xml
         classes/FogVolume.xml
+        classes/FoldableContainer.xml
+        classes/FoldableGroup.xml
         classes/Font.xml
         classes/FontFile.xml
         classes/FontVariation.xml

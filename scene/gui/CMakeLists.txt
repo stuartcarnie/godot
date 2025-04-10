@@ -41,6 +41,8 @@ target_sources(scene PRIVATE
         file_dialog.h
         flow_container.cpp
         flow_container.h
+        foldable_container.cpp
+        foldable_container.h
         graph_edit.cpp
         graph_edit.h
         graph_edit_arranger.cpp
