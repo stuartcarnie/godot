@@ -92,6 +92,14 @@ set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
 set(GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/property_translations.gen.h)
 generate_file(make_editor_properties_translations "${GODOT_PROPERTIES_TRANSLATIONS_SOURCE}" "${GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT}")
 
+add_custom_target(editor-translations-generated
+        DEPENDS
+        ${GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT}
+        ${GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT})
+set_target_properties(editor-translations-generated PROPERTIES FOLDER "generated")
+
+add_dependencies(editor editor-translations-generated)
+
 target_sources(editor
         INTERFACE
         ${GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT}

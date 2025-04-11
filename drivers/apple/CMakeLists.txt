@@ -9,6 +9,8 @@
 target_sources(drivers PRIVATE
         joypad_apple.h
         joypad_apple.mm
+        thread_apple.cpp
+        thread_apple.h
 )
 # [[[end]]]
 
