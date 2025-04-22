@@ -954,8 +954,7 @@ namespace rid {
 
 // Converts an Objective-C object to a pointer, and incrementing the
 // reference count.
-_FORCE_INLINE_
-void *owned(id p_id) {
+_FORCE_INLINE_ void *owned(id p_id) {
 	return (__bridge_retained void *)p_id;
 }
 
@@ -971,14 +970,12 @@ MAKE_ID(MTLVertexDescriptor *, RDD::VertexFormatID)
 MAKE_ID(id<MTLCommandQueue>, RDD::CommandPoolID)
 
 // Converts a pointer to an Objective-C object without changing the reference count.
-_FORCE_INLINE_
-auto get(RDD::ID p_id) {
+_FORCE_INLINE_ auto get(RDD::ID p_id) {
 	return (p_id.id) ? (__bridge ::id)(void *)p_id.id : nil;
 }
 
 // Converts a pointer to an Objective-C object, and decrements the reference count.
-_FORCE_INLINE_
-auto release(RDD::ID p_id) {
+_FORCE_INLINE_ auto release(RDD::ID p_id) {
 	return (__bridge_transfer ::id)(void *)p_id.id;
 }
 
