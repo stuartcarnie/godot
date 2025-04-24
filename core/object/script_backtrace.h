@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  godot_module_mbedtls_config.h                                         */
+/*  script_backtrace.h                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,45 +28,60 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_MODULE_MBEDTLS_CONFIG_H
-#define GODOT_MODULE_MBEDTLS_CONFIG_H
+#pragma once
 
-#include "platform_config.h"
+#include "core/object/ref_counted.h"
 
-#ifdef GODOT_MBEDTLS_INCLUDE_H
+class ScriptLanguage;
 
-// Allow platforms to customize the mbedTLS configuration.
-#include GODOT_MBEDTLS_INCLUDE_H
+class ScriptBacktrace : public RefCounted {
+	GDCLASS(ScriptBacktrace, RefCounted);
 
-#else
+	struct StackVariable {
+		String name;
+		Variant value;
+	};
 
-// Include default mbedTLS config.
-#include <mbedtls/mbedtls_config.h>
+	struct StackFrame {
+		LocalVector<StackVariable> local_variables;
+		LocalVector<StackVariable> member_variables;
+		String function;
+		String file;
+		int line = 0;
+	};
 
-// Disable weak cryptography.
-#undef MBEDTLS_KEY_EXCHANGE_DHE_PSK_ENABLED
-#undef MBEDTLS_KEY_EXCHANGE_DHE_RSA_ENABLED
-#undef MBEDTLS_DES_C
-#undef MBEDTLS_DHM_C
+	LocalVector<StackFrame> stack_frames;
+	LocalVector<StackVariable> global_variables;
+	String language_name;
 
-#if !(defined(__linux__) && defined(__aarch64__))
-// ARMv8 hardware AES operations. Detection only possible on linux.
-// May technically be supported on some ARM32 arches but doesn't seem
-// to be in our current Linux SDK's neon-fp-armv8.
-#undef MBEDTLS_AESCE_C
-#endif
+	static void _store_variables(const List<String> &p_names, const List<Variant> &p_values, LocalVector<StackVariable> &r_variables);
 
-#if defined(__has_feature)
-#if __has_feature(memory_sanitizer)
-// MemorySanitizer is incompatible with ASM.
-#undef MBEDTLS_HAVE_ASM
-#undef MBEDTLS_AESNI_C
-#endif
-#endif
+protected:
+	static void _bind_methods();
 
-// Disable deprecated
-#define MBEDTLS_DEPRECATED_REMOVED
+public:
+	ScriptBacktrace() = default;
+	ScriptBacktrace(ScriptLanguage *p_language, bool p_include_variables = false);
 
-#endif // GODOT_MBEDTLS_INCLUDE_H
+	String get_language_name() const { return language_name; }
 
-#endif // GODOT_MODULE_MBEDTLS_CONFIG_H
+	int get_frame_count() const { return stack_frames.size(); }
+	String get_frame_function(int p_index) const;
+	String get_frame_file(int p_index) const;
+	int get_frame_line(int p_index) const;
+
+	int get_global_variable_count() const { return global_variables.size(); }
+	String get_global_variable_name(int p_variable_index) const;
+	Variant get_global_variable_value(int p_variable_index) const;
+
+	int get_local_variable_count(int p_frame_index) const;
+	String get_local_variable_name(int p_frame_index, int p_variable_index) const;
+	Variant get_local_variable_value(int p_frame_index, int p_variable_index) const;
+
+	int get_member_variable_count(int p_frame_index) const;
+	String get_member_variable_name(int p_frame_index, int p_variable_index) const;
+	Variant get_member_variable_value(int p_frame_index, int p_variable_index) const;
+
+	String format(int p_indent_all = 0, int p_indent_frames = 4) const;
+	virtual String to_string() override { return format(); }
+};
