@@ -678,6 +678,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/RigidBody2D.xml
         classes/RigidBody3D.xml
         classes/RootMotionView.xml
+        classes/SVGTexture.xml
         classes/SceneState.xml
         classes/SceneTree.xml
         classes/SceneTreeTimer.xml

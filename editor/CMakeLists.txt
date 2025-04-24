@@ -67,6 +67,8 @@ target_sources(editor PRIVATE
         connections_dialog.h
         create_dialog.cpp
         create_dialog.h
+        credits_roll.cpp
+        credits_roll.h
         dependency_editor.cpp
         dependency_editor.h
         directory_create_dialog.cpp

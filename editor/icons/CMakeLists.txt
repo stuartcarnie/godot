@@ -731,6 +731,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         RotateLeft.svg
         RotateRight.svg
         Ruler.svg
+        SVGTexture.svg
         SampleLibrary.svg
         Save.svg
         SceneUniqueName.svg

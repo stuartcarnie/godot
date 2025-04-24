@@ -114,6 +114,8 @@ target_sources(scene PRIVATE
         style_box_texture.h
         surface_tool.cpp
         surface_tool.h
+        svg_texture.cpp
+        svg_texture.h
         syntax_highlighter.cpp
         syntax_highlighter.h
         text_file.cpp
