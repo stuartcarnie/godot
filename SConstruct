@@ -718,7 +718,7 @@ if env["arch"] == "x86_32":
     if env.msvc:
         env.Append(CCFLAGS=["/arch:SSE2"])
     else:
-        env.Append(CCFLAGS=["-msse2"])
+        env.Append(CCFLAGS=["-msse2", "-mfpmath=sse", "-mstackrealign"])
 
 # Explicitly specify colored output.
 if methods.using_gcc(env):
@@ -877,7 +877,7 @@ if env.msvc and not methods.using_clang(env):  # MSVC
         env.AppendUnique(LINKFLAGS=["/WX"])
 
 else:  # GCC, Clang
-    common_warnings = []
+    common_warnings = ["-Wenum-conversion"]
 
     if methods.using_gcc(env):
         common_warnings += ["-Wshadow", "-Wno-misleading-indentation"]
@@ -1155,15 +1155,6 @@ if env["vsproj"]:
     methods.generate_cpp_hint_file("cpp.hint")
     env["CPPPATH"] = [Dir(path) for path in env["CPPPATH"]]
     methods.generate_vs_project(env, ARGUMENTS, env["vsproj_name"])
-
-# Check for the existence of headers
-conf = Configure(env)
-if "check_c_headers" in env:
-    headers = env["check_c_headers"]
-    for header in headers:
-        if conf.CheckCHeader(header):
-            env.AppendUnique(CPPDEFINES=[headers[header]])
-conf.Finish()
 
 # Miscellaneous & post-build methods.
 if not env.GetOption("clean") and not env.GetOption("help"):

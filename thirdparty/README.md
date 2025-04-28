@@ -74,7 +74,7 @@ Files extracted from upstream source:
 ## basis_universal
 
 - Upstream: https://github.com/BinomialLLC/basis_universal
-- Version: 1.50.0 (051ad6d8a64bb95a79e8601c317055fd1782ad3e, 2024)
+- Version: 1.60 (323239a6a5ffa57d6570cfc403be99156e33a8b0, 2025)
 - License: Apache 2.0
 
 Files extracted from upstream source:
@@ -89,6 +89,8 @@ Patches:
 - `0002-external-jpgd.patch` (GH-88508)
 - `0003-external-tinyexr.patch` (GH-97582)
 - `0004-remove-tinydds-qoi.patch` (GH-97582)
+- `0005-windows-illegal-character.patch` (GH-103968)
+- `0006-ambiguous-calls.patch` (GH-103968)
 
 
 ## brotli
@@ -199,7 +201,7 @@ Files extracted from upstream source:
 ## embree
 
 - Upstream: https://github.com/embree/embree
-- Version: 4.3.1 (daa8de0e714e18ad5e5c9841b67c1950d9c91c51, 2024)
+- Version: 4.4.0 (ff9381774dc99fea81a932ad276677aad6a3d4dd, 2025)
 - License: Apache 2.0
 
 Files extracted from upstream:
@@ -216,7 +218,6 @@ Patches:
 - `0003-emscripten-nthreads.patch` (GH-69799)
 - `0004-mingw-no-cpuidex.patch` (GH-92488)
 - `0005-mingw-llvm-arm64.patch` (GH-93364)
-- `0006-include-order-dllexport.patch` (GH-94256)
 
 The `modules/raycast/godot_update_embree.py` script can be used to pull the
 relevant files from the latest Embree release and apply patches automatically.
@@ -524,6 +525,7 @@ Patches:
 
 - `0001-external-basisu.patch` (GH-76572)
 - `0002-disable-astc-block-ext.patch` (GH-76572)
+- `0003-basisu-1.60.patch` (GH-103968)
 
 
 ## libogg
@@ -582,7 +584,7 @@ Files extracted from upstream source:
 ## libwebp
 
 - Upstream: https://chromium.googlesource.com/webm/libwebp/
-- Version: 1.4.0 (845d5476a866141ba35ac133f856fa62f0b7445f, 2024)
+- Version: 1.5.0 (a4d7a715337ded4451fec90ff8ce79728e04126c, 2024)
 - License: BSD-3-Clause
 
 Files extracted from upstream source:

@@ -60,6 +60,10 @@
 #define DEBUG_LOG_WAYLAND_THREAD(...)
 #endif
 
+// Since we're never going to use this interface directly, it's not worth
+// generating the whole deal.
+#define FIFO_INTERFACE_NAME "wp_fifo_manager_v1"
+
 // Read the content pointed by fd into a Vector<uint8_t>.
 Vector<uint8_t> WaylandThread::_read_fd(int fd) {
 	// This is pretty much an arbitrary size.
@@ -640,6 +644,10 @@ void WaylandThread::_wl_registry_on_global(void *data, struct wl_registry *wl_re
 
 		return;
 	}
+
+	if (strcmp(interface, FIFO_INTERFACE_NAME) == 0) {
+		registry->wp_fifo_manager_name = name;
+	}
 }
 
 void WaylandThread::_wl_registry_on_global_remove(void *data, struct wl_registry *wl_registry, uint32_t name) {
@@ -1027,6 +1035,10 @@ void WaylandThread::_wl_registry_on_global_remove(void *data, struct wl_registry
 
 			it = it->next();
 		}
+	}
+
+	if (name == registry->wp_fifo_manager_name) {
+		registry->wp_fifo_manager_name = 0;
 	}
 }
 
@@ -1818,7 +1830,7 @@ void WaylandThread::_wl_pointer_on_frame(void *data, struct wl_pointer *wl_point
 				if (test_button == MouseButton::WHEEL_RIGHT || test_button == MouseButton::WHEEL_LEFT) {
 					// If this is a discrete scroll, specify how many "clicks" it did for this
 					// pointer frame.
-					mb->set_factor(fabs(pd.discrete_scroll_vector_120.x / (float)120));
+					mb->set_factor(std::abs(pd.discrete_scroll_vector_120.x / (float)120));
 				}
 
 				mb->set_button_mask(pd.pressed_button_mask);
@@ -3216,8 +3228,8 @@ void WaylandThread::window_state_update_size(WindowState *p_ws, int p_width, int
 // must be scaled with away from zero half-rounding.
 Vector2i WaylandThread::scale_vector2i(const Vector2i &p_vector, double p_amount) {
 	// This snippet is tiny, I know, but this is done a lot.
-	int x = round(p_vector.x * p_amount);
-	int y = round(p_vector.y * p_amount);
+	int x = std::round(p_vector.x * p_amount);
+	int y = std::round(p_vector.y * p_amount);
 
 	return Vector2i(x, y);
 }
@@ -4186,8 +4198,8 @@ void WaylandThread::pointer_set_hint(const Point2i &p_hint) {
 		// discussing about this. I'm not really sure about the maths behind this but,
 		// oh well, we're setting a cursor hint. ¯\_(ツ)_/¯
 		// See: https://oftc.irclog.whitequark.org/wayland/2023-08-23#1692756914-1692816818
-		hint_x = round(p_hint.x / window_state_get_scale_factor(ws));
-		hint_y = round(p_hint.y / window_state_get_scale_factor(ws));
+		hint_x = std::round(p_hint.x / window_state_get_scale_factor(ws));
+		hint_y = std::round(p_hint.y / window_state_get_scale_factor(ws));
 	}
 
 	if (ss) {
@@ -4274,6 +4286,10 @@ Error WaylandThread::init() {
 		WARN_PRINT("Can't obtain the idle inhibition manager. The screen might turn off even after calling screen_set_keep_on()!");
 	}
 #endif // DBUS_ENABLED
+
+	if (!registry.wp_fifo_manager_name) {
+		WARN_PRINT("FIFO protocol not found! Frame pacing will be degraded.");
+	}
 
 	// Wait for seat capabilities.
 	wl_display_roundtrip(wl_display);
@@ -4378,7 +4394,7 @@ void WaylandThread::cursor_shape_set_custom_image(DisplayServer::CursorShape p_c
 
 	// Fill the cursor buffer with the image data.
 	for (unsigned int index = 0; index < (unsigned int)(image_size.width * image_size.height); index++) {
-		int row_index = floor(index / image_size.width);
+		int row_index = std::floor(index / image_size.width);
 		int column_index = (index % int(image_size.width));
 
 		cursor.buffer_data[index] = p_image->get_pixel(column_index, row_index).to_argb32();
@@ -4775,6 +4791,10 @@ uint64_t WaylandThread::window_get_last_frame_time(DisplayServer::WindowID p_win
 bool WaylandThread::window_is_suspended(DisplayServer::WindowID p_window_id) const {
 	ERR_FAIL_COND_V(!windows.has(p_window_id), false);
 	return windows[p_window_id].suspended;
+}
+
+bool WaylandThread::is_fifo_available() const {
+	return registry.wp_fifo_manager_name != 0;
 }
 
 bool WaylandThread::is_suspended() const {
