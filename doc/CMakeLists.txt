@@ -452,6 +452,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Line2D.xml
         classes/LineEdit.xml
         classes/LinkButton.xml
+        classes/Logger.xml
         classes/LookAtModifier3D.xml
         classes/MainLoop.xml
         classes/MarginContainer.xml
@@ -662,6 +663,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/ResourceImporterImageFont.xml
         classes/ResourceImporterLayeredTexture.xml
         classes/ResourceImporterOBJ.xml
+        classes/ResourceImporterSVG.xml
         classes/ResourceImporterScene.xml
         classes/ResourceImporterShaderFile.xml
         classes/ResourceImporterTexture.xml
@@ -683,6 +685,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/SceneTree.xml
         classes/SceneTreeTimer.xml
         classes/Script.xml
+        classes/ScriptBacktrace.xml
         classes/ScriptCreateDialog.xml
         classes/ScriptEditor.xml
         classes/ScriptEditorBase.xml

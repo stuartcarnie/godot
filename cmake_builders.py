@@ -26,8 +26,8 @@ import editor.themes.editor_theme_builders
 from scene.theme.default_theme_builders import *
 from editor.icons.editor_icons_builders import *
 import editor.template_builders
-# from modules.modules_builders import generate_modules_enabled
-from modules.text_server_adv.gdextension_build.methods import make_icu_data
+from modules.text_server_adv.text_server_adv_builders import make_icu_data
+from modules.modules_builders import modules_enabled_builder
 import glob as Glob
 import logging
 
@@ -52,6 +52,9 @@ class Target:
 
     def srcnode(self):
         return self
+
+    def __str__(self):
+        return self._path
 
 
 class Value:
@@ -252,7 +255,7 @@ def cmd_glsl(source: str, target: str) -> int:
 @check_output
 @source_target
 def cmd_gles3(source: str, target: str) -> int:
-    build_gles3_header(target, source,)
+    build_gles3_header(target, source, )
     return 0
 
 
@@ -266,7 +269,7 @@ def cmd_glsl_raw(source: str, target: str) -> int:
 @check_output
 @source_target
 def cmd_certs_header(source: str, target: str) -> int:
-    make_certs_header(target=[target], source=[source], env=env)
+    make_certs_header(target=[target], source=[source, Value(env['builtin_certs']), Value("")], env=env)
     return 0
 
 
@@ -581,12 +584,6 @@ void uninitialize_modules(ModuleInitializationLevel p_level) {{
         )
 
 
-def modules_enabled_builder(target, source, env):
-    with methods.generated_wrapper(target) as file:
-        for module in source[0].read():
-            file.write(f"#define MODULE_{module.upper()}_ENABLED\n")
-
-
 @check_output
 def cmd_make_modules_enabled_and_types(args: argparse.Namespace) -> int:
     input_file = args.input
@@ -614,7 +611,7 @@ def cmd_make_modules_enabled_and_types(args: argparse.Namespace) -> int:
 
     # Write out the results
     register_module_types_builder(target=str(args.output), source=[Value(modules)], env=env)
-    modules_enabled_builder(target=str(args.output2), source=[Value(modules)], env=env)
+    modules_enabled_builder(target=[str(args.output2)], source=[Value(modules)], env=env)
 
     os.chdir(original_cwd)
 
@@ -863,6 +860,7 @@ def write_script_encryption_key(target):
 # region cog helpers
 
 from fnmatch import fnmatch
+
 
 def list_files(cog, search_paths: str | list[str], exts: [str] = None,
                ginclude: str = None, gexclude: str = None,

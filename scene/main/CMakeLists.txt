@@ -27,6 +27,8 @@ target_sources(scene PRIVATE
         resource_preloader.h
         scene_tree.cpp
         scene_tree.h
+        scene_tree_fti.cpp
+        scene_tree_fti.h
         shader_globals_override.cpp
         shader_globals_override.h
         status_indicator.cpp

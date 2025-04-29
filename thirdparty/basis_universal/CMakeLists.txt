@@ -11,8 +11,10 @@ if (WANT_EDITOR)
     target_sources(basis_universal PRIVATE
             encoder/3rdparty/android_astc_decomp.cpp
             encoder/3rdparty/android_astc_decomp.h
-            encoder/basisu_astc_hdr_enc.cpp
-            encoder/basisu_astc_hdr_enc.h
+            encoder/basisu_astc_hdr_6x6_enc.cpp
+            encoder/basisu_astc_hdr_6x6_enc.h
+            encoder/basisu_astc_hdr_common.cpp
+            encoder/basisu_astc_hdr_common.h
             encoder/basisu_backend.cpp
             encoder/basisu_backend.h
             encoder/basisu_basis_file.cpp
@@ -32,6 +34,7 @@ if (WANT_EDITOR)
             encoder/basisu_kernels_declares.h
             encoder/basisu_kernels_imp.h
             encoder/basisu_kernels_sse.cpp
+            encoder/basisu_math.h
             encoder/basisu_miniz.h
             encoder/basisu_ocl_kernels.h
             encoder/basisu_opencl.cpp
@@ -46,6 +49,8 @@ if (WANT_EDITOR)
             encoder/basisu_ssim.h
             encoder/basisu_uastc_enc.cpp
             encoder/basisu_uastc_enc.h
+            encoder/basisu_uastc_hdr_4x4_enc.cpp
+            encoder/basisu_uastc_hdr_4x4_enc.h
             encoder/cppspmd_flow.h
             encoder/cppspmd_math.h
             encoder/cppspmd_math_declares.h

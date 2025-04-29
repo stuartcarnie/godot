@@ -20,6 +20,8 @@ target_sources(core PRIVATE
         object_id.h
         ref_counted.cpp
         ref_counted.h
+        script_backtrace.cpp
+        script_backtrace.h
         script_instance.cpp
         script_instance.h
         script_language.cpp

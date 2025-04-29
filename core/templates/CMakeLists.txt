@@ -18,6 +18,8 @@ target_sources(core PRIVATE
         hash_map.h
         hash_set.h
         hashfuncs.h
+        interpolated_property.cpp
+        interpolated_property.h
         list.h
         local_vector.h
         lru.h
