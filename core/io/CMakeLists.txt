@@ -106,7 +106,7 @@ target_link_libraries(core
 )
 target_compile_definitions(core
         PUBLIC
-        $<$<BOOL:${enable_minizip}>:MINIZIP_ENABLED=1>
+        $<$<BOOL:${ENABLE_MINIZIP}>:MINIZIP_ENABLED=1>
 
         PRIVATE
         $<$<BOOL:${ENABLE_BROTLI}>:BROTLI_ENABLED>

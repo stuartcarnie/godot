@@ -14,6 +14,7 @@ target_sources(core PRIVATE
         command_queue_mt.cpp
         command_queue_mt.h
         cowdata.h
+        fixed_vector.h
         hash_map.cpp
         hash_map.h
         hash_set.h

@@ -14,27 +14,24 @@ target_sources(thorvg PRIVATE
         src/loaders/raw/tvgRawLoader.cpp
         # image loaders
         src/loaders/external_png/tvgPngLoader.cpp
-        src/loaders/external_webp/tvgWebpLoader.cpp
-        src/loaders/jpg/tvgJpgd.cpp
-        src/loaders/jpg/tvgJpgLoader.cpp
         # renderer common
         src/renderer/tvgAccessor.cpp
-        # src/renderer/tvgAnimation.cpp
+        # "src/renderer/tvgAnimation.cpp",
         src/renderer/tvgCanvas.cpp
         src/renderer/tvgFill.cpp
-        # src/renderer/tvgGlCanvas.cpp
+        # "src/renderer/tvgGlCanvas.cpp",
         src/renderer/tvgInitializer.cpp
         src/renderer/tvgLoader.cpp
         src/renderer/tvgPaint.cpp
         src/renderer/tvgPicture.cpp
         src/renderer/tvgRender.cpp
-        # src/renderer/tvgSaver.cpp
+        # "src/renderer/tvgSaver.cpp",
         src/renderer/tvgScene.cpp
         src/renderer/tvgShape.cpp
         src/renderer/tvgSwCanvas.cpp
         src/renderer/tvgTaskScheduler.cpp
         src/renderer/tvgText.cpp
-        # src/renderer/tvgWgCanvas.cpp
+        # "src/renderer/tvgWgCanvas.cpp",
         # renderer sw_engine
         src/renderer/sw_engine/tvgSwFill.cpp
         src/renderer/sw_engine/tvgSwImage.cpp
@@ -46,6 +43,10 @@ target_sources(thorvg PRIVATE
         src/renderer/sw_engine/tvgSwRle.cpp
         src/renderer/sw_engine/tvgSwShape.cpp
         src/renderer/sw_engine/tvgSwStroke.cpp
+
+        # optional, but fixed in CMake
+        src/loaders/external_webp/tvgWebpLoader.cpp
+        src/loaders/external_jpg/tvgJpgLoader.cpp
 )
 target_include_directories(thorvg PUBLIC inc)
 target_include_directories(thorvg PUBLIC AFTER
@@ -56,10 +57,14 @@ target_include_directories(thorvg PUBLIC AFTER
         src/loaders/raw
         src/loaders/external_png
         src/loaders/external_webp
-        src/loaders/jpg
+        src/loaders/external_jpg
 )
-target_link_libraries(thorvg PUBLIC png webp)
+target_link_libraries(thorvg PUBLIC png webp jpeg-turbo)
 target_compile_definitions(thorvg
         PUBLIC TVG_STATIC
-        PRIVATE THORVG_WEBP_LOADER_SUPPORT THORVG_FILE_IO_SUPPORT
+        PRIVATE
+        THORVG_FILE_IO_SUPPORT
+        # optional, but fixed in CMake
+        THORVG_WEBP_LOADER_SUPPORT
+        THORVG_JPG_LOADER_SUPPORT
 )

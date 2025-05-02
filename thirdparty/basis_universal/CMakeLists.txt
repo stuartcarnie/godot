@@ -56,6 +56,8 @@ if (WANT_EDITOR)
             encoder/cppspmd_math_declares.h
             encoder/cppspmd_sse.h
             encoder/cppspmd_type_aliases.h
+            encoder/jpgd.cpp
+            encoder/jpgd.h
             encoder/pvpngreader.cpp
             encoder/pvpngreader.h
     )
@@ -83,7 +85,7 @@ target_sources(basis_universal PRIVATE
         transcoder/basisu_transcoder_uastc.h
 )
 # [[[end]]]
-target_link_libraries(basis_universal PRIVATE zstd jpeg-compressor ktx tinyexr)
+target_link_libraries(basis_universal PRIVATE zstd jpeg-turbo ktx tinyexr)
 target_include_directories(basis_universal PUBLIC .)
 target_compile_options(basis_universal PUBLIC $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
 target_compile_definitions(basis_universal PRIVATE $<$<BOOL:${WANT_EDITOR}>:MINIZ_HEADER_FILE_ONLY>)

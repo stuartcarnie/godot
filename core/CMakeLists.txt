@@ -132,7 +132,6 @@ target_sources(core PRIVATE
         core_bind.h
         core_constants.cpp
         core_constants.h
-        core_globals.cpp
         core_globals.h
         core_string_names.h
         doc_data.cpp

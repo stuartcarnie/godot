@@ -70,6 +70,7 @@ target_sources(tests PRIVATE
         core/string/test_translation_server.h
         core/templates/test_a_hash_map.h
         core/templates/test_command_queue.h
+        core/templates/test_fixed_vector.h
         core/templates/test_hash_map.h
         core/templates/test_hash_set.h
         core/templates/test_list.h
