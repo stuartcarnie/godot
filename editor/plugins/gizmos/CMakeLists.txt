@@ -49,8 +49,6 @@ target_sources(editor PRIVATE
         mesh_instance_3d_gizmo_plugin.h
         navigation_link_3d_gizmo_plugin.cpp
         navigation_link_3d_gizmo_plugin.h
-        navigation_region_3d_gizmo_plugin.cpp
-        navigation_region_3d_gizmo_plugin.h
         occluder_instance_3d_gizmo_plugin.cpp
         occluder_instance_3d_gizmo_plugin.h
         particles_3d_emission_shape_gizmo_plugin.cpp

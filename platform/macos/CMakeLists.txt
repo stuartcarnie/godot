@@ -12,8 +12,14 @@ target_sources(macos PRIVATE
         crash_handler_macos.mm
         dir_access_macos.h
         dir_access_macos.mm
+        display_server_embedded.h
+        display_server_embedded.mm
         display_server_macos.h
         display_server_macos.mm
+        embedded_debugger.h
+        embedded_debugger.mm
+        embedded_gl_manager.h
+        embedded_gl_manager.mm
         gl_manager_macos_angle.h
         gl_manager_macos_angle.mm
         gl_manager_macos_legacy.h
@@ -41,6 +47,7 @@ target_sources(macos PRIVATE
         godot_window_delegate.mm
         key_mapping_macos.h
         key_mapping_macos.mm
+        macos_quartz_core_spi.h
         macos_terminal_logger.h
         macos_terminal_logger.mm
         native_menu_macos.h
@@ -56,6 +63,24 @@ target_sources(macos PRIVATE
         tts_macos.mm
 )
 # [[[end]]]
+
+if (WANT_EDITOR)
+    # [[[cog
+    #   import cog
+    #   from cmake_builders import list_files
+    #   cog.outl('target_sources(macos PRIVATE')
+    #   for file in list_files(cog, 'editor'):
+    #       cog.outl(f'        {file}')
+    #   cog.outl(')')
+    # ]]]
+    target_sources(macos PRIVATE
+            editor/embedded_game_view_plugin.h
+            editor/embedded_game_view_plugin.mm
+            editor/embedded_process_macos.h
+            editor/embedded_process_macos.mm
+    )
+    # [[[end]]]
+endif ()
 
 if(${WANT_OPENGL} AND ${OPENGL_FOUND})
     target_link_libraries(macos PUBLIC OpenGL::GL)

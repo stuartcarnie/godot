@@ -7,6 +7,7 @@
 #   cog.outl(')')
 # ]]]
 target_sources(core PRIVATE
+        alt_codes.h
         char_utils.h
         fuzzy_search.cpp
         fuzzy_search.h

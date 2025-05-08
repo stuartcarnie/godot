@@ -107,8 +107,6 @@ target_sources(editor PRIVATE
         navigation_link_2d_editor_plugin.h
         navigation_obstacle_2d_editor_plugin.cpp
         navigation_obstacle_2d_editor_plugin.h
-        navigation_obstacle_3d_editor_plugin.cpp
-        navigation_obstacle_3d_editor_plugin.h
         navigation_polygon_editor_plugin.cpp
         navigation_polygon_editor_plugin.h
         node_3d_editor_gizmos.cpp

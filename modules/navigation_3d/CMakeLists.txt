@@ -49,8 +49,12 @@ if (WANT_EDITOR)
     #   cog.outl(')')
     # ]]]
     target_sources(godot-module-navigation-3d PRIVATE
-            editor/navigation_mesh_editor_plugin.cpp
-            editor/navigation_mesh_editor_plugin.h
+            editor/navigation_obstacle_3d_editor_plugin.cpp
+            editor/navigation_obstacle_3d_editor_plugin.h
+            editor/navigation_region_3d_editor_plugin.cpp
+            editor/navigation_region_3d_editor_plugin.h
+            editor/navigation_region_3d_gizmo_plugin.cpp
+            editor/navigation_region_3d_gizmo_plugin.h
     )
     # [[[end]]]
 endif ()

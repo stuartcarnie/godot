@@ -88,4 +88,18 @@ target_sources(basis_universal PRIVATE
 target_link_libraries(basis_universal PRIVATE zstd jpeg-turbo ktx tinyexr)
 target_include_directories(basis_universal PUBLIC .)
 target_compile_options(basis_universal PUBLIC $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
-target_compile_definitions(basis_universal PRIVATE $<$<BOOL:${WANT_EDITOR}>:MINIZ_HEADER_FILE_ONLY>)
+target_compile_definitions(basis_universal
+        PRIVATE
+        # Storage formats.
+        # Godot only implements `.basis` support through basis_universal.
+        # Support for `.ktx` files are implemented with a direct libktx implementation.
+        # Building the encoder requires `BASISD_SUPPORT_KTX2` to be enabled,
+        # so we can only disable Zstandard compression for `.ktx` files
+        # (this is not used in `.basis` files).
+        BASISD_SUPPORT_KTX2_ZSTD=0
+        # GPU compression formats.
+        BASISD_SUPPORT_ATC=0        # Proprietary Adreno format not supported by Godot.
+        BASISD_SUPPORT_FXT1=0       # Legacy format not supported by Godot.
+        BASISD_SUPPORT_PVRTC1=0     # Legacy format not supported by Godot.
+        BASISD_SUPPORT_PVRTC2=0     # Legacy format not supported by Godot.
+        $<$<BOOL:${WANT_EDITOR}>:MINIZ_HEADER_FILE_ONLY>)

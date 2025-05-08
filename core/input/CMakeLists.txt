@@ -13,6 +13,8 @@ target_sources(core PRIVATE
         input_enums.h
         input_event.cpp
         input_event.h
+        input_event_codec.cpp
+        input_event_codec.h
         input_map.cpp
         input_map.h
         shortcut.cpp
