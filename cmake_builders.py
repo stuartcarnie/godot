@@ -64,6 +64,8 @@ class Value:
     def read(self):
         return self.inner
 
+    def __str__(self):
+        return str(self.inner)
 
 class Environment:
     def __init__(self):

@@ -121,8 +121,6 @@
 	}
 }
 
-extern bool is_debugger_attached(void);
-
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
 	os_mac->start_main();
 }
