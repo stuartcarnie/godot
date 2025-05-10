@@ -103,12 +103,6 @@ target_sources(editor PRIVATE
         mesh_library_editor_plugin.h
         multimesh_editor_plugin.cpp
         multimesh_editor_plugin.h
-        navigation_link_2d_editor_plugin.cpp
-        navigation_link_2d_editor_plugin.h
-        navigation_obstacle_2d_editor_plugin.cpp
-        navigation_obstacle_2d_editor_plugin.h
-        navigation_polygon_editor_plugin.cpp
-        navigation_polygon_editor_plugin.h
         node_3d_editor_gizmos.cpp
         node_3d_editor_gizmos.h
         node_3d_editor_plugin.cpp

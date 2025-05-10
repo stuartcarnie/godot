@@ -73,6 +73,7 @@ set_abs(RENDERER_RD_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/environment/voxel_gi_debug.glsl
         shaders/environment/voxel_gi_sdf.glsl
         shaders/forward_clustered/best_fit_normal.glsl
+        shaders/forward_clustered/integrate_dfg.glsl
         shaders/forward_clustered/scene_forward_clustered.glsl
         shaders/forward_mobile/scene_forward_mobile.glsl
         shaders/giprobe_write.glsl

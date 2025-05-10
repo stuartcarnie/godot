@@ -39,5 +39,25 @@ target_sources(godot-module-navigation-2d PRIVATE
 )
 # [[[end]]]
 
+if (WANT_EDITOR)
+    # [[[cog
+    #   import cog
+    #   from cmake_builders import list_files
+    #   cog.outl('target_sources(godot-module-navigation-2d PRIVATE')
+    #   for file in list_files(cog, 'editor'):
+    #       cog.outl(f'        {file}')
+    #   cog.outl(')')
+    # ]]]
+    target_sources(godot-module-navigation-2d PRIVATE
+            editor/navigation_link_2d_editor_plugin.cpp
+            editor/navigation_link_2d_editor_plugin.h
+            editor/navigation_obstacle_2d_editor_plugin.cpp
+            editor/navigation_obstacle_2d_editor_plugin.h
+            editor/navigation_region_2d_editor_plugin.cpp
+            editor/navigation_region_2d_editor_plugin.h
+    )
+    # [[[end]]]
+endif ()
+
 target_link_libraries(godot-module-navigation-2d PUBLIC core rvo2)
 group_target_sources(godot-module-navigation-2d)

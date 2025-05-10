@@ -166,7 +166,7 @@ target_sources(mbedtls PRIVATE
         library/x509write_csr.c
 )
 target_include_directories(mbedtls PUBLIC include)
-target_compile_definitions(mbedtls PRIVATE MBEDTLS_CONFIG_FILE="godot_module_mbedtls_config.h")
+target_compile_definitions(mbedtls PUBLIC MBEDTLS_CONFIG_FILE="godot_module_mbedtls_config.h")
 target_link_libraries(mbedtls core)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(mbedtls bcrypt)

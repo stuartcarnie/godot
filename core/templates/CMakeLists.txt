@@ -45,7 +45,6 @@ target_sources(core PRIVATE
         span.h
         tuple.h
         vector.h
-        vmap.h
         vset.h
 )
 # [[[end]]]

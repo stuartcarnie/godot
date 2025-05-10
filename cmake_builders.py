@@ -602,7 +602,7 @@ def cmd_make_modules_enabled_and_types(args: argparse.Namespace) -> int:
         unordered_modules.update(custom_modules)
 
     modules = OrderedDict()
-    for key, value in sorted(unordered_modules.items()):
+    for key, value in unordered_modules.items():
         modules[key] = value
 
     original_cwd = os.getcwd()
@@ -612,8 +612,8 @@ def cmd_make_modules_enabled_and_types(args: argparse.Namespace) -> int:
     sort_module_list(env)
 
     # Write out the results
-    register_module_types_builder(target=str(args.output), source=[Value(modules)], env=env)
-    modules_enabled_builder(target=[str(args.output2)], source=[Value(modules)], env=env)
+    register_module_types_builder(target=str(args.output), source=[Value(unordered_modules)], env=env)
+    modules_enabled_builder(target=[str(args.output2)], source=[Value(env.module_list)], env=env)
 
     os.chdir(original_cwd)
 
