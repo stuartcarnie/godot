@@ -111,5 +111,3 @@ target_compile_definitions(core
         PRIVATE
         $<$<BOOL:${ENABLE_BROTLI}>:BROTLI_ENABLED>
 )
-
-# target_include_directories(core PUBLIC ${CMAKE_BINARY_INCLUDE_DIR})

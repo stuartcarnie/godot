@@ -93,7 +93,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 # [[[end]]]
 
-set(RESOURCES_SCENE_DEFAULT_GENERATED_ICONS ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme/default_theme_icons.gen.h)
+set(RESOURCES_SCENE_DEFAULT_GENERATED_ICONS ${CMAKE_BINARY_INCLUDE_DIR}/scene/theme/default_theme_icons.gen.h)
 generate_file(resource_make_default_theme_icons "${RESOURCE_DEFAULT_THEME_SOURCE}" "${RESOURCES_SCENE_DEFAULT_GENERATED_ICONS}")
 
 add_custom_target(scene-icons-generated
@@ -102,7 +102,16 @@ add_custom_target(scene-icons-generated
 )
 set_target_properties(scene-icons-generated PROPERTIES FOLDER "generated")
 
-add_dependencies(scene scene-icons-generated)
+set(RESOURCES_DEFAULT_FONT_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/fonts/OpenSans_SemiBold.woff2)
+set(RESOURCES_DEFAULT_FONT_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/scene/theme/default_font.gen.h)
+generate_file(resource_scene_make_fonts_header ${RESOURCES_DEFAULT_FONT_SOURCE} ${RESOURCES_DEFAULT_FONT_OUTPUT})
+
+add_custom_target(scene-fonts-generated
+        DEPENDS
+        ${RESOURCES_DEFAULT_FONT_OUTPUT})
+set_target_properties(scene-fonts-generated PROPERTIES FOLDER "generated")
+
+add_dependencies(scene scene-icons-generated scene-fonts-generated)
 
 # [[[cog
 #   import cog
@@ -122,4 +131,7 @@ target_sources(scene PRIVATE
 )
 # [[[end]]]
 
-target_include_directories(scene PRIVATE ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme)
+target_compile_definitions(scene
+        PRIVATE
+        $<$<BOOL:${ENABLE_BROTLI}>:BROTLI_ENABLED>
+)

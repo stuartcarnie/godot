@@ -1,15 +1,3 @@
-set(RESOURCES_DEFAULT_FONT_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/fonts/OpenSans_SemiBold.woff2)
-set(RESOURCES_DEFAULT_FONT_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme/default_font.gen.h)
-generate_file(resource_scene_make_fonts_header ${RESOURCES_DEFAULT_FONT_SOURCE} ${RESOURCES_DEFAULT_FONT_OUTPUT})
-
-add_custom_target(scene-fonts-generated
-        DEPENDS
-        ${RESOURCES_DEFAULT_FONT_OUTPUT})
-set_target_properties(scene-fonts-generated PROPERTIES FOLDER "generated")
-add_dependencies(scene scene-fonts-generated)
-
-target_sources(scene PRIVATE ${RESOURCES_DEFAULT_FONT_OUTPUT})
-
 add_subdirectory(2d)
 add_subdirectory(3d)
 
@@ -144,4 +132,3 @@ target_sources(scene PRIVATE
         world_2d.h
 )
 # [[[end]]]
-target_include_directories(scene PUBLIC ${CMAKE_BINARY_INCLUDE_DIR}/scene/resources/default_theme)
