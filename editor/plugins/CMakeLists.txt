@@ -72,6 +72,8 @@ target_sources(editor PRIVATE
         editor_resource_conversion_plugin.h
         editor_resource_tooltip_plugins.cpp
         editor_resource_tooltip_plugins.h
+        editor_script_plugin.cpp
+        editor_script_plugin.h
         embedded_process.cpp
         embedded_process.h
         font_config_plugin.cpp

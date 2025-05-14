@@ -39,6 +39,7 @@ target_sources(astcenc PRIVATE
         astcenc_vecmathlib_neon_4.h
         astcenc_vecmathlib_none_4.h
         astcenc_vecmathlib_sse_4.h
+        astcenc_vecmathlib_sve_8.h
         astcenc_weight_align.cpp
         astcenc_weight_quant_xfer_tables.cpp
 )
