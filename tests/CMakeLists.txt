@@ -81,6 +81,7 @@ target_sources(tests PRIVATE
         core/templates/test_rid.h
         core/templates/test_span.h
         core/templates/test_vector.h
+        core/templates/test_vset.h
         core/test_crypto.h
         core/test_ctz.h
         core/test_hashing_context.h

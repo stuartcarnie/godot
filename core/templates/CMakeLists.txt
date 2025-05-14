@@ -38,7 +38,6 @@ target_sources(core PRIVATE
         ring_buffer.h
         safe_list.h
         safe_refcount.h
-        search_array.h
         self_list.h
         simple_type.h
         sort_array.h
