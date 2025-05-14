@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  vset.h                                                                */
+/*  test_vset.h                                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,80 +30,70 @@
 
 #pragma once
 
-#include "core/templates/vector.h"
-#include "core/typedefs.h"
+#include "core/templates/vset.h"
+
+#include "tests/test_macros.h"
+
+namespace TestVSet {
 
 template <typename T>
-class VSet {
-	Vector<T> _data;
-
-protected:
-	_FORCE_INLINE_ int _find(const T &p_val, bool &r_exact) const {
-		r_exact = false;
-		if (_data.is_empty()) {
-			return 0;
-		}
-
-		int64_t pos = _data.span().bisect(p_val, true);
-
-		if (pos < _data.size() && !(p_val < _data[pos]) && !(_data[pos] < p_val)) {
-			r_exact = true;
-		}
-		return pos;
-	}
-
-	_FORCE_INLINE_ int _find_exact(const T &p_val) const {
-		if (_data.is_empty()) {
-			return -1;
-		}
-
-		int64_t pos = _data.span().bisect(p_val, true);
-
-		if (pos < _data.size() && !(p_val < _data[pos]) && !(_data[pos] < p_val)) {
-			return pos;
-		}
-		return -1;
-	}
-
+class TestClass : public VSet<T> {
 public:
-	void insert(const T &p_val) {
-		bool exact;
-		int pos = _find(p_val, exact);
-		if (exact) {
-			return;
-		}
-		_data.insert(pos, p_val);
+	int _find(const T &p_val, bool &r_exact) const {
+		return VSet<T>::_find(p_val, r_exact);
 	}
-
-	bool has(const T &p_val) const {
-		return _find_exact(p_val) != -1;
-	}
-
-	void erase(const T &p_val) {
-		int pos = _find_exact(p_val);
-		if (pos < 0) {
-			return;
-		}
-		_data.remove_at(pos);
-	}
-
-	int find(const T &p_val) const {
-		return _find_exact(p_val);
-	}
-
-	_FORCE_INLINE_ bool is_empty() const { return _data.is_empty(); }
-
-	_FORCE_INLINE_ int size() const { return _data.size(); }
-
-	inline T &operator[](int p_index) {
-		return _data.write[p_index];
-	}
-
-	inline const T &operator[](int p_index) const {
-		return _data[p_index];
-	}
-
-	_FORCE_INLINE_ VSet() {}
-	_FORCE_INLINE_ VSet(std::initializer_list<T> p_init) :
-			_data(p_init) {}
 };
+
+TEST_CASE("[VSet] _find and _find_exact correctness.") {
+	TestClass<int> set;
+
+	// insert some values
+	set.insert(10);
+	set.insert(20);
+	set.insert(30);
+	set.insert(40);
+	set.insert(50);
+
+	// data should be sorted
+	CHECK(set.size() == 5);
+	CHECK(set[0] == 10);
+	CHECK(set[1] == 20);
+	CHECK(set[2] == 30);
+	CHECK(set[3] == 40);
+	CHECK(set[4] == 50);
+
+	// _find_exact return exact position for existing elements
+	CHECK(set.find(10) == 0);
+	CHECK(set.find(30) == 2);
+	CHECK(set.find(50) == 4);
+
+	// _find_exact return -1 for non-existing elements
+	CHECK(set.find(15) == -1);
+	CHECK(set.find(0) == -1);
+	CHECK(set.find(60) == -1);
+
+	// test _find
+	bool exact;
+
+	// existing elements
+	CHECK(set._find(10, exact) == 0);
+	CHECK(exact == true);
+
+	CHECK(set._find(30, exact) == 2);
+	CHECK(exact == true);
+
+	// non-existing elements
+	CHECK(set._find(25, exact) == 2);
+	CHECK(exact == false);
+
+	CHECK(set._find(35, exact) == 3);
+	CHECK(exact == false);
+
+	CHECK(set._find(5, exact) == 0);
+	CHECK(exact == false);
+
+	CHECK(set._find(60, exact) == 5);
+	CHECK(exact == false);
+}
+
+} // namespace TestVSet

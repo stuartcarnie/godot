@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  search_array.h                                                        */
+/*  editor_undo_redo_manager.compat.inc                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,37 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef DISABLE_DEPRECATED
 
-#include "core/typedefs.h"
+void EditorUndoRedoManager::_create_action_bind_compat_106121(const String &p_name, UndoRedo::MergeMode p_mode, Object *p_custom_context, bool p_backward_undo_ops) {
+	create_action(p_name, p_mode, p_custom_context, p_backward_undo_ops, true);
+}
 
-template <typename T, typename Comparator = Comparator<T>>
-class SearchArray {
-public:
-	Comparator compare;
+void EditorUndoRedoManager::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("create_action", "name", "merge_mode", "custom_context", "backward_undo_ops"), &EditorUndoRedoManager::_create_action_bind_compat_106121, DEFVAL(UndoRedo::MERGE_DISABLE), DEFVAL((Object *)nullptr), DEFVAL(false));
+}
 
-	inline int64_t bisect(const T *p_array, int64_t p_len, const T &p_value, bool p_before) const {
-		int64_t lo = 0;
-		int64_t hi = p_len;
-		if (p_before) {
-			while (lo < hi) {
-				const int64_t mid = (lo + hi) / 2;
-				if (compare(p_array[mid], p_value)) {
-					lo = mid + 1;
-				} else {
-					hi = mid;
-				}
-			}
-		} else {
-			while (lo < hi) {
-				const int64_t mid = (lo + hi) / 2;
-				if (compare(p_value, p_array[mid])) {
-					hi = mid;
-				} else {
-					lo = mid + 1;
-				}
-			}
-		}
-		return lo;
-	}
-};
+#endif
