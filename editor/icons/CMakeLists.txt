@@ -151,6 +151,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         CodeRegionFoldedRightArrow.svg
         Collapse.svg
         CollapseTree.svg
+        CollisionObject2D.svg
+        CollisionObject3D.svg
         CollisionPolygon2D.svg
         CollisionPolygon3D.svg
         CollisionShape2D.svg
@@ -310,6 +312,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         GPUParticlesCollisionSphere3D.svg
         Game.svg
         Generic6DOFJoint3D.svg
+        Geometry2D.svg
+        Geometry3D.svg
         GeometryInstance3D.svg
         Gizmo3DSamplePlayer.svg
         GizmoAudioListener3D.svg
@@ -486,6 +490,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         KeyboardError.svg
         KeyboardLabel.svg
         KeyboardPhysical.svg
+        KinematicCollision2D.svg
+        KinematicCollision3D.svg
         Label.svg
         Label3D.svg
         LabelSettings.svg
@@ -637,6 +643,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         PhysicalBone3D.svg
         PhysicalBoneSimulator3D.svg
         PhysicalSkyMaterial.svg
+        PhysicsBody2D.svg
+        PhysicsBody3D.svg
         PhysicsMaterial.svg
         PickerCursor.svg
         PickerCursorBg.svg
@@ -749,6 +757,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ShaderGlobalsOverride.svg
         ShaderInclude.svg
         ShaderMaterial.svg
+        Shape2D.svg
+        Shape3D.svg
         ShapeCast2D.svg
         ShapeCast3D.svg
         Shortcut.svg

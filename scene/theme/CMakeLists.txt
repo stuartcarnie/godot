@@ -64,6 +64,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/slider_grabber.svg
         icons/slider_grabber_disabled.svg
         icons/slider_grabber_hl.svg
+        icons/sort.svg
         icons/tabs_drop_mark.svg
         icons/tabs_menu.svg
         icons/tabs_menu_hl.svg
