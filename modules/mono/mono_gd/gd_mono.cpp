@@ -585,7 +585,7 @@ static bool _on_core_api_assembly_loaded() {
 	debug = true;
 #else
 	debug = false;
-#endif
+#endif // DEBUG_ENABLED
 
 	GDMonoCache::managed_callbacks.GD_OnCoreApiAssemblyLoaded(debug);
 
@@ -615,7 +615,8 @@ void GDMono::initialize() {
 		if (load_coreclr(coreclr_dll_handle)) {
 			godot_plugins_initialize = initialize_coreclr_and_godot_plugins(runtime_initialized);
 		} else {
-			godot_plugins_initialize = try_load_native_aot_library(hostfxr_dll_handle);
+			void *dll_handle = nullptr;
+			godot_plugins_initialize = try_load_native_aot_library(dll_handle);
 			if (godot_plugins_initialize != nullptr) {
 				runtime_initialized = true;
 			}
@@ -690,13 +691,13 @@ void GDMono::_try_load_project_assembly() {
 #endif
 
 void GDMono::_init_godot_api_hashes() {
-#ifdef DEBUG_METHODS_ENABLED
+#ifdef DEBUG_ENABLED
 	get_api_core_hash();
 
 #ifdef TOOLS_ENABLED
 	get_api_editor_hash();
 #endif // TOOLS_ENABLED
-#endif // DEBUG_METHODS_ENABLED
+#endif // DEBUG_ENABLED
 }
 
 #ifdef TOOLS_ENABLED
