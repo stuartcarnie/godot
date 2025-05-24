@@ -9,41 +9,21 @@ godot_add_library(ios)
 #   cog.outl(')')
 # ]]]
 target_sources(ios PRIVATE
-        app_delegate.h
-        app_delegate.mm
         device_metrics.h
-        device_metrics.m
-        display_layer.h
-        display_layer.mm
+        device_metrics.mm
+        display_layer_ios.h
+        display_layer_ios.mm
         display_server_ios.h
         display_server_ios.mm
-        godot_app_delegate.h
-        godot_app_delegate.m
-        godot_ios.mm
-        godot_view.h
-        godot_view.mm
-        godot_view_renderer.h
-        godot_view_renderer.mm
+        godot_view_ios.h
+        godot_view_ios.mm
         ios.h
-        ios.mm
-        ios_terminal_logger.h
-        ios_terminal_logger.mm
-        key_mapping_ios.h
-        key_mapping_ios.mm
-        keyboard_input_view.h
-        keyboard_input_view.mm
-        main.m
+        main_ios.mm
         os_ios.h
         os_ios.mm
         platform_config.h
         platform_gl.h
         platform_thread.h
-        rendering_context_driver_vulkan_ios.h
-        rendering_context_driver_vulkan_ios.mm
-        tts_ios.h
-        tts_ios.mm
-        view_controller.h
-        view_controller.mm
 )
 # [[[end]]]
 

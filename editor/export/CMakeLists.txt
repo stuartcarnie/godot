@@ -13,6 +13,8 @@ target_sources(editor PRIVATE
         editor_export.h
         editor_export_platform.cpp
         editor_export_platform.h
+        editor_export_platform_apple_embedded.cpp
+        editor_export_platform_apple_embedded.h
         editor_export_platform_extension.cpp
         editor_export_platform_extension.h
         editor_export_platform_pc.cpp
@@ -27,6 +29,8 @@ target_sources(editor PRIVATE
         lipo.h
         macho.cpp
         macho.h
+        plugin_config_apple_embedded.cpp
+        plugin_config_apple_embedded.h
         project_export.cpp
         project_export.h
         project_zip_packer.cpp

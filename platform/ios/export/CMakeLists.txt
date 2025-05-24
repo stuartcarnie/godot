@@ -24,8 +24,6 @@ target_sources(platform-ios-export PRIVATE
         export.h
         export_plugin.cpp
         export_plugin.h
-        godot_plugin_config.cpp
-        godot_plugin_config.h
 )
 # [[[end]]]
 target_link_libraries(platform-ios-export PRIVATE core)
