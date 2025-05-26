@@ -29,6 +29,8 @@ target_sources(scene PRIVATE
         scene_tree.h
         scene_tree_fti.cpp
         scene_tree_fti.h
+        scene_tree_fti_tests.cpp
+        scene_tree_fti_tests.h
         shader_globals_override.cpp
         shader_globals_override.h
         status_indicator.cpp

@@ -27,6 +27,8 @@ target_sources(servers PRIVATE
         resolve.h
         roughness_limiter.cpp
         roughness_limiter.h
+        smaa.cpp
+        smaa.h
         sort_effects.cpp
         sort_effects.h
         spatial_upscaler.h

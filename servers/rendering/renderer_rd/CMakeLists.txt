@@ -45,6 +45,9 @@ set_abs(RENDERER_RD_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/effects/screen_space_reflection_filter.glsl
         shaders/effects/screen_space_reflection_scale.glsl
         shaders/effects/shadow_frustum.glsl
+        shaders/effects/smaa_blending.glsl
+        shaders/effects/smaa_edge_detection.glsl
+        shaders/effects/smaa_weight_calculation.glsl
         shaders/effects/sort.glsl
         shaders/effects/specular_merge.glsl
         shaders/effects/ss_effects_downsample.glsl
