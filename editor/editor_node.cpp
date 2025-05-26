@@ -96,6 +96,7 @@
 #include "editor/editor_property_name_processor.h"
 #include "editor/editor_resource_picker.h"
 #include "editor/editor_resource_preview.h"
+#include "editor/editor_script.h"
 #include "editor/editor_settings.h"
 #include "editor/editor_settings_dialog.h"
 #include "editor/editor_translation_parser.h"
@@ -1304,21 +1305,27 @@ void EditorNode::_scan_external_changes() {
 	disk_changed_list->set_hide_root(true);
 	bool need_reload = false;
 
-	// Check if any edited scene has changed.
+	disk_changed_scenes.clear();
+	disk_changed_project = false;
 
+	// Check if any edited scene has changed.
 	for (int i = 0; i < editor_data.get_edited_scene_count(); i++) {
 		Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_RESOURCES);
-		if (editor_data.get_scene_path(i) == "" || !da->file_exists(editor_data.get_scene_path(i))) {
+
+		const String scene_path = editor_data.get_scene_path(i);
+
+		if (scene_path == "" || !da->file_exists(scene_path)) {
 			continue;
 		}
 
 		uint64_t last_date = editor_data.get_scene_modified_time(i);
-		uint64_t date = FileAccess::get_modified_time(editor_data.get_scene_path(i));
+		uint64_t date = FileAccess::get_modified_time(scene_path);
 
 		if (date > last_date) {
 			TreeItem *ti = disk_changed_list->create_item(r);
-			ti->set_text(0, editor_data.get_scene_path(i).get_file());
+			ti->set_text(0, scene_path.get_file());
 			need_reload = true;
+			disk_changed_scenes.push_back(scene_path);
 		}
 	}
 
@@ -1327,6 +1334,7 @@ void EditorNode::_scan_external_changes() {
 		TreeItem *ti = disk_changed_list->create_item(r);
 		ti->set_text(0, "project.godot");
 		need_reload = true;
+		disk_changed_project = true;
 	}
 
 	if (need_reload) {
@@ -1334,9 +1342,15 @@ void EditorNode::_scan_external_changes() {
 	}
 }
 
-void EditorNode::_resave_scenes(String p_str) {
-	save_all_scenes();
-	ProjectSettings::get_singleton()->save();
+void EditorNode::_resave_externally_modified_scenes(String p_str) {
+	for (const String &scene_path : disk_changed_scenes) {
+		_save_scene(scene_path);
+	}
+
+	if (disk_changed_project) {
+		ProjectSettings::get_singleton()->save();
+	}
+
 	disk_changed->hide();
 }
 
@@ -3144,6 +3158,10 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 
 		case PROJECT_OPEN_SETTINGS: {
 			project_settings_editor->popup_project_settings();
+		} break;
+
+		case PROJECT_FIND_IN_FILES: {
+			ScriptEditor::get_singleton()->open_find_in_files_dialog("");
 		} break;
 
 		case PROJECT_INSTALL_ANDROID_SOURCE: {
@@ -5751,6 +5769,41 @@ bool EditorNode::validate_custom_directory() {
 	return true;
 }
 
+void EditorNode::run_editor_script(const Ref<Script> &p_script) {
+	Error err = p_script->reload(true); // Always hard reload the script before running.
+	if (err != OK || !p_script->is_valid()) {
+		EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it contains errors, check the output log."), EditorToaster::SEVERITY_WARNING);
+		return;
+	}
+
+	// Perform additional checks on the script to evaluate if it's runnable.
+
+	bool is_runnable = true;
+	if (!ClassDB::is_parent_class(p_script->get_instance_base_type(), "EditorScript")) {
+		is_runnable = false;
+
+		EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it doesn't extend EditorScript."), EditorToaster::SEVERITY_WARNING);
+	}
+	if (!p_script->is_tool()) {
+		is_runnable = false;
+
+		if (p_script->get_class() == "GDScript") {
+			EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it's not a tool script (add the @tool annotation at the top)."), EditorToaster::SEVERITY_WARNING);
+		} else if (p_script->get_class() == "CSharpScript") {
+			EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it's not a tool script (add the [Tool] attribute above the class definition)."), EditorToaster::SEVERITY_WARNING);
+		} else {
+			EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it's not a tool script."), EditorToaster::SEVERITY_WARNING);
+		}
+	}
+	if (!is_runnable) {
+		return;
+	}
+
+	Ref<EditorScript> es = memnew(EditorScript);
+	es->set_script(p_script);
+	es->run();
+}
+
 void EditorNode::_immediate_dialog_confirmed() {
 	immediate_dialog_confirmed = true;
 }
@@ -7862,6 +7915,9 @@ EditorNode::EditorNode() {
 	project_menu->add_shortcut(ED_SHORTCUT_AND_COMMAND("editor/project_settings", TTRC("Project Settings..."), Key::NONE, TTRC("Project Settings")), PROJECT_OPEN_SETTINGS);
 	project_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorNode::_menu_option));
 
+	ED_SHORTCUT_AND_COMMAND("editor/find_in_files", TTRC("Find in Files..."), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::F);
+	project_menu->add_shortcut(ED_GET_SHORTCUT("editor/find_in_files"), PROJECT_FIND_IN_FILES);
+
 	project_menu->add_separator();
 	project_menu->add_item(TTR("Version Control"), PROJECT_VERSION_CONTROL);
 
@@ -8297,7 +8353,7 @@ EditorNode::EditorNode() {
 		disk_changed->set_ok_button_text(TTR("Reload from disk"));
 
 		disk_changed->add_button(TTR("Ignore external changes"), !DisplayServer::get_singleton()->get_swap_cancel_ok(), "resave");
-		disk_changed->connect("custom_action", callable_mp(this, &EditorNode::_resave_scenes));
+		disk_changed->connect("custom_action", callable_mp(this, &EditorNode::_resave_externally_modified_scenes));
 	}
 
 	gui_base->add_child(disk_changed);
