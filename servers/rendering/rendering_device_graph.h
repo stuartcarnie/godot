@@ -818,7 +818,7 @@ public:
 	void add_capture_timestamp(RDD::QueryPoolID p_query_pool, uint32_t p_index);
 	void add_gpu_capture_frame();
 	void add_synchronization();
-	void begin_label(const String &p_label_name, const Color &p_color);
+	void begin_label(const Span<char> &p_label_name, const Color &p_color);
 	void end_label();
 	void end(bool p_reorder_commands, bool p_full_barriers, RDD::CommandBufferID &r_command_buffer, CommandBufferPool &r_command_buffer_pool);
 	static ResourceTracker *resource_tracker_create();
