@@ -33,8 +33,8 @@
 #include "scene/gui/dialogs.h"
 
 class EditorValidationPanel;
+class EditorVariantTypeOptionButton;
 class LineEdit;
-class OptionButton;
 
 class AddMetadataDialog : public ConfirmationDialog {
 	GDCLASS(AddMetadataDialog, ConfirmationDialog);
@@ -53,6 +53,6 @@ private:
 	void _complete_init(const StringName &p_label);
 
 	LineEdit *add_meta_name = nullptr;
-	OptionButton *add_meta_type = nullptr;
+	EditorVariantTypeOptionButton *add_meta_type = nullptr;
 	EditorValidationPanel *validation_panel = nullptr;
 };
