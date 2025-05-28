@@ -57,6 +57,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/resizer_nw.svg
         icons/resizer_se.svg
         icons/save.svg
+        icons/script.svg
         icons/scroll_button_left.svg
         icons/scroll_button_left_hl.svg
         icons/scroll_button_right.svg

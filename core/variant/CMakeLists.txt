@@ -29,6 +29,7 @@ target_sources(core PRIVATE
         variant_callable.h
         variant_construct.cpp
         variant_construct.h
+        variant_deep_duplicate.h
         variant_destruct.cpp
         variant_destruct.h
         variant_internal.h

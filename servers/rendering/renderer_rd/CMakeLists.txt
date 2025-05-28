@@ -166,7 +166,7 @@ target_sources(servers PRIVATE
         uniform_set_cache_rd.h
 )
 # [[[end]]]
-target_link_libraries(servers PUBLIC godot-glslang spirv-reflect)
+target_link_libraries(servers PUBLIC godot-glslang spirv-reflect smaa)
 
 target_compile_definitions(servers
         PRIVATE

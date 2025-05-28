@@ -27,6 +27,10 @@ target_sources(editor PRIVATE
         editor_title_bar.h
         editor_toaster.cpp
         editor_toaster.h
+        editor_translation_preview_button.cpp
+        editor_translation_preview_button.h
+        editor_translation_preview_menu.cpp
+        editor_translation_preview_menu.h
         editor_validation_panel.cpp
         editor_validation_panel.h
         editor_version_button.cpp

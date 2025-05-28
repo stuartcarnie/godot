@@ -67,6 +67,7 @@ class Value:
     def __str__(self):
         return str(self.inner)
 
+
 class Environment:
     def __init__(self):
         self['doc_class_path'] = OrderedDict()
@@ -320,6 +321,52 @@ def cmd_controller_mappings(source: [str], target: str) -> int:
 @source_target
 def cmd_gdextension_interface_dumper(source: str, target: str) -> int:
     core.extension.make_interface_dumper.run(target=[target], source=[source], env=None)
+    return 0
+
+
+@check_output
+@source_target
+def cmd_make_smaa_areatex(source: str, target: str) -> int:
+    def areatex_builder(target, source, env):
+        buffer = methods.get_buffer(str(source[0]))
+
+        with methods.generated_wrapper(str(target[0])) as file:
+            file.write(f"""\
+#define AREATEX_WIDTH 160
+#define AREATEX_HEIGHT 560
+#define AREATEX_PITCH (AREATEX_WIDTH * 2)
+#define AREATEX_SIZE (AREATEX_HEIGHT * AREATEX_PITCH)
+
+inline constexpr const unsigned char area_tex_png[] = {{
+    {methods.format_buffer(buffer, 1)}
+}};
+""")
+
+    areatex_builder([target], [source], env)
+
+    return 0
+
+
+@check_output
+@source_target
+def cmd_make_smaa_searchtex(source: str, target: str) -> int:
+    def searchtex_builder(target, source, env):
+        buffer = methods.get_buffer(str(source[0]))
+
+        with methods.generated_wrapper(str(target[0])) as file:
+            file.write(f"""\
+#define SEARCHTEX_WIDTH 64
+#define SEARCHTEX_HEIGHT 16
+#define SEARCHTEX_PITCH SEARCHTEX_WIDTH
+#define SEARCHTEX_SIZE (SEARCHTEX_HEIGHT * SEARCHTEX_PITCH)
+
+inline constexpr const unsigned char search_tex_png[] = {{
+    {methods.format_buffer(buffer, 1)}
+}};
+""")
+
+    searchtex_builder([target], [source], env)
+
     return 0
 
 
@@ -753,6 +800,8 @@ def _main() -> int:
     sp.add_parser('controller_mappings', parents=[args_inl_out]).set_defaults(func=cmd_controller_mappings)
     sp.add_parser('gdextension_interface_dumper', parents=[args_in_out]).set_defaults(
         func=cmd_gdextension_interface_dumper)
+    sp.add_parser('make_smaa_areatex', parents=[args_in_out]).set_defaults(func=cmd_make_smaa_areatex)
+    sp.add_parser('make_smaa_searchtex', parents=[args_in_out]).set_defaults(func=cmd_make_smaa_searchtex)
     sp.add_parser('make_app_icon', parents=[args_in_out]).set_defaults(func=cmd_make_app_icon)
     sp.add_parser('make_app_splash', parents=[args_in_out]).set_defaults(func=cmd_make_app_splash)
     sp.add_parser('resource_scene_make_fonts_header', parents=[args_in_out]).set_defaults(
