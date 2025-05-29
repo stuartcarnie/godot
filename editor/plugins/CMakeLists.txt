@@ -1,4 +1,5 @@
 add_subdirectory(gizmos)
+add_subdirectory(shader_baker)
 add_subdirectory(tiles)
 
 # [[[cog
@@ -141,6 +142,8 @@ target_sources(editor PRIVATE
         script_editor_plugin.h
         script_text_editor.cpp
         script_text_editor.h
+        shader_baker_export_plugin.cpp
+        shader_baker_export_plugin.h
         shader_editor_plugin.cpp
         shader_editor_plugin.h
         shader_file_editor_plugin.cpp

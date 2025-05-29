@@ -10,6 +10,7 @@ godot_add_library(godot-module-glslang FOLDER modules STATIC)
 target_sources(godot-module-glslang PRIVATE
         register_types.cpp
         register_types.h
+        shader_compile.h
 )
 # [[[end]]]
 target_link_libraries(godot-module-glslang PUBLIC core godot-glslang)

@@ -14,6 +14,8 @@ if (${WANT_VULKAN} AND ${VULKAN_FOUND})
             rendering_context_driver_vulkan.h
             rendering_device_driver_vulkan.cpp
             rendering_device_driver_vulkan.h
+            rendering_shader_container_vulkan.cpp
+            rendering_shader_container_vulkan.h
             vulkan_hooks.cpp
             vulkan_hooks.h
     )

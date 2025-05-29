@@ -20,6 +20,9 @@ target_sources(metal PRIVATE
         rendering_context_driver_metal.mm
         rendering_device_driver_metal.h
         rendering_device_driver_metal.mm
+        rendering_shader_container_metal.h
+        rendering_shader_container_metal.mm
+        sha256_digest.h
 )
 # [[[end]]]
 target_compile_features(metal PRIVATE cxx_std_20)

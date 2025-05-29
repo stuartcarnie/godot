@@ -52,6 +52,9 @@ target_sources(servers PRIVATE
         rendering_server_default.h
         rendering_server_globals.cpp
         rendering_server_globals.h
+        rendering_shader_container.cpp
+        rendering_shader_container.h
+        rendering_shader_library.h
         shader_compiler.cpp
         shader_compiler.h
         shader_include_db.cpp

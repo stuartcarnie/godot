@@ -33,6 +33,8 @@ target_sources(editor PRIVATE
         editor_translation_preview_menu.h
         editor_validation_panel.cpp
         editor_validation_panel.h
+        editor_variant_type_selectors.cpp
+        editor_variant_type_selectors.h
         editor_version_button.cpp
         editor_version_button.h
         editor_zoom_widget.cpp
