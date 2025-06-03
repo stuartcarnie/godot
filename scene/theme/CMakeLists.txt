@@ -25,6 +25,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/color_picker_overbright.svg
         icons/color_picker_pipette.svg
         icons/error_icon.svg
+        icons/favorite.svg
         icons/file.svg
         icons/folder.svg
         icons/folder_create.svg
@@ -41,6 +42,8 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/line_edit_clear.svg
         icons/load.svg
         icons/mini_checkerboard.svg
+        icons/move_down.svg
+        icons/move_up.svg
         icons/option_button_arrow.svg
         icons/picker_shape_circle.svg
         icons/picker_shape_rectangle.svg

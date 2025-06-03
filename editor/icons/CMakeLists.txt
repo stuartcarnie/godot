@@ -32,6 +32,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ActionCut.svg
         ActionPaste.svg
         Add.svg
+        AimModifier3D.svg
         Anchor.svg
         AnimatableBody2D.svg
         AnimatableBody3D.svg
@@ -96,6 +97,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Bone.svg
         Bone2D.svg
         BoneAttachment3D.svg
+        BoneConstraint3D.svg
         BoneMapHumanBody.svg
         BoneMapHumanFace.svg
         BoneMapHumanLeftHand.svg
@@ -191,9 +193,11 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ControlAlignTopWide.svg
         ControlAlignVCenterWide.svg
         ControlLayout.svg
+        ConvertTransformModifier3D.svg
         ConvexPolygonShape2D.svg
         ConvexPolygonShape3D.svg
         CopyNodePath.svg
+        CopyTransformModifier3D.svg
         CreateNewSceneFrom.svg
         CryptoKey.svg
         Cubemap.svg

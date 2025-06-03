@@ -103,6 +103,8 @@ target_sources(tests PRIVATE
         scene/test_code_edit.h
         scene/test_color_picker.h
         scene/test_control.h
+        scene/test_convert_transform_modifier_3d.h
+        scene/test_copy_transform_modifier_3d.h
         scene/test_curve.h
         scene/test_curve_2d.h
         scene/test_curve_3d.h

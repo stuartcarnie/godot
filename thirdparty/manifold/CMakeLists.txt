@@ -41,6 +41,8 @@ target_sources(manifold PRIVATE
         src/sparse.h
         src/subdivision.cpp
         src/svd.h
+        src/tree2d.cpp
+        src/tree2d.h
         src/tri_dist.h
         src/utils.h
         src/vec.h

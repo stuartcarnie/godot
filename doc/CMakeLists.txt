@@ -117,6 +117,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/AStar3D.xml
         classes/AStarGrid2D.xml
         classes/AcceptDialog.xml
+        classes/AimModifier3D.xml
         classes/AnimatableBody2D.xml
         classes/AnimatableBody3D.xml
         classes/AnimatedSprite2D.xml
@@ -211,6 +212,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/BitMap.xml
         classes/Bone2D.xml
         classes/BoneAttachment3D.xml
+        classes/BoneConstraint3D.xml
         classes/BoneMap.xml
         classes/BoxContainer.xml
         classes/BoxMesh.xml
@@ -275,8 +277,10 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/ConfirmationDialog.xml
         classes/Container.xml
         classes/Control.xml
+        classes/ConvertTransformModifier3D.xml
         classes/ConvexPolygonShape2D.xml
         classes/ConvexPolygonShape3D.xml
+        classes/CopyTransformModifier3D.xml
         classes/Crypto.xml
         classes/CryptoKey.xml
         classes/Cubemap.xml

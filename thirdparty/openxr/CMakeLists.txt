@@ -15,6 +15,7 @@ target_sources(openxr PRIVATE
         include/openxr/openxr_reflection.h
         include/openxr/openxr_reflection_parent_structs.h
         include/openxr/openxr_reflection_structs.h
+        src/common/android_logging.h
         src/common/extra_algorithms.h
         src/common/filesystem_utils.cpp
         src/common/filesystem_utils.hpp

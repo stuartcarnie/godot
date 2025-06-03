@@ -14,14 +14,22 @@ endif ()
 #   cog.outl(')')
 # ]]]
 target_sources(scene PRIVATE
+        aim_modifier_3d.cpp
+        aim_modifier_3d.h
         audio_listener_3d.cpp
         audio_listener_3d.h
         audio_stream_player_3d.cpp
         audio_stream_player_3d.h
         bone_attachment_3d.cpp
         bone_attachment_3d.h
+        bone_constraint_3d.cpp
+        bone_constraint_3d.h
         camera_3d.cpp
         camera_3d.h
+        convert_transform_modifier_3d.cpp
+        convert_transform_modifier_3d.h
+        copy_transform_modifier_3d.cpp
+        copy_transform_modifier_3d.h
         cpu_particles_3d.cpp
         cpu_particles_3d.h
         decal.cpp
