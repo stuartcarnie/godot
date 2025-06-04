@@ -8,7 +8,7 @@ readability.
 ## accesskit
 
 - Upstream: https://github.com/AccessKit/accesskit-c
-- Version: 0.15.1 (0d1da94a33708041b07c61eb702c67cfa3a5f95b, 2025)
+- Version: 0.16.0 (06c1779473ff4304f42ea254f77fef2e33f982b0, 2025)
 - License: MIT
 
 Files extracted from upstream source:
@@ -120,7 +120,7 @@ Files extracted from upstream source:
 ## clipper2
 
 - Upstream: https://github.com/AngusJohnson/Clipper2
-- Version: 1.5.2 (6901921c4be75126d1de60bfd24bd86a61319fd0, 2025)
+- Version: 1.5.3 (fa165fe8364b7d0e5d5db2182369b8c82348f4ea, 2025)
 - License: BSL 1.0
 
 Files extracted from upstream source:
@@ -131,7 +131,6 @@ Files extracted from upstream source:
 Patches:
 
 - `0001-disable-exceptions.patch` (GH-80796)
-- `0002-llvm-disable-int128-math.patch` (GH-95964)
 
 
 ## cvtt
