@@ -15,7 +15,6 @@ target_sources(core PRIVATE
         command_queue_mt.h
         cowdata.h
         fixed_vector.h
-        hash_map.cpp
         hash_map.h
         hash_set.h
         hashfuncs.h
@@ -24,7 +23,6 @@ target_sources(core PRIVATE
         list.h
         local_vector.h
         lru.h
-        oa_hash_map.h
         paged_allocator.h
         paged_array.h
         pair.h
@@ -41,6 +39,7 @@ target_sources(core PRIVATE
         self_list.h
         simple_type.h
         sort_array.h
+        sort_list.h
         span.h
         tuple.h
         vector.h

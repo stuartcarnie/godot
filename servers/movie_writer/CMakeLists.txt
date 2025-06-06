@@ -9,8 +9,6 @@
 target_sources(servers PRIVATE
         movie_writer.cpp
         movie_writer.h
-        movie_writer_mjpeg.cpp
-        movie_writer_mjpeg.h
         movie_writer_pngwav.cpp
         movie_writer_pngwav.h
 )

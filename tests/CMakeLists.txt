@@ -76,9 +76,9 @@ target_sources(tests PRIVATE
         core/templates/test_list.h
         core/templates/test_local_vector.h
         core/templates/test_lru.h
-        core/templates/test_oa_hash_map.h
         core/templates/test_paged_array.h
         core/templates/test_rid.h
+        core/templates/test_self_list.h
         core/templates/test_span.h
         core/templates/test_vector.h
         core/templates/test_vset.h
@@ -137,6 +137,7 @@ target_sources(tests PRIVATE
         scene/test_skeleton_3d.h
         scene/test_sky.h
         scene/test_split_container.h
+        scene/test_sprite_2d.h
         scene/test_sprite_frames.h
         scene/test_style_box_texture.h
         scene/test_tab_bar.h

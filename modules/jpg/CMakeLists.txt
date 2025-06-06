@@ -10,6 +10,8 @@ godot_add_library(godot-module-jpg FOLDER modules STATIC)
 target_sources(godot-module-jpg PRIVATE
         image_loader_libjpeg_turbo.cpp
         image_loader_libjpeg_turbo.h
+        movie_writer_mjpeg.cpp
+        movie_writer_mjpeg.h
         register_types.cpp
         register_types.h
 )

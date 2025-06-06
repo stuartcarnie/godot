@@ -27,14 +27,19 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/error_icon.svg
         icons/favorite.svg
         icons/file.svg
+        icons/file_mode_list.svg
+        icons/file_mode_thumbnail.svg
+        icons/file_thumbnail.svg
         icons/folder.svg
         icons/folder_create.svg
+        icons/folder_thumbnail.svg
         icons/folder_up.svg
         icons/graph_port.svg
         icons/grid_layout.svg
         icons/grid_minimap.svg
         icons/grid_snap.svg
         icons/grid_toggle.svg
+        icons/h_dragger.svg
         icons/hslider_tick.svg
         icons/hsplitter.svg
         icons/indeterminate.svg
@@ -87,6 +92,7 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/unchecked.svg
         icons/unchecked_disabled.svg
         icons/updown.svg
+        icons/v_dragger.svg
         icons/value_down.svg
         icons/value_up.svg
         icons/visibility_visible.svg

@@ -12,19 +12,20 @@ target_sources(zstd PRIVATE
         compress/hist.c
         compress/huf_compress.c
         compress/zstd_compress.c
-        compress/zstd_compress_literals.c
-        compress/zstd_compress_sequences.c
-        compress/zstd_compress_superblock.c
         compress/zstd_double_fast.c
         compress/zstd_fast.c
         compress/zstd_lazy.c
         compress/zstd_ldm.c
         compress/zstd_opt.c
+        compress/zstd_preSplit.c
         compress/zstdmt_compress.c
+        compress/zstd_compress_literals.c
+        compress/zstd_compress_sequences.c
+        compress/zstd_compress_superblock.c
         decompress/huf_decompress.c
         decompress/zstd_ddict.c
-        decompress/zstd_decompress.c
         decompress/zstd_decompress_block.c
+        decompress/zstd_decompress.c
 )
 target_include_directories(zstd PUBLIC ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(zstd PRIVATE ZSTD_DISABLE_ASM=1)
