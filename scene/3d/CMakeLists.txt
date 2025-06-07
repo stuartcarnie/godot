@@ -58,6 +58,8 @@ target_sources(scene PRIVATE
         marker_3d.h
         mesh_instance_3d.cpp
         mesh_instance_3d.h
+        modifier_bone_target_3d.cpp
+        modifier_bone_target_3d.h
         multimesh_instance_3d.cpp
         multimesh_instance_3d.h
         node_3d.cpp

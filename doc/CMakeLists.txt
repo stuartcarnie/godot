@@ -477,6 +477,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/MethodTweener.xml
         classes/MissingNode.xml
         classes/MissingResource.xml
+        classes/ModifierBoneTarget3D.xml
         classes/MovieWriter.xml
         classes/MultiMesh.xml
         classes/MultiMeshInstance2D.xml
