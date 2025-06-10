@@ -16,6 +16,8 @@ target_sources(macos PRIVATE
         display_server_embedded.mm
         display_server_macos.h
         display_server_macos.mm
+        display_server_macos_base.h
+        display_server_macos_base.mm
         embedded_debugger.h
         embedded_debugger.mm
         embedded_gl_manager.h

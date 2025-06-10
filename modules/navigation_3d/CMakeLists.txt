@@ -18,6 +18,8 @@ target_sources(godot-module-navigation-3d PRIVATE
         3d/nav_mesh_generator_3d.h
         3d/nav_mesh_queries_3d.cpp
         3d/nav_mesh_queries_3d.h
+        3d/nav_region_builder_3d.cpp
+        3d/nav_region_builder_3d.h
         3d/nav_region_iteration_3d.h
         3d/navigation_mesh_generator.cpp
         3d/navigation_mesh_generator.h

@@ -94,6 +94,7 @@ target_sources(tests PRIVATE
         core/variant/test_variant_utility.h
         display_server_mock.h
         scene/test_animation.h
+        scene/test_animation_blend_tree.h
         scene/test_arraymesh.h
         scene/test_audio_stream_wav.h
         scene/test_bit_map.h

@@ -32,8 +32,13 @@
 
 #include "display_server_macos_base.h"
 
+#ifdef __OBJC__
 @class CAContext;
 @class CALayer;
+#else
+typedef struct CAContext CAContext;
+typedef struct CALayer CALayer;
+#endif
 class GLManagerEmbedded;
 class RenderingContextDriver;
 class RenderingDevice;

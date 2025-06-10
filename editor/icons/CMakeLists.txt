@@ -205,6 +205,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Curve.svg
         Curve2D.svg
         Curve3D.svg
+        CurveCenter.svg
         CurveClose.svg
         CurveConstant.svg
         CurveCreate.svg
@@ -251,6 +252,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         EditorHandle.svg
         EditorHandleAdd.svg
         EditorHandleDisabled.svg
+        EditorPathNullHandle.svg
         EditorPathSharpHandle.svg
         EditorPathSmoothHandle.svg
         EditorPivot.svg
