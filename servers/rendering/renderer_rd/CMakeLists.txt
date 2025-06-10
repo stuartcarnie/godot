@@ -103,6 +103,7 @@ set_abs(RENDERER_RD_SERVER_SHADERS_INC ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/canvas_uniforms_inc.glsl
         shaders/cluster_data_inc.glsl
         shaders/decal_data_inc.glsl
+        shaders/half_inc.glsl
         shaders/light_data_inc.glsl
         shaders/samplers_inc.glsl
         shaders/scene_data_inc.glsl

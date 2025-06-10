@@ -11,6 +11,8 @@ target_sources(editor PRIVATE
         editor_bottom_panel.h
         editor_dir_dialog.cpp
         editor_dir_dialog.h
+        editor_event_search_bar.cpp
+        editor_event_search_bar.h
         editor_file_dialog.cpp
         editor_file_dialog.h
         editor_object_selector.cpp

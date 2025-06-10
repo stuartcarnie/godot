@@ -42,8 +42,8 @@ target_sources(apple_embedded PRIVATE
 # [[[end]]]
 
 target_compile_definitions(apple_embedded PUBLIC COREAUDIO_ENABLED=1)
-target_compile_features(metal PRIVATE cxx_std_20)
-set_target_properties(metal PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
+target_compile_features(apple_embedded PRIVATE cxx_std_20)
+set_target_properties(apple_embedded PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
 target_link_libraries(apple_embedded PRIVATE core)
 
 group_target_sources(apple_embedded)

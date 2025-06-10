@@ -1,5 +1,5 @@
 set(GODOT_PLATFORM_GENERATED_REGISTERED_APIS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/platform/register_platform_apis.gen.cpp)
-set(GODOT_PLATFORMS "ios")
+set(GODOT_PLATFORMS ios visionos)
 if (WANT_TESTS)
     list(APPEND GODOT_PLATFORMS "android")
 endif ()

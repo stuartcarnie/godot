@@ -3,21 +3,21 @@ godot_add_library(ktx FOLDER modules STATIC)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(ktx PRIVATE')
-#   for file in list_files(cog, ['lib', 'lib/dfdutils']):
+#   for file in list_files(cog, ['lib', 'external/dfdutils']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
 target_sources(ktx PRIVATE
+        external/dfdutils/colourspaces.c
+        external/dfdutils/createdfd.c
+        external/dfdutils/dfd.h
+        external/dfdutils/interpretdfd.c
+        external/dfdutils/printdfd.c
+        external/dfdutils/queries.c
+        external/dfdutils/vk2dfd.c
         lib/basis_sgd.h
         lib/basis_transcode.cpp
         lib/checkheader.c
-        lib/dfdutils/colourspaces.c
-        lib/dfdutils/createdfd.c
-        lib/dfdutils/dfd.h
-        lib/dfdutils/interpretdfd.c
-        lib/dfdutils/printdfd.c
-        lib/dfdutils/queries.c
-        lib/dfdutils/vk2dfd.c
         lib/filestream.c
         lib/filestream.h
         lib/formatsize.h
@@ -37,6 +37,7 @@ target_sources(ktx PRIVATE
         lib/uthash.h
         lib/vk_format.h
         lib/vkformat_check.c
+        lib/vkformat_check_variant.c
         lib/vkformat_enum.h
         lib/vkformat_typesize.c
 )
@@ -47,6 +48,7 @@ target_include_directories(ktx PUBLIC
         utils
         lib
         other_include
+        external
 )
 
 if (WANT_VULKAN)

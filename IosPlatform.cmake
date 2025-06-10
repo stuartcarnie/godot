@@ -10,7 +10,7 @@ set(WANT_COREMIDI 0)
 set(WANT_GLAD 0)
 set(WANT_OPENXR 0)
 set(GODOT_PLATFORM "ios")
-add_compile_definitions(IOS_ENABLED)
+add_compile_definitions(IOS_ENABLED APPLE_EMBEDDED_ENABLED)
 
 option(ENABLE_METAL "Enable the Metal renderer" ON)
 

@@ -931,6 +931,9 @@ def list_files(cog, search_paths: str | list[str], exts: [str] = None,
         # convert p to string to test if it is in exclude
         if p.as_posix() in exclude:
             return False
+        # Exclude files matching *.gen.* pattern
+        if fnmatch(p.name, '*.gen.*'):
+            return False
         return fnmatch(p.name, ginclude) if ginclude else True and not fnmatch(p.name, gexclude) if gexclude else True
 
     res = []
