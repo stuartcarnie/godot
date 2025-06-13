@@ -53,6 +53,7 @@ target_sources(harfbuzz PRIVATE
         src/hb-ot-tag.cc
         src/hb-ot-var.cc
         src/hb-outline.cc
+        src/hb-paint-bounded.cc
         src/hb-paint-extents.cc
         src/hb-paint.cc
         src/hb-set.cc
