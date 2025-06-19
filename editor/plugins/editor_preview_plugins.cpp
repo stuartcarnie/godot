@@ -342,6 +342,11 @@ Ref<Texture2D> EditorPackedScenePreviewPlugin::generate_from_path(const String &
 
 	Node *p_scene = pack->instantiate(); // The instantiated preview scene
 
+	if (!p_scene) {
+		print_error(vformat("Failed to generate scene thumbnail for %s : Failed to instantiate scene", p_path));
+		return Ref<Texture2D>();
+	}
+
 	// Prohibit Viewport class as root when generating thumbnails
 	if (Object::cast_to<Viewport>(p_scene)) {
 		p_scene->queue_free();
@@ -583,13 +588,6 @@ Ref<Texture2D> EditorPackedScenePreviewPlugin::generate_from_path(const String &
 }
 
 void EditorPackedScenePreviewPlugin::_setup_scene_3d(Node *p_node) const {
-	// Do not account any SubViewport at preview scene, as it would not render correctly
-	if (Object::cast_to<SubViewport>(p_node) && p_node->get_parent()) {
-		p_node->get_parent()->remove_child(p_node);
-		callable_mp(p_node, &Node::queue_free).call_deferred();
-		return;
-	}
-
 	// Don't let window to popup
 	Window *window = Object::cast_to<Window>(p_node);
 	if (window) {
@@ -639,13 +637,6 @@ void EditorPackedScenePreviewPlugin::_setup_scene_3d(Node *p_node) const {
 }
 
 void EditorPackedScenePreviewPlugin::_setup_scene_2d(Node *p_node) const {
-	// Do not account any SubViewport at preview scene, as it would not render correctly
-	if (Object::cast_to<SubViewport>(p_node) && p_node->get_parent()) {
-		p_node->get_parent()->remove_child(p_node);
-		callable_mp(p_node, &Node::queue_free).call_deferred();
-		return;
-	}
-
 	// Don't let window to popup
 	Window *window = Object::cast_to<Window>(p_node);
 	if (window) {
