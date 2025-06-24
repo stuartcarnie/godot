@@ -50,8 +50,6 @@ target_sources(macos PRIVATE
         key_mapping_macos.h
         key_mapping_macos.mm
         macos_quartz_core_spi.h
-        macos_terminal_logger.h
-        macos_terminal_logger.mm
         native_menu_macos.h
         native_menu_macos.mm
         os_macos.h

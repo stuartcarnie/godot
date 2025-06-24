@@ -9,6 +9,8 @@
 target_sources(drivers PRIVATE
         joypad_apple.h
         joypad_apple.mm
+        os_log_logger.cpp
+        os_log_logger.h
         thread_apple.cpp
         thread_apple.h
 )

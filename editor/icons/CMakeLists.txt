@@ -896,6 +896,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         TripleBar.svg
         TubeTrailMesh.svg
         Tween.svg
+        UID.svg
         UndoRedo.svg
         Unfavorite.svg
         Ungroup.svg

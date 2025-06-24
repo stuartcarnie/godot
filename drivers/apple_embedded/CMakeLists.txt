@@ -32,8 +32,6 @@ target_sources(apple_embedded PRIVATE
         platform_config.h
         rendering_context_driver_vulkan_apple_embedded.h
         rendering_context_driver_vulkan_apple_embedded.mm
-        terminal_logger_apple_embedded.h
-        terminal_logger_apple_embedded.mm
         tts_apple_embedded.h
         tts_apple_embedded.mm
         view_controller.h
