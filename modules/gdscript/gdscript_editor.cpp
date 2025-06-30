@@ -545,7 +545,7 @@ String GDScriptLanguage::make_function(const String &p_class, const String &p_na
 			result += name_unstripped.strip_edges();
 
 			if (type_hints) {
-				const String type_stripped = p_args[i].right(name_unstripped.length() + 1).strip_edges();
+				const String type_stripped = p_args[i].substr(name_unstripped.length() + 1).strip_edges();
 				if (!type_stripped.is_empty()) {
 					result += ": " + type_stripped;
 				}
@@ -1532,7 +1532,7 @@ static void _find_identifiers(const GDScriptParser::CompletionContext &p_context
 
 	static const char *_keywords_with_space[] = {
 		"and", "not", "or", "in", "as", "class", "class_name", "extends", "is", "func", "signal", "await",
-		"const", "enum", "abstract", "static", "var", "if", "elif", "else", "for", "match", "when", "while",
+		"const", "enum", "static", "var", "if", "elif", "else", "for", "match", "when", "while",
 		nullptr
 	};
 
@@ -3567,7 +3567,11 @@ static void _find_call_arguments(GDScriptParser::CompletionContext &p_context, c
 								continue;
 							}
 
-							if (options.has(member.function->identifier->name) || completion_context.current_class->has_function(member.function->identifier->name)) {
+							if (options.has(member.function->identifier->name)) {
+								continue;
+							}
+
+							if (completion_context.current_class->has_function(member.get_name()) && completion_context.current_class->get_member(member.get_name()).function != function_node) {
 								continue;
 							}
 
@@ -3611,7 +3615,10 @@ static void _find_call_arguments(GDScriptParser::CompletionContext &p_context, c
 			}
 
 			for (const MethodInfo &mi : virtual_methods) {
-				if (options.has(mi.name) || completion_context.current_class->has_function(mi.name)) {
+				if (options.has(mi.name)) {
+					continue;
+				}
+				if (completion_context.current_class->has_function(mi.name) && completion_context.current_class->get_member(mi.name).function != function_node) {
 					continue;
 				}
 				String method_hint = mi.name;
