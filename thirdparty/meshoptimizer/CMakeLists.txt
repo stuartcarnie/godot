@@ -10,21 +10,20 @@ godot_add_library(meshoptimizer FOLDER thirdparty STATIC)
 target_sources(meshoptimizer PRIVATE
         allocator.cpp
         clusterizer.cpp
+        indexanalyzer.cpp
         indexcodec.cpp
         indexgenerator.cpp
         meshoptimizer.h
-        overdrawanalyzer.cpp
         overdrawoptimizer.cpp
         partition.cpp
         quantization.cpp
+        rasterizer.cpp
         simplifier.cpp
         spatialorder.cpp
         stripifier.cpp
-        vcacheanalyzer.cpp
         vcacheoptimizer.cpp
         vertexcodec.cpp
         vertexfilter.cpp
-        vfetchanalyzer.cpp
         vfetchoptimizer.cpp
 )
 # [[[end]]]

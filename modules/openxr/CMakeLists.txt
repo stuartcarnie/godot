@@ -18,6 +18,7 @@ target_sources(godot-module-openxr PRIVATE
         openxr_platform_inc.h
         openxr_util.cpp
         openxr_util.h
+        openxr_uuid.h
         register_types.cpp
         register_types.h
         util.h

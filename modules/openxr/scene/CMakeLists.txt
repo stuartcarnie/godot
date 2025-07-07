@@ -17,6 +17,10 @@ target_sources(godot-module-openxr PRIVATE
         openxr_composition_layer_quad.h
         openxr_hand.cpp
         openxr_hand.h
+        openxr_render_model.cpp
+        openxr_render_model.h
+        openxr_render_model_manager.cpp
+        openxr_render_model_manager.h
         openxr_visibility_mask.cpp
         openxr_visibility_mask.h
 )

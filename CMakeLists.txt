@@ -52,6 +52,7 @@ set(PRECISION "single" CACHE STRING "Set the floating-point precision level")
 set_property(CACHE PRECISION PROPERTY STRINGS single double)
 option(ENABLE_MINIZIP "Enable ZIP archive support using minizip" ON)
 option(ENABLE_BROTLI "Enable Brotli for decompresson and WOFF2 fonts support" ON)
+option(ENABLE_SDL "Enable the SDL3 input driver" ON)
 option(DISABLE_EXCEPTIONS "Force disabling exception handling code" ON)
 
 option(DISABLE_3D "Disable 3D nodes for a smaller executable" OFF)
@@ -75,6 +76,12 @@ if (ENABLE_RETROFX)
     set(WANT_RETROFX 1)
 else ()
     set(WANT_RETROFX 0)
+endif ()
+
+if (ENABLE_SDL AND CMAKE_SYSTEM_NAME MATCHES "^(Linux|Windows|Darwin)$")
+    set(WANT_SDL 1)
+else ()
+    set(WANT_SDL 0)
 endif ()
 
 # Advanced options

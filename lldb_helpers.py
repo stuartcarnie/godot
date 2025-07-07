@@ -28,10 +28,24 @@ class VectorViewSynthProvider:
             return None
         if index >= self.num_children():
             return None
-        offset = index * self.data_size
-        return self.data.CreateChildAtOffset(
-            "[" + str(index) + "]", offset, self.data_type
-        )
+        
+        try:
+            offset = index * self.data_size
+            # Create a child from the dereferenced pointer
+            ptr_value = self.data.GetValueAsUnsigned(0)
+            if ptr_value == 0:
+                return None
+                
+            # Create a synthetic child at the correct offset
+            child = self.data.CreateValueFromAddress(
+                "[" + str(index) + "]",
+                ptr_value + offset,
+                self.data_type
+            )
+            return child
+        except Exception as e:
+            logger >> "Exception creating child: " + str(e)
+            return None
 
     def update(self):
         logger = lldb.formatters.Logger.Logger()
@@ -39,12 +53,36 @@ class VectorViewSynthProvider:
         # later
         self.count = None
         try:
-            self.count = self.valobj.GetChildMemberWithName("_size").GetValueAsUnsigned(0)
-            self.data = self.valobj.GetChildMemberWithName("_ptr")
+            # Get the _size member
+            size_member = self.valobj.GetChildMemberWithName("_size")
+            if not size_member.IsValid():
+                logger >> "Failed to get _size member"
+                self.count = 0
+                return False
+                
+            self.count = size_member.GetValueAsUnsigned(0)
+            
+            # Get the _ptr member
+            ptr_member = self.valobj.GetChildMemberWithName("_ptr")
+            if not ptr_member.IsValid():
+                logger >> "Failed to get _ptr member"
+                self.count = 0
+                return False
+            
+            # Since _ptr is a pointer, we need to dereference it
+            self.data = ptr_member
             self.data_type = self.valobj.GetType().GetTemplateArgumentType(0)
             self.data_size = self.data_type.GetByteSize()
+            
+            # Verify the pointer is valid
+            if self.data.GetValueAsUnsigned(0) == 0:
+                logger >> "Pointer is null"
+                self.count = 0
+                return False
+                
             return True
-        except:
+        except Exception as e:
+            logger >> "Exception in update: " + str(e)
             self.count = 0
         return False
 
@@ -161,6 +199,14 @@ def VectorSummaryProvider(valobj, dict):
     return "items=" + str(valobj.num_children - 2 if valobj.num_children > 0 else 0)
 
 
+def VectorViewSummaryProvider(valobj, dict):
+    try:
+        num_children = valobj.GetNumChildren()
+        return "items=" + str(num_children)
+    except:
+        return "items=?"
+
+
 def __lldb_init_module(debugger: lldb.SBDebugger, dict):
     debugger.HandleCommand('type synthetic add -l lldb_helpers.LocalVectorSynthProvider -x "LocalVector<" -w Godot')
     debugger.HandleCommand('type synthetic add -l lldb_helpers.VectorViewSynthProvider -x "VectorView<" -w Godot')
@@ -173,6 +219,7 @@ def __lldb_init_module(debugger: lldb.SBDebugger, dict):
     debugger.HandleCommand('type summary add "Size2" "Size2i" --summary-string "\{ w=${var.width}, h=${var.height} \}" --category Godot')
     debugger.HandleCommand('type summary add "Rect2" "Rect2i" --summary-string "\{ x=${var.position.x}, y=${var.position.height}, w=${var.size.width}, h=${var.size.height} \}" --category Godot')
     debugger.HandleCommand('type summary add "Color" --summary-string "\{ r=${var.r}, g=${var.g}, b=${var.b}, a=${var.a} \}" --category Godot')
-    debugger.HandleCommand('type summary add -x "VectorView<" -x "LocalVector<" -x "TightLocalVector<" --expand --summary-string "${svar%#} items" --category Godot')
+    debugger.HandleCommand('type summary add -F lldb_helpers.VectorViewSummaryProvider -x "VectorView<" --expand --category Godot')
+    debugger.HandleCommand('type summary add -x "LocalVector<" -x "TightLocalVector<" --expand --summary-string "${svar%#} items" --category Godot')
     debugger.HandleCommand('type summary add -F lldb_helpers.VectorSummaryProvider -x "Vector<.+>$" --expand --category Godot')
     debugger.HandleCommand('type category enable Godot')

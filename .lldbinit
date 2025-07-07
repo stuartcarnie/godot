@@ -1,3 +1,3 @@
 # settings set target.source-map /private/tmp/godot /Volumes/Data/projects/games/godot
 
-command script import -c lldb_helpers.py
+command script import lldb_helpers.py

@@ -52,6 +52,8 @@ target_sources(godot-module-openxr PRIVATE
         openxr_performance_settings_extension.h
         openxr_pico_controller_extension.cpp
         openxr_pico_controller_extension.h
+        openxr_render_model_extension.cpp
+        openxr_render_model_extension.h
         openxr_valve_analog_threshold_extension.cpp
         openxr_valve_analog_threshold_extension.h
         openxr_visibility_mask_extension.cpp

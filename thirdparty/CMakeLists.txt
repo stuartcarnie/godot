@@ -1,5 +1,8 @@
 # disable warnings for third-party code
-add_compile_options($<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+add_compile_options(
+        $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>
+
+)
 
 add_subdirectory(libktx)
 add_subdirectory(amd-fsr)
@@ -60,6 +63,9 @@ if (WANT_RETROFX)
 endif ()
 add_subdirectory(smaa)
 add_subdirectory(spirv-reflect)
+if (WANT_SDL)
+    add_subdirectory(sdl)
+endif ()
 if (ENABLE_METAL)
     add_subdirectory(spirv-cross)
 endif ()
