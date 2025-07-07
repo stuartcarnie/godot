@@ -1891,17 +1891,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 				goto error;
 			}
 
-#ifdef TOOLS_ENABLED
-		} else if (arg == "--os-debug") {
-			int msec = 5000; // wait 5 second by default
-			if (N) {
-				msec = N->get().to_int();
-				N = N->next();
-			}
-			if (msec > 0) {
-				OS::get_singleton()->wait_for_debugger(msec);
-			}
-#endif
 		} else if (arg == "--" || arg == "++") {
 			adding_user_args = true;
 		} else {
