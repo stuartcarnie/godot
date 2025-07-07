@@ -1,14 +1,28 @@
 godot_add_library(editor STATIC)
 
+add_subdirectory(animation)
+add_subdirectory(asset_library)
+add_subdirectory(audio)
 add_subdirectory(debugger)
+add_subdirectory(doc)
+add_subdirectory(docks)
 add_subdirectory(export)
+add_subdirectory(file_system)
 add_subdirectory(gui)
 add_subdirectory(icons)
 add_subdirectory(import)
+add_subdirectory(inspector)
 add_subdirectory(plugins)
 add_subdirectory(project_manager)
+add_subdirectory(project_upgrade)
+add_subdirectory(run)
+add_subdirectory(scene)
+add_subdirectory(script)
+add_subdirectory(settings)
+add_subdirectory(shader)
 add_subdirectory(themes)
 add_subdirectory(translations)
+add_subdirectory(version_control)
 
 # platform exporters
 
@@ -30,7 +44,7 @@ endif ()
 
 generate_godot_editor_platform_exporters("${EXPORT_PLATFORM_SOURCE_PLATFORMS}" "${GENERATED_PLATFORM_EXPORTERS_OUTPUT}")
 
-set(GENERATED_EDITOR_DOC_DATA_CLASSES_PATH ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc_data_class_path.gen.h)
+set(GENERATED_EDITOR_DOC_DATA_CLASSES_PATH ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc/doc_data_class_path.gen.h)
 generate_document_class_paths("${GENERATED_EDITOR_DOC_DATA_CLASSES_PATH}")
 
 target_sources(editor
@@ -50,180 +64,21 @@ target_sources(editor
 #   cog.outl(')')
 # ]]]
 target_sources(editor PRIVATE
-        action_map_editor.cpp
-        action_map_editor.h
-        add_metadata_dialog.cpp
-        add_metadata_dialog.h
-        animation_bezier_editor.cpp
-        animation_bezier_editor.h
-        animation_track_editor.cpp
-        animation_track_editor.h
-        animation_track_editor_plugins.cpp
-        animation_track_editor_plugins.h
-        audio_stream_preview.cpp
-        audio_stream_preview.h
-        code_editor.cpp
-        code_editor.h
-        connections_dialog.cpp
-        connections_dialog.h
-        create_dialog.cpp
-        create_dialog.h
-        credits_roll.cpp
-        credits_roll.h
-        dependency_editor.cpp
-        dependency_editor.h
-        directory_create_dialog.cpp
-        directory_create_dialog.h
-        doc_tools.cpp
-        doc_tools.h
-        editor_about.cpp
-        editor_about.h
-        editor_asset_installer.cpp
-        editor_asset_installer.h
-        editor_atlas_packer.cpp
-        editor_atlas_packer.h
-        editor_audio_buses.cpp
-        editor_audio_buses.h
-        editor_autoload_settings.cpp
-        editor_autoload_settings.h
-        editor_build_profile.cpp
-        editor_build_profile.h
-        editor_command_palette.cpp
-        editor_command_palette.h
         editor_data.cpp
         editor_data.h
-        editor_dock_manager.cpp
-        editor_dock_manager.h
-        editor_feature_profile.cpp
-        editor_feature_profile.h
-        editor_file_system.cpp
-        editor_file_system.h
-        editor_folding.cpp
-        editor_folding.h
-        editor_help.cpp
-        editor_help.h
-        editor_help_search.cpp
-        editor_help_search.h
-        editor_inspector.cpp
-        editor_inspector.h
         editor_interface.cpp
         editor_interface.h
-        editor_layouts_dialog.cpp
-        editor_layouts_dialog.h
-        editor_locale_dialog.cpp
-        editor_locale_dialog.h
         editor_log.cpp
         editor_log.h
         editor_main_screen.cpp
         editor_main_screen.h
-        editor_native_shader_source_visualizer.cpp
-        editor_native_shader_source_visualizer.h
         editor_node.cpp
         editor_node.h
-        editor_paths.cpp
-        editor_paths.h
-        editor_properties.cpp
-        editor_properties.h
-        editor_properties_array_dict.cpp
-        editor_properties_array_dict.h
-        editor_properties_vector.cpp
-        editor_properties_vector.h
-        editor_property_name_processor.cpp
-        editor_property_name_processor.h
-        editor_resource_picker.cpp
-        editor_resource_picker.h
-        editor_resource_preview.cpp
-        editor_resource_preview.h
-        editor_run.cpp
-        editor_run.h
-        editor_run_native.cpp
-        editor_run_native.h
-        editor_script.cpp
-        editor_script.h
-        editor_sectioned_inspector.cpp
-        editor_sectioned_inspector.h
-        editor_settings.cpp
-        editor_settings.h
-        editor_settings_dialog.cpp
-        editor_settings_dialog.h
         editor_string_names.h
-        editor_translation.cpp
-        editor_translation.h
-        editor_translation_parser.cpp
-        editor_translation_parser.h
         editor_undo_redo_manager.cpp
         editor_undo_redo_manager.h
-        editor_vcs_interface.cpp
-        editor_vcs_interface.h
-        engine_update_label.cpp
-        engine_update_label.h
-        event_listener_line_edit.cpp
-        event_listener_line_edit.h
-        fbx_importer_manager.cpp
-        fbx_importer_manager.h
-        file_info.cpp
-        file_info.h
-        filesystem_dock.cpp
-        filesystem_dock.h
-        find_in_files.cpp
-        find_in_files.h
-        group_settings_editor.cpp
-        group_settings_editor.h
-        groups_editor.cpp
-        groups_editor.h
-        history_dock.cpp
-        history_dock.h
-        import_defaults_editor.cpp
-        import_defaults_editor.h
-        import_dock.cpp
-        import_dock.h
-        input_event_configuration_dialog.cpp
-        input_event_configuration_dialog.h
-        inspector_dock.cpp
-        inspector_dock.h
-        localization_editor.cpp
-        localization_editor.h
-        multi_node_edit.cpp
-        multi_node_edit.h
-        node_dock.cpp
-        node_dock.h
-        pot_generator.cpp
-        pot_generator.h
-        progress_dialog.cpp
-        progress_dialog.h
-        project_converter_3_to_4.cpp
-        project_converter_3_to_4.h
-        project_manager.cpp
-        project_manager.h
-        project_settings_editor.cpp
-        project_settings_editor.h
-        project_upgrade_tool.cpp
-        project_upgrade_tool.h
-        property_selector.cpp
-        property_selector.h
         register_editor_types.cpp
         register_editor_types.h
-        register_exporters.h
-        rename_dialog.cpp
-        rename_dialog.h
-        renames_map_3_to_4.cpp
-        renames_map_3_to_4.h
-        reparent_dialog.cpp
-        reparent_dialog.h
-        run_instances_dialog.cpp
-        run_instances_dialog.h
-        scene_create_dialog.cpp
-        scene_create_dialog.h
-        scene_tree_dock.cpp
-        scene_tree_dock.h
-        script_create_dialog.cpp
-        script_create_dialog.h
-        shader_create_dialog.cpp
-        shader_create_dialog.h
-        shader_globals_editor.cpp
-        shader_globals_editor.h
-        window_wrapper.cpp
-        window_wrapper.h
 )
 # [[[end]]]
 

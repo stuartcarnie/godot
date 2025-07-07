@@ -34,6 +34,7 @@ target_sources(tests PRIVATE
         core/io/test_stream_peer_gzip.h
         core/io/test_tcp_server.h
         core/io/test_udp_server.h
+        core/io/test_uds_server.h
         core/io/test_xml_parser.h
         core/math/test_aabb.h
         core/math/test_astar.h

@@ -7,10 +7,14 @@
 #   cog.outl(')')
 # ]]]
 target_sources(editor PRIVATE
+        engine_update_label.cpp
+        engine_update_label.h
         project_dialog.cpp
         project_dialog.h
         project_list.cpp
         project_list.h
+        project_manager.cpp
+        project_manager.h
         project_tag.cpp
         project_tag.h
         quick_settings_dialog.cpp

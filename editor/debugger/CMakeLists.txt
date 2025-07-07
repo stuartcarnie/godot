@@ -8,10 +8,14 @@ add_subdirectory(debug_adapter)
 #   cog.outl(')')
 # ]]]
 target_sources(editor PRIVATE
+        debugger_editor_plugin.cpp
+        debugger_editor_plugin.h
         editor_debugger_inspector.cpp
         editor_debugger_inspector.h
         editor_debugger_node.cpp
         editor_debugger_node.h
+        editor_debugger_plugin.cpp
+        editor_debugger_plugin.h
         editor_debugger_server.cpp
         editor_debugger_server.h
         editor_debugger_tree.cpp

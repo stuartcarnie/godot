@@ -13,8 +13,14 @@ target_sources(editor PRIVATE
         audio_stream_import_settings.h
         dynamic_font_import_settings.cpp
         dynamic_font_import_settings.h
+        editor_atlas_packer.cpp
+        editor_atlas_packer.h
         editor_import_plugin.cpp
         editor_import_plugin.h
+        fbx_importer_manager.cpp
+        fbx_importer_manager.h
+        import_defaults_editor.cpp
+        import_defaults_editor.h
         resource_importer_bitmask.cpp
         resource_importer_bitmask.h
         resource_importer_bmfont.cpp

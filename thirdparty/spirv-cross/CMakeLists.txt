@@ -17,8 +17,6 @@ target_sources(spirv-cross PRIVATE
 		spirv_cross_error_handling.hpp
 		spirv_cross_parsed_ir.cpp
 		spirv_cross_parsed_ir.hpp
-		spirv_cross_util.cpp
-		spirv_cross_util.hpp
 		spirv_glsl.cpp
 		spirv_glsl.hpp
 		spirv_msl.cpp

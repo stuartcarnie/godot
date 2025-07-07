@@ -763,6 +763,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/StreamPeerGZIP.xml
         classes/StreamPeerTCP.xml
         classes/StreamPeerTLS.xml
+        classes/StreamPeerUDS.xml
         classes/String.xml
         classes/StringName.xml
         classes/StyleBox.xml
@@ -829,6 +830,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Tween.xml
         classes/Tweener.xml
         classes/UDPServer.xml
+        classes/UDSServer.xml
         classes/UndoRedo.xml
         classes/UniformSetCacheRD.xml
         classes/VBoxContainer.xml
@@ -1010,7 +1012,7 @@ set(GODOT_SOURCE_DOCUMENTATION_SOURCE
         ${GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE}
         ${GODOT_SOURCE_PLATFORM_DOCUMENTATION_SOURCE}
 )
-set(GODOT_EDITOR_COMPRESSED_DOCUMENTATION_OUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc_data_compressed.gen.h)
+set(GODOT_EDITOR_COMPRESSED_DOCUMENTATION_OUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc/doc_data_compressed.gen.h)
 generate_documentation_compressed("${GODOT_SOURCE_DOCUMENTATION_SOURCE}" "${GODOT_EDITOR_COMPRESSED_DOCUMENTATION_OUT}" "${CMAKE_BINARY_INCLUDE_DIR}/editor/temp_cmd.txt")
 
 set_abs(GODOT_DOCUMENTATION_TRANSLATIONS ${CMAKE_CURRENT_SOURCE_DIR}
@@ -1019,12 +1021,12 @@ set_abs(GODOT_DOCUMENTATION_TRANSLATIONS ${CMAKE_CURRENT_SOURCE_DIR}
         translations/zh_CN.po
 )
 
-set(GODOT_DOCUMENTATION_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc_translations.gen.h)
+set(GODOT_DOCUMENTATION_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc/doc_translations.gen.h)
 generate_file(make_editor_documentation_translations "${GODOT_DOCUMENTATION_TRANSLATIONS}" "${GODOT_DOCUMENTATION_TRANSLATIONS_OUTPUT}")
 
 set_abs(GODOT_EXTRACTABLE_TRANSLATIONS ${CMAKE_CURRENT_SOURCE_DIR})
 
-set(GODOT_EXTRACTABLE_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/extractable_translations.gen.h)
+set(GODOT_EXTRACTABLE_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc/extractable_translations.gen.h)
 generate_file(make_extractable_translations_header "${GODOT_EXTRACTABLE_TRANSLATIONS}" "${GODOT_EXTRACTABLE_TRANSLATIONS_OUTPUT}")
 
 add_library(godot-doc INTERFACE)
@@ -1037,6 +1039,6 @@ target_sources(godot-doc PUBLIC
         FILE_SET HEADERS
         FILES
         BASE_DIRS ${CMAKE_BINARY_DIR}
-        include/editor/doc_data_compressed.gen.h
-        include/editor/doc_translations.gen.h
+        include/editor/doc/doc_data_compressed.gen.h
+        include/editor/doc/doc_translations.gen.h
 )

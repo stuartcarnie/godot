@@ -7,6 +7,8 @@
 #   cog.outl(')')
 # ]]]
 target_sources(drivers PRIVATE
+        foundation_helpers.h
+        foundation_helpers.mm
         joypad_apple.h
         joypad_apple.mm
         os_log_logger.cpp

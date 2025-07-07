@@ -9,6 +9,8 @@
 target_sources(editor PRIVATE
         codesign.cpp
         codesign.h
+        dedicated_server_export_plugin.cpp
+        dedicated_server_export_plugin.h
         editor_export.cpp
         editor_export.h
         editor_export_platform.cpp
@@ -25,6 +27,7 @@ target_sources(editor PRIVATE
         editor_export_preset.h
         export_template_manager.cpp
         export_template_manager.h
+        gdextension_export_plugin.h
         lipo.cpp
         lipo.h
         macho.cpp
@@ -35,5 +38,10 @@ target_sources(editor PRIVATE
         project_export.h
         project_zip_packer.cpp
         project_zip_packer.h
+        register_exporters.h
+        shader_baker_export_plugin.cpp
+        shader_baker_export_plugin.h
 )
 # [[[end]]]
+
+target_include_directories(editor PRIVATE .)

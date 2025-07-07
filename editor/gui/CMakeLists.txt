@@ -7,32 +7,32 @@
 #   cog.outl(')')
 # ]]]
 target_sources(editor PRIVATE
+        code_editor.cpp
+        code_editor.h
+        create_dialog.cpp
+        create_dialog.h
+        credits_roll.cpp
+        credits_roll.h
+        directory_create_dialog.cpp
+        directory_create_dialog.h
+        editor_about.cpp
+        editor_about.h
         editor_bottom_panel.cpp
         editor_bottom_panel.h
         editor_dir_dialog.cpp
         editor_dir_dialog.h
-        editor_event_search_bar.cpp
-        editor_event_search_bar.h
         editor_file_dialog.cpp
         editor_file_dialog.h
         editor_object_selector.cpp
         editor_object_selector.h
         editor_quick_open_dialog.cpp
         editor_quick_open_dialog.h
-        editor_run_bar.cpp
-        editor_run_bar.h
-        editor_scene_tabs.cpp
-        editor_scene_tabs.h
         editor_spin_slider.cpp
         editor_spin_slider.h
         editor_title_bar.cpp
         editor_title_bar.h
         editor_toaster.cpp
         editor_toaster.h
-        editor_translation_preview_button.cpp
-        editor_translation_preview_button.h
-        editor_translation_preview_menu.cpp
-        editor_translation_preview_menu.h
         editor_validation_panel.cpp
         editor_validation_panel.h
         editor_variant_type_selectors.cpp
@@ -41,9 +41,11 @@ target_sources(editor PRIVATE
         editor_version_button.h
         editor_zoom_widget.cpp
         editor_zoom_widget.h
-        scene_tree_editor.cpp
-        scene_tree_editor.h
+        progress_dialog.cpp
+        progress_dialog.h
         touch_actions_panel.cpp
         touch_actions_panel.h
+        window_wrapper.cpp
+        window_wrapper.h
 )
 # [[[end]]]
