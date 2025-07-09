@@ -1021,12 +1021,12 @@ set_abs(GODOT_DOCUMENTATION_TRANSLATIONS ${CMAKE_CURRENT_SOURCE_DIR}
         translations/zh_CN.po
 )
 
-set(GODOT_DOCUMENTATION_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc/doc_translations.gen.h)
+set(GODOT_DOCUMENTATION_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/doc_translations.gen.h)
 generate_file(make_editor_documentation_translations "${GODOT_DOCUMENTATION_TRANSLATIONS}" "${GODOT_DOCUMENTATION_TRANSLATIONS_OUTPUT}")
 
 set_abs(GODOT_EXTRACTABLE_TRANSLATIONS ${CMAKE_CURRENT_SOURCE_DIR})
 
-set(GODOT_EXTRACTABLE_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/doc/extractable_translations.gen.h)
+set(GODOT_EXTRACTABLE_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/extractable_translations.gen.h)
 generate_file(make_extractable_translations_header "${GODOT_EXTRACTABLE_TRANSLATIONS}" "${GODOT_EXTRACTABLE_TRANSLATIONS_OUTPUT}")
 
 add_library(godot-doc INTERFACE)
@@ -1040,5 +1040,5 @@ target_sources(godot-doc PUBLIC
         FILES
         BASE_DIRS ${CMAKE_BINARY_DIR}
         include/editor/doc/doc_data_compressed.gen.h
-        include/editor/doc/doc_translations.gen.h
+        include/editor/translations/doc_translations.gen.h
 )

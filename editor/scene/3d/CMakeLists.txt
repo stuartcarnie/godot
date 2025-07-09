@@ -28,6 +28,8 @@ target_sources(editor PRIVATE
         node_3d_editor_plugin.h
         occluder_instance_3d_editor_plugin.cpp
         occluder_instance_3d_editor_plugin.h
+        particles_3d_editor_plugin.cpp
+        particles_3d_editor_plugin.h
         path_3d_editor_plugin.cpp
         path_3d_editor_plugin.h
         polygon_3d_editor_plugin.cpp

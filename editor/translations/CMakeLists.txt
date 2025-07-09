@@ -51,7 +51,7 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 # [[[end]]]
 
-set(GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/editor_translations.gen.h)
+set(GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/editor_translations.gen.h)
 generate_file(make_editor_translations "${GODOT_EDITOR_TRANSLATIONS_SOURCE}" "${GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT}")
 
 # [[[cog
@@ -89,7 +89,7 @@ set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 # [[[end]]]
 
-set(GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/property_translations.gen.h)
+set(GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/property_translations.gen.h)
 generate_file(make_editor_properties_translations "${GODOT_PROPERTIES_TRANSLATIONS_SOURCE}" "${GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT}")
 
 add_custom_target(editor-translations-generated
@@ -105,3 +105,31 @@ target_sources(editor
         ${GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT}
         ${GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT}
 )
+
+# [[[cog
+#   import cog
+#   from cmake_builders import list_files
+#   cog.outl('target_sources(editor PRIVATE')
+#   for file in list_files(cog, '.'):
+#       cog.outl(f'        {file}')
+#   cog.outl(')')
+# ]]]
+target_sources(editor PRIVATE
+        editor_locale_dialog.cpp
+        editor_locale_dialog.h
+        editor_translation.cpp
+        editor_translation.h
+        editor_translation_parser.cpp
+        editor_translation_parser.h
+        editor_translation_preview_button.cpp
+        editor_translation_preview_button.h
+        editor_translation_preview_menu.cpp
+        editor_translation_preview_menu.h
+        localization_editor.cpp
+        localization_editor.h
+        packed_scene_translation_parser_plugin.cpp
+        packed_scene_translation_parser_plugin.h
+        pot_generator.cpp
+        pot_generator.h
+)
+# [[[end]]]

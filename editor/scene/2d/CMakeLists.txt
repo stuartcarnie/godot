@@ -20,6 +20,8 @@ target_sources(editor PRIVATE
         line_2d_editor_plugin.h
         parallax_background_editor_plugin.cpp
         parallax_background_editor_plugin.h
+        particles_2d_editor_plugin.cpp
+        particles_2d_editor_plugin.h
         path_2d_editor_plugin.cpp
         path_2d_editor_plugin.h
         polygon_2d_editor_plugin.cpp
