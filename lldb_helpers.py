@@ -212,6 +212,7 @@ def __lldb_init_module(debugger: lldb.SBDebugger, dict):
     debugger.HandleCommand('type synthetic add -l lldb_helpers.VectorViewSynthProvider -x "VectorView<" -w Godot')
     debugger.HandleCommand('type synthetic add -l lldb_helpers.VectorSynthProvider -x "Vector<.+>$" -w Godot')
     debugger.HandleCommand('type summary add "String" "CharString" --summary-string "${var._cowdata._ptr%s}" --category Godot')
+    debugger.HandleCommand('type summary add "Span<char>" --summary-string "${var._ptr%s}" --category Godot')
     debugger.HandleCommand('type summary add "StringName" --summary-string "${var._data->name}" --category Godot')
     debugger.HandleCommand('type summary add "Vector2" "Vector2i" "Point2" "Point2i" --summary-string "\{ x=${var.x}, y=${var.y} \}" --category Godot')
     debugger.HandleCommand('type summary add "Vector3" "Vector3i" --summary-string "\{ x=${var.x}, y=${var.y}, z=${var.z} \}" --category Godot')
