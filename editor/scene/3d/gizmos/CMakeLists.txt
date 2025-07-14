@@ -1,3 +1,5 @@
+ add_subdirectory(physics)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -13,12 +15,6 @@ target_sources(editor PRIVATE
         audio_stream_player_3d_gizmo_plugin.h
         camera_3d_gizmo_plugin.cpp
         camera_3d_gizmo_plugin.h
-        collision_object_3d_gizmo_plugin.cpp
-        collision_object_3d_gizmo_plugin.h
-        collision_polygon_3d_gizmo_plugin.cpp
-        collision_polygon_3d_gizmo_plugin.h
-        collision_shape_3d_gizmo_plugin.cpp
-        collision_shape_3d_gizmo_plugin.h
         cpu_particles_3d_gizmo_plugin.cpp
         cpu_particles_3d_gizmo_plugin.h
         decal_gizmo_plugin.cpp
@@ -33,8 +29,6 @@ target_sources(editor PRIVATE
         gpu_particles_3d_gizmo_plugin.h
         gpu_particles_collision_3d_gizmo_plugin.cpp
         gpu_particles_collision_3d_gizmo_plugin.h
-        joint_3d_gizmo_plugin.cpp
-        joint_3d_gizmo_plugin.h
         label_3d_gizmo_plugin.cpp
         label_3d_gizmo_plugin.h
         light_3d_gizmo_plugin.cpp
@@ -51,24 +45,10 @@ target_sources(editor PRIVATE
         occluder_instance_3d_gizmo_plugin.h
         particles_3d_emission_shape_gizmo_plugin.cpp
         particles_3d_emission_shape_gizmo_plugin.h
-        physics_bone_3d_gizmo_plugin.cpp
-        physics_bone_3d_gizmo_plugin.h
-        ray_cast_3d_gizmo_plugin.cpp
-        ray_cast_3d_gizmo_plugin.h
         reflection_probe_gizmo_plugin.cpp
         reflection_probe_gizmo_plugin.h
-        shape_cast_3d_gizmo_plugin.cpp
-        shape_cast_3d_gizmo_plugin.h
-        soft_body_3d_gizmo_plugin.cpp
-        soft_body_3d_gizmo_plugin.h
-        spring_arm_3d_gizmo_plugin.cpp
-        spring_arm_3d_gizmo_plugin.h
-        spring_bone_3d_gizmo_plugin.cpp
-        spring_bone_3d_gizmo_plugin.h
         sprite_base_3d_gizmo_plugin.cpp
         sprite_base_3d_gizmo_plugin.h
-        vehicle_body_3d_gizmo_plugin.cpp
-        vehicle_body_3d_gizmo_plugin.h
         visible_on_screen_notifier_3d_gizmo_plugin.cpp
         visible_on_screen_notifier_3d_gizmo_plugin.h
         voxel_gi_gizmo_plugin.cpp
