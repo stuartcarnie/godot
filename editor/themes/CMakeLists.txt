@@ -40,7 +40,7 @@ set_abs(GODOT_EDITOR_FONTS_SOURCE ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR}/fonts
 
 set(GODOT_EDITOR_BUILTIN_FONTS_HEADER ${CMAKE_BINARY_INCLUDE_DIR}/editor/themes/builtin_fonts.gen.h)
 generate_editor_themes_fonts("${GODOT_EDITOR_FONTS_SOURCE}" "${GODOT_EDITOR_BUILTIN_FONTS_HEADER}"
-        "${CMAKE_BINARY_DIR}/include/editor/themes/editor_fonts_cmd.txt")
+        "${CMAKE_BINARY_INCLUDE_DIR}/include/editor/themes/editor_fonts_cmd.txt")
 
 add_custom_target(editor-themes-generated
         DEPENDS

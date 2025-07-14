@@ -10,8 +10,12 @@ add_subdirectory(physics)
 #   cog.outl(')')
 # ]]]
 target_sources(editor PRIVATE
+        bone_map_editor_plugin.cpp
+        bone_map_editor_plugin.h
         camera_3d_editor_plugin.cpp
         camera_3d_editor_plugin.h
+        gpu_particles_collision_sdf_editor_plugin.cpp
+        gpu_particles_collision_sdf_editor_plugin.h
         lightmap_gi_editor_plugin.cpp
         lightmap_gi_editor_plugin.h
         mesh_editor_plugin.cpp

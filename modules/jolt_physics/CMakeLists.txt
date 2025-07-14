@@ -78,6 +78,8 @@ target_sources(godot-module-jolt-physics PRIVATE
         shapes/jolt_sphere_shape_3d.h
         shapes/jolt_world_boundary_shape_3d.cpp
         shapes/jolt_world_boundary_shape_3d.h
+        spaces/jolt_body_activation_listener_3d.cpp
+        spaces/jolt_body_activation_listener_3d.h
         spaces/jolt_broad_phase_layer.h
         spaces/jolt_contact_listener_3d.cpp
         spaces/jolt_contact_listener_3d.h

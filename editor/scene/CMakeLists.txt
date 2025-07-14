@@ -12,8 +12,6 @@ add_subdirectory(texture)
 #   cog.outl(')')
 # ]]]
 target_sources(editor PRIVATE
-        bone_map_editor_plugin.cpp
-        bone_map_editor_plugin.h
         canvas_item_editor_plugin.cpp
         canvas_item_editor_plugin.h
         connections_dialog.cpp
@@ -22,8 +20,6 @@ target_sources(editor PRIVATE
         curve_editor_plugin.h
         editor_scene_tabs.cpp
         editor_scene_tabs.h
-        gpu_particles_collision_sdf_editor_plugin.cpp
-        gpu_particles_collision_sdf_editor_plugin.h
         gradient_editor_plugin.cpp
         gradient_editor_plugin.h
         group_settings_editor.cpp
