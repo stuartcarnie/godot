@@ -1,4 +1,4 @@
-godot_add_library(godot-module-freetype FOLDER modules STATIC)
+godot_add_library(godot-module-freetype FOLDER modules NO_INCLUDES INTERFACE)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -8,9 +8,8 @@ godot_add_library(godot-module-freetype FOLDER modules STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-module-freetype PRIVATE
-        register_types.cpp
         register_types.h
 )
 # [[[end]]]
-target_link_libraries(godot-module-freetype PUBLIC core freetype)
+target_link_libraries(godot-module-freetype INTERFACE core freetype)
 group_target_sources(godot-module-freetype)
