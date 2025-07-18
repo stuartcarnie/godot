@@ -21,6 +21,7 @@ target_sources(manifold PRIVATE
         src/constructors.cpp
         src/csg_tree.cpp
         src/csg_tree.h
+        src/disjoint_sets.h
         src/edge_op.cpp
         src/face_op.cpp
         src/hashtable.h
