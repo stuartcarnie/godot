@@ -47,6 +47,8 @@ target_sources(editor PRIVATE
         particles_3d_emission_shape_gizmo_plugin.h
         reflection_probe_gizmo_plugin.cpp
         reflection_probe_gizmo_plugin.h
+        spring_bone_3d_gizmo_plugin.cpp
+        spring_bone_3d_gizmo_plugin.h
         sprite_base_3d_gizmo_plugin.cpp
         sprite_base_3d_gizmo_plugin.h
         visible_on_screen_notifier_3d_gizmo_plugin.cpp

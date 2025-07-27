@@ -30,8 +30,10 @@ set_target_properties(generate_main_app_files PROPERTIES FOLDER "generated")
 #   cog.outl(')')
 # ]]]
 set(MACOS_RESOURCES
+        ../misc/dist/macos_tools.app/Contents/Resources/Assets.car
         ../misc/dist/macos_tools.app/Contents/Resources/GDScript.icns
         ../misc/dist/macos_tools.app/Contents/Resources/Godot.icns
+        ../misc/dist/macos_tools.app/Contents/Resources/GodotLG.icns
         ../misc/dist/macos_tools.app/Contents/Resources/Project.icns
         ../misc/dist/macos_tools.app/Contents/Resources/Resource.icns
         ../misc/dist/macos_tools.app/Contents/Resources/Scene.icns

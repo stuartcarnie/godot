@@ -25,8 +25,6 @@ target_sources(editor PRIVATE
         soft_body_3d_gizmo_plugin.h
         spring_arm_3d_gizmo_plugin.cpp
         spring_arm_3d_gizmo_plugin.h
-        spring_bone_3d_gizmo_plugin.cpp
-        spring_bone_3d_gizmo_plugin.h
         vehicle_body_3d_gizmo_plugin.cpp
         vehicle_body_3d_gizmo_plugin.h
 )
