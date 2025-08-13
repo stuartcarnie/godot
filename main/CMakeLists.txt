@@ -1,8 +1,5 @@
 set(GODOT_PLATFORM_GENERATED_REGISTERED_APIS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/platform/register_platform_apis.gen.cpp)
-set(GODOT_PLATFORMS ios visionos)
-if (WANT_TESTS)
-    list(APPEND GODOT_PLATFORMS "android")
-endif ()
+set(GODOT_PLATFORMS ios visionos android web)
 generate_godot_register_platform_apis("${GODOT_PLATFORMS}" "${GODOT_PLATFORM_GENERATED_REGISTERED_APIS_OUTPUT}")
 
 set(GODOT_MAIN_EXECUTABLE_APP_ICON_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/app_icon.png)
@@ -32,7 +29,6 @@ set_target_properties(generate_main_app_files PROPERTIES FOLDER "generated")
 set(MACOS_RESOURCES
         ../misc/dist/macos_tools.app/Contents/Resources/Assets.car
         ../misc/dist/macos_tools.app/Contents/Resources/GDScript.icns
-        ../misc/dist/macos_tools.app/Contents/Resources/Godot.icns
         ../misc/dist/macos_tools.app/Contents/Resources/GodotLG.icns
         ../misc/dist/macos_tools.app/Contents/Resources/Project.icns
         ../misc/dist/macos_tools.app/Contents/Resources/Resource.icns
