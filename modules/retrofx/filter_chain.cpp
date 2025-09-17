@@ -289,6 +289,8 @@ void FilterChain::blit_texture(RenderingDevice::DrawListID p_draw_list, RID p_sr
 void FilterChain::render_final_pass(const RID p_target, const Size2 p_target_size) {
 	RD *rd = RD::get_singleton();
 
+	rd->draw_command_begin_label("RFX Final Pass");
+
 	RD::DrawListID dl = rd->draw_list_begin(p_target);
 	ERR_FAIL_COND_MSG(dl == RD::INVALID_ID, "Failed to create draw list for final pass.");
 
@@ -306,6 +308,8 @@ void FilterChain::render_final_pass(const RID p_target, const Size2 p_target_siz
 	}
 
 	rd->draw_list_end();
+
+	rd->draw_command_end_label();
 }
 
 void FilterChain::render(
@@ -340,6 +344,12 @@ void FilterChain::render_offscreen_passes() {
 	uint32_t count = last_pass_is_direct ? passes_count - 1 : passes_count;
 	for (uint32_t i = 0; i < count; i++) {
 		Pass &pass = passes[i];
+		{
+			char label[16];
+			int len = snprintf(label, sizeof(label), "RFX Pass %02d", i);
+			RD::get_singleton()->draw_command_begin_label(Span<char>(label, len));
+		}
+
 		RD::DrawListID dl = rd->draw_list_begin(pass.render_target.frame_buffer);
 		ERR_FAIL_COND_MSG(dl == RD::INVALID_ID, "Failed to create draw list for pass.");
 
@@ -347,6 +357,8 @@ void FilterChain::render_offscreen_passes() {
 		rd->draw_list_bind_vertex_array(dl, pipeline_state.vertex_array);
 		render_pass(pass, rd, dl);
 		rd->draw_list_end();
+
+		rd->draw_command_end_label();
 	}
 }
 

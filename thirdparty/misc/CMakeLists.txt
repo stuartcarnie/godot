@@ -24,6 +24,6 @@ target_sources(godot-thirdparty-misc PRIVATE
         stb_rect_pack.h
         yuv2rgb.h
 )
-target_compile_options(godot-thirdparty-misc PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(godot-thirdparty-misc PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)
 # HACK Only for linux
 target_include_directories(godot-thirdparty-misc PRIVATE ${GODOT_ENGINE_ROOT_DIRECTORY} ${GODOT_ENGINE_ROOT_DIRECTORY}/platform/linuxbsd)

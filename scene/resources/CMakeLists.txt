@@ -42,6 +42,8 @@ target_sources(scene PRIVATE
         curve.h
         curve_texture.cpp
         curve_texture.h
+        dpi_texture.cpp
+        dpi_texture.h
         environment.cpp
         environment.h
         external_texture.cpp
@@ -102,8 +104,6 @@ target_sources(scene PRIVATE
         style_box_texture.h
         surface_tool.cpp
         surface_tool.h
-        svg_texture.cpp
-        svg_texture.h
         syntax_highlighter.cpp
         syntax_highlighter.h
         text_file.cpp

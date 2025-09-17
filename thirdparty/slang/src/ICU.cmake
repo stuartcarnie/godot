@@ -451,4 +451,4 @@ target_compile_definitions(icu4c PUBLIC
         -DU_LIB_SUFFIX_C_NAME=_godot
 )
 
-target_compile_options(icu4c PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(icu4c PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)

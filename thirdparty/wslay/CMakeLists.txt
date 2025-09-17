@@ -24,4 +24,4 @@ target_sources(wslay PRIVATE
 # [[[end]]]
 target_include_directories(wslay PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(wslay PRIVATE -DHAVE_CONFIG_H=1)
-target_compile_options(wslay PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(wslay PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)

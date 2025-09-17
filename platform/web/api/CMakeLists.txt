@@ -11,6 +11,7 @@ godot_add_library(platform-web-api FOLDER web)
 target_sources(platform-web-api PRIVATE
         api.cpp
         api.h
+        javascript_bridge_singleton.h
 )
 # [[[end]]]
 target_link_libraries(platform-web-api PRIVATE core)

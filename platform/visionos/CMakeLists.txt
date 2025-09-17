@@ -34,7 +34,13 @@ target_compile_definitions(visionos
         $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
         $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
 )
-target_compile_options(visionos PRIVATE -fmodules)
+target_compile_options(visionos
+        PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-fmodules -fcxx-modules>
+        $<$<COMPILE_LANGUAGE:Swift>:-import-objc-header ${CMAKE_CURRENT_SOURCE_DIR}/bridging_header_visionos.h>
+        $<$<COMPILE_LANGUAGE:Swift>:-cxx-interoperability-mode=default>
+)
+
 
 #add_custom_target(libgodot
 #        COMMAND libtool -static -o libgodot.a $<TARGET_FILE:visionos>

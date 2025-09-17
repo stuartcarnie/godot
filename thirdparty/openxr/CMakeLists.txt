@@ -92,7 +92,7 @@ endif ()
 if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     target_link_libraries(openxr PUBLIC vulkan)
 endif ()
-target_compile_options(openxr PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(openxr PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>>)
 target_compile_definitions(openxr PUBLIC
         DISABLE_STD_FILESYSTEM
         "$<$<BOOL:${DISABLE_EXCEPTIONS}>:XRLOADER_DISABLE_EXCEPTION_HANDLING;JSON_USE_EXCEPTION=0>"

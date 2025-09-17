@@ -15,13 +15,13 @@ set(JPEG_SOURCES_BIT
 
 add_library(jpeg12 OBJECT ${JPEG_SOURCES_BIT})
 target_compile_definitions(jpeg12 PRIVATE BITS_IN_JSAMPLE=12)
-target_compile_options(jpeg12 PUBLIC $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(jpeg12 PUBLIC $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)
 
 add_library(jpeg8 OBJECT ${JPEG_SOURCES_BIT})
 target_compile_definitions(jpeg8 PRIVATE BITS_IN_JSAMPLE=8)
-target_compile_options(jpeg8 PUBLIC $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(jpeg8 PUBLIC $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)
 
 target_sources(jpeg-turbo PUBLIC ${JPEG_SOURCES_COMMON})
 target_link_libraries(jpeg-turbo PUBLIC jpeg12 jpeg8)
-target_compile_options(jpeg-turbo PUBLIC $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(jpeg-turbo PUBLIC $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)
 target_include_directories(jpeg-turbo PUBLIC src)

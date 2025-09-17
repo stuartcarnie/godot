@@ -87,7 +87,7 @@ target_sources(basis_universal PRIVATE
 # [[[end]]]
 target_link_libraries(basis_universal PRIVATE zstd jpeg-turbo ktx tinyexr)
 target_include_directories(basis_universal PUBLIC .)
-target_compile_options(basis_universal PUBLIC $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(basis_universal PUBLIC $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)
 target_compile_definitions(basis_universal
         PRIVATE
         # Storage formats.

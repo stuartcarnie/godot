@@ -90,5 +90,5 @@ target_compile_definitions(harfbuzz PRIVATE
         # TODO: if graphite is enabled
         HAVE_GRAPHITE2
         HAVE_ICU)
-target_compile_options(harfbuzz PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(harfbuzz PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)
 target_link_libraries(harfbuzz PUBLIC freetype graphite icu4c)

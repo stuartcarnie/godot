@@ -25,4 +25,4 @@ target_sources(etcpak PRIVATE
 )
 # [[[end]]]
 target_include_directories(etcpak PUBLIC .)
-target_compile_options(etcpak PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(etcpak PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)

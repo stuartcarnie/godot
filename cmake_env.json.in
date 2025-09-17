@@ -10,6 +10,7 @@
     "disable_navigation_3d": @DISABLE_NAVIGATION_3D_B@,
     "disable_xr": @DISABLE_XR_B@,
     "vulkan" : @WANT_VULKAN_B@,
+    "d3d12" : false,
     "metal" : @WANT_METAL_B@,
     "openxr" : @WANT_OPENXR_B@,
     "module_retrofx_enabled": @WANT_RETROFX_B@,

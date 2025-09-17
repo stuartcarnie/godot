@@ -12,4 +12,4 @@ target_sources(zlib PRIVATE
         zutil.c
 )
 target_include_directories(zlib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_options(zlib PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(zlib PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)

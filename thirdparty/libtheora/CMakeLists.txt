@@ -33,4 +33,4 @@ target_include_directories(theora PUBLIC .)
 target_link_libraries(theora PUBLIC ogg)
 set_property(TARGET theora PROPERTY C_STANDARD 17)
 set_property(TARGET theora PROPERTY LANGUAGE CXX)
-target_compile_options(theora PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>) # disable all warnings
+target_compile_options(theora PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>) # disable all warnings

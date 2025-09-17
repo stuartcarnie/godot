@@ -349,4 +349,4 @@ target_compile_definitions(embree PRIVATE
                                   __SSE2__
                                   __SSE__)
 target_include_directories(embree PUBLIC include)
-target_compile_options(embree PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(embree PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30 FATAL_ERROR)
+cmake_minimum_required(VERSION 4.0 FATAL_ERROR)
 
 list(APPEND CMAKE_MODULE_PATH
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils"
@@ -12,15 +12,18 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release)
 
 project(godot
         HOMEPAGE_URL https://godotengine.org
-        LANGUAGES C CXX OBJC OBJCXX
+        LANGUAGES C CXX OBJC OBJCXX Swift
 )
+
+set(CMAKE_Swift_LANGUAGE_VERSION 6)
 
 ###
 # Apple Specific
 ###
-
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0")
+set(CMAKE_XCODE_ATTRIBUTE_OSX_DEPLOYMENT_TARGET 11.0)
 set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET 14.0)
+set(CMAKE_XCODE_ATTRIBUTE_VISIONOS_DEPLOYMENT_TARGET 26.0)
 set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development")
 set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "6N425KH923")
 set(CMAKE_XCODE_ATTRIBUTE_GCC_WARN_64_TO_32_BIT_CONVERSION[arch=*64] "NO")
@@ -136,7 +139,7 @@ else ()
     message(FATAL_ERROR "Invalid DEV_BUILD_LEVEL: ${DEV_BUILD_LEVEL}. Expected ${DEV_BUILD_LIST}")
 endif ()
 
-if (WANT_DEV_BUILD)
+if (WANT_DEV_BUILD AND NOT ${WARNINGS} STREQUAL "no")
     set(WARNINGS "extra")
     set(ENABLE_WERROR ON)
 endif ()
@@ -219,7 +222,7 @@ else ()
     elseif (WARNINGS STREQUAL "moderate")
         add_compile_options(-Wall -Wno-unused ${COMMON_WARNINGS})
     else () # no
-        add_compile_options(-w)
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-w>)
     endif ()
 
     if (ENABLE_WERROR)
@@ -297,7 +300,7 @@ add_compile_definitions(
         $<${WANT_DEBUG_FEATURES}:DEBUG_ENABLED>
 )
 
-add_compile_options(-fobjc-arc)
+add_compile_options($<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:-fobjc-arc>)
 
 message(STATUS "Build architecture: ${OS_ARCH}")
 
@@ -327,6 +330,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     include(MacosPlatform.cmake)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
     include(IosPlatform.cmake)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    include(VisionosPlatform.cmake)
 else ()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif ()
@@ -357,6 +362,8 @@ if (${WANT_VULKAN})
         # Windows relies on Volk alone.
         set(VULKAN_FOUND 1)
     endif ()
+else ()
+    set(VULKAN_FOUND 0)
 endif ()
 
 if (${WANT_OPENGL})
@@ -366,6 +373,8 @@ if (${WANT_OPENGL})
         find_package(OpenGLES3)
         set(OPENGL_FOUND 1)
     endif ()
+else ()
+    set(OPENGL_FOUND 0)
 endif ()
 
 if (${WANT_DBUS})
@@ -396,6 +405,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_subdirectory(platform/macos)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
     add_subdirectory(platform/ios)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    add_subdirectory(platform/visionos)
 endif ()
 
 if (WANT_EDITOR)

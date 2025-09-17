@@ -59,4 +59,4 @@ else ()
 endif ()
 
 target_link_libraries(ktx PRIVATE basis_universal zstd)
-target_compile_options(ktx PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>) # disable all warnings
+target_compile_options(ktx PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>) # disable all warnings

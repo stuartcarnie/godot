@@ -210,7 +210,7 @@ def detect_modules_within_searchpath(path: str, env: Environment, selected_platf
 
 def check_output(func):
     def wrapper(args: argparse.Namespace):
-        output_path = args.output
+        output_path = args.output[0] if isinstance(args.output, list) else args.output
         output_dir = pathlib.Path(output_path).parent
 
         if not output_dir.exists():
@@ -438,30 +438,10 @@ def cmd_make_editor_icons_action(source: str, target: str) -> int:
 
 @check_output
 @source_target
-def cmd_make_editor_translations(source: [str], target: str) -> int:
-    make_translations_header(target=[target], source=[Target(p) for p in source], env=env)
+def cmd_make_editor_translations(source: [str], target: [str]) -> int:
+    make_translations(target=target, source=[Target(p) for p in source], env=env)
     return 0
 
-
-@check_output
-@source_target
-def cmd_make_editor_properties_translations(source: [str], target: str) -> int:
-    make_translations_header(target=[target], source=[Target(p) for p in source], env=env)
-    return 0
-
-
-@check_output
-@source_target
-def cmd_make_editor_documentation_translations(source: [str], target: str) -> int:
-    make_translations_header(target=[target], source=[Target(p) for p in source], env=env)
-    return 0
-
-
-@check_output
-@source_target
-def cmd_make_extractable_translations_header(source: [str], target: str) -> int:
-    make_translations_header(target=[target], source=[Target(p) for p in source], env=env)
-    return 0
 
 
 @check_output
@@ -765,6 +745,12 @@ def _main() -> int:
     args_inl_out.add_argument('--input', nargs='*', dest='input', required=True)
     args_inl_out.add_argument('--output', dest='output', required=True)
 
+    # --input is type: [str]
+    # --output is type: [str]
+    args_inl_outl = argparse.ArgumentParser(add_help=False)
+    args_inl_outl.add_argument('--input', nargs='*', dest='input', required=True)
+    args_inl_outl.add_argument('--output', nargs=2, dest='output', required=True)
+
     # Command requires two input and one output
     args_in2_out = argparse.ArgumentParser(add_help=False)
     args_in2_out.add_argument('--input', dest='input', required=True)
@@ -813,13 +799,7 @@ def _main() -> int:
     sp.add_parser('make_documentation_header_compressed', parents=[args_in_out]).set_defaults(
         func=cmd_make_documentation_header_compressed)
     sp.add_parser('make_editor_icons_action', parents=[args_in_out]).set_defaults(func=cmd_make_editor_icons_action)
-    sp.add_parser('make_editor_translations', parents=[args_inl_out]).set_defaults(func=cmd_make_editor_translations)
-    sp.add_parser('make_editor_properties_translations', parents=[args_inl_out]).set_defaults(
-        func=cmd_make_editor_properties_translations)
-    sp.add_parser('make_editor_documentation_translations', parents=[args_inl_out]).set_defaults(
-        func=cmd_make_editor_documentation_translations)
-    sp.add_parser('make_extractable_translations_header', parents=[args_inl_out]).set_defaults(
-        func=cmd_make_extractable_translations_header)
+    sp.add_parser('make_editor_translations', parents=[args_inl_outl]).set_defaults(func=cmd_make_editor_translations)
     sp.add_parser('make_editor_themes_fonts', parents=[args_in_out]).set_defaults(
         func=cmd_make_editor_themes_fonts)
     sp.add_parser('make_version_data_headers', parents=[args_out2]).set_defaults(func=cmd_make_version_data_headers)

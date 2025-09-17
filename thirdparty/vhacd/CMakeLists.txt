@@ -40,4 +40,4 @@ target_sources(vhacd PRIVATE
 )
 # [[[end]]]
 target_include_directories(vhacd PUBLIC inc)
-target_compile_options(vhacd PUBLIC $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>)
+target_compile_options(vhacd PUBLIC $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)

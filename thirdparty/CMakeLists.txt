@@ -1,6 +1,6 @@
 # disable warnings for third-party code
 add_compile_options(
-        $<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>
+        $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>
 
 )
 

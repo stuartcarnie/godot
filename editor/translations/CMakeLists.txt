@@ -52,7 +52,7 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 # [[[end]]]
 
-set(GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/editor_translations.gen.h)
+set(GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/editor_translations.gen.h ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/editor_translations.gen.cpp)
 generate_file(make_editor_translations "${GODOT_EDITOR_TRANSLATIONS_SOURCE}" "${GODOT_EDITOR_TRANSLATIONS_DOCUMENTATION_OUTPUT}")
 
 # [[[cog
@@ -91,8 +91,8 @@ set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 # [[[end]]]
 
-set(GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/property_translations.gen.h)
-generate_file(make_editor_properties_translations "${GODOT_PROPERTIES_TRANSLATIONS_SOURCE}" "${GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT}")
+set(GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/property_translations.gen.h ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/property_translations.gen.cpp)
+generate_file(make_editor_translations "${GODOT_PROPERTIES_TRANSLATIONS_SOURCE}" "${GODOT_EDITOR_PROPERTIES_TRANSLATIONS_OUTPUT}")
 
 add_custom_target(editor-translations-generated
         DEPENDS
