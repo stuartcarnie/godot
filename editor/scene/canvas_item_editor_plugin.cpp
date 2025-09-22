@@ -2796,7 +2796,7 @@ void CanvasItemEditor::_gui_input_viewport(const Ref<InputEvent> &p_event) {
 
 	// Grab focus
 	if (!viewport->has_focus() && (!get_viewport()->gui_get_focus_owner() || !get_viewport()->gui_get_focus_owner()->is_text_field())) {
-		callable_mp((Control *)viewport, &Control::grab_focus).call_deferred();
+		callable_mp((Control *)viewport, &Control::grab_focus).call_deferred(false);
 	}
 }
 
@@ -4166,7 +4166,6 @@ void CanvasItemEditor::_notification(int p_what) {
 		case NOTIFICATION_READY: {
 			_update_lock_and_group_button();
 
-			SceneTreeDock::get_singleton()->get_tree_editor()->connect("node_changed", callable_mp(this, &CanvasItemEditor::_update_lock_and_group_button));
 			ProjectSettings::get_singleton()->connect("settings_changed", callable_mp(this, &CanvasItemEditor::_project_settings_changed));
 		} break;
 
