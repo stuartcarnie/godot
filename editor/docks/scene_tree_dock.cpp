@@ -4125,7 +4125,7 @@ void SceneTreeDock::_focus_node() {
 	Node *node = scene_tree->get_selected();
 	ERR_FAIL_NULL(node);
 
-	if (node->is_class("CanvasItem")) {
+	if (node->derives_from<CanvasItem>()) {
 		CanvasItemEditorPlugin *editor = Object::cast_to<CanvasItemEditorPlugin>(editor_data->get_editor_by_name("2D"));
 		editor->get_canvas_item_editor()->focus_selection();
 	} else {
@@ -4207,7 +4207,7 @@ void SceneTreeDock::attach_shader_to_selected(int p_preferred_mode) {
 	}
 
 	String path = selected_shader_material->get_path();
-	if (path.is_empty()) {
+	if (path.get_base_dir().is_empty()) {
 		String root_path;
 		if (editor_data->get_edited_scene_root()) {
 			root_path = editor_data->get_edited_scene_root()->get_scene_file_path();
@@ -4217,6 +4217,9 @@ void SceneTreeDock::attach_shader_to_selected(int p_preferred_mode) {
 			shader_name = root_path.get_file();
 		} else {
 			shader_name = selected_shader_material->get_name();
+		}
+		if (shader_name.is_empty()) {
+			shader_name = "new_shader";
 		}
 		if (root_path.is_empty()) {
 			path = String("res://").path_join(shader_name);

@@ -1665,7 +1665,7 @@ void EditorNode::save_resource_as(const Ref<Resource> &p_resource, const String 
 
 	List<String> preferred;
 	for (const String &E : extensions) {
-		if (p_resource->is_class("Script") && (E == "tres" || E == "res")) {
+		if (p_resource->derives_from<Script>() && (E == "tres" || E == "res")) {
 			// This serves no purpose and confused people.
 			continue;
 		}
@@ -1690,7 +1690,7 @@ void EditorNode::save_resource_as(const Ref<Resource> &p_resource, const String 
 				file->set_current_file(String());
 			}
 		}
-	} else if (!p_resource->get_path().is_empty()) {
+	} else if (!p_resource->get_path().get_base_dir().is_empty()) {
 		file->set_current_path(p_resource->get_path());
 		if (!extensions.is_empty()) {
 			const String ext = p_resource->get_path().get_extension().to_lower();
@@ -1902,13 +1902,13 @@ void EditorNode::_save_edited_subresources(Node *scene, HashMap<Ref<Resource>, b
 }
 
 void EditorNode::_find_node_types(Node *p_node, int &count_2d, int &count_3d) {
-	if (p_node->is_class("Viewport") || (p_node != editor_data.get_edited_scene_root() && p_node->get_owner() != editor_data.get_edited_scene_root())) {
+	if (p_node->derives_from<Viewport>() || (p_node != editor_data.get_edited_scene_root() && p_node->get_owner() != editor_data.get_edited_scene_root())) {
 		return;
 	}
 
-	if (p_node->is_class("CanvasItem")) {
+	if (p_node->derives_from<CanvasItem>()) {
 		count_2d++;
-	} else if (p_node->is_class("Node3D")) {
+	} else if (p_node->derives_from<Node3D>()) {
 		count_3d++;
 	}
 
@@ -2781,13 +2781,13 @@ void EditorNode::_edit_current(bool p_skip_foreign, bool p_skip_inspector_update
 	}
 
 	// Update the use folding setting and state.
-	bool disable_folding = bool(EDITOR_GET("interface/inspector/disable_folding")) || current_obj->is_class("EditorDebuggerRemoteObjects");
+	bool disable_folding = bool(EDITOR_GET("interface/inspector/disable_folding")) || current_obj->derives_from<EditorDebuggerRemoteObjects>();
 	if (InspectorDock::get_inspector_singleton()->is_using_folding() == disable_folding) {
 		InspectorDock::get_inspector_singleton()->set_use_folding(!disable_folding, false);
 	}
 
-	bool is_resource = current_obj->is_class("Resource");
-	bool is_node = current_obj->is_class("Node");
+	bool is_resource = current_obj->derives_from<Resource>();
+	bool is_node = current_obj->derives_from<Node>();
 	bool stay_in_script_editor_on_node_selected = bool(EDITOR_GET("text_editor/behavior/navigation/stay_in_script_editor_on_node_selected"));
 	bool skip_main_plugin = false;
 
@@ -2866,7 +2866,7 @@ void EditorNode::_edit_current(bool p_skip_foreign, bool p_skip_inspector_update
 		Node *selected_node = nullptr;
 
 		Vector<Node *> multi_nodes;
-		if (current_obj->is_class("MultiNodeEdit")) {
+		if (current_obj->derives_from<MultiNodeEdit>()) {
 			Node *scene = get_edited_scene();
 			if (scene) {
 				MultiNodeEdit *multi_node_edit = Object::cast_to<MultiNodeEdit>(current_obj);
@@ -2892,7 +2892,7 @@ void EditorNode::_edit_current(bool p_skip_foreign, bool p_skip_inspector_update
 			}
 		}
 
-		if (!current_obj->is_class("EditorDebuggerRemoteObjects")) {
+		if (!current_obj->derives_from<EditorDebuggerRemoteObjects>()) {
 			EditorDebuggerNode::get_singleton()->clear_remote_tree_selection();
 		}
 
@@ -2908,8 +2908,8 @@ void EditorNode::_edit_current(bool p_skip_foreign, bool p_skip_inspector_update
 			editable_info,
 			info_is_warning);
 
-	Object *editor_owner = (is_node || current_obj->is_class("MultiNodeEdit")) ? (Object *)SceneTreeDock::get_singleton() : is_resource ? (Object *)InspectorDock::get_inspector_singleton()
-																																		: (Object *)this;
+	Object *editor_owner = (is_node || current_obj->derives_from<MultiNodeEdit>()) ? (Object *)SceneTreeDock::get_singleton() : is_resource ? (Object *)InspectorDock::get_inspector_singleton()
+																																			: (Object *)this;
 
 	// Take care of the main editor plugin.
 
@@ -5309,7 +5309,7 @@ Ref<Texture2D> EditorNode::get_object_icon(const Object *p_object, const String 
 		return get_class_icon(class_name, p_fallback);
 	}
 
-	if (scr.is_null() && p_object->is_class("Script")) {
+	if (scr.is_null() && p_object->derives_from<Script>()) {
 		scr = p_object;
 	}
 
@@ -6301,6 +6301,10 @@ void EditorNode::set_distraction_free_mode(bool p_enter) {
 
 bool EditorNode::is_distraction_free_mode_enabled() const {
 	return distraction_free->is_pressed();
+}
+
+void EditorNode::set_center_split_offset(int p_offset) {
+	center_split->set_split_offset(p_offset);
 }
 
 Dictionary EditorNode::drag_resource(const Ref<Resource> &p_res, Control *p_from) {
