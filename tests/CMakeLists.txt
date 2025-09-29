@@ -157,6 +157,7 @@ target_sources(tests PRIVATE
         servers/test_navigation_server_2d.h
         servers/test_navigation_server_3d.h
         servers/test_text_server.h
+        servers/test_triangle2.h
         test_macros.cpp
         test_macros.h
         test_main.cpp

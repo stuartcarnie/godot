@@ -19,6 +19,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ../../modules/gdscript/icons/GDScript.svg
         ../../modules/gdscript/icons/GDScriptInternal.svg
         ../../modules/gridmap/icons/GridMap.svg
+        ../../modules/noise/icons/FastNoiseLite.svg
+        ../../modules/noise/icons/Noise.svg
         ../../modules/noise/icons/NoiseTexture2D.svg
         ../../modules/noise/icons/NoiseTexture3D.svg
         ../../modules/regex/icons/RegEx.svg
@@ -246,12 +248,14 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         EditPivot.svg
         Editor3DHandle.svg
         EditorBoneHandle.svg
+        EditorCommandPalette.svg
         EditorControlAnchor.svg
         EditorCurveHandle.svg
         EditorFileDialog.svg
         EditorHandle.svg
         EditorHandleAdd.svg
         EditorHandleDisabled.svg
+        EditorInspector.svg
         EditorPathNullHandle.svg
         EditorPathSharpHandle.svg
         EditorPathSmoothHandle.svg
@@ -260,6 +264,10 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         EditorPosition.svg
         EditorPositionPrevious.svg
         EditorPositionUnselected.svg
+        EditorProperty.svg
+        EditorResourcePicker.svg
+        EditorScriptPicker.svg
+        EditorSpinSlider.svg
         Enum.svg
         Environment.svg
         Eraser.svg
@@ -452,6 +460,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         InputEventScreenTouch.svg
         InputEventShortcut.svg
         InsertAfter.svg
+        InsertAtCurrentTime.svg
         InsertBefore.svg
         Instance.svg
         InstanceOptions.svg
@@ -822,6 +831,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         StyleBoxTexture.svg
         SubViewport.svg
         SubViewportContainer.svg
+        Suspend.svg
         SyntaxHighlighter.svg
         SystemFont.svg
         TabBar.svg

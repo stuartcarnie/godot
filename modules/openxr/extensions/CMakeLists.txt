@@ -1,3 +1,5 @@
+add_subdirectory(spatial_entities)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
