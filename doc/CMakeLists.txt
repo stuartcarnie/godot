@@ -736,6 +736,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Sky.xml
         classes/Slider.xml
         classes/SliderJoint3D.xml
+        classes/SocketServer.xml
         classes/SoftBody3D.xml
         classes/SphereMesh.xml
         classes/SphereOccluder3D.xml
@@ -761,6 +762,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/StreamPeerBuffer.xml
         classes/StreamPeerExtension.xml
         classes/StreamPeerGZIP.xml
+        classes/StreamPeerSocket.xml
         classes/StreamPeerTCP.xml
         classes/StreamPeerTLS.xml
         classes/StreamPeerUDS.xml

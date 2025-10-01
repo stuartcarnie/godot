@@ -442,11 +442,11 @@ void FilterChain::Pass::free_resources(RD *p_rd) {
 	render_target.free(p_rd);
 	feedback_target.free(p_rd);
 	if (pipeline.is_valid()) {
-		p_rd->free(pipeline);
+		p_rd->free_rid(pipeline);
 		pipeline = RID();
 	}
 	if (shader.is_valid()) {
-		p_rd->free(shader);
+		p_rd->free_rid(shader);
 		shader = RID();
 	}
 	bindings.free(p_rd);
@@ -952,19 +952,19 @@ FilterChain::~FilterChain() {
 	for (compiled::Filter i = compiled::Filter::LINEAR; i < compiled::Filter::MAX; ++i) {
 		for (compiled::Wrap j = compiled::Wrap::BORDER; j < compiled::Wrap::MAX; ++j) {
 			if (samplers[i][j].is_valid()) {
-				rd->free(samplers[i][j]);
+				rd->free_rid(samplers[i][j]);
 			}
 		}
 	}
 
 	if (pipeline_state.uniform_set.is_valid()) {
-		rd->free(pipeline_state.uniform_set);
+		rd->free_rid(pipeline_state.uniform_set);
 	}
-	rd->free(pipeline_state.vertex_array);
-	rd->free(pipeline_state.vertex_buffer);
-	rd->free(pipeline_state.pipeline);
+	rd->free_rid(pipeline_state.vertex_array);
+	rd->free_rid(pipeline_state.vertex_buffer);
+	rd->free_rid(pipeline_state.pipeline);
 	final_blit_shader.version_free(shader_version);
 	if (checker_texture.is_valid()) {
-		rd->free(checker_texture);
+		rd->free_rid(checker_texture);
 	}
 }

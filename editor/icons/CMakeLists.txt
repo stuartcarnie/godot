@@ -224,6 +224,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         CurveXYZTexture.svg
         CylinderMesh.svg
         CylinderShape3D.svg
+        DPITexture.svg
         DampedSpringJoint2D.svg
         Debug.svg
         DebugContinue.svg
@@ -755,7 +756,6 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         RotateLeft.svg
         RotateRight.svg
         Ruler.svg
-        SVGTexture.svg
         SampleLibrary.svg
         Save.svg
         SceneUniqueName.svg

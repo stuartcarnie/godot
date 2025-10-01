@@ -75,20 +75,28 @@ target_sources(core PRIVATE
         resource_saver.h
         resource_uid.cpp
         resource_uid.h
+        socket_server.cpp
+        socket_server.h
         stream_peer.cpp
         stream_peer.h
         stream_peer_gzip.cpp
         stream_peer_gzip.h
+        stream_peer_socket.cpp
+        stream_peer_socket.h
         stream_peer_tcp.cpp
         stream_peer_tcp.h
         stream_peer_tls.cpp
         stream_peer_tls.h
+        stream_peer_uds.cpp
+        stream_peer_uds.h
         tcp_server.cpp
         tcp_server.h
         translation_loader_po.cpp
         translation_loader_po.h
         udp_server.cpp
         udp_server.h
+        uds_server.cpp
+        uds_server.h
         xml_parser.cpp
         xml_parser.h
         zip_io.cpp

@@ -52,7 +52,7 @@ class FilterChain {
 
 		_FORCE_INLINE_ void init(RD *p_rd, const RD::TextureFormat &p_format, const bool p_clear = true) {
 			if (rid.is_valid()) {
-				p_rd->free(rid);
+				p_rd->free_rid(rid);
 			}
 			rid = p_rd->texture_create(p_format, RD::TextureView());
 			size = TextureSize(p_format.width, p_format.height);
@@ -61,7 +61,7 @@ class FilterChain {
 
 		_FORCE_INLINE_ void free(RD *p_rd) {
 			if (rid.is_valid()) {
-				p_rd->free(rid);
+				p_rd->free_rid(rid);
 				rid = RID();
 			}
 		}
@@ -85,7 +85,7 @@ class FilterChain {
 
 		_FORCE_INLINE_ void free(RD *p_rd) {
 			if (frame_buffer.is_valid()) {
-				p_rd->free(frame_buffer);
+				p_rd->free_rid(frame_buffer);
 				frame_buffer = RID();
 			}
 			texture.free(p_rd);

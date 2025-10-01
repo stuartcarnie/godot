@@ -37,7 +37,7 @@ void UBOBufferBinding::free(RD *p_rd) {
 	binding.free(p_rd);
 
 	if (ubo_buffer.is_valid()) {
-		p_rd->free(ubo_buffer);
+		p_rd->free_rid(ubo_buffer);
 		ubo_buffer = RID();
 	}
 }

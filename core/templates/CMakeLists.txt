@@ -20,6 +20,7 @@ target_sources(core PRIVATE
         hashfuncs.h
         interpolated_property.cpp
         interpolated_property.h
+        iterable.h
         list.h
         local_vector.h
         lru.h

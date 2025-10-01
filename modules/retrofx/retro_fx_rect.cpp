@@ -176,12 +176,12 @@ void RetroFXRect::_update_shader_chain() {
 	shader_chain->set_drawable_size(size);
 
 	if (output_fb.is_valid()) {
-		rd->free(output_fb);
+		rd->free_rid(output_fb);
 	}
 
 	if (rd->texture_is_valid(output_texture_rid)) {
 		output_texture->set_texture_rd_rid(RID());
-		rd->free(output_texture_rid);
+		rd->free_rid(output_texture_rid);
 		output_texture_rid = RID();
 	}
 
@@ -469,10 +469,10 @@ RetroFXRect::~RetroFXRect() {
 	RD *rd = RD::get_singleton();
 
 	if (output_texture_rid.is_valid()) {
-		rd->free(output_texture_rid);
+		rd->free_rid(output_texture_rid);
 	}
 
 	if (output_fb.is_valid()) {
-		rd->free(output_fb);
+		rd->free_rid(output_fb);
 	}
 }
