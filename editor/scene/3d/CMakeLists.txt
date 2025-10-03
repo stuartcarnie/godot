@@ -18,6 +18,8 @@ target_sources(editor PRIVATE
         gpu_particles_collision_sdf_editor_plugin.h
         lightmap_gi_editor_plugin.cpp
         lightmap_gi_editor_plugin.h
+        material_3d_conversion_plugins.cpp
+        material_3d_conversion_plugins.h
         mesh_editor_plugin.cpp
         mesh_editor_plugin.h
         mesh_instance_3d_editor_plugin.cpp

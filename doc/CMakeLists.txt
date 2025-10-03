@@ -305,6 +305,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/EditorContextMenuPlugin.xml
         classes/EditorDebuggerPlugin.xml
         classes/EditorDebuggerSession.xml
+        classes/EditorDock.xml
         classes/EditorExportPlatform.xml
         classes/EditorExportPlatformAppleEmbedded.xml
         classes/EditorExportPlatformExtension.xml

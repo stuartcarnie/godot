@@ -7,6 +7,8 @@
 #   cog.outl(')')
 # ]]]
 target_sources(editor PRIVATE
+        editor_dock.cpp
+        editor_dock.h
         editor_dock_manager.cpp
         editor_dock_manager.h
         filesystem_dock.cpp
