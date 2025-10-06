@@ -9,5 +9,7 @@
 target_sources(servers PRIVATE
         camera_feed.cpp
         camera_feed.h
+        camera_server.cpp
+        camera_server.h
 )
 # [[[end]]]

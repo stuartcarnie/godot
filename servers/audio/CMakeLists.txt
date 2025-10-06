@@ -17,6 +17,8 @@ target_sources(servers PRIVATE
         audio_filter_sw.h
         audio_rb_resampler.cpp
         audio_rb_resampler.h
+        audio_server.cpp
+        audio_server.h
         audio_stream.cpp
         audio_stream.h
 )

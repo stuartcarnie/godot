@@ -4,9 +4,11 @@ add_subdirectory(audio)
 add_subdirectory(camera)
 add_subdirectory(debugger)
 add_subdirectory(display)
-add_subdirectory(extensions)
 add_subdirectory(movie_writer)
-add_subdirectory(navigation)
+add_subdirectory(navigation_2d)
+add_subdirectory(navigation_3d)
+add_subdirectory(physics_2d)
+add_subdirectory(physics_3d)
 add_subdirectory(rendering)
 add_subdirectory(text)
 add_subdirectory(xr)
@@ -20,38 +22,10 @@ add_subdirectory(xr)
 #   cog.outl(')')
 # ]]]
 target_sources(servers PRIVATE
-        audio_server.cpp
-        audio_server.h
-        camera_server.cpp
-        camera_server.h
-        display_server.cpp
-        display_server.h
-        display_server_headless.h
-        navigation_server_2d.cpp
-        navigation_server_2d.h
-        navigation_server_2d_dummy.h
-        navigation_server_3d.cpp
-        navigation_server_3d.h
-        navigation_server_3d_dummy.h
-        physics_server_2d.cpp
-        physics_server_2d.h
-        physics_server_2d_dummy.h
-        physics_server_2d_wrap_mt.cpp
-        physics_server_2d_wrap_mt.h
-        physics_server_3d.cpp
-        physics_server_3d.h
-        physics_server_3d_dummy.h
-        physics_server_3d_wrap_mt.cpp
-        physics_server_3d_wrap_mt.h
+        nav_heap.h
         register_server_types.cpp
         register_server_types.h
-        rendering_server.cpp
-        rendering_server.h
         server_wrap_mt_common.h
-        text_server.cpp
-        text_server.h
-        xr_server.cpp
-        xr_server.h
 )
 # [[[end]]]
 target_link_libraries(servers PUBLIC

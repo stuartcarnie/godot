@@ -7,9 +7,12 @@
 #   cog.outl(')')
 # ]]]
 target_sources(servers PRIVATE
+        physics_server_2d.cpp
+        physics_server_2d.h
+        physics_server_2d_dummy.h
         physics_server_2d_extension.cpp
         physics_server_2d_extension.h
-        physics_server_3d_extension.cpp
-        physics_server_3d_extension.h
+        physics_server_2d_wrap_mt.cpp
+        physics_server_2d_wrap_mt.h
 )
 # [[[end]]]

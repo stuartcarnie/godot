@@ -43,5 +43,11 @@ target_compile_definitions(apple_embedded PUBLIC COREAUDIO_ENABLED=1)
 target_compile_features(apple_embedded PRIVATE cxx_std_20)
 set_target_properties(apple_embedded PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
 target_link_libraries(apple_embedded PRIVATE core)
+target_compile_options(apple_embedded
+        PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-fmodules -fcxx-modules>
+        $<$<COMPILE_LANGUAGE:Swift>:-import-objc-header ${CMAKE_CURRENT_SOURCE_DIR}/bridging_header_apple_embedded.h>
+        $<$<COMPILE_LANGUAGE:Swift>:-cxx-interoperability-mode=default>
+)
 
 group_target_sources(apple_embedded)

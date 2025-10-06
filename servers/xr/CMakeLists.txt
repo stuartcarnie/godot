@@ -23,6 +23,8 @@ target_sources(servers PRIVATE
         xr_pose.h
         xr_positional_tracker.cpp
         xr_positional_tracker.h
+        xr_server.cpp
+        xr_server.h
         xr_tracker.cpp
         xr_tracker.h
         xr_vrs.cpp

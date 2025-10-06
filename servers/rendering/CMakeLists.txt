@@ -47,6 +47,8 @@ target_sources(servers PRIVATE
         rendering_light_culler.h
         rendering_method.cpp
         rendering_method.h
+        rendering_server.cpp
+        rendering_server.h
         rendering_server_constants.h
         rendering_server_default.cpp
         rendering_server_default.h
