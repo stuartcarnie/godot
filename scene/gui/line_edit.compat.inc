@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  modifier_bone_target_3d.h                                             */
+/*  line_edit.compat.inc                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,28 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef DISABLE_DEPRECATED
 
-#include "scene/3d/skeleton_modifier_3d.h"
+void LineEdit::_edit_bind_compat_111117() {
+	edit(false);
+}
 
-class ModifierBoneTarget3D : public SkeletonModifier3D {
-	GDCLASS(ModifierBoneTarget3D, SkeletonModifier3D);
+void LineEdit::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("edit"), &LineEdit::_edit_bind_compat_111117);
+}
 
-	String bone_name;
-	int bone = -1;
-
-protected:
-	void _validate_property(PropertyInfo &p_property) const;
-	virtual void _validate_bone_names() override;
-	static void _bind_methods();
-	virtual void _process_modification(double p_delta) override;
-
-public:
-#ifdef TOOLS_ENABLED
-	virtual bool is_processed_on_saving() const override { return true; }
-#endif
-	void set_bone_name(const String &p_bone_name);
-	String get_bone_name() const;
-	void set_bone(int p_bone);
-	int get_bone() const;
-};
+#endif // DISABLE_DEPRECATED
