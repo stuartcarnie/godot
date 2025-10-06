@@ -42,6 +42,7 @@
 #include "scene/gui/scroll_bar.h"
 #include "scene/gui/slider.h"
 #include "scene/gui/text_edit.h"
+#include "scene/main/timer.h"
 #include "scene/main/window.h"
 #include "scene/theme/theme_db.h"
 
@@ -6403,14 +6404,15 @@ String Tree::get_tooltip(const Point2 &p_pos) const {
 		// Walk forwards until we know which column we're in.
 		int next_edge = 0;
 		int i = 0;
-		for (; i < columns.size(); i++) {
+		for (const ColumnInfo &column : columns) {
+			next_edge += get_column_width(i++);
+
 			if (pos_x < next_edge) {
+				if (!column.title_tooltip.is_empty()) {
+					return column.title_tooltip;
+				}
 				break;
 			}
-			next_edge += get_column_width(i);
-		}
-		if (!columns[i - 1].title_tooltip.is_empty()) {
-			return columns[i - 1].title_tooltip;
 		}
 
 		// If the column has no tooltip, use the default.

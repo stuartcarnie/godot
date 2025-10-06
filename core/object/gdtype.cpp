@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gdscript_language_server.h                                            */
+/*  gdtype.cpp                                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,36 +28,15 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "gdtype.h"
 
-#include "gdscript_language_protocol.h"
+GDType::GDType(const GDType *p_super_type, StringName p_name) :
+		super_type(p_super_type), name(std::move(p_name)) {
+	name_hierarchy.push_back(StringName(name, true));
 
-#include "editor/plugins/editor_plugin.h"
-
-class GDScriptLanguageServer : public EditorPlugin {
-	GDCLASS(GDScriptLanguageServer, EditorPlugin);
-
-	GDScriptLanguageProtocol protocol;
-
-	Thread thread;
-	bool thread_running = false;
-	// There is no notification when the editor is initialized. We need to poll till we attempted to start the server.
-	bool start_attempted = false;
-	bool started = false;
-	bool use_thread = false;
-	String host = "127.0.0.1";
-	int port = 6005;
-	int poll_limit_usec = 100000;
-	static void thread_main(void *p_userdata);
-
-private:
-	void _notification(int p_what);
-
-public:
-	static int port_override;
-	GDScriptLanguageServer();
-	void start();
-	void stop();
-};
-
-void register_lsp_types();
+	if (super_type) {
+		for (const StringName &ancestor_name : super_type->name_hierarchy) {
+			name_hierarchy.push_back(StringName(ancestor_name, true));
+		}
+	}
+}

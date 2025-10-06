@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gdscript_language_server.h                                            */
+/*  gdtype.h                                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,34 +30,21 @@
 
 #pragma once
 
-#include "gdscript_language_protocol.h"
+#include "core/string/string_name.h"
+#include "core/templates/vector.h"
 
-#include "editor/plugins/editor_plugin.h"
+class GDType {
+	const GDType *super_type;
 
-class GDScriptLanguageServer : public EditorPlugin {
-	GDCLASS(GDScriptLanguageServer, EditorPlugin);
-
-	GDScriptLanguageProtocol protocol;
-
-	Thread thread;
-	bool thread_running = false;
-	// There is no notification when the editor is initialized. We need to poll till we attempted to start the server.
-	bool start_attempted = false;
-	bool started = false;
-	bool use_thread = false;
-	String host = "127.0.0.1";
-	int port = 6005;
-	int poll_limit_usec = 100000;
-	static void thread_main(void *p_userdata);
-
-private:
-	void _notification(int p_what);
+	StringName name;
+	/// Contains all the class names in order:
+	/// `name` is the first element and `Object` is the last.
+	Vector<StringName> name_hierarchy;
 
 public:
-	static int port_override;
-	GDScriptLanguageServer();
-	void start();
-	void stop();
-};
+	GDType(const GDType *p_super_type, StringName p_name);
 
-void register_lsp_types();
+	const GDType *get_super_type() const { return super_type; }
+	const StringName &get_name() const { return name; }
+	const Vector<StringName> &get_name_hierarchy() const { return name_hierarchy; }
+};

@@ -1499,6 +1499,9 @@ void RasterizerSceneGLES3::_setup_environment(const RenderDataGLES3 *p_render_da
 	// Only render the lights without shadows in the base pass.
 	scene_state.data.directional_light_count = p_render_data->directional_light_count - p_render_data->directional_shadow_count;
 
+	// Lights with shadows still need to be applied to fog sun scatter.
+	scene_state.data.directional_shadow_count = p_render_data->directional_shadow_count;
+
 	scene_state.data.z_far = p_render_data->z_far;
 	scene_state.data.z_near = p_render_data->z_near;
 
@@ -2495,7 +2498,7 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 
 	scene_state.reset_gl_state();
 
-	GLuint motion_vectors_fbo = rt->overridden.velocity_fbo;
+	GLuint motion_vectors_fbo = rt ? rt->overridden.velocity_fbo : 0;
 	if (motion_vectors_fbo != 0 && GLES3::Config::get_singleton()->max_vertex_attribs >= 22) {
 		RENDER_TIMESTAMP("Motion Vectors Pass");
 		glBindFramebuffer(GL_FRAMEBUFFER, motion_vectors_fbo);
@@ -2720,26 +2723,12 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 		_draw_sky(render_data.environment, projection, transform, sky_energy_multiplier, render_data.luminance_multiplier, p_camera_data->view_count > 1, flip_y, apply_color_adjustments_in_post);
 	}
 
-	if (rt && (scene_state.used_screen_texture || scene_state.used_depth_texture)) {
-		Size2i size;
-		GLuint backbuffer_fbo = 0;
-		GLuint backbuffer = 0;
-		GLuint backbuffer_depth = 0;
-
-		if (rb->get_scaling_3d_mode() == RS::VIEWPORT_SCALING_3D_MODE_OFF) {
-			texture_storage->check_backbuffer(rt, scene_state.used_screen_texture, scene_state.used_depth_texture); // note, badly names, this just allocates!
-
-			size = rt->size;
-			backbuffer_fbo = rt->backbuffer_fbo;
-			backbuffer = rt->backbuffer;
-			backbuffer_depth = rt->backbuffer_depth;
-		} else {
-			rb->check_backbuffer(scene_state.used_screen_texture, scene_state.used_depth_texture);
-			size = rb->get_internal_size();
-			backbuffer_fbo = rb->get_backbuffer_fbo();
-			backbuffer = rb->get_backbuffer();
-			backbuffer_depth = rb->get_backbuffer_depth();
-		}
+	if (scene_state.used_screen_texture || scene_state.used_depth_texture) {
+		rb->check_backbuffer(scene_state.used_screen_texture, scene_state.used_depth_texture);
+		Size2i size = rb->get_internal_size();
+		GLuint backbuffer_fbo = rb->get_backbuffer_fbo();
+		GLuint backbuffer = rb->get_backbuffer();
+		GLuint backbuffer_depth = rb->get_backbuffer_depth();
 
 		if (backbuffer_fbo != 0) {
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
@@ -3377,6 +3366,10 @@ void RasterizerSceneGLES3::_render_list_template(RenderListParameters *p_params,
 						} else {
 							spec_constants |= SceneShaderGLES3::DISABLE_LIGHTMAP;
 						}
+
+						if (p_render_data->directional_light_count > 0 && is_environment(p_render_data->environment) && environment_get_fog_sun_scatter(p_render_data->environment) > 0.001) {
+							spec_constants |= SceneShaderGLES3::USE_SUN_SCATTER;
+						}
 					}
 				} else {
 					// Only base pass uses the radiance map.
@@ -3903,7 +3896,7 @@ void RasterizerSceneGLES3::_render_uv2(const PagedArray<RenderGeometryInstance *
 			GL_COLOR_ATTACHMENT2,
 			GL_COLOR_ATTACHMENT3
 		};
-		glDrawBuffers(std::size(draw_buffers), draw_buffers);
+		glDrawBuffers(std_size(draw_buffers), draw_buffers);
 
 		glClearColor(0.0, 0.0, 0.0, 0.0);
 		RasterizerGLES3::clear_depth(0.0);
