@@ -11,6 +11,8 @@ target_sources(core PRIVATE
         callable_method_pointer.h
         class_db.cpp
         class_db.h
+        gdtype.cpp
+        gdtype.h
         message_queue.cpp
         message_queue.h
         method_bind.cpp
