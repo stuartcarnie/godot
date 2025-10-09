@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/templates/hash_map.h"
+#include "core/templates/rid.h"
 
 #include <compiled.h>
 

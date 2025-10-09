@@ -3,6 +3,7 @@
 //
 
 #include "resource_importer_slang_preset.h"
+#include "core/io/file_access.h"
 
 String ResourceImporterSlangPreset::get_importer_name() const {
 	return "slang_shader_preset";
