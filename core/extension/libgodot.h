@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  world_3d.h                                                            */
+/*  libgodot.h                                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,69 +30,44 @@
 
 #pragma once
 
-#include "core/io/resource.h"
-#include "scene/resources/environment.h"
+#include "gdextension_interface.h"
 
-#ifndef PHYSICS_3D_DISABLED
-#include "servers/physics_3d/physics_server_3d.h"
-#endif // PHYSICS_3D_DISABLED
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class CameraAttributes;
-class Camera3D;
-class Compositor;
-class VisibleOnScreenNotifier3D;
-struct SpatialIndexer;
+// Export macros for DLL visibility
+#if defined(_MSC_VER) || defined(__MINGW32__)
+#define LIBGODOT_API __declspec(dllexport)
+#elif defined(__GNUC__) || defined(__clang__)
+#define LIBGODOT_API __attribute__((visibility("default")))
+#endif // if defined(_MSC_VER)
 
-class World3D : public Resource {
-	GDCLASS(World3D, Resource);
+/**
+ * @name libgodot_create_godot_instance
+ * @since 4.6
+ *
+ * Creates a new Godot instance.
+ *
+ * @param p_argc The number of command line arguments.
+ * @param p_argv The C-style array of command line arguments.
+ * @param p_init_func GDExtension initialization function of the host application.
+ *
+ * @return A pointer to created \ref GodotInstance GDExtension object or nullptr if there was an error.
+ */
+LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func);
 
-private:
-	RID scenario;
-	mutable RID space;
-#ifndef NAVIGATION_3D_DISABLED
-	mutable RID navigation_map;
-#endif // NAVIGATION_3D_DISABLED
+/**
+ * @name libgodot_destroy_godot_instance
+ * @since 4.6
+ *
+ * Destroys an existing Godot instance.
+ *
+ * @param p_godot_instance The reference to the GodotInstance object to destroy.
+ *
+ */
+LIBGODOT_API void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance);
 
-	Ref<Environment> environment;
-	Ref<Environment> fallback_environment;
-	Ref<CameraAttributes> camera_attributes;
-	Ref<Compositor> compositor;
-
-	HashSet<Camera3D *> cameras;
-
-protected:
-	static void _bind_methods();
-
-	friend class Camera3D;
-
-	void _register_camera(Camera3D *p_camera);
-	void _remove_camera(Camera3D *p_camera);
-
-public:
-	RID get_space() const;
-#ifndef NAVIGATION_3D_DISABLED
-	RID get_navigation_map() const;
-#endif // NAVIGATION_3D_DISABLED
-	RID get_scenario() const;
-
-	void set_environment(const Ref<Environment> &p_environment);
-	Ref<Environment> get_environment() const;
-
-	void set_fallback_environment(const Ref<Environment> &p_environment);
-	Ref<Environment> get_fallback_environment() const;
-
-	void set_camera_attributes(const Ref<CameraAttributes> &p_camera_attributes);
-	Ref<CameraAttributes> get_camera_attributes() const;
-
-	void set_compositor(const Ref<Compositor> &p_compositor);
-	Ref<Compositor> get_compositor() const;
-
-	_FORCE_INLINE_ const HashSet<Camera3D *> &get_cameras() const { return cameras; }
-
-#ifndef PHYSICS_3D_DISABLED
-	PhysicsDirectSpaceState3D *get_direct_space_state();
-#endif // PHYSICS_3D_DISABLED
-
-	World3D();
-	~World3D();
-};
+#ifdef __cplusplus
+}
+#endif

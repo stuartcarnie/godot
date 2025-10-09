@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  world_3d.h                                                            */
+/*  gdextension_function_loader.cpp                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,71 +28,47 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "gdextension_function_loader.h"
 
-#include "core/io/resource.h"
-#include "scene/resources/environment.h"
+#include "gdextension.h"
 
-#ifndef PHYSICS_3D_DISABLED
-#include "servers/physics_3d/physics_server_3d.h"
-#endif // PHYSICS_3D_DISABLED
+Error GDExtensionFunctionLoader::open_library(const String &p_path) {
+	ERR_FAIL_COND_V_MSG(!p_path.begins_with("libgodot://"), ERR_FILE_NOT_FOUND, "Function based GDExtensions should have a path starting with libgodot://");
+	ERR_FAIL_COND_V_MSG(!initialization_function, ERR_DOES_NOT_EXIST, "Initialization function is required for function based GDExtensions.");
 
-class CameraAttributes;
-class Camera3D;
-class Compositor;
-class VisibleOnScreenNotifier3D;
-struct SpatialIndexer;
+	library_path = p_path;
 
-class World3D : public Resource {
-	GDCLASS(World3D, Resource);
+	return OK;
+}
 
-private:
-	RID scenario;
-	mutable RID space;
-#ifndef NAVIGATION_3D_DISABLED
-	mutable RID navigation_map;
-#endif // NAVIGATION_3D_DISABLED
+Error GDExtensionFunctionLoader::initialize(GDExtensionInterfaceGetProcAddress p_get_proc_address, const Ref<GDExtension> &p_extension, GDExtensionInitialization *r_initialization) {
+	ERR_FAIL_COND_V_MSG(!initialization_function, ERR_DOES_NOT_EXIST, "Initialization function is required for function based GDExtensions.");
+	GDExtensionBool ret = initialization_function(p_get_proc_address, p_extension.ptr(), r_initialization);
 
-	Ref<Environment> environment;
-	Ref<Environment> fallback_environment;
-	Ref<CameraAttributes> camera_attributes;
-	Ref<Compositor> compositor;
+	if (ret) {
+		return OK;
+	} else {
+		ERR_FAIL_V_MSG(FAILED, "GDExtension initialization function for '" + library_path + "' returned an error.");
+	}
+}
 
-	HashSet<Camera3D *> cameras;
+void GDExtensionFunctionLoader::close_library() {
+	initialization_function = nullptr;
+	library_path.clear();
+}
 
-protected:
-	static void _bind_methods();
+bool GDExtensionFunctionLoader::is_library_open() const {
+	return !library_path.is_empty();
+}
 
-	friend class Camera3D;
+bool GDExtensionFunctionLoader::has_library_changed() const {
+	return false;
+}
 
-	void _register_camera(Camera3D *p_camera);
-	void _remove_camera(Camera3D *p_camera);
+bool GDExtensionFunctionLoader::library_exists() const {
+	return true;
+}
 
-public:
-	RID get_space() const;
-#ifndef NAVIGATION_3D_DISABLED
-	RID get_navigation_map() const;
-#endif // NAVIGATION_3D_DISABLED
-	RID get_scenario() const;
-
-	void set_environment(const Ref<Environment> &p_environment);
-	Ref<Environment> get_environment() const;
-
-	void set_fallback_environment(const Ref<Environment> &p_environment);
-	Ref<Environment> get_fallback_environment() const;
-
-	void set_camera_attributes(const Ref<CameraAttributes> &p_camera_attributes);
-	Ref<CameraAttributes> get_camera_attributes() const;
-
-	void set_compositor(const Ref<Compositor> &p_compositor);
-	Ref<Compositor> get_compositor() const;
-
-	_FORCE_INLINE_ const HashSet<Camera3D *> &get_cameras() const { return cameras; }
-
-#ifndef PHYSICS_3D_DISABLED
-	PhysicsDirectSpaceState3D *get_direct_space_state();
-#endif // PHYSICS_3D_DISABLED
-
-	World3D();
-	~World3D();
-};
+void GDExtensionFunctionLoader::set_initialization_function(GDExtensionInitializationFunction p_initialization_function) {
+	initialization_function = p_initialization_function;
+}

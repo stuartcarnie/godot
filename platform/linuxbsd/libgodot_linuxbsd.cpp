@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  world_3d.h                                                            */
+/*  libgodot_linuxbsd.cpp                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,71 +28,44 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "core/extension/libgodot.h"
 
-#include "core/io/resource.h"
-#include "scene/resources/environment.h"
+#include "core/extension/godot_instance.h"
+#include "main/main.h"
 
-#ifndef PHYSICS_3D_DISABLED
-#include "servers/physics_3d/physics_server_3d.h"
-#endif // PHYSICS_3D_DISABLED
+#include "os_linuxbsd.h"
 
-class CameraAttributes;
-class Camera3D;
-class Compositor;
-class VisibleOnScreenNotifier3D;
-struct SpatialIndexer;
+static OS_LinuxBSD *os = nullptr;
 
-class World3D : public Resource {
-	GDCLASS(World3D, Resource);
+static GodotInstance *instance = nullptr;
 
-private:
-	RID scenario;
-	mutable RID space;
-#ifndef NAVIGATION_3D_DISABLED
-	mutable RID navigation_map;
-#endif // NAVIGATION_3D_DISABLED
+GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func) {
+	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
 
-	Ref<Environment> environment;
-	Ref<Environment> fallback_environment;
-	Ref<CameraAttributes> camera_attributes;
-	Ref<Compositor> compositor;
+	os = new OS_LinuxBSD();
 
-	HashSet<Camera3D *> cameras;
+	Error err = Main::setup(p_argv[0], p_argc - 1, &p_argv[1], false);
+	if (err != OK) {
+		return nullptr;
+	}
 
-protected:
-	static void _bind_methods();
+	instance = memnew(GodotInstance);
+	if (!instance->initialize(p_init_func)) {
+		memdelete(instance);
+		// Note: When Godot Engine supports reinitialization, clear the instance pointer here.
+		//instance = nullptr;
+		return nullptr;
+	}
 
-	friend class Camera3D;
+	return (GDExtensionObjectPtr)instance;
+}
 
-	void _register_camera(Camera3D *p_camera);
-	void _remove_camera(Camera3D *p_camera);
-
-public:
-	RID get_space() const;
-#ifndef NAVIGATION_3D_DISABLED
-	RID get_navigation_map() const;
-#endif // NAVIGATION_3D_DISABLED
-	RID get_scenario() const;
-
-	void set_environment(const Ref<Environment> &p_environment);
-	Ref<Environment> get_environment() const;
-
-	void set_fallback_environment(const Ref<Environment> &p_environment);
-	Ref<Environment> get_fallback_environment() const;
-
-	void set_camera_attributes(const Ref<CameraAttributes> &p_camera_attributes);
-	Ref<CameraAttributes> get_camera_attributes() const;
-
-	void set_compositor(const Ref<Compositor> &p_compositor);
-	Ref<Compositor> get_compositor() const;
-
-	_FORCE_INLINE_ const HashSet<Camera3D *> &get_cameras() const { return cameras; }
-
-#ifndef PHYSICS_3D_DISABLED
-	PhysicsDirectSpaceState3D *get_direct_space_state();
-#endif // PHYSICS_3D_DISABLED
-
-	World3D();
-	~World3D();
-};
+void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance) {
+	GodotInstance *godot_instance = (GodotInstance *)p_godot_instance;
+	if (instance == godot_instance) {
+		godot_instance->stop();
+		memdelete(godot_instance);
+		instance = nullptr;
+		Main::cleanup();
+	}
+}
