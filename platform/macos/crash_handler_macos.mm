@@ -98,7 +98,7 @@ static void handle_crash(int sig) {
 		OS::get_singleton()->get_main_loop()->notification(MainLoop::NOTIFICATION_CRASH);
 	}
 
-	// Dump the backtrace to stderr with a message to the user
+	// Dump the backtrace to stderr with a message to the user.
 	print_error("\n================================================================");
 	print_error(vformat("%s: Program crashed with signal %d", __FUNCTION__, sig));
 
@@ -109,69 +109,88 @@ static void handle_crash(int sig) {
 		print_error(vformat("Engine version: %s (%s)", GODOT_VERSION_FULL_NAME, GODOT_VERSION_HASH));
 	}
 	print_error(vformat("Dumping the backtrace. %s", msg));
-	char **strings = backtrace_symbols(bt_buffer, size);
-	if (strings) {
-		void *load_addr = (void *)load_address();
 
-		for (size_t i = 1; i < size; i++) {
-			char fname[1024];
-			Dl_info info;
+	List<String> args;
+	args.push_back("-o");
+	args.push_back(_execpath);
 
-			snprintf(fname, 1024, "%s", strings[i]);
-
-			// Try to demangle the function name to provide a more readable one
-			if (dladdr(bt_buffer[i], &info) && info.dli_sname) {
-				if (info.dli_sname[0] == '_') {
-					int status;
-					char *demangled = abi::__cxa_demangle(info.dli_sname, nullptr, 0, &status);
-
-					if (status == 0 && demangled) {
-						snprintf(fname, 1024, "%s", demangled);
-					}
-
-					if (demangled) {
-						free(demangled);
-					}
-				}
-			}
-
-			String output = fname;
-
-			// Try to get the file/line number using atos
-			if (bt_buffer[i] > (void *)0x0 && OS::get_singleton()) {
-				List<String> args;
-				char str[1024];
-
-				args.push_back("-o");
-				args.push_back(_execpath);
 #if defined(__x86_64) || defined(__x86_64__) || defined(__amd64__)
-				args.push_back("-arch");
-				args.push_back("x86_64");
+	args.push_back("-arch");
+	args.push_back("x86_64");
 #elif defined(__aarch64__)
-				args.push_back("-arch");
-				args.push_back("arm64");
+	args.push_back("-arch");
+	args.push_back("arm64");
 #endif
-				args.push_back("--fullPath");
-				args.push_back("-l");
-				snprintf(str, 1024, "%p", load_addr);
-				args.push_back(str);
-				snprintf(str, 1024, "%p", bt_buffer[i]);
-				args.push_back(str);
 
-				int ret;
-				String out = "";
-				Error err = OS::get_singleton()->execute(String("atos"), args, &out, &ret);
-				if (err == OK && out.substr(0, 2) != "0x") {
-					out = out.substr(0, out.length() - 1);
-					output = out;
+	args.push_back("--fullPath");
+	args.push_back("-l");
+
+	char str[1024];
+	void *load_addr = (void *)load_address();
+	snprintf(str, 1024, "%p", load_addr);
+	args.push_back(str);
+
+	for (size_t i = 0; i < size; i++) {
+		snprintf(str, 1024, "%p", bt_buffer[i]);
+		args.push_back(str);
+	}
+
+	// Single execution of atos with all addresses.
+	String out;
+	int ret;
+	Error err = OS::get_singleton()->execute(String("atos"), args, &out, &ret);
+
+	if (err == OK) {
+		// Parse the multi-line output
+		Vector<String> lines = out.split("\n");
+
+		// Get demangled names from dladdr for fallback.
+		char **strings = backtrace_symbols(bt_buffer, size);
+
+		for (int i = 1; i < lines.size() && i < (int)size; i++) {
+			String output = lines[i];
+
+			// If atos failed for this address, fall back to dladdr.
+			if (output.substr(0, 2) == "0x" && strings) {
+				char fname[1024];
+				Dl_info info;
+
+				snprintf(fname, 1024, "%s", strings[i]);
+
+				if (dladdr(bt_buffer[i], &info) && info.dli_sname) {
+					if (info.dli_sname[0] == '_') {
+						int status;
+						char *demangled = abi::__cxa_demangle(info.dli_sname, nullptr, 0, &status);
+
+						if (status == 0 && demangled) {
+							snprintf(fname, 1024, "%s", demangled);
+						}
+
+						if (demangled) {
+							free(demangled);
+						}
+					}
 				}
+				output = fname;
 			}
 
 			print_error(vformat("[%d] %s", (int64_t)i, output));
 		}
 
-		free(strings);
+		if (strings) {
+			free(strings);
+		}
+	} else {
+		// Fallback if atos fails entirely
+		char **strings = backtrace_symbols(bt_buffer, size);
+		if (strings) {
+			for (size_t i = 0; i < size; i++) {
+				print_error(vformat("[%d] %s", (int64_t)i, strings[i]));
+			}
+			free(strings);
+		}
 	}
+
 	print_error("-- END OF C++ BACKTRACE --");
 	print_error("================================================================");
 
