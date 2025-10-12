@@ -17,6 +17,7 @@ target_sources(core PRIVATE
         fixed_vector.h
         hash_map.h
         hash_set.h
+        hashfuncs.cpp
         hashfuncs.h
         interpolated_property.cpp
         interpolated_property.h

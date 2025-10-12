@@ -49,6 +49,7 @@ target_sources(macos PRIVATE
         godot_window_delegate.mm
         key_mapping_macos.h
         key_mapping_macos.mm
+        libgodot_macos.mm
         macos_quartz_core_spi.h
         native_menu_macos.h
         native_menu_macos.mm

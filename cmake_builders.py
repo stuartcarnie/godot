@@ -134,6 +134,7 @@ env["opengl3"] = True
 env["minizip"] = True
 env["builtin_certs"] = True
 env["system_certs_path"] = ""
+env["debug_features"] = True
 
 
 def detect_modules_within_searchpath(path: str, env: Environment, selected_platform: str) -> OrderedDict:

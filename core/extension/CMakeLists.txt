@@ -11,6 +11,8 @@ target_sources(core PRIVATE
         extension_api_dump.h
         gdextension.cpp
         gdextension.h
+        gdextension_function_loader.cpp
+        gdextension_function_loader.h
         gdextension_interface.cpp
         gdextension_interface.h
         gdextension_library_loader.cpp
@@ -20,5 +22,8 @@ target_sources(core PRIVATE
         gdextension_manager.h
         gdextension_special_compat_hashes.cpp
         gdextension_special_compat_hashes.h
+        godot_instance.cpp
+        godot_instance.h
+        libgodot.h
 )
 # [[[end]]]

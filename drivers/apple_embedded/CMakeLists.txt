@@ -12,19 +12,22 @@ target_sources(apple_embedded PRIVATE
         app_delegate_service.mm
         apple_embedded.h
         apple_embedded.mm
+        bridging_header_apple_embedded.h
         display_layer_apple_embedded.h
         display_server_apple_embedded.h
         display_server_apple_embedded.mm
         godot_app_delegate.h
         godot_app_delegate.mm
+        godot_keyboard_input_view.h
+        godot_keyboard_input_view.mm
         godot_view_apple_embedded.h
         godot_view_apple_embedded.mm
+        godot_view_controller.h
+        godot_view_controller.mm
         godot_view_renderer.h
         godot_view_renderer.mm
         key_mapping_apple_embedded.h
         key_mapping_apple_embedded.mm
-        keyboard_input_view.h
-        keyboard_input_view.mm
         main_utilities.h
         main_utilities.mm
         os_apple_embedded.h
@@ -34,8 +37,6 @@ target_sources(apple_embedded PRIVATE
         rendering_context_driver_vulkan_apple_embedded.mm
         tts_apple_embedded.h
         tts_apple_embedded.mm
-        view_controller.h
-        view_controller.mm
 )
 # [[[end]]]
 

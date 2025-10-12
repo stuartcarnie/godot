@@ -380,6 +380,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Geometry2D.xml
         classes/Geometry3D.xml
         classes/GeometryInstance3D.xml
+        classes/GodotInstance.xml
         classes/Gradient.xml
         classes/GradientTexture1D.xml
         classes/GradientTexture2D.xml
