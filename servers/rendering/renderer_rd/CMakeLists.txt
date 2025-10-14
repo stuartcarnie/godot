@@ -155,6 +155,7 @@ target_sources(servers PRIVATE
         framebuffer_cache_rd.h
         pipeline_cache_rd.cpp
         pipeline_cache_rd.h
+        pipeline_deferred_rd.h
         pipeline_hash_map_rd.h
         renderer_canvas_render_rd.cpp
         renderer_canvas_render_rd.h

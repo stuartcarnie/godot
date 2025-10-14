@@ -47,5 +47,12 @@ target_sources(freetype PRIVATE
         src/winfonts/winfnt.c
 )
 target_include_directories(freetype PUBLIC include)
-target_compile_definitions(freetype PUBLIC FT_CONFIG_OPTION_USE_BROTLI FT2_BUILD_LIBRARY FT_CONFIG_OPTION_USE_PNG FT_CONFIG_OPTION_SYSTEM_ZLIB)
-target_link_libraries(freetype png zlib brotli)
+target_compile_definitions(freetype PUBLIC
+        FT_CONFIG_OPTION_USE_BROTLI
+        FT2_BUILD_LIBRARY
+        PRIVATE
+        FT_CONFIG_OPTION_USE_PNG
+        FT_CONFIG_OPTION_SYSTEM_ZLIB
+        FT_CONFIG_OPTION_USE_HARFBUZZ
+)
+target_link_libraries(freetype png zlib brotli harfbuzz)

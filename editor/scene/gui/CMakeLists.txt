@@ -11,6 +11,8 @@ target_sources(editor PRIVATE
         control_editor_plugin.h
         font_config_plugin.cpp
         font_config_plugin.h
+        margin_container_editor_plugin.cpp
+        margin_container_editor_plugin.h
         style_box_editor_plugin.cpp
         style_box_editor_plugin.h
         theme_editor_plugin.cpp
