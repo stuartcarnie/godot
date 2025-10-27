@@ -11,6 +11,7 @@ set_abs(GODOT_MODULE_BETSY_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         bc1.glsl
         bc4.glsl
         bc6h.glsl
+        rgb_to_rgba.glsl
 )
 # [[[end]]]
 

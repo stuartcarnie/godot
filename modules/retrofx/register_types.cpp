@@ -42,6 +42,15 @@ static Ref<ResourceFormatLoaderSlangPreset> resource_loader_slang_preset;
 
 #ifndef RETROFX_DISABLED
 void initialize_retrofx_module(ModuleInitializationLevel p_level) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_CORE) {
+		return;
+	}
+
+	if (OS::get_singleton()->get_current_rendering_method() == "gl_compatibility") {
+		WARN_PRINT_ONCE("RetroFX module is disabled in compatibility rendering mode.");
+		return;
+	}
+
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		GDREGISTER_CLASS(RetroFXRect);
 
@@ -65,6 +74,10 @@ void initialize_retrofx_module(ModuleInitializationLevel p_level) {
 }
 
 void uninitialize_retrofx_module(ModuleInitializationLevel p_level) {
+	if (OS::get_singleton()->get_current_rendering_method() == "gl_compatibility") {
+		return;
+	}
+
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}

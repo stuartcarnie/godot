@@ -876,6 +876,7 @@ void FilterChain::init_history() {
 
 FilterChain::FilterChain() {
 	RD *rd = RD::get_singleton();
+	ERR_FAIL_NULL_MSG(rd, "RenderingDevice singleton is not available.");
 
 	// initialize shader and pipeline
 	{

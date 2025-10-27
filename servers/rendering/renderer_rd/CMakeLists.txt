@@ -43,8 +43,10 @@ set_abs(RENDERER_RD_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/effects/resolve_raster.glsl
         shaders/effects/roughness_limiter.glsl
         shaders/effects/screen_space_reflection.glsl
+        shaders/effects/screen_space_reflection_downsample.glsl
         shaders/effects/screen_space_reflection_filter.glsl
-        shaders/effects/screen_space_reflection_scale.glsl
+        shaders/effects/screen_space_reflection_hiz.glsl
+        shaders/effects/screen_space_reflection_resolve.glsl
         shaders/effects/shadow_frustum.glsl
         shaders/effects/smaa_blending.glsl
         shaders/effects/smaa_edge_detection.glsl

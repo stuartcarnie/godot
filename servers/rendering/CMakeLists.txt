@@ -15,6 +15,7 @@ add_subdirectory(storage)
 target_sources(servers PRIVATE
         instance_uniforms.cpp
         instance_uniforms.h
+        multi_uma_buffer.h
         renderer_canvas_cull.cpp
         renderer_canvas_cull.h
         renderer_canvas_render.cpp

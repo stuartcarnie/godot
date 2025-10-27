@@ -744,6 +744,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Rename.svg
         Reparent.svg
         ReparentToNewNode.svg
+        ReplaceText.svg
         ResourcePreloader.svg
         RetargetModifier3D.svg
         ReverseGradient.svg

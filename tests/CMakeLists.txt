@@ -32,6 +32,7 @@ target_sources(tests PRIVATE
         core/io/test_stream_peer.h
         core/io/test_stream_peer_buffer.h
         core/io/test_stream_peer_gzip.h
+        core/io/test_stream_peer_tcp.h
         core/io/test_tcp_server.h
         core/io/test_udp_server.h
         core/io/test_uds_server.h
