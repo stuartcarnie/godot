@@ -32,6 +32,22 @@
 
 #import "rendering_device_driver_metal.h"
 
+#include "core/templates/sort_array.h"
+
+#import <os/log.h>
+#import <os/signpost.h>
+
+#pragma mark - Logging
+
+os_log_t LOG_DRIVER;
+// Used for dynamic tracing.
+os_log_t LOG_INTERVALS;
+
+__attribute__((constructor)) static void InitializeLogging(void) {
+	LOG_DRIVER = os_log_create("org.godotengine.godot.metal", OS_LOG_CATEGORY_POINTS_OF_INTEREST);
+	LOG_INTERVALS = os_log_create("org.godotengine.godot.metal", "events");
+}
+
 @protocol MTLDeviceEx <MTLDevice>
 #if TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 130300
 - (void)setShouldMaximizeConcurrentCompilation:(BOOL)v;
@@ -288,7 +304,7 @@ public:
 RenderingContextDriver::SurfaceID RenderingContextDriverMetal::surface_create(const void *p_platform_data) {
 	const WindowPlatformData *wpd = (const WindowPlatformData *)(p_platform_data);
 	Surface *surface;
-	if (String v = OS::get_singleton()->get_environment("GODOT_OFF_SCREEN"); v == U"1") {
+	if (String v = OS::get_singleton()->get_environment("GODOT_MTL_OFF_SCREEN"); v == U"1") {
 		surface = memnew(SurfaceOffscreen(wpd->layer, metal_device));
 	} else {
 		surface = memnew(SurfaceLayer(wpd->layer, metal_device));
