@@ -9,10 +9,13 @@ godot_add_library(metal FOLDER drivers STATIC)
 # ]]]
 target_sources(metal PRIVATE
         inflection_map.h
+        metal_device_profile.cpp
+        metal_device_profile.h
         metal_device_properties.h
         metal_device_properties.mm
         metal_objects.h
         metal_objects.mm
+        metal_objects_shared.h
         metal_utils.h
         pixel_formats.h
         pixel_formats.mm
