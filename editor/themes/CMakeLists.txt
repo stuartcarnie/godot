@@ -70,6 +70,10 @@ target_sources(editor PRIVATE
         editor_theme.h
         editor_theme_manager.cpp
         editor_theme_manager.h
+        theme_classic.cpp
+        theme_classic.h
+        theme_modern.cpp
+        theme_modern.h
 )
 # [[[end]]]
 target_sources(editor PRIVATE ${GODOT_EDITOR_BUILTIN_FONTS_HEADER})

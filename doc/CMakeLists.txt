@@ -509,7 +509,9 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/NavigationRegion2D.xml
         classes/NavigationRegion3D.xml
         classes/NavigationServer2D.xml
+        classes/NavigationServer2DManager.xml
         classes/NavigationServer3D.xml
+        classes/NavigationServer3DManager.xml
         classes/NinePatchRect.xml
         classes/Node.xml
         classes/Node2D.xml
