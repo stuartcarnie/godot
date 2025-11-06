@@ -22,8 +22,7 @@ struct InstanceData {
 	vec2 world_x;
 	vec2 world_y;
 	vec2 world_ofs;
-	uint flags;
-	uint instance_uniforms_ofs;
+	vec2 color_texture_pixel_size;
 #ifdef USE_PRIMITIVE
 	vec2 points[3];
 	vec2 uvs[3];
@@ -36,7 +35,8 @@ struct InstanceData {
 	vec2 pad;
 
 #endif
-	vec2 color_texture_pixel_size;
+	uint flags;
+	uint instance_uniforms_ofs;
 	uvec4 lights;
 };
 
@@ -51,10 +51,22 @@ struct InstanceData {
 #define BATCH_FLAGS_DEFAULT_SPECULAR_MAP_USED (1 << 10)
 
 layout(push_constant, std430) uniform Params {
-	uint base_instance_index; // base index to instance data
 	uint sc_packed_0;
 	uint specular_shininess;
 	uint batch_flags;
+	uint pad0;
+#ifdef USE_ATTRIBUTES
+	// Particles and meshes
+	vec2 world_x;
+	vec2 world_y;
+	vec2 world_ofs;
+	vec2 color_texture_pixel_size;
+	vec4 modulation;
+	uvec4 lights;
+	uint flags;
+	uint instance_uniforms_ofs;
+	uint pad1[2];
+#endif
 }
 params;
 
@@ -180,8 +192,3 @@ layout(set = 3, binding = 0) uniform texture2D color_texture;
 layout(set = 3, binding = 1) uniform texture2D normal_texture;
 layout(set = 3, binding = 2) uniform texture2D specular_texture;
 layout(set = 3, binding = 3) uniform sampler texture_sampler;
-
-layout(set = 3, binding = 4, std430) restrict readonly buffer DrawData {
-	InstanceData data[];
-}
-instances;

@@ -1165,6 +1165,24 @@ uint8_t *RenderingDeviceDriverD3D12::buffer_persistent_map_advance(BufferID p_bu
 	return buf_info->persistent_ptr + buf_info->frame_idx * buf_info->size;
 }
 
+uint64_t RenderingDeviceDriverD3D12::buffer_get_dynamic_offsets(Span<BufferID> p_buffers) {
+	uint64_t mask = 0u;
+	uint64_t shift = 0u;
+
+	for (const BufferID &buf : p_buffers) {
+		const BufferInfo *buf_info = (const BufferInfo *)buf.id;
+		if (!buf_info->is_dynamic()) {
+			continue;
+		}
+		const BufferDynamicInfo *dyn_buf = (const BufferDynamicInfo *)buf.id;
+		mask |= dyn_buf->frame_idx << shift;
+		// We can encode the frame index in 2 bits since frame_count won't be > 4.
+		shift += 2UL;
+	}
+
+	return mask;
+}
+
 uint64_t RenderingDeviceDriverD3D12::buffer_get_device_address(BufferID p_buffer) {
 	const BufferInfo *buf_info = (const BufferInfo *)p_buffer.id;
 	return buf_info->resource->GetGPUVirtualAddress();
@@ -2183,7 +2201,7 @@ bool RenderingDeviceDriverD3D12::sampler_is_format_supported_for_filter(DataForm
 /**** VERTEX ARRAY ****/
 /**********************/
 
-RDD::VertexFormatID RenderingDeviceDriverD3D12::vertex_format_create(VectorView<VertexAttribute> p_vertex_attribs) {
+RDD::VertexFormatID RenderingDeviceDriverD3D12::vertex_format_create(Span<VertexAttribute> p_vertex_attribs, const VertexAttributeBindingsMap &p_vertex_bindings) {
 	VertexFormatInfo *vf_info = VersatileResource::allocate<VertexFormatInfo>(resources_allocator);
 
 	vf_info->input_elem_descs.resize(p_vertex_attribs.size());
@@ -5378,7 +5396,7 @@ void RenderingDeviceDriverD3D12::command_render_draw_indirect_count(CommandBuffe
 	cmd_buf_info->cmd_list->ExecuteIndirect(indirect_cmd_signatures.draw.Get(), p_max_draw_count, indirect_buf_info->resource, p_offset, count_buf_info->resource, p_count_buffer_offset);
 }
 
-void RenderingDeviceDriverD3D12::command_render_bind_vertex_buffers(CommandBufferID p_cmd_buffer, uint32_t p_binding_count, const BufferID *p_buffers, const uint64_t *p_offsets) {
+void RenderingDeviceDriverD3D12::command_render_bind_vertex_buffers(CommandBufferID p_cmd_buffer, uint32_t p_binding_count, const BufferID *p_buffers, const uint64_t *p_offsets, uint64_t p_dynamic_offsets) {
 	CommandBufferInfo *cmd_buf_info = (CommandBufferInfo *)p_cmd_buffer.id;
 
 	DEV_ASSERT(cmd_buf_info->render_pass_state.current_subpass != UINT32_MAX);
