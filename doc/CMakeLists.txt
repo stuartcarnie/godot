@@ -220,6 +220,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/BoxShape3D.xml
         classes/Button.xml
         classes/ButtonGroup.xml
+        classes/CCDIK3D.xml
         classes/CPUParticles2D.xml
         classes/CPUParticles3D.xml
         classes/Callable.xml
@@ -242,6 +243,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/CapsuleShape2D.xml
         classes/CapsuleShape3D.xml
         classes/CenterContainer.xml
+        classes/ChainIK3D.xml
         classes/CharFXTransform.xml
         classes/CharacterBody2D.xml
         classes/CharacterBody3D.xml
@@ -351,6 +353,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Environment.xml
         classes/Expression.xml
         classes/ExternalTexture.xml
+        classes/FABRIK3D.xml
         classes/FileAccess.xml
         classes/FileDialog.xml
         classes/FileSystemDock.xml
@@ -402,6 +405,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/HashingContext.xml
         classes/HeightMapShape3D.xml
         classes/HingeJoint3D.xml
+        classes/IKModifier3D.xml
         classes/IP.xml
         classes/Image.xml
         classes/ImageFormatLoader.xml
@@ -434,9 +438,11 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/InstancePlaceholder.xml
         classes/IntervalTweener.xml
         classes/ItemList.xml
+        classes/IterateIK3D.xml
         classes/JNISingleton.xml
         classes/JSON.xml
         classes/JSONRPC.xml
+        classes/JacobianIK3D.xml
         classes/JavaClass.xml
         classes/JavaClassWrapper.xml
         classes/JavaObject.xml
@@ -444,6 +450,8 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/JavaScriptObject.xml
         classes/Joint2D.xml
         classes/Joint3D.xml
+        classes/JointLimitation3D.xml
+        classes/JointLimitationCone3D.xml
         classes/KinematicCollision2D.xml
         classes/KinematicCollision3D.xml
         classes/Label.xml
@@ -746,6 +754,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/SphereOccluder3D.xml
         classes/SphereShape3D.xml
         classes/SpinBox.xml
+        classes/SplineIK3D.xml
         classes/SplitContainer.xml
         classes/SpotLight3D.xml
         classes/SpringArm3D.xml
@@ -835,6 +844,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/TubeTrailMesh.xml
         classes/Tween.xml
         classes/Tweener.xml
+        classes/TwoBoneIK3D.xml
         classes/UDPServer.xml
         classes/UDSServer.xml
         classes/UndoRedo.xml

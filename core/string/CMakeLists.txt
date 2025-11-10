@@ -16,6 +16,8 @@ target_sources(core PRIVATE
         node_path.h
         optimized_translation.cpp
         optimized_translation.h
+        plural_rules.cpp
+        plural_rules.h
         print_string.cpp
         print_string.h
         string_buffer.h

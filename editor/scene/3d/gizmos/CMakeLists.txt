@@ -15,6 +15,8 @@ target_sources(editor PRIVATE
         audio_stream_player_3d_gizmo_plugin.h
         camera_3d_gizmo_plugin.cpp
         camera_3d_gizmo_plugin.h
+        chain_ik_3d_gizmo_plugin.cpp
+        chain_ik_3d_gizmo_plugin.h
         cpu_particles_3d_gizmo_plugin.cpp
         cpu_particles_3d_gizmo_plugin.h
         decal_gizmo_plugin.cpp
@@ -51,6 +53,8 @@ target_sources(editor PRIVATE
         spring_bone_3d_gizmo_plugin.h
         sprite_base_3d_gizmo_plugin.cpp
         sprite_base_3d_gizmo_plugin.h
+        two_bone_ik_3d_gizmo_plugin.cpp
+        two_bone_ik_3d_gizmo_plugin.h
         visible_on_screen_notifier_3d_gizmo_plugin.cpp
         visible_on_screen_notifier_3d_gizmo_plugin.h
         voxel_gi_gizmo_plugin.cpp

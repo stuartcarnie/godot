@@ -21,6 +21,9 @@ set_abs(GLES3_GLSL_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/lens_distorted.glsl
         shaders/particles.glsl
         shaders/particles_copy.glsl
+        shaders/s4ao_inc.glsl
+        shaders/s4ao_mega_inc.glsl
+        shaders/s4ao_micro_inc.glsl
         shaders/scene.glsl
         shaders/skeleton.glsl
         shaders/sky.glsl

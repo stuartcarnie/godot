@@ -117,6 +117,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         BusVuFrozen.svg
         Button.svg
         ButtonGroup.svg
+        CCDIK3D.svg
         CPUParticles2D.svg
         CPUParticles3D.svg
         Callable.svg
@@ -138,6 +139,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         CapsuleShape3D.svg
         CenterContainer.svg
         CenterView.svg
+        ChainIK3D.svg
         CharacterBody2D.svg
         CharacterBody3D.svg
         CheckBox.svg
@@ -277,6 +279,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ExpandBottomDock.svg
         ExpandTree.svg
         ExternalLink.svg
+        FABRIK3D.svg
         FPS.svg
         FadeCross.svg
         FadeDisabled.svg
@@ -437,6 +440,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         HingeJoint3D.svg
         History.svg
         Hsize.svg
+        IKModifier3D.svg
         IOSDeviceWired.svg
         IOSDeviceWireless.svg
         IOSSimulator.svg
@@ -473,6 +477,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         InterpWrapClamp.svg
         InterpWrapLoop.svg
         ItemList.svg
+        IterateIK3D.svg
+        JacobianIK3D.svg
         JoyAxis.svg
         JoyButton.svg
         Joypad.svg
@@ -802,6 +808,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         SphereOccluder3D.svg
         SphereShape3D.svg
         SpinBox.svg
+        SplineIK3D.svg
         SplitContainer.svg
         SpotLight3D.svg
         SpringArm3D.svg
@@ -907,6 +914,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         TripleBar.svg
         TubeTrailMesh.svg
         Tween.svg
+        TwoBoneIK3D.svg
         UID.svg
         UndoRedo.svg
         Unfavorite.svg

@@ -132,7 +132,7 @@ target_sources(editor PRIVATE
         localization_editor.h
         packed_scene_translation_parser_plugin.cpp
         packed_scene_translation_parser_plugin.h
-        pot_generator.cpp
-        pot_generator.h
+        template_generator.cpp
+        template_generator.h
 )
 # [[[end]]]

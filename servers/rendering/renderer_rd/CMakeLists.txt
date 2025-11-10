@@ -65,6 +65,7 @@ set_abs(RENDERER_RD_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/effects/subsurface_scattering.glsl
         shaders/effects/taa_resolve.glsl
         shaders/effects/tonemap.glsl
+        shaders/effects/tonemap_mobile.glsl
         shaders/effects/vrs.glsl
         shaders/environment/gi.glsl
         shaders/environment/sdfgi_debug.glsl

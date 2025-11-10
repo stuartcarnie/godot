@@ -26,6 +26,10 @@ target_sources(scene PRIVATE
         bone_constraint_3d.h
         camera_3d.cpp
         camera_3d.h
+        ccd_ik_3d.cpp
+        ccd_ik_3d.h
+        chain_ik_3d.cpp
+        chain_ik_3d.h
         convert_transform_modifier_3d.cpp
         convert_transform_modifier_3d.h
         copy_transform_modifier_3d.cpp
@@ -34,14 +38,22 @@ target_sources(scene PRIVATE
         cpu_particles_3d.h
         decal.cpp
         decal.h
+        fabr_ik_3d.cpp
+        fabr_ik_3d.h
         fog_volume.cpp
         fog_volume.h
         gpu_particles_3d.cpp
         gpu_particles_3d.h
         gpu_particles_collision_3d.cpp
         gpu_particles_collision_3d.h
+        ik_modifier_3d.cpp
+        ik_modifier_3d.h
         importer_mesh_instance_3d.cpp
         importer_mesh_instance_3d.h
+        iterate_ik_3d.cpp
+        iterate_ik_3d.h
+        jacobian_ik_3d.cpp
+        jacobian_ik_3d.h
         label_3d.cpp
         label_3d.h
         light_3d.cpp
@@ -80,6 +92,8 @@ target_sources(scene PRIVATE
         skeleton_ik_3d.h
         skeleton_modifier_3d.cpp
         skeleton_modifier_3d.h
+        spline_ik_3d.cpp
+        spline_ik_3d.h
         spring_bone_collision_3d.cpp
         spring_bone_collision_3d.h
         spring_bone_collision_capsule_3d.cpp
@@ -92,6 +106,8 @@ target_sources(scene PRIVATE
         spring_bone_simulator_3d.h
         sprite_3d.cpp
         sprite_3d.h
+        two_bone_ik_3d.cpp
+        two_bone_ik_3d.h
         velocity_tracker_3d.cpp
         velocity_tracker_3d.h
         visible_on_screen_notifier_3d.cpp

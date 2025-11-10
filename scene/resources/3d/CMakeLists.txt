@@ -23,6 +23,10 @@ target_sources(scene PRIVATE
         height_map_shape_3d.h
         importer_mesh.cpp
         importer_mesh.h
+        joint_limitation_3d.cpp
+        joint_limitation_3d.h
+        joint_limitation_cone_3d.cpp
+        joint_limitation_cone_3d.h
         mesh_library.cpp
         mesh_library.h
         navigation_mesh_source_geometry_data_3d.cpp
