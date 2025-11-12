@@ -1,8 +1,5 @@
 # disable warnings for third-party code
-add_compile_options(
-        $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>
-
-)
+add_compile_options($<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)
 
 add_subdirectory(libktx)
 add_subdirectory(amd-fsr)

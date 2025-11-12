@@ -83,6 +83,8 @@ if (WANT_EDITOR)
     # [[[end]]]
 endif ()
 
+# target_link_libraries(servers PRIVATE $<$<BOOL:${WANT_PROFILER}>:profiler>)
+
 if(${WANT_OPENGL} AND ${OPENGL_FOUND})
     target_link_libraries(macos PUBLIC OpenGL::GL)
     target_link_libraries(macos PUBLIC gles3 glad)
