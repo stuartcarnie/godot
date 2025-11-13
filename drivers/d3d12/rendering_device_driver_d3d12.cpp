@@ -2203,25 +2203,34 @@ bool RenderingDeviceDriverD3D12::sampler_is_format_supported_for_filter(DataForm
 
 RDD::VertexFormatID RenderingDeviceDriverD3D12::vertex_format_create(Span<VertexAttribute> p_vertex_attribs, const VertexAttributeBindingsMap &p_vertex_bindings) {
 	VertexFormatInfo *vf_info = VersatileResource::allocate<VertexFormatInfo>(resources_allocator);
-
 	vf_info->input_elem_descs.resize(p_vertex_attribs.size());
-	vf_info->vertex_buffer_strides.resize(p_vertex_attribs.size());
+
+	uint32_t max_binding = 0;
 	for (uint32_t i = 0; i < p_vertex_attribs.size(); i++) {
-		vf_info->input_elem_descs[i] = {};
-		vf_info->input_elem_descs[i].SemanticName = "TEXCOORD";
-		vf_info->input_elem_descs[i].SemanticIndex = p_vertex_attribs[i].location;
-		vf_info->input_elem_descs[i].Format = RD_TO_D3D12_FORMAT[p_vertex_attribs[i].format].general_format;
-		vf_info->input_elem_descs[i].InputSlot = i; // TODO: Can the same slot be used if data comes from the same buffer (regardless format)?
-		vf_info->input_elem_descs[i].AlignedByteOffset = p_vertex_attribs[i].offset;
-		if (p_vertex_attribs[i].frequency == VERTEX_FREQUENCY_INSTANCE) {
-			vf_info->input_elem_descs[i].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
-			vf_info->input_elem_descs[i].InstanceDataStepRate = 1;
+		D3D12_INPUT_ELEMENT_DESC &input_element_desc = vf_info->input_elem_descs[i];
+		const VertexAttribute &vertex_attrib = p_vertex_attribs[i];
+		const VertexAttributeBinding &vertex_binding = p_vertex_bindings[vertex_attrib.binding];
+
+		input_element_desc = {};
+		input_element_desc.SemanticName = "TEXCOORD";
+		input_element_desc.SemanticIndex = vertex_attrib.location;
+		input_element_desc.Format = RD_TO_D3D12_FORMAT[vertex_attrib.format].general_format;
+		input_element_desc.InputSlot = vertex_attrib.binding;
+		input_element_desc.AlignedByteOffset = vertex_attrib.offset;
+		if (vertex_binding.frequency == VERTEX_FREQUENCY_INSTANCE) {
+			input_element_desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+			input_element_desc.InstanceDataStepRate = 1;
 		} else {
-			vf_info->input_elem_descs[i].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-			vf_info->input_elem_descs[i].InstanceDataStepRate = 0;
+			input_element_desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+			input_element_desc.InstanceDataStepRate = 0;
 		}
 
-		vf_info->vertex_buffer_strides[i] = p_vertex_attribs[i].stride;
+		max_binding = MAX(max_binding, vertex_attrib.binding + 1);
+	}
+
+	vf_info->vertex_buffer_strides.resize(max_binding);
+	for (const VertexAttributeBindingsMap::KV &vertex_binding_pair : p_vertex_bindings) {
+		vf_info->vertex_buffer_strides[vertex_binding_pair.key] = vertex_binding_pair.value.stride;
 	}
 
 	return VertexFormatID(vf_info);
@@ -5408,8 +5417,15 @@ void RenderingDeviceDriverD3D12::command_render_bind_vertex_buffers(CommandBuffe
 	for (uint32_t i = 0; i < p_binding_count; i++) {
 		BufferInfo *buffer_info = (BufferInfo *)p_buffers[i].id;
 
+		uint32_t dynamic_offset = 0;
+		if (buffer_info->is_dynamic()) {
+			uint64_t buffer_frame_idx = p_dynamic_offsets & 0x3; // Assuming max 4 frames.
+			p_dynamic_offsets >>= 2;
+			dynamic_offset = buffer_frame_idx * buffer_info->size;
+		}
+
 		cmd_buf_info->render_pass_state.vertex_buffer_views[i] = {};
-		cmd_buf_info->render_pass_state.vertex_buffer_views[i].BufferLocation = buffer_info->resource->GetGPUVirtualAddress() + p_offsets[i];
+		cmd_buf_info->render_pass_state.vertex_buffer_views[i].BufferLocation = buffer_info->resource->GetGPUVirtualAddress() + dynamic_offset + p_offsets[i];
 		cmd_buf_info->render_pass_state.vertex_buffer_views[i].SizeInBytes = buffer_info->size - p_offsets[i];
 		if (!barrier_capabilities.enhanced_barriers_supported) {
 			_resource_transition_batch(cmd_buf_info, buffer_info, 0, 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
