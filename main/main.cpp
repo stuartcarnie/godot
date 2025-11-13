@@ -2768,6 +2768,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	// OpenXR project extensions settings.
 	GLOBAL_DEF_BASIC(PropertyInfo(Variant::INT, "xr/openxr/extensions/debug_utils", PROPERTY_HINT_ENUM, "Disabled,Error,Warning,Info,Verbose"), "0");
 	GLOBAL_DEF_BASIC(PropertyInfo(Variant::INT, "xr/openxr/extensions/debug_message_types", PROPERTY_HINT_FLAGS, "General,Validation,Performance,Conformance"), "15");
+	GLOBAL_DEF_BASIC("xr/openxr/extensions/frame_synthesis", false);
 	GLOBAL_DEF_BASIC("xr/openxr/extensions/hand_tracking", false);
 	GLOBAL_DEF_BASIC("xr/openxr/extensions/hand_tracking_unobstructed_data_source", false); // XR_HAND_TRACKING_DATA_SOURCE_UNOBSTRUCTED_EXT
 	GLOBAL_DEF_BASIC("xr/openxr/extensions/hand_tracking_controller_data_source", false); // XR_HAND_TRACKING_DATA_SOURCE_CONTROLLER_EXT
@@ -3937,7 +3938,6 @@ int Main::start() {
 			return EXIT_FAILURE;
 #endif // defined(OVERRIDE_PATH_ENABLED)
 		} else if (E->get().length() && E->get()[0] != '-' && positional_arg.is_empty() && game_path.is_empty()) {
-#if defined(OVERRIDE_PATH_ENABLED)
 			positional_arg = E->get();
 
 			String scene_path = ResourceUID::ensure_path(E->get());
@@ -3952,14 +3952,15 @@ int Main::start() {
 				// or other file extensions without trouble. This can be used to implement
 				// "drag-and-drop onto executable" logic, which can prove helpful
 				// for non-game applications.
+#if defined(OVERRIDE_PATH_ENABLED)
 				game_path = scene_path;
-			}
 #else
-			ERR_PRINT(
-					"Scene path was specified on the command line, but this Godot binary was compiled without support for path overrides. Aborting.\n"
-					"To be able to use it, use the `disable_path_overrides=no` SCons option when compiling Godot.\n");
-			return EXIT_FAILURE;
+				ERR_PRINT(
+						"Scene path was specified on the command line, but this Godot binary was compiled without support for path overrides. Aborting.\n"
+						"To be able to use it, use the `disable_path_overrides=no` SCons option when compiling Godot.\n");
+				return EXIT_FAILURE;
 #endif // defined(OVERRIDE_PATH_ENABLED)
+			}
 		}
 		// Then parameters that have an argument to the right.
 		else if (E->next()) {
