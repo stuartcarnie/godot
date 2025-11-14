@@ -46,14 +46,12 @@ target_sources(servers PRIVATE
         rendering_device_graph.h
         rendering_light_culler.cpp
         rendering_light_culler.h
-        rendering_method.cpp
         rendering_method.h
         rendering_server.cpp
         rendering_server.h
         rendering_server_constants.h
         rendering_server_default.cpp
         rendering_server_default.h
-        rendering_server_globals.cpp
         rendering_server_globals.h
         rendering_shader_container.cpp
         rendering_shader_container.h

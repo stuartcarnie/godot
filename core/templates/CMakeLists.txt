@@ -11,7 +11,6 @@ target_sources(core PRIVATE
         a_hash_map.h
         bin_sorted_array.h
         bit_field.h
-        command_queue_mt.cpp
         command_queue_mt.h
         cowdata.h
         fixed_vector.h
@@ -33,7 +32,6 @@ target_sources(core PRIVATE
         rb_map.h
         rb_set.h
         rid.h
-        rid_owner.cpp
         rid_owner.h
         ring_buffer.h
         safe_list.h

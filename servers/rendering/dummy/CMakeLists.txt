@@ -19,7 +19,6 @@ target_sources(servers PRIVATE
         storage/mesh_storage.cpp
         storage/mesh_storage.h
         storage/particles_storage.h
-        storage/texture_storage.cpp
         storage/texture_storage.h
         storage/utilities.cpp
         storage/utilities.h

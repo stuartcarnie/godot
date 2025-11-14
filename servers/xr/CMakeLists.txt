@@ -9,7 +9,6 @@
 target_sources(servers PRIVATE
         xr_body_tracker.cpp
         xr_body_tracker.h
-        xr_controller_tracker.cpp
         xr_controller_tracker.h
         xr_face_tracker.cpp
         xr_face_tracker.h

@@ -18,7 +18,6 @@ target_sources(godot-module-physics-2D PRIVATE
         godot_body_direct_state_2d.h
         godot_body_pair_2d.cpp
         godot_body_pair_2d.h
-        godot_broad_phase_2d.cpp
         godot_broad_phase_2d.h
         godot_broad_phase_2d_bvh.cpp
         godot_broad_phase_2d_bvh.h
