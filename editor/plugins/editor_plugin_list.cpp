@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  jacobian_ik_3d.cpp                                                    */
+/*  editor_plugin_list.cpp                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,45 +28,69 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "jacobian_ik_3d.h"
+#include "editor_plugin_list.h"
 
-void JacobianIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) {
-	int joint_size = (int)p_setting->joints.size();
-	int chain_size = (int)p_setting->chain.size();
+bool EditorPluginList::forward_gui_input(const Ref<InputEvent> &p_event) const {
+	bool discard = false;
 
-	// Forwards.
-	for (int i = 0; i < joint_size; i++) {
-		IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[i];
-		if (!solver_info || Math::is_zero_approx(solver_info->length)) {
-			continue;
-		}
-
-		int HEAD = i;
-		int TAIL = i + 1;
-
-		Vector3 current_head = p_setting->chain[HEAD];
-		Vector3 current_effector = p_setting->chain[chain_size - 1];
-		Vector3 head_to_effector = current_effector - current_head;
-		Vector3 effector_to_destination = p_destination - current_effector;
-		Vector3 axis = head_to_effector.cross(effector_to_destination);
-
-		if (Math::is_zero_approx(axis.length_squared())) {
-			continue;
-		}
-
-		Quaternion to_rot = Quaternion(axis.normalized(), MIN(axis.length() / MAX(CMP_EPSILON, head_to_effector.length_squared()), angular_delta_limit)); // Clip by angular_delta_limit for stability.
-
-		for (int j = TAIL; j < chain_size; j++) {
-			Vector3 to_tail = p_setting->chain[j] - current_head;
-			p_setting->update_chain_coordinate_fw(p_skeleton, j, current_head + to_rot.xform(to_tail));
-
-			int k = j - 1;
-			if (p_setting->joint_settings[k]->rotation_axis != ROTATION_AXIS_ALL) {
-				p_setting->update_chain_coordinate_fw(p_skeleton, j, p_setting->chain[k] + p_setting->joint_settings[k]->get_projected_rotation(solver_info->current_grest, p_setting->chain[j] - p_setting->chain[k]));
-			}
-			if (p_setting->joint_settings[k]->limitation.is_valid()) {
-				p_setting->update_chain_coordinate_fw(p_skeleton, j, p_setting->chain[k] + p_setting->joint_settings[k]->get_limited_rotation(solver_info->current_grest, p_setting->chain[j] - p_setting->chain[k], solver_info->forward_vector));
-			}
+	for (EditorPlugin *plugin : plugins_list) {
+		if (plugin->forward_canvas_gui_input(p_event)) {
+			discard = true;
 		}
 	}
+
+	return discard;
+}
+
+EditorPlugin::AfterGUIInput EditorPluginList::forward_3d_gui_input(Camera3D *p_camera, const Ref<InputEvent> &p_event, bool p_serve_when_force_input_enabled) const {
+	EditorPlugin::AfterGUIInput after = EditorPlugin::AFTER_GUI_INPUT_PASS;
+
+	for (EditorPlugin *plugin : plugins_list) {
+		if (!p_serve_when_force_input_enabled && plugin->is_input_event_forwarding_always_enabled()) {
+			continue;
+		}
+
+		EditorPlugin::AfterGUIInput current_after = plugin->forward_3d_gui_input(p_camera, p_event);
+		if (current_after == EditorPlugin::AFTER_GUI_INPUT_STOP) {
+			after = EditorPlugin::AFTER_GUI_INPUT_STOP;
+		}
+		if (after != EditorPlugin::AFTER_GUI_INPUT_STOP && current_after == EditorPlugin::AFTER_GUI_INPUT_CUSTOM) {
+			after = EditorPlugin::AFTER_GUI_INPUT_CUSTOM;
+		}
+	}
+
+	return after;
+}
+
+void EditorPluginList::forward_canvas_draw_over_viewport(Control *p_overlay) const {
+	for (EditorPlugin *plugin : plugins_list) {
+		plugin->forward_canvas_draw_over_viewport(p_overlay);
+	}
+}
+
+void EditorPluginList::forward_canvas_force_draw_over_viewport(Control *p_overlay) const {
+	for (EditorPlugin *plugin : plugins_list) {
+		plugin->forward_canvas_force_draw_over_viewport(p_overlay);
+	}
+}
+
+void EditorPluginList::forward_3d_draw_over_viewport(Control *p_overlay) const {
+	for (EditorPlugin *plugin : plugins_list) {
+		plugin->forward_3d_draw_over_viewport(p_overlay);
+	}
+}
+
+void EditorPluginList::forward_3d_force_draw_over_viewport(Control *p_overlay) const {
+	for (EditorPlugin *plugin : plugins_list) {
+		plugin->forward_3d_force_draw_over_viewport(p_overlay);
+	}
+}
+
+void EditorPluginList::add_plugin(EditorPlugin *p_plugin) {
+	ERR_FAIL_COND(plugins_list.has(p_plugin));
+	plugins_list.push_back(p_plugin);
+}
+
+void EditorPluginList::remove_plugin(EditorPlugin *p_plugin) {
+	plugins_list.erase(p_plugin);
 }
