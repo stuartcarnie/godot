@@ -157,9 +157,9 @@
 			[ns_synth startSpeakingString:[NSString stringWithUTF8String:message.text.utf8().get_data()]];
 		}
 #endif
+		DisplayServer::get_singleton()->tts_post_utterance_event(DisplayServer::TTS_UTTERANCE_STARTED, message.id);
 		queue.pop_front();
 
-		DisplayServer::get_singleton()->tts_post_utterance_event(DisplayServer::TTS_UTTERANCE_STARTED, message.id);
 		speaking = true;
 	}
 }
@@ -235,7 +235,7 @@
 #endif
 }
 
-- (void)speak:(const String &)text voice:(const String &)voice volume:(int)volume pitch:(float)pitch rate:(float)rate utterance_id:(int)utterance_id interrupt:(bool)interrupt {
+- (void)speak:(const String &)text voice:(const String &)voice volume:(int)volume pitch:(float)pitch rate:(float)rate utterance_id:(int64_t)utterance_id interrupt:(bool)interrupt {
 	if (interrupt) {
 		[self stopSpeaking];
 	}
