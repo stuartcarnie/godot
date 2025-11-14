@@ -9,6 +9,8 @@
 target_sources(editor PRIVATE
         editor_plugin.cpp
         editor_plugin.h
+        editor_plugin_list.cpp
+        editor_plugin_list.h
         editor_plugin_settings.cpp
         editor_plugin_settings.h
         editor_resource_conversion_plugin.cpp

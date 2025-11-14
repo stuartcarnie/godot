@@ -89,6 +89,7 @@ target_compile_definitions(Godot
         PRIVATE
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>
         $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED=1>
+        $<$<BOOL:${WANT_EDITOR}>:OVERRIDE_PATH_ENABLED>
 )
 
 target_include_directories(Godot PUBLIC
