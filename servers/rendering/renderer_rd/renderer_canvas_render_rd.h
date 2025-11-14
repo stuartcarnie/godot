@@ -67,8 +67,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 		INSTANCE_FLAGS_CLIP_RECT_UV = (1 << 4),
 		INSTANCE_FLAGS_TRANSPOSE_RECT = (1 << 5),
-		INSTANCE_FLAGS_USE_MSDF = (1 << 6),
-		INSTANCE_FLAGS_USE_LCD = (1 << 7),
 
 		INSTANCE_FLAGS_NINEPACH_DRAW_CENTER = (1 << 8),
 		INSTANCE_FLAGS_NINEPATCH_H_MODE_SHIFT = 9,
@@ -120,6 +118,8 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 			struct {
 				uint32_t use_lighting : 1;
+				uint32_t use_msdf : 1;
+				uint32_t use_lcd : 1;
 			};
 		};
 	};
@@ -354,15 +354,12 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 
 	struct InstanceData {
 		float world[6];
-		float color_texture_pixel_size[2];
+		float ninepatch_pixel_size[2];
 		union {
 			//rect
 			struct {
 				float modulation[4];
-				union {
-					float msdf[4];
-					float ninepatch_margins[4];
-				};
+				float ninepatch_margins[4];
 				float dst_rect[4];
 				float src_rect[4];
 				float pad[2];
@@ -386,18 +383,19 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		uint32_t specular_shininess;
 		uint32_t batch_flags;
 		uint32_t pad0;
+
+		float msdf[2];
+		float color_texture_pixel_size[2];
 	};
 
 	struct PushConstantAttributes {
 		PushConstant base;
 
 		float world[6];
-		float color_texture_pixel_size[2];
-		float modulation[4];
-		uint32_t lights[4];
 		uint32_t flags;
 		uint32_t instance_uniforms_ofs;
-		uint32_t pad1[2];
+		float modulation[4];
+		uint32_t lights[4];
 
 		operator PushConstant &() {
 			return base;
@@ -527,6 +525,8 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		TextureInfo *tex_info;
 
 		Color modulate = Color(1.0, 1.0, 1.0, 1.0);
+		float msdf_pix_range = 0.0;
+		float msdf_outline = 0.0;
 
 		Item *clip = nullptr;
 
@@ -538,6 +538,9 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 		ShaderVariant shader_variant = SHADER_VARIANT_QUAD;
 		RD::RenderPrimitive render_primitive = RD::RENDER_PRIMITIVE_TRIANGLES;
 		bool use_lighting = false;
+		bool use_msdf = false;
+		bool use_lcd = false;
+		bool has_blend = false;
 
 		// batch-specific data
 		union {
@@ -546,7 +549,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 			// TYPE_PARTICLES
 			uint32_t mesh_instance_count;
 		};
-		bool has_blend = false;
 		uint32_t flags = 0;
 
 		_FORCE_INLINE_ PushConstant push_constant() const {
@@ -554,6 +556,11 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 			pc.specular_shininess = tex_info->specular_shininess;
 			pc.batch_flags = tex_info->flags | flags;
 			pc.pad0 = 0;
+
+			pc.msdf[0] = msdf_pix_range;
+			pc.msdf[1] = msdf_outline;
+			pc.color_texture_pixel_size[0] = tex_info->texpixel_size.x;
+			pc.color_texture_pixel_size[1] = tex_info->texpixel_size.y;
 			return pc;
 		}
 
@@ -561,7 +568,6 @@ class RendererCanvasRenderRD : public RendererCanvasRender {
 			PushConstantAttributes pc;
 			pc.base = push_constant();
 			memcpy(pc.world, push_data.world, sizeof(pc.world));
-			memcpy(pc.color_texture_pixel_size, push_data.color_texture_pixel_size, sizeof(pc.color_texture_pixel_size));
 			memcpy(pc.modulation, push_data.modulation, sizeof(pc.modulation));
 			memcpy(pc.lights, push_data.lights, sizeof(pc.lights));
 			pc.flags = push_data.flags;

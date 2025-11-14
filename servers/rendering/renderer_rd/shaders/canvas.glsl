@@ -34,12 +34,13 @@ layout(location = 3) out vec2 pixel_size_interp;
 
 #endif
 
+#define read_draw_data_color_texture_pixel_size params.color_texture_pixel_size
+
 #ifdef USE_ATTRIBUTES
 
 #define read_draw_data_world_x params.world_x
 #define read_draw_data_world_y params.world_y
 #define read_draw_data_world_ofs params.world_ofs
-#define read_draw_data_color_texture_pixel_size params.color_texture_pixel_size
 #define read_draw_data_modulation params.modulation
 #define read_draw_data_flags params.flags
 #define read_draw_data_instance_offset params.instance_uniforms_ofs
@@ -62,21 +63,17 @@ layout(location = 15) in uvec4 attrib_H;
 
 // Varyings so the per-instance info can be used in the fragment shader
 layout(location = 5) out flat vec4 varying_A;
-layout(location = 6) out flat vec2 varying_B;
-#ifndef USE_PRIMITIVE
-layout(location = 7) out flat vec4 varying_C;
+layout(location = 6) out flat uvec4 varying_B;
+layout(location = 7) out flat uvec4 varying_C;
+
 #ifdef USE_NINEPATCH
-layout(location = 8) out flat vec2 varying_D;
-#endif // USE_NINEPATCH
+layout(location = 8) out flat vec4 varying_D;
 layout(location = 9) out flat vec4 varying_E;
-#endif // !USE_PRIMITIVE
-layout(location = 10) out flat uvec2 varying_F;
-layout(location = 11) out flat uvec4 varying_G;
+#endif // USE_NINEPATCH
 
 #define read_draw_data_world_x attrib_A.xy
 #define read_draw_data_world_y attrib_A.zw
 #define read_draw_data_world_ofs attrib_B.xy
-#define read_draw_data_color_texture_pixel_size attrib_B.zw
 
 #ifdef USE_PRIMITIVE
 
@@ -96,6 +93,7 @@ layout(location = 11) out flat uvec4 varying_G;
 
 #else // !USE_PRIMITIVE
 
+#define read_draw_data_ninepatch_pixel_size (attrib_B.zw)
 #define read_draw_data_modulation attrib_C
 #define read_draw_data_ninepatch_margins attrib_D
 #define read_draw_data_dst_rect attrib_E
@@ -128,18 +126,16 @@ vec3 srgb_to_linear(vec3 color) {
 void main() {
 #ifndef USE_ATTRIBUTES
 	varying_A = vec4(read_draw_data_world_x, read_draw_data_world_y);
-	varying_B = read_draw_data_color_texture_pixel_size;
-#ifndef USE_PRIMITIVE
-	varying_C = read_draw_data_ninepatch_margins;
-
+#ifdef USE_PRIMITIVE
+	varying_B = uvec4(read_draw_data_flags, read_draw_data_instance_offset, 0.0, 0.0);
+#else
+	varying_B = uvec4(read_draw_data_flags, read_draw_data_instance_offset, packHalf2x16(read_draw_data_src_rect.xy), packHalf2x16(read_draw_data_src_rect.zw));
+#endif
+	varying_C = read_draw_data_lights;
 #ifdef USE_NINEPATCH
-	varying_D = vec2(read_draw_data_dst_rect.z, read_draw_data_dst_rect.w);
+	varying_D = read_draw_data_ninepatch_margins;
+	varying_E = vec4(read_draw_data_dst_rect.z, read_draw_data_dst_rect.w, read_draw_data_ninepatch_pixel_size.x, read_draw_data_ninepatch_pixel_size.y);
 #endif // USE_NINEPATCH
-	varying_E = read_draw_data_src_rect;
-#endif // !USE_PRIMITIVE
-
-	varying_F = uvec2(read_draw_data_flags, read_draw_data_instance_offset);
-	varying_G = read_draw_data_lights;
 #endif // !USE_ATTRIBUTES
 
 	vec4 instance_custom = vec4(0.0);
@@ -327,12 +323,12 @@ layout(location = 3) in vec2 pixel_size_interp;
 
 #endif
 
+#define read_draw_data_color_texture_pixel_size params.color_texture_pixel_size
+
 #ifdef USE_ATTRIBUTES
 
 #define read_draw_data_world_x params.world_x
 #define read_draw_data_world_y params.world_y
-#define read_draw_data_color_texture_pixel_size params.color_texture_pixel_size
-#define read_draw_data_modulation params.modulation
 #define read_draw_data_flags params.flags
 #define read_draw_data_instance_offset params.instance_uniforms_ofs
 #define read_draw_data_lights params.lights
@@ -341,32 +337,25 @@ layout(location = 3) in vec2 pixel_size_interp;
 
 // Can all be flat as they are the same for the whole batched instance
 layout(location = 5) in flat vec4 varying_A;
-layout(location = 6) in flat vec2 varying_B;
 
 #define read_draw_data_world_x varying_A.xy
 #define read_draw_data_world_y varying_A.zw
-#define read_draw_data_color_texture_pixel_size varying_B
 
-#ifndef USE_PRIMITIVE
-layout(location = 7) in flat vec4 varying_C;
-#define read_draw_data_ninepatch_margins varying_C
+layout(location = 6) in flat uvec4 varying_B;
+layout(location = 7) in flat uvec4 varying_C;
+#define read_draw_data_flags varying_B.x
+#define read_draw_data_instance_offset varying_B.y
+#define read_draw_data_src_rect (varying_B.zw)
+#define read_draw_data_lights varying_C
 
 #ifdef USE_NINEPATCH
-
-layout(location = 8) in flat vec2 varying_D;
-#define read_draw_data_dst_rect_z varying_D.x
-#define read_draw_data_dst_rect_w varying_D.y
-#endif // USE_NINEPATCH
-
+layout(location = 8) in flat vec4 varying_D;
 layout(location = 9) in flat vec4 varying_E;
-#define read_draw_data_src_rect varying_E
-#endif // !USE_PRIMITIVE
-
-layout(location = 10) in flat uvec2 varying_F;
-layout(location = 11) in flat uvec4 varying_G;
-#define read_draw_data_flags varying_F.x
-#define read_draw_data_instance_offset varying_F.y
-#define read_draw_data_lights varying_G
+#define read_draw_data_ninepatch_margins varying_D
+#define read_draw_data_dst_rect_z varying_E.x
+#define read_draw_data_dst_rect_w varying_E.y
+#define read_draw_data_ninepatch_pixel_size (varying_E.zw)
+#endif // USE_NINEPATCH
 
 #endif // USE_ATTRIBUTES
 
@@ -589,7 +578,8 @@ void main() {
 	vec2 vertex = vertex_interp;
 
 #if !defined(USE_ATTRIBUTES) && !defined(USE_PRIMITIVE)
-	vec4 region_rect = read_draw_data_src_rect;
+	vec4 src_rect = vec4(unpackHalf2x16(read_draw_data_src_rect.x), unpackHalf2x16(read_draw_data_src_rect.y));
+	vec4 region_rect = src_rect;
 #else
 	vec4 region_rect = vec4(0.0, 0.0, 1.0 / read_draw_data_color_texture_pixel_size);
 #endif
@@ -600,30 +590,28 @@ void main() {
 
 	int draw_center = 2;
 	uv = vec2(
-			map_ninepatch_axis(pixel_size_interp.x, abs(read_draw_data_dst_rect_z), read_draw_data_color_texture_pixel_size.x, read_draw_data_ninepatch_margins.x, read_draw_data_ninepatch_margins.z, int(bitfieldExtract(read_draw_data_flags, INSTANCE_FLAGS_NINEPATCH_H_MODE_SHIFT, 2)), draw_center),
-			map_ninepatch_axis(pixel_size_interp.y, abs(read_draw_data_dst_rect_w), read_draw_data_color_texture_pixel_size.y, read_draw_data_ninepatch_margins.y, read_draw_data_ninepatch_margins.w, int(bitfieldExtract(read_draw_data_flags, INSTANCE_FLAGS_NINEPATCH_V_MODE_SHIFT, 2)), draw_center));
+			map_ninepatch_axis(pixel_size_interp.x, abs(read_draw_data_dst_rect_z), read_draw_data_ninepatch_pixel_size.x, read_draw_data_ninepatch_margins.x, read_draw_data_ninepatch_margins.z, int(bitfieldExtract(read_draw_data_flags, INSTANCE_FLAGS_NINEPATCH_H_MODE_SHIFT, 2)), draw_center),
+			map_ninepatch_axis(pixel_size_interp.y, abs(read_draw_data_dst_rect_w), read_draw_data_ninepatch_pixel_size.y, read_draw_data_ninepatch_margins.y, read_draw_data_ninepatch_margins.w, int(bitfieldExtract(read_draw_data_flags, INSTANCE_FLAGS_NINEPATCH_V_MODE_SHIFT, 2)), draw_center));
 
 	if (draw_center == 0) {
 		color.a = 0.0;
 	}
 
-	uv = uv * read_draw_data_src_rect.zw + read_draw_data_src_rect.xy; //apply region if needed
+	uv = uv * src_rect.zw + src_rect.xy; //apply region if needed
 
 #endif
 	if (bool(read_draw_data_flags & INSTANCE_FLAGS_CLIP_RECT_UV)) {
 		vec2 half_texpixel = read_draw_data_color_texture_pixel_size * 0.5;
-		uv = clamp(uv, read_draw_data_src_rect.xy + half_texpixel, read_draw_data_src_rect.xy + abs(read_draw_data_src_rect.zw) - half_texpixel);
+		uv = clamp(uv, src_rect.xy + half_texpixel, src_rect.xy + abs(src_rect.zw) - half_texpixel);
 	}
 
 #endif
 
 #if !defined(USE_ATTRIBUTES) && !defined(USE_PRIMITIVE)
 	// only used by TYPE_RECT
-	if (bool(read_draw_data_flags & INSTANCE_FLAGS_USE_MSDF)) {
-		float px_range = read_draw_data_ninepatch_margins.x;
-		float outline_thickness = read_draw_data_ninepatch_margins.y;
-		//float reserved1 = read_draw_data_ninepatch_margins.z;
-		//float reserved2 = read_draw_data_ninepatch_margins.w;
+	if (sc_use_msdf()) {
+		float px_range = params.msdf.x;
+		float outline_thickness = params.msdf.y;
 
 		vec4 msdf_sample = texture(sampler2D(color_texture, texture_sampler), uv);
 		vec2 msdf_size = vec2(textureSize(sampler2D(color_texture, texture_sampler), 0));
@@ -640,7 +628,7 @@ void main() {
 			float a = clamp((d - 0.5) * px_size + 0.5, 0.0, 1.0);
 			color.a = a * color.a;
 		}
-	} else if (bool(read_draw_data_flags & INSTANCE_FLAGS_USE_LCD)) {
+	} else if (sc_use_lcd()) {
 		vec4 lcd_sample = texture(sampler2D(color_texture, texture_sampler), uv);
 		if (lcd_sample.a == 1.0) {
 			color.rgb = lcd_sample.rgb * color.a;
@@ -655,7 +643,7 @@ void main() {
 	}
 
 	uint light_count = read_draw_data_flags & 15u; //max 15 lights
-	bool using_light = (light_count + canvas_data.directional_light_count) > 0;
+	bool using_light = ((light_count + canvas_data.directional_light_count) > 0) && sc_use_lighting();
 
 	vec3 normal;
 
@@ -672,7 +660,7 @@ void main() {
 		if (bool(read_draw_data_flags & INSTANCE_FLAGS_TRANSPOSE_RECT)) {
 			normal.xy = normal.yx;
 		}
-		normal.xy *= sign(read_draw_data_src_rect.zw);
+		normal.xy *= sign(src_rect.zw);
 #endif
 		normal.z = sqrt(max(0.0, 1.0 - dot(normal.xy, normal.xy)));
 		normal_used = true;

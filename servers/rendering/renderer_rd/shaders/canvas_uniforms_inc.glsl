@@ -8,8 +8,6 @@
 
 #define INSTANCE_FLAGS_CLIP_RECT_UV (1 << 4)
 #define INSTANCE_FLAGS_TRANSPOSE_RECT (1 << 5)
-#define INSTANCE_FLAGS_USE_MSDF (1 << 6)
-#define INSTANCE_FLAGS_USE_LCD (1 << 7)
 
 #define INSTANCE_FLAGS_NINEPATCH_DRAW_CENTER_SHIFT 8
 #define INSTANCE_FLAGS_NINEPATCH_H_MODE_SHIFT 9
@@ -22,7 +20,7 @@ struct InstanceData {
 	vec2 world_x;
 	vec2 world_y;
 	vec2 world_ofs;
-	vec2 color_texture_pixel_size;
+	vec2 ninepatch_pixel_size;
 #ifdef USE_PRIMITIVE
 	vec2 points[3];
 	vec2 uvs[3];
@@ -55,17 +53,20 @@ layout(push_constant, std430) uniform Params {
 	uint specular_shininess;
 	uint batch_flags;
 	uint pad0;
+
+	vec2 msdf;
+	vec2 color_texture_pixel_size;
 #ifdef USE_ATTRIBUTES
 	// Particles and meshes
 	vec2 world_x;
 	vec2 world_y;
+
 	vec2 world_ofs;
-	vec2 color_texture_pixel_size;
-	vec4 modulation;
-	uvec4 lights;
 	uint flags;
 	uint instance_uniforms_ofs;
-	uint pad1[2];
+
+	vec4 modulation;
+	uvec4 lights;
 #endif
 }
 params;
@@ -92,6 +93,14 @@ uint sc_packed_0() {
 
 bool sc_use_lighting() {
 	return ((sc_packed_0() >> 0) & 1U) != 0;
+}
+
+bool sc_use_msdf() {
+	return ((sc_packed_0() >> 1) & 1U) != 0;
+}
+
+bool sc_use_lcd() {
+	return ((sc_packed_0() >> 2) & 1U) != 0;
 }
 
 // In vulkan, sets should always be ordered using the following logic:

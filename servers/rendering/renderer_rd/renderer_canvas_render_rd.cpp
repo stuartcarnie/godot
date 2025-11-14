@@ -2443,6 +2443,19 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 					_prepare_batch_texture_info(rect->texture, tex_state, tex_info);
 				}
 
+				if (has_msdf != r_current_batch->use_msdf || rect->px_range != r_current_batch->msdf_pix_range || rect->outline != r_current_batch->msdf_outline) {
+					r_current_batch = _new_batch(r_batch_broken);
+					r_current_batch->use_msdf = has_msdf;
+					r_current_batch->msdf_pix_range = rect->px_range;
+					r_current_batch->msdf_outline = rect->outline;
+				}
+
+				bool has_lcd = bool(rect->flags & CANVAS_RECT_LCD);
+				if (has_lcd != r_current_batch->use_lcd) {
+					r_current_batch = _new_batch(r_batch_broken);
+					r_current_batch->use_lcd = has_lcd;
+				}
+
 				if (r_current_batch->tex_info != tex_info) {
 					r_current_batch = _new_batch(r_batch_broken);
 					r_current_batch->tex_info = tex_info;
@@ -2494,16 +2507,6 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 					}
 
 					src_rect = Rect2(0, 0, 1, 1);
-				}
-
-				if (has_msdf) {
-					instance_data->flags |= INSTANCE_FLAGS_USE_MSDF;
-					instance_data->msdf[0] = rect->px_range; // Pixel range.
-					instance_data->msdf[1] = rect->outline; // Outline size.
-					instance_data->msdf[2] = 0.f; // Reserved.
-					instance_data->msdf[3] = 0.f; // Reserved.
-				} else if (rect->flags & CANVAS_RECT_LCD) {
-					instance_data->flags |= INSTANCE_FLAGS_USE_LCD;
 				}
 
 				instance_data->modulation[0] = modulated.r;
@@ -2559,8 +2562,8 @@ void RendererCanvasRenderRD::_record_item_commands(const Item *p_item, RenderTar
 				} else {
 					if (np->source != Rect2()) {
 						src_rect = Rect2(np->source.position.x * tex_info->texpixel_size.width, np->source.position.y * tex_info->texpixel_size.height, np->source.size.x * tex_info->texpixel_size.width, np->source.size.y * tex_info->texpixel_size.height);
-						instance_data->color_texture_pixel_size[0] = 1.0 / np->source.size.width;
-						instance_data->color_texture_pixel_size[1] = 1.0 / np->source.size.height;
+						instance_data->ninepatch_pixel_size[0] = 1.0 / np->source.size.width;
+						instance_data->ninepatch_pixel_size[1] = 1.0 / np->source.size.height;
 					} else {
 						src_rect = Rect2(0, 0, 1, 1);
 					}
@@ -3039,6 +3042,8 @@ void RendererCanvasRenderRD::_render_batch(RD::DrawListID p_draw_list, CanvasSha
 	pipeline_key.variant = p_batch->shader_variant;
 	pipeline_key.render_primitive = p_batch->render_primitive;
 	pipeline_key.shader_specialization.use_lighting = p_batch->use_lighting;
+	pipeline_key.shader_specialization.use_msdf = p_batch->use_msdf;
+	pipeline_key.shader_specialization.use_lcd = p_batch->use_lcd;
 	pipeline_key.lcd_blend = p_batch->has_blend;
 
 	switch (p_batch->command_type) {
@@ -3225,8 +3230,6 @@ RendererCanvasRenderRD::InstanceData *RendererCanvasRenderRD::new_instance_data(
 	}
 
 	memcpy(instance_data, &template_instance, sizeof(InstanceData));
-	instance_data->color_texture_pixel_size[0] = p_current_batch.tex_info->texpixel_size.width;
-	instance_data->color_texture_pixel_size[1] = p_current_batch.tex_info->texpixel_size.height;
 	return instance_data;
 }
 
