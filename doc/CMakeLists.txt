@@ -465,6 +465,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/LightmapProbe.xml
         classes/Lightmapper.xml
         classes/LightmapperRD.xml
+        classes/LimitAngularVelocityModifier3D.xml
         classes/Line2D.xml
         classes/LineEdit.xml
         classes/LinkButton.xml

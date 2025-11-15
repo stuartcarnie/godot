@@ -522,6 +522,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         LightmapGI.svg
         LightmapGIData.svg
         LightmapProbe.svg
+        LimitAngularVelocityModifier3D.svg
         Line.svg
         Line2D.svg
         LineEdit.svg
