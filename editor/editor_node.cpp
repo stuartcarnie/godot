@@ -679,7 +679,7 @@ void EditorNode::_update_theme(bool p_skip_creation) {
 		editor_main_screen->add_theme_style_override(SceneStringName(panel), theme->get_stylebox(SNAME("Content"), EditorStringName(EditorStyles)));
 		bottom_panel->_theme_changed();
 		distraction_free->set_button_icon(theme->get_icon(SNAME("DistractionFree"), EditorStringName(EditorIcons)));
-		distraction_free->add_theme_style_override(SceneStringName(pressed), theme->get_stylebox(CoreStringName(normal), "FlatMenuButton"));
+		update_distraction_free_button_theme();
 
 		help_menu->set_item_icon(help_menu->get_item_index(HELP_SEARCH), _get_editor_theme_native_menu_icon(SNAME("HelpSearch"), global_menu, dark_mode));
 		help_menu->set_item_icon(help_menu->get_item_index(HELP_COPY_SYSTEM_INFO), _get_editor_theme_native_menu_icon(SNAME("ActionCopy"), global_menu, dark_mode));
@@ -2612,6 +2612,11 @@ void EditorNode::_dialog_action(String p_file) {
 			}
 		} break;
 
+		case SAVE_AND_SET_MAIN_SCENE: {
+			_save_scene(p_file);
+			_menu_option_confirm(SCENE_SET_MAIN_SCENE, true);
+		} break;
+
 		case FILE_EXPORT_MESH_LIBRARY: {
 			const Dictionary &fd_options = file_export_lib->get_selected_options();
 			bool merge_with_existing_library = fd_options.get(TTR("Merge With Existing"), true);
@@ -3342,6 +3347,19 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			file->set_title(TTR("Save Scene As..."));
 			file->popup_file_dialog();
 
+		} break;
+
+		case SCENE_SET_MAIN_SCENE: {
+			const String scene_path = editor_data.get_scene_path(editor_data.get_edited_scene());
+			if (scene_path.is_empty()) {
+				current_menu_option = SAVE_AND_SET_MAIN_SCENE;
+				_menu_option_confirm(SCENE_SAVE_AS_SCENE, true);
+				file->set_title(TTR("Save new main scene..."));
+			} else {
+				ProjectSettings::get_singleton()->set("application/run/main_scene", ResourceUID::path_to_uid(scene_path));
+				ProjectSettings::get_singleton()->save();
+				FileSystemDock::get_singleton()->update_all();
+			}
 		} break;
 
 		case SCENE_SAVE_ALL_SCENES: {
@@ -6550,6 +6568,16 @@ bool EditorNode::is_distraction_free_mode_enabled() const {
 	return distraction_free->is_pressed();
 }
 
+void EditorNode::update_distraction_free_button_theme() {
+	if (distraction_free->get_meta("_scene_tabs_owned", true)) {
+		distraction_free->set_theme_type_variation("FlatMenuButton");
+		distraction_free->add_theme_style_override(SceneStringName(pressed), theme->get_stylebox(CoreStringName(normal), "FlatMenuButton"));
+	} else {
+		distraction_free->set_theme_type_variation("BottomPanelButton");
+		distraction_free->remove_theme_style_override(SceneStringName(pressed));
+	}
+}
+
 void EditorNode::set_center_split_offset(int p_offset) {
 	center_split->set_split_offset(p_offset);
 }
@@ -8370,7 +8398,7 @@ EditorNode::EditorNode() {
 
 	warning = memnew(AcceptDialog);
 	warning->set_unparent_when_invisible(true);
-	warning->add_button(TTR("Copy Text"), true, "copy");
+	warning->add_button(TTRC("Copy Text"), true, "copy");
 	warning->connect("custom_action", callable_mp(this, &EditorNode::_copy_warning));
 
 	ED_SHORTCUT("editor/next_tab", TTRC("Next Scene Tab"), KeyModifierMask::CTRL + Key::TAB);

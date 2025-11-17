@@ -148,6 +148,7 @@ public:
 		SCENE_SAVE_SCENE,
 		SCENE_SAVE_AS_SCENE,
 		SCENE_SAVE_ALL_SCENES,
+		SCENE_SET_MAIN_SCENE,
 		SCENE_MULTI_SAVE_AS_SCENE,
 		SCENE_QUICK_OPEN,
 		SCENE_QUICK_OPEN_SCENE,
@@ -216,6 +217,7 @@ public:
 		SCENE_TAB_CLOSE,
 		SAVE_AND_RUN,
 		SAVE_AND_RUN_MAIN_SCENE,
+		SAVE_AND_SET_MAIN_SCENE,
 		RESOURCE_SAVE,
 		RESOURCE_SAVE_AS,
 		SETTINGS_PICK_MAIN_SCENE,
@@ -748,6 +750,8 @@ public:
 	static EditorBottomPanel *get_bottom_panel() { return singleton->bottom_panel; }
 	static EditorMainScreen *get_editor_main_screen() { return singleton->editor_main_screen; }
 
+	static Button *get_distraction_free_button() { return singleton->distraction_free; }
+
 	static String adjust_scene_name_casing(const String &p_root_name);
 	static String adjust_script_name_casing(const String &p_file_name, ScriptLanguage::ScriptNameCasing p_auto_casing);
 
@@ -798,6 +802,7 @@ public:
 	void update_distraction_free_mode();
 	void set_distraction_free_mode(bool p_enter);
 	bool is_distraction_free_mode_enabled() const;
+	void update_distraction_free_button_theme();
 
 	void set_center_split_offset(int p_offset);
 
