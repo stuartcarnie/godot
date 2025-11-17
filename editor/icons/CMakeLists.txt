@@ -438,6 +438,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         HeightMapShape3D.svg
         Help.svg
         HelpSearch.svg
+        Hierarchy.svg
         HingeJoint3D.svg
         History.svg
         Hsize.svg

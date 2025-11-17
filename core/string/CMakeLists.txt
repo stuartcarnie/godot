@@ -29,8 +29,6 @@ target_sources(core PRIVATE
         translation.h
         translation_domain.cpp
         translation_domain.h
-        translation_po.cpp
-        translation_po.h
         translation_server.cpp
         translation_server.h
         ucaps.h
