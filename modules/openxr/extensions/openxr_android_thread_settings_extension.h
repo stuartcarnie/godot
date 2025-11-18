@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  dtls_server.h                                                         */
+/*  openxr_android_thread_settings_extension.h                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,23 +30,52 @@
 
 #pragma once
 
-#include "core/io/net_socket.h"
-#include "core/io/packet_peer_dtls.h"
+#include "../openxr_interface.h"
+#include "core/templates/hash_map.h"
 
-class DTLSServer : public RefCounted {
-	GDCLASS(DTLSServer, RefCounted);
+#include "openxr_extension_wrapper.h"
 
-protected:
-	static inline DTLSServer *(*_create)(bool p_notify_postinitialize) = nullptr;
-	static void _bind_methods();
+#ifdef XR_USE_PLATFORM_ANDROID
+#include "../util.h"
+#include <jni.h>
+#include <openxr/openxr_platform.h>
+#endif
 
-	static inline bool available = false;
+class OpenXRAndroidThreadSettingsExtension : public OpenXRExtensionWrapper {
+	GDCLASS(OpenXRAndroidThreadSettingsExtension, OpenXRExtensionWrapper);
 
 public:
-	static bool is_available();
-	static DTLSServer *create(bool p_notify_postinitialize = true);
+	static OpenXRAndroidThreadSettingsExtension *get_singleton();
 
-	virtual Error setup(Ref<TLSOptions> p_options) = 0;
-	virtual void stop() = 0;
-	virtual Ref<PacketPeerDTLS> take_connection(Ref<PacketPeerUDP> p_peer) = 0;
+	OpenXRAndroidThreadSettingsExtension();
+	virtual ~OpenXRAndroidThreadSettingsExtension() override;
+
+	virtual HashMap<String, bool *> get_requested_extensions() override;
+	virtual void on_instance_created(XrInstance p_instance) override;
+	virtual void on_session_created(XrSession p_session) override;
+
+	enum ThreadType {
+		THREAD_TYPE_APPLICATION_MAIN,
+		THREAD_TYPE_APPLICATION_WORKER,
+		THREAD_TYPE_RENDERER_MAIN,
+		THREAD_TYPE_RENDERER_WORKER,
+	};
+	bool set_application_thread_type(ThreadType p_thread_type, uint32_t p_thread_id = 0);
+
+protected:
+	static void _bind_methods();
+
+private:
+	static OpenXRAndroidThreadSettingsExtension *singleton;
+
+	bool _initialize_openxr_android_thread_settings_extension();
+	void _set_render_thread_type();
+
+	bool available = false;
+
+#ifdef XR_USE_PLATFORM_ANDROID
+	EXT_PROTO_XRRESULT_FUNC3(xrSetAndroidApplicationThreadKHR, (XrSession), session, (XrAndroidThreadTypeKHR), threadType, (uint32_t), threadId);
+#endif
 };
+
+VARIANT_ENUM_CAST(OpenXRAndroidThreadSettingsExtension::ThreadType)
