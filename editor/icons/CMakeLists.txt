@@ -124,6 +124,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Camera.svg
         Camera2D.svg
         Camera3D.svg
+        Camera3DDarkBackground.svg
         CameraAttributes.svg
         CameraAttributesPhysical.svg
         CameraAttributesPractical.svg
@@ -406,6 +407,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         GuiTabDropMark.svg
         GuiTabMenu.svg
         GuiTabMenuHl.svg
+        GuiTabMenuHlDarkBackground.svg
         GuiToggleOff.svg
         GuiToggleOffDisabled.svg
         GuiToggleOffDisabledMirrored.svg
@@ -890,6 +892,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ToolRotate.svg
         ToolScale.svg
         ToolSelect.svg
+        ToolTransform.svg
         ToolTriangle.svg
         Tools.svg
         TorusMesh.svg

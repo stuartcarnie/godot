@@ -9,6 +9,8 @@ add_subdirectory(spatial_entities)
 #   cog.outl(')')
 # ]]]
 target_sources(godot-module-openxr PRIVATE
+        openxr_android_thread_settings_extension.cpp
+        openxr_android_thread_settings_extension.h
         openxr_composition_layer_depth_extension.cpp
         openxr_composition_layer_depth_extension.h
         openxr_composition_layer_extension.cpp
