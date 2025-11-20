@@ -535,18 +535,15 @@ void MDCommandBuffer::_copy_texture_buffer(CopySource p_source,
 		MTLBlitOption blit_options = options;
 
 		if (pf.isDepthFormat(mtlPixFmt) && pf.isStencilFormat(mtlPixFmt)) {
-			bool want_depth = flags::all(region.texture_subresource.aspect, (RDD::TextureAspect)RDD::TEXTURE_ASPECT_DEPTH_BIT);
-			bool want_stencil = flags::all(region.texture_subresource.aspect, (RDD::TextureAspect)RDD::TEXTURE_ASPECT_STENCIL_BIT);
-
-			// The stencil component is always 1 byte per pixel.
 			// Don't reduce depths of 32-bit depth/stencil formats.
-			if (want_depth && !want_stencil) {
+			if (region.texture_subresource.aspect == RDD::TEXTURE_ASPECT_DEPTH) {
 				if (pf.getBytesPerTexel(mtlPixFmt) != 4) {
 					bytesPerRow -= buffImgWd;
 					bytesPerImg -= buffImgWd * buffImgHt;
 				}
 				blit_options |= MTLBlitOptionDepthFromDepthStencil;
-			} else if (want_stencil && !want_depth) {
+			} else if (region.texture_subresource.aspect == RDD::TEXTURE_ASPECT_STENCIL) {
+				// The stencil component is always 1 byte per pixel.
 				bytesPerRow = buffImgWd;
 				bytesPerImg = buffImgWd * buffImgHt;
 				blit_options |= MTLBlitOptionStencilFromDepthStencil;
@@ -559,7 +556,7 @@ void MDCommandBuffer::_copy_texture_buffer(CopySource p_source,
 
 		if (p_source == CopySource::Buffer) {
 			[enc copyFromBuffer:buffer->metal_buffer
-						   sourceOffset:region.buffer_offset + (bytesPerImg * region.texture_subresource.layer)
+						   sourceOffset:region.buffer_offset
 					  sourceBytesPerRow:bytesPerRow
 					sourceBytesPerImage:bytesPerImg
 							 sourceSize:txt_size
@@ -575,7 +572,7 @@ void MDCommandBuffer::_copy_texture_buffer(CopySource p_source,
 								sourceOrigin:txt_origin
 								  sourceSize:txt_size
 									toBuffer:buffer->metal_buffer
-						   destinationOffset:region.buffer_offset + (bytesPerImg * region.texture_subresource.layer)
+						   destinationOffset:region.buffer_offset
 					  destinationBytesPerRow:bytesPerRow
 					destinationBytesPerImage:bytesPerImg
 									 options:blit_options];
