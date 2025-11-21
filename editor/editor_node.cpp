@@ -928,6 +928,15 @@ void EditorNode::_notification(int p_what) {
 		case NOTIFICATION_READY: {
 			started_timestamp = Time::get_singleton()->get_unix_time_from_system();
 
+			// Store the default order of bottom docks. It can only be determined dynamically.
+			PackedStringArray bottom_docks;
+			bottom_docks.reserve_exact(bottom_panel->get_tab_count());
+			for (int i = 0; i < bottom_panel->get_tab_count(); i++) {
+				EditorDock *dock = Object::cast_to<EditorDock>(bottom_panel->get_tab_control(i));
+				bottom_docks.append(dock->get_effective_layout_key());
+			}
+			default_layout->set_value("docks", "dock_9", String(",").join(bottom_docks));
+
 			RenderingServer::get_singleton()->viewport_set_disable_2d(get_scene_root()->get_viewport_rid(), true);
 			RenderingServer::get_singleton()->viewport_set_environment_mode(get_viewport()->get_viewport_rid(), RenderingServer::VIEWPORT_ENVIRONMENT_DISABLED);
 			DisplayServer::get_singleton()->screen_set_keep_on(EDITOR_GET("interface/editor/keep_screen_on"));
@@ -2888,7 +2897,7 @@ void EditorNode::push_node_item(Node *p_node) {
 void EditorNode::push_item(Object *p_object, const String &p_property, bool p_inspector_only) {
 	if (!p_object) {
 		InspectorDock::get_inspector_singleton()->edit(nullptr);
-		NodeDock::get_singleton()->set_object(nullptr);
+		NodeDock::get_singleton()->set_selection(Vector<Object *>());
 		SceneTreeDock::get_singleton()->set_selected(nullptr);
 		InspectorDock::get_singleton()->update(nullptr);
 		hide_unused_editors();
@@ -2999,7 +3008,7 @@ void EditorNode::_edit_current(bool p_skip_foreign, bool p_skip_inspector_update
 	if (!current_obj) {
 		SceneTreeDock::get_singleton()->set_selected(nullptr);
 		InspectorDock::get_inspector_singleton()->edit(nullptr);
-		NodeDock::get_singleton()->set_object(nullptr);
+		NodeDock::get_singleton()->set_selection(Vector<Object *>());
 		InspectorDock::get_singleton()->update(nullptr);
 		EditorDebuggerNode::get_singleton()->clear_remote_tree_selection();
 		hide_unused_editors();
@@ -3033,7 +3042,7 @@ void EditorNode::_edit_current(bool p_skip_foreign, bool p_skip_inspector_update
 		if (!p_skip_inspector_update) {
 			InspectorDock::get_inspector_singleton()->edit(current_res);
 			SceneTreeDock::get_singleton()->set_selected(nullptr);
-			NodeDock::get_singleton()->set_object(current_res);
+			NodeDock::get_singleton()->set_selection(Vector<Object *>{ current_res });
 			InspectorDock::get_singleton()->update(nullptr);
 			EditorDebuggerNode::get_singleton()->clear_remote_tree_selection();
 			ImportDock::get_singleton()->set_edit_path(current_res->get_path());
@@ -3063,7 +3072,7 @@ void EditorNode::_edit_current(bool p_skip_foreign, bool p_skip_inspector_update
 
 		InspectorDock::get_inspector_singleton()->edit(current_node);
 		if (current_node->is_inside_tree()) {
-			NodeDock::get_singleton()->set_object(current_node);
+			NodeDock::get_singleton()->set_selection(Vector<Object *>{ current_node });
 			SceneTreeDock::get_singleton()->set_selected(current_node);
 			SceneTreeDock::get_singleton()->set_selection({ current_node });
 			InspectorDock::get_singleton()->update(current_node);
@@ -3075,7 +3084,7 @@ void EditorNode::_edit_current(bool p_skip_foreign, bool p_skip_inspector_update
 				}
 			}
 		} else {
-			NodeDock::get_singleton()->set_object(nullptr);
+			NodeDock::get_singleton()->set_selection(Vector<Object *>());
 			SceneTreeDock::get_singleton()->set_selected(nullptr);
 			InspectorDock::get_singleton()->update(nullptr);
 		}
@@ -3122,8 +3131,15 @@ void EditorNode::_edit_current(bool p_skip_foreign, bool p_skip_inspector_update
 			EditorDebuggerNode::get_singleton()->clear_remote_tree_selection();
 		}
 
+		// TODO: This can be replaced by some casting operator.
+		Vector<Object *> nodes_as_objects;
+		nodes_as_objects.reserve_exact(multi_nodes.size());
+		for (Node *n : multi_nodes) {
+			nodes_as_objects.append(n);
+		}
+
 		InspectorDock::get_inspector_singleton()->edit(current_obj);
-		NodeDock::get_singleton()->set_object(nullptr);
+		NodeDock::get_singleton()->set_selection(nodes_as_objects);
 		SceneTreeDock::get_singleton()->set_selected(selected_node);
 		SceneTreeDock::get_singleton()->set_selection(multi_nodes);
 		InspectorDock::get_singleton()->update(nullptr);
@@ -8224,13 +8240,13 @@ EditorNode::EditorNode() {
 	left_l_vsplit->set_vertical(true);
 	left_l_hsplit->add_child(left_l_vsplit);
 
-	TabContainer *dock_slot[EditorDockManager::DOCK_SLOT_MAX];
-	dock_slot[EditorDockManager::DOCK_SLOT_LEFT_UL] = memnew(TabContainer);
-	dock_slot[EditorDockManager::DOCK_SLOT_LEFT_UL]->set_name("DockSlotLeftUL");
-	left_l_vsplit->add_child(dock_slot[EditorDockManager::DOCK_SLOT_LEFT_UL]);
-	dock_slot[EditorDockManager::DOCK_SLOT_LEFT_BL] = memnew(TabContainer);
-	dock_slot[EditorDockManager::DOCK_SLOT_LEFT_BL]->set_name("DockSlotLeftBL");
-	left_l_vsplit->add_child(dock_slot[EditorDockManager::DOCK_SLOT_LEFT_BL]);
+	TabContainer *dock_slot[DockConstants::DOCK_SLOT_MAX];
+	dock_slot[DockConstants::DOCK_SLOT_LEFT_UL] = memnew(TabContainer);
+	dock_slot[DockConstants::DOCK_SLOT_LEFT_UL]->set_name("DockSlotLeftUL");
+	left_l_vsplit->add_child(dock_slot[DockConstants::DOCK_SLOT_LEFT_UL]);
+	dock_slot[DockConstants::DOCK_SLOT_LEFT_BL] = memnew(TabContainer);
+	dock_slot[DockConstants::DOCK_SLOT_LEFT_BL]->set_name("DockSlotLeftBL");
+	left_l_vsplit->add_child(dock_slot[DockConstants::DOCK_SLOT_LEFT_BL]);
 
 	left_r_hsplit = memnew(DockSplitContainer);
 	left_r_hsplit->set_name("DockHSplitLeftR");
@@ -8239,12 +8255,12 @@ EditorNode::EditorNode() {
 	left_r_vsplit->set_name("DockVSplitLeftR");
 	left_r_vsplit->set_vertical(true);
 	left_r_hsplit->add_child(left_r_vsplit);
-	dock_slot[EditorDockManager::DOCK_SLOT_LEFT_UR] = memnew(TabContainer);
-	dock_slot[EditorDockManager::DOCK_SLOT_LEFT_UR]->set_name("DockSlotLeftUR");
-	left_r_vsplit->add_child(dock_slot[EditorDockManager::DOCK_SLOT_LEFT_UR]);
-	dock_slot[EditorDockManager::DOCK_SLOT_LEFT_BR] = memnew(TabContainer);
-	dock_slot[EditorDockManager::DOCK_SLOT_LEFT_BR]->set_name("DockSlotLeftBR");
-	left_r_vsplit->add_child(dock_slot[EditorDockManager::DOCK_SLOT_LEFT_BR]);
+	dock_slot[DockConstants::DOCK_SLOT_LEFT_UR] = memnew(TabContainer);
+	dock_slot[DockConstants::DOCK_SLOT_LEFT_UR]->set_name("DockSlotLeftUR");
+	left_r_vsplit->add_child(dock_slot[DockConstants::DOCK_SLOT_LEFT_UR]);
+	dock_slot[DockConstants::DOCK_SLOT_LEFT_BR] = memnew(TabContainer);
+	dock_slot[DockConstants::DOCK_SLOT_LEFT_BR]->set_name("DockSlotLeftBR");
+	left_r_vsplit->add_child(dock_slot[DockConstants::DOCK_SLOT_LEFT_BR]);
 
 	main_hsplit = memnew(DockSplitContainer);
 	main_hsplit->set_name("DockHSplitMain");
@@ -8270,23 +8286,23 @@ EditorNode::EditorNode() {
 	right_l_vsplit->set_name("DockVSplitRightL");
 	right_l_vsplit->set_vertical(true);
 	right_hsplit->add_child(right_l_vsplit);
-	dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_UL] = memnew(TabContainer);
-	dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_UL]->set_name("DockSlotRightUL");
-	right_l_vsplit->add_child(dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_UL]);
-	dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_BL] = memnew(TabContainer);
-	dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_BL]->set_name("DockSlotRightBL");
-	right_l_vsplit->add_child(dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_BL]);
+	dock_slot[DockConstants::DOCK_SLOT_RIGHT_UL] = memnew(TabContainer);
+	dock_slot[DockConstants::DOCK_SLOT_RIGHT_UL]->set_name("DockSlotRightUL");
+	right_l_vsplit->add_child(dock_slot[DockConstants::DOCK_SLOT_RIGHT_UL]);
+	dock_slot[DockConstants::DOCK_SLOT_RIGHT_BL] = memnew(TabContainer);
+	dock_slot[DockConstants::DOCK_SLOT_RIGHT_BL]->set_name("DockSlotRightBL");
+	right_l_vsplit->add_child(dock_slot[DockConstants::DOCK_SLOT_RIGHT_BL]);
 
 	right_r_vsplit = memnew(DockSplitContainer);
 	right_r_vsplit->set_name("DockVSplitRightR");
 	right_r_vsplit->set_vertical(true);
 	right_hsplit->add_child(right_r_vsplit);
-	dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_UR] = memnew(TabContainer);
-	dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_UR]->set_name("DockSlotRightUR");
-	right_r_vsplit->add_child(dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_UR]);
-	dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_BR] = memnew(TabContainer);
-	dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_BR]->set_name("DockSlotRightBR");
-	right_r_vsplit->add_child(dock_slot[EditorDockManager::DOCK_SLOT_RIGHT_BR]);
+	dock_slot[DockConstants::DOCK_SLOT_RIGHT_UR] = memnew(TabContainer);
+	dock_slot[DockConstants::DOCK_SLOT_RIGHT_UR]->set_name("DockSlotRightUR");
+	right_r_vsplit->add_child(dock_slot[DockConstants::DOCK_SLOT_RIGHT_UR]);
+	dock_slot[DockConstants::DOCK_SLOT_RIGHT_BR] = memnew(TabContainer);
+	dock_slot[DockConstants::DOCK_SLOT_RIGHT_BR]->set_name("DockSlotRightBR");
+	right_r_vsplit->add_child(dock_slot[DockConstants::DOCK_SLOT_RIGHT_BR]);
 
 	editor_dock_manager = memnew(EditorDockManager);
 
@@ -8301,8 +8317,8 @@ EditorNode::EditorNode() {
 	editor_dock_manager->add_hsplit(main_hsplit);
 	editor_dock_manager->add_hsplit(right_hsplit);
 
-	for (int i = 0; i < EditorDockManager::DOCK_SLOT_MAX; i++) {
-		editor_dock_manager->register_dock_slot((EditorDockManager::DockSlot)i, dock_slot[i]);
+	for (int i = 0; i < DockConstants::DOCK_SLOT_BOTTOM; i++) {
+		editor_dock_manager->register_dock_slot((DockConstants::DockSlot)i, dock_slot[i], DockConstants::DOCK_LAYOUT_VERTICAL);
 	}
 
 	editor_layout_save_delay_timer = memnew(Timer);
@@ -8767,6 +8783,7 @@ EditorNode::EditorNode() {
 	// Bottom panels.
 
 	bottom_panel = memnew(EditorBottomPanel);
+	editor_dock_manager->register_dock_slot(DockConstants::DOCK_SLOT_BOTTOM, bottom_panel, DockConstants::DOCK_LAYOUT_HORIZONTAL);
 	bottom_panel->set_theme_type_variation("BottomPanel");
 	center_split->add_child(bottom_panel);
 	center_split->set_dragger_visibility(SplitContainer::DRAGGER_HIDDEN);

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  taa.h                                                                 */
+/*  dock_constants.h                                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,31 +30,26 @@
 
 #pragma once
 
-#include "servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl.gen.h"
-#include "servers/rendering/renderer_rd/storage_rd/render_scene_buffers_rd.h"
+namespace DockConstants {
 
-namespace RendererRD {
-
-class TAA {
-public:
-	TAA();
-	~TAA();
-
-	void process(Ref<RenderSceneBuffersRD> p_render_buffers, RD::DataFormat p_format, float p_z_near, float p_z_far);
-
-private:
-	struct TAAResolvePushConstant {
-		float resolution_width;
-		float resolution_height;
-		float disocclusion_threshold;
-		float variance_dynamic;
-	};
-
-	TaaResolveShaderRD taa_shader;
-	RID shader_version;
-	RID pipeline;
-
-	void resolve(RID p_frame, RID p_temp, RID p_depth, RID p_velocity, RID p_prev_velocity, RID p_history, Size2 p_resolution, float p_z_near, float p_z_far);
+enum DockSlot {
+	DOCK_SLOT_NONE = -1,
+	DOCK_SLOT_LEFT_UL,
+	DOCK_SLOT_LEFT_BL,
+	DOCK_SLOT_LEFT_UR,
+	DOCK_SLOT_LEFT_BR,
+	DOCK_SLOT_RIGHT_UL,
+	DOCK_SLOT_RIGHT_BL,
+	DOCK_SLOT_RIGHT_UR,
+	DOCK_SLOT_RIGHT_BR,
+	DOCK_SLOT_BOTTOM,
+	DOCK_SLOT_MAX
 };
 
-} // namespace RendererRD
+enum DockLayout {
+	DOCK_LAYOUT_VERTICAL = 1,
+	DOCK_LAYOUT_HORIZONTAL = 2,
+	DOCK_LAYOUT_FLOATING = 4,
+};
+
+}; //namespace DockConstants

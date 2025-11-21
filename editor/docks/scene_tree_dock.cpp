@@ -1351,7 +1351,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 					undo_redo->add_undo_method(node, "set_scene_file_path", node->get_scene_file_path());
 					_node_replace_owner(node, node, root);
 					_node_strip_signal_inheritance(node);
-					NodeDock::get_singleton()->set_object(node); // Refresh.
+					NodeDock::get_singleton()->set_selection(Vector<Object *>{ node }); // Refresh.
 					undo_redo->add_do_method(scene_tree, "update_tree");
 					undo_redo->add_undo_method(scene_tree, "update_tree");
 					undo_redo->commit_action();
@@ -2855,7 +2855,7 @@ void SceneTreeDock::_delete_confirm(bool p_cut) {
 	editor_history->cleanup_history();
 	InspectorDock::get_singleton()->call("_prepare_history");
 	InspectorDock::get_singleton()->update(nullptr);
-	NodeDock::get_singleton()->set_object(nullptr);
+	NodeDock::get_singleton()->set_selection(Vector<Object *>{});
 }
 
 void SceneTreeDock::_update_script_button() {
@@ -4255,7 +4255,7 @@ void SceneTreeDock::attach_shader_to_selected(int p_preferred_mode) {
 	shader_create_dialog->connect("shader_created", callable_mp(this, &SceneTreeDock::_shader_created));
 	shader_create_dialog->connect(SceneStringName(confirmed), callable_mp(this, &SceneTreeDock::_shader_creation_closed));
 	shader_create_dialog->connect("canceled", callable_mp(this, &SceneTreeDock::_shader_creation_closed));
-	shader_create_dialog->config(path, true, true, -1, p_preferred_mode);
+	shader_create_dialog->config(path, true, true, "", p_preferred_mode);
 	shader_create_dialog->popup_centered();
 }
 
@@ -4716,7 +4716,7 @@ SceneTreeDock::SceneTreeDock(Node *p_scene_root, EditorSelection *p_editor_selec
 	set_name(TTRC("Scene"));
 	set_icon_name("PackedScene");
 	set_dock_shortcut(ED_SHORTCUT_AND_COMMAND("docks/open_scene", TTRC("Open Scene Dock")));
-	set_default_slot(EditorDockManager::DOCK_SLOT_LEFT_UR);
+	set_default_slot(DockConstants::DOCK_SLOT_LEFT_UR);
 
 	singleton = this;
 	editor_data = &p_editor_data;
