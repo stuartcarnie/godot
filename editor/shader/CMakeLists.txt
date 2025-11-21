@@ -11,6 +11,8 @@ add_subdirectory(shader_baker)
 target_sources(editor PRIVATE
         editor_native_shader_source_visualizer.cpp
         editor_native_shader_source_visualizer.h
+        editor_shader_language_plugin.cpp
+        editor_shader_language_plugin.h
         shader_create_dialog.cpp
         shader_create_dialog.h
         shader_editor.h
@@ -22,7 +24,11 @@ target_sources(editor PRIVATE
         shader_globals_editor.h
         text_shader_editor.cpp
         text_shader_editor.h
+        text_shader_language_plugin.cpp
+        text_shader_language_plugin.h
         visual_shader_editor_plugin.cpp
         visual_shader_editor_plugin.h
+        visual_shader_language_plugin.cpp
+        visual_shader_language_plugin.h
 )
 # [[[end]]]
