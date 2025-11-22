@@ -471,6 +471,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         InsertAfter.svg
         InsertAtCurrentTime.svg
         InsertBefore.svg
+        InsertKey.svg
+        InsertModKey.svg
         Instance.svg
         InstanceOptions.svg
         InterpCubic.svg
@@ -601,6 +603,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         NavigationRegion3D.svg
         New.svg
         NewKey.svg
+        NewModKey.svg
         NewRoot.svg
         NextFrame.svg
         Nil.svg
@@ -797,6 +800,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Skeleton2D.svg
         Skeleton3D.svg
         SkeletonIK3D.svg
+        SkeletonModifier.svg
         SkeletonModifier3D.svg
         SkeletonPreview.svg
         Sky.svg
@@ -881,6 +885,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         TileSet.svg
         TileUnchecked.svg
         Time.svg
+        TimelineHandle.svg
         TimelineIndicator.svg
         Timer.svg
         TitleBarLogo.svg
