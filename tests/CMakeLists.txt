@@ -111,6 +111,7 @@ target_sources(tests PRIVATE
         scene/test_curve.h
         scene/test_curve_2d.h
         scene/test_curve_3d.h
+        scene/test_decal.h
         scene/test_fontfile.h
         scene/test_gltf_document.h
         scene/test_gradient.h

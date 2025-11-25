@@ -14,6 +14,8 @@ target_sources(editor PRIVATE
         editor_dock_manager.h
         filesystem_dock.cpp
         filesystem_dock.h
+        groups_dock.cpp
+        groups_dock.h
         groups_editor.cpp
         groups_editor.h
         history_dock.cpp
@@ -22,9 +24,9 @@ target_sources(editor PRIVATE
         import_dock.h
         inspector_dock.cpp
         inspector_dock.h
-        node_dock.cpp
-        node_dock.h
         scene_tree_dock.cpp
         scene_tree_dock.h
+        signals_dock.cpp
+        signals_dock.h
 )
 # [[[end]]]

@@ -256,6 +256,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         EditorCommandPalette.svg
         EditorControlAnchor.svg
         EditorCurveHandle.svg
+        EditorDock.svg
         EditorFileDialog.svg
         EditorHandle.svg
         EditorHandleAdd.svg
@@ -632,6 +633,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Onion.svg
         OptionButton.svg
         Orientation.svg
+        Output.svg
         OverbrightIndicator.svg
         Override.svg
         PackedByteArray.svg
@@ -879,6 +881,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ThumbnailWait.svg
         TileChecked.svg
         TileMap.svg
+        TileMapDock.svg
         TileMapHighlightSelected.svg
         TileMapLayer.svg
         TileSelection.svg

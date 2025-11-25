@@ -19,6 +19,7 @@ target_sources(core PRIVATE
         dictionary.h
         method_ptrcall.h
         native_ptr.h
+        required_ptr.h
         type_info.h
         typed_array.h
         typed_dictionary.h

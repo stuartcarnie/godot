@@ -14,7 +14,8 @@ target_sources(core PRIVATE
         gdextension_function_loader.cpp
         gdextension_function_loader.h
         gdextension_interface.cpp
-        gdextension_interface.h
+        gdextension_interface_header_generator.cpp
+        gdextension_interface_header_generator.h
         gdextension_library_loader.cpp
         gdextension_library_loader.h
         gdextension_loader.h
