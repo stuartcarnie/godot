@@ -28,4 +28,9 @@ target_sources(zstd PRIVATE
         decompress/zstd_decompress.c
 )
 target_include_directories(zstd PUBLIC ${GODOT_SOURCE_ROOT_THIRDPARTY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_definitions(zstd PRIVATE ZSTD_DISABLE_ASM=1)
+target_compile_definitions(zstd
+        PRIVATE
+        ZSTD_DISABLE_ASM=1
+        PUBLIC
+        ZSTD_STATIC_LINKING_ONLY
+)

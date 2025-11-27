@@ -82,7 +82,7 @@ target_sources(editor PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(editor PUBLIC core minizip)
+target_link_libraries(editor PUBLIC core minizip zstd)
 target_link_libraries(editor PRIVATE godot-doc)
 target_include_directories(editor PRIVATE
         ${CMAKE_BINARY_INCLUDE_DIR}/editor

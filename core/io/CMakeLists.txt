@@ -11,6 +11,8 @@ target_sources(core PRIVATE
         compression.h
         config_file.cpp
         config_file.h
+        delta_encoding.cpp
+        delta_encoding.h
         dir_access.cpp
         dir_access.h
         dtls_server.cpp
@@ -25,6 +27,8 @@ target_sources(core PRIVATE
         file_access_memory.h
         file_access_pack.cpp
         file_access_pack.h
+        file_access_patched.cpp
+        file_access_patched.h
         file_access_zip.cpp
         file_access_zip.h
         http_client.cpp

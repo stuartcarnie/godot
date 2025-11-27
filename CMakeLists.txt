@@ -78,7 +78,7 @@ set(GODOT_CORE_PROFILER_SOURCE_FILES "")
 set(GODOT_CORE_PROFILER_INCLUDE_DIRS "")
 set(GODOT_CORE_PROFILER_DEFINITIONS "")
 
-if (PROFILER_PATH)
+if (NOT PROFILER_PATH STREQUAL "")
     set(_godot_profiler_path "${PROFILER_PATH}")
     if (NOT IS_ABSOLUTE "${_godot_profiler_path}")
         get_filename_component(_godot_profiler_path "${_godot_profiler_path}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
