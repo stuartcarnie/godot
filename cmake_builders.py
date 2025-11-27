@@ -16,6 +16,7 @@ from methods import *
 import methods
 from core.input.input_builders import *
 import core.extension.make_interface_dumper
+import core.extension.make_interface_header
 import core.extension.make_wrappers
 
 import core.object.make_virtuals
@@ -322,6 +323,13 @@ def cmd_controller_mappings(source: [str], target: str) -> int:
 @source_target
 def cmd_gdextension_interface_dumper(source: str, target: str) -> int:
     core.extension.make_interface_dumper.run(target=[target], source=[source], env=None)
+    return 0
+
+
+@check_output
+@source_target
+def cmd_gdextension_interface_header(source: str, target: str) -> int:
+    core.extension.make_interface_header.run(target=[target], source=[source], env=None)
     return 0
 
 
@@ -785,8 +793,8 @@ def _main() -> int:
 
     sp.add_parser('disabled_classes', parents=[args_out]).set_defaults(func=cmd_disabled_classes)
     sp.add_parser('controller_mappings', parents=[args_inl_out]).set_defaults(func=cmd_controller_mappings)
-    sp.add_parser('gdextension_interface_dumper', parents=[args_in_out]).set_defaults(
-        func=cmd_gdextension_interface_dumper)
+    sp.add_parser('gdextension_interface_dumper', parents=[args_in_out]).set_defaults(func=cmd_gdextension_interface_dumper)
+    sp.add_parser('gdextension_interface_header', parents=[args_in_out]).set_defaults(func=cmd_gdextension_interface_header)
     sp.add_parser('make_smaa_areatex', parents=[args_in_out]).set_defaults(func=cmd_make_smaa_areatex)
     sp.add_parser('make_smaa_searchtex', parents=[args_in_out]).set_defaults(func=cmd_make_smaa_searchtex)
     sp.add_parser('make_app_icon', parents=[args_in_out]).set_defaults(func=cmd_make_app_icon)

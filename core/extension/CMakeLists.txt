@@ -28,3 +28,6 @@ target_sources(core PRIVATE
         libgodot.h
 )
 # [[[end]]]
+
+target_include_directories(core PUBLIC
+        ${CMAKE_BINARY_INCLUDE_DIR}/core/extension)

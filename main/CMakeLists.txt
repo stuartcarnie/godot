@@ -10,10 +10,17 @@ set(GODOT_MAIN_EXECUTABLE_APP_SPLASH_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/splash.p
 set(GODOT_MAIN_EXECUTABLE_APP_SPLASH_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/main/splash.gen.h)
 generate_file(make_app_splash ${GODOT_MAIN_EXECUTABLE_APP_SPLASH_SOURCE} ${GODOT_MAIN_EXECUTABLE_APP_SPLASH_OUTPUT})
 
-set(GODOT_INTERFACE_INTERFACE_DUMP_OUTPUT ${CMAKE_BINARY_DIR}/include/core/extension/gdextension_interface_dump.gen.h)
-generate_file(gdextension_interface_dumper "${CMAKE_CURRENT_SOURCE_DIR}/../core/extension/gdextension_interface.h" "${GODOT_INTERFACE_INTERFACE_DUMP_OUTPUT}")
+set(GODOT_EXTENSION_INTERFACE_DUMP_OUTPUT ${CMAKE_BINARY_DIR}/include/core/extension/gdextension_interface_dump.gen.h)
+generate_file(gdextension_interface_dumper "${CMAKE_CURRENT_SOURCE_DIR}/../core/extension/gdextension_interface.json" "${GODOT_EXTENSION_INTERFACE_DUMP_OUTPUT}")
 
-add_custom_target(generate_main_app_files DEPENDS ${GODOT_MAIN_EXECUTABLE_APP_SPLASH_OUTPUT})
+set(GODOT_EXTENSION_INTERFACE_HEADER_OUTPUT ${CMAKE_BINARY_DIR}/include/core/extension/gdextension_interface.gen.h)
+generate_file(gdextension_interface_header "${CMAKE_CURRENT_SOURCE_DIR}/../core/extension/gdextension_interface.json" "${GODOT_EXTENSION_INTERFACE_HEADER_OUTPUT}")
+
+add_custom_target(generate_main_app_files DEPENDS
+        ${GODOT_MAIN_EXECUTABLE_APP_SPLASH_OUTPUT}
+        ${GODOT_EXTENSION_INTERFACE_DUMP_OUTPUT}
+        ${GODOT_EXTENSION_INTERFACE_HEADER_OUTPUT}
+)
 set_target_properties(generate_main_app_files PROPERTIES FOLDER "generated")
 
 # macOS specific
@@ -40,7 +47,8 @@ set(MACOS_RESOURCES
 add_executable(Godot MACOSX_BUNDLE
         ${GODOT_MAIN_EXECUTABLE_APP_ICON_OUTPUT}
         ${GODOT_PLATFORM_GENERATED_REGISTERED_APIS_OUTPUT}
-        ${GODOT_INTERFACE_INTERFACE_DUMP_OUTPUT}
+        ${GODOT_EXTENSION_INTERFACE_DUMP_OUTPUT}
+        ${GODOT_EXTENSION_INTERFACE_HEADER_OUTPUT}
         ${MACOS_RESOURCES}
 )
 
