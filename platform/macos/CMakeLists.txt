@@ -34,6 +34,8 @@ target_sources(macos PRIVATE
         godot_button_view.mm
         godot_content_view.h
         godot_content_view.mm
+        godot_core_cursor.h
+        godot_core_cursor.mm
         godot_main_macos.mm
         godot_menu_delegate.h
         godot_menu_delegate.mm
