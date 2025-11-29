@@ -72,6 +72,9 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 	RenderingShaderContainerFormatMetal *shader_container_format = nullptr;
 	PixelFormats *pixel_formats = nullptr;
 	std::unique_ptr<MDResourceCache> resource_cache;
+	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
+	id<MTLResidencySet> main_residency_set = nil;
+	GODOT_CLANG_WARNING_POP
 
 	RDD::Capabilities capabilities;
 	RDD::MultiviewCapabilities multiview_capabilities;
@@ -131,7 +134,6 @@ public:
 	virtual void buffer_unmap(BufferID p_buffer) override final;
 	virtual uint8_t *buffer_persistent_map_advance(BufferID p_buffer, uint64_t p_frames_drawn) override final;
 	virtual uint64_t buffer_get_dynamic_offsets(Span<BufferID> p_buffers) override final;
-	virtual void buffer_flush(BufferID p_buffer) override final;
 	virtual uint64_t buffer_get_device_address(BufferID p_buffer) override final;
 
 #pragma mark - Texture
@@ -168,6 +170,11 @@ public:
 
 #pragma mark - Barriers
 
+private:
+	bool use_barriers = false;
+	MTLResourceOptions base_hazard_tracking = MTLResourceHazardTrackingModeTracked;
+public:
+
 	virtual void command_pipeline_barrier(
 			CommandBufferID p_cmd_buffer,
 			BitField<PipelineStageBits> p_src_stages,
@@ -200,7 +207,6 @@ private:
 		}
 
 		virtual Error wait(uint32_t p_timeout_ms) override {
-			GODOT_CLANG_WARNING_PUSH
 			GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 			BOOL signaled = [event waitUntilSignaledValue:value timeoutMS:p_timeout_ms];
 			GODOT_CLANG_WARNING_POP

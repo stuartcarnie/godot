@@ -62,18 +62,26 @@
 #undef MIN
 #undef MAX
 
+MDCommandBuffer::MDCommandBuffer(id<MTLCommandQueue> p_queue, RenderingDeviceDriverMetal *p_device_driver) :
+		device_driver(p_device_driver), queue(p_queue) {
+	type = MDCommandBufferStateType::None;
+	use_barriers = device_driver->use_barriers;
+}
+
 void MDCommandBuffer::begin_label(const char *p_label_name, const Color &p_color) {
 	NSString *s = [[NSString alloc] initWithBytesNoCopy:(void *)p_label_name length:strlen(p_label_name) encoding:NSUTF8StringEncoding freeWhenDone:NO];
-	[commandBuffer pushDebugGroup:s];
+	[command_buffer() pushDebugGroup:s];
 }
 
 void MDCommandBuffer::end_label() {
-	[commandBuffer popDebugGroup];
+	[command_buffer() popDebugGroup];
 }
 
 void MDCommandBuffer::begin() {
 	DEV_ASSERT(commandBuffer == nil && !state_begin);
 	state_begin = true;
+	bzero(pending_after_stages, sizeof(pending_after_stages));
+	bzero(pending_before_queue_stages, sizeof(pending_before_queue_stages));
 	binding_cache.clear();
 }
 
@@ -96,6 +104,183 @@ void MDCommandBuffer::commit() {
 	commandBuffer = nil;
 	state_begin = false;
 }
+
+GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
+
+static MTLStages convert_src_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
+	p_stages.clear_flag(RDD::PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+
+	if (p_stages.has_flag(RDD::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT | RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
+		return MTLStageAll;
+	}
+
+	MTLStages mtlStages = 0;
+
+	// Vertex stage mappings
+	if (p_stages & (RDD::PIPELINE_STAGE_DRAW_INDIRECT_BIT | RDD::PIPELINE_STAGE_VERTEX_INPUT_BIT | RDD::PIPELINE_STAGE_VERTEX_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | RDD::PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
+		mtlStages |= MTLStageVertex;
+	}
+
+	// Fragment stage mappings (includes resolve, which on Metal is handled in the render pipeline)
+	if (p_stages & (RDD::PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RDD::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT | RDD::PIPELINE_STAGE_RESOLVE_BIT)) {
+		mtlStages |= MTLStageFragment;
+	}
+
+	// Compute stage
+	if (p_stages & RDD::PIPELINE_STAGE_COMPUTE_SHADER_BIT) {
+		mtlStages |= MTLStageDispatch;
+	}
+
+	// Blit stage (transfer operations)
+	if (p_stages & (RDD::PIPELINE_STAGE_COPY_BIT | RDD::PIPELINE_STAGE_CLEAR_STORAGE_BIT)) {
+		mtlStages |= MTLStageBlit;
+	}
+
+	// ALL_GRAPHICS_BIT special case
+	if (p_stages & RDD::PIPELINE_STAGE_ALL_GRAPHICS_BIT) {
+		mtlStages |= (MTLStageVertex | MTLStageFragment);
+	}
+
+	return mtlStages;
+}
+
+static MTLStages convert_dst_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
+	p_stages.clear_flag(RDD::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+
+	if (p_stages.has_flag(RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT | RDD::PIPELINE_STAGE_TOP_OF_PIPE_BIT)) {
+		return MTLStageAll;
+	}
+
+	MTLStages mtlStages = 0;
+
+	if (p_stages & (RDD::PIPELINE_STAGE_DRAW_INDIRECT_BIT | RDD::PIPELINE_STAGE_VERTEX_INPUT_BIT | RDD::PIPELINE_STAGE_VERTEX_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | RDD::PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
+		mtlStages |= MTLStageVertex;
+	}
+
+	if (p_stages & (RDD::PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RDD::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT | RDD::PIPELINE_STAGE_RESOLVE_BIT)) {
+		mtlStages |= MTLStageFragment;
+	}
+
+	if (p_stages & RDD::PIPELINE_STAGE_COMPUTE_SHADER_BIT) {
+		mtlStages |= MTLStageDispatch;
+	}
+
+	if (p_stages & (RDD::PIPELINE_STAGE_COPY_BIT | RDD::PIPELINE_STAGE_CLEAR_STORAGE_BIT)) {
+		mtlStages |= MTLStageBlit;
+	}
+
+	if (p_stages & RDD::PIPELINE_STAGE_ALL_GRAPHICS_BIT) {
+		mtlStages |= (MTLStageVertex | MTLStageFragment);
+	}
+
+	return mtlStages;
+}
+
+void MDCommandBuffer::_encode_barrier(id<MTLCommandEncoder> p_enc) {
+	DEV_ASSERT(p_enc);
+
+	static const MTLStages empty_stages[STAGE_MAX] = { 0, 0, 0 };
+	if (memcmp(&pending_before_queue_stages, empty_stages, sizeof(pending_before_queue_stages)) == 0) {
+		return;
+	}
+
+	int stage = STAGE_MAX;
+	if ([p_enc conformsToProtocol:@protocol(MTLRenderCommandEncoder)] && pending_after_stages[STAGE_RENDER] != 0) {
+		stage = STAGE_RENDER;
+	} else if ([p_enc conformsToProtocol:@protocol(MTLComputeCommandEncoder)] && pending_after_stages[STAGE_COMPUTE] != 0) {
+		stage = STAGE_COMPUTE;
+	} else if ([p_enc conformsToProtocol:@protocol(MTLBlitCommandEncoder)] && pending_after_stages[STAGE_BLIT] != 0) {
+		stage = STAGE_BLIT;
+	}
+
+	if (stage == STAGE_MAX) {
+		return;
+	}
+
+	[p_enc barrierAfterQueueStages:pending_after_stages[stage] beforeStages:pending_before_queue_stages[stage]];
+	pending_before_queue_stages[stage] = 0;
+	pending_after_stages[stage] = 0;
+}
+
+bool has_write_access(BitField<RDD::BarrierAccessBits> accessFlags) {
+	const uint32_t writeFlags =
+			RDD::BARRIER_ACCESS_SHADER_WRITE_BIT |
+			RDD::BARRIER_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+			RDD::BARRIER_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+			RDD::BARRIER_ACCESS_COPY_WRITE_BIT |
+			RDD::BARRIER_ACCESS_HOST_WRITE_BIT |
+			RDD::BARRIER_ACCESS_MEMORY_WRITE_BIT |
+			RDD::BARRIER_ACCESS_RESOLVE_WRITE_BIT |
+			RDD::BARRIER_ACCESS_STORAGE_CLEAR_BIT;
+
+	return (accessFlags & writeFlags) != 0;
+}
+
+bool check_for_src_writes(
+		VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
+		VectorView<RDD::BufferBarrier> p_buffer_barriers,
+		VectorView<RDD::TextureBarrier> p_texture_barriers) {
+	for (uint32_t size = p_memory_barriers.size(), i = 0; i < size; i++) {
+		const RDD::MemoryAccessBarrier &barrier = p_memory_barriers.ptr()[i];
+		if (has_write_access(barrier.src_access)) {
+			return true;
+		}
+	}
+
+	for (uint32_t size = p_buffer_barriers.size(), i = 0; i < size; i++) {
+		const RDD::BufferBarrier &barrier = p_buffer_barriers.ptr()[i];
+		if (has_write_access(barrier.src_access)) {
+			return true;
+		}
+	}
+
+	for (uint32_t size = p_texture_barriers.size(), i = 0; i < size; i++) {
+		const RDD::TextureBarrier &barrier = p_texture_barriers.ptr()[i];
+		if (has_write_access(barrier.src_access)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void MDCommandBuffer::pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_stages,
+		BitField<RDD::PipelineStageBits> p_dst_stages,
+		VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
+		VectorView<RDD::BufferBarrier> p_buffer_barriers,
+		VectorView<RDD::TextureBarrier> p_texture_barriers) {
+	bool has_src_writes = check_for_src_writes(p_memory_barriers, p_buffer_barriers, p_texture_barriers);
+	if (!has_src_writes) {
+		return;
+	}
+
+	MTLStages after_stages = convert_src_pipeline_stages_to_metal(p_src_stages);
+	if (after_stages == 0) {
+		return;
+	}
+
+	MTLStages before_queue_stages = convert_dst_pipeline_stages_to_metal(p_dst_stages);
+	if (before_queue_stages == 0) {
+		return;
+	}
+
+	if (after_stages & (MTLStageVertex | MTLStageFragment)) {
+		pending_after_stages[STAGE_RENDER] |= after_stages;
+		pending_before_queue_stages[STAGE_RENDER] |= before_queue_stages;
+	}
+
+	if (after_stages & MTLStageDispatch) {
+		pending_after_stages[STAGE_COMPUTE] |= after_stages;
+		pending_before_queue_stages[STAGE_COMPUTE] |= before_queue_stages;
+	}
+
+	if (after_stages & MTLStageBlit) {
+		pending_after_stages[STAGE_BLIT] |= after_stages;
+		pending_before_queue_stages[STAGE_BLIT] |= before_queue_stages;
+	}
+}
+
+GODOT_CLANG_WARNING_POP
 
 void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 	MDPipeline *p = (MDPipeline *)(p_pipeline.id);
@@ -149,6 +334,7 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 			}
 #endif
 			render.encoder = [command_buffer() renderCommandEncoderWithDescriptor:render.desc];
+			_encode_barrier(render.encoder);
 		}
 
 		if (render.pipeline != rp) {
@@ -159,8 +345,9 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 			// capturing a Metal frame in Xcode.
 			//
 			// If we don't mark as dirty, then some bindings will generate a validation error.
-			binding_cache.clear();
+			// binding_cache.clear();
 			render.mark_uniforms_dirty();
+
 			if (render.pipeline != nullptr && render.pipeline->depth_stencil != rp->depth_stencil) {
 				render.dirty.set_flag(RenderState::DIRTY_DEPTH);
 			}
@@ -230,6 +417,8 @@ id<MTLBlitCommandEncoder> MDCommandBuffer::_ensure_blit_encoder() {
 
 	type = MDCommandBufferStateType::Blit;
 	blit.encoder = command_buffer().blitCommandEncoder;
+	_encode_barrier(blit.encoder);
+
 	return blit.encoder;
 }
 
@@ -596,6 +785,7 @@ void MDCommandBuffer::encodeRenderCommandEncoderWithDescriptor(MTLRenderPassDesc
 	}
 
 	id<MTLRenderCommandEncoder> enc = [command_buffer() renderCommandEncoderWithDescriptor:p_desc];
+	_encode_barrier(enc);
 	if (p_label != nil) {
 		[enc pushDebugGroup:p_label];
 		[enc popDebugGroup];
@@ -784,7 +974,9 @@ void MDCommandBuffer::_render_set_dirty_state() {
 		}
 	}
 
-	render.resource_tracker.encode(render.encoder);
+	if (!use_barriers) {
+		render.resource_tracker.encode(render.encoder);
+	}
 
 	render.dirty.clear();
 }
@@ -1213,6 +1405,7 @@ void MDCommandBuffer::render_next_subpass() {
 		render.desc = desc;
 	} else {
 		render.encoder = [command_buffer() renderCommandEncoderWithDescriptor:desc];
+		_encode_barrier(render.encoder);
 
 		if (!render.is_rendering_entire_area) {
 			_render_clear_render_area();
@@ -1444,6 +1637,7 @@ void MDCommandBuffer::ComputeState::end_encoding() {
 void MDCommandBuffer::_compute_set_dirty_state() {
 	if (compute.dirty.has_flag(ComputeState::DIRTY_PIPELINE)) {
 		compute.encoder = [command_buffer() computeCommandEncoderWithDispatchType:MTLDispatchTypeConcurrent];
+		_encode_barrier(compute.encoder);
 		[compute.encoder setComputePipelineState:compute.pipeline->state];
 	}
 
@@ -1457,7 +1651,9 @@ void MDCommandBuffer::_compute_set_dirty_state() {
 		}
 	}
 
-	compute.resource_tracker.encode(compute.encoder);
+	if (!use_barriers) {
+		compute.resource_tracker.encode(compute.encoder);
+	}
 
 	compute.dirty.clear();
 }
@@ -1553,8 +1749,10 @@ void MDCommandBuffer::compute_dispatch_indirect(RDD::BufferID p_indirect_buffer,
 }
 
 void MDCommandBuffer::reset() {
+	push_constant_binding = UINT32_MAX;
 	push_constant_data_len = 0;
 	type = MDCommandBufferStateType::None;
+	binding_cache.clear();
 }
 
 void MDCommandBuffer::_end_compute_dispatch() {

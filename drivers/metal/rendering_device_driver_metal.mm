@@ -54,16 +54,17 @@
 #import "rendering_context_driver_metal.h"
 #import "rendering_shader_container_metal.h"
 
-#include "core/io/marshalls.h"
-#include "core/string/ustring.h"
-#include "core/templates/hash_map.h"
-#include "drivers/apple/foundation_helpers.h"
+#import "core/config/project_settings.h"
+#import "core/io/marshalls.h"
+#import "core/string/ustring.h"
+#import "core/templates/hash_map.h"
+#import "drivers/apple/foundation_helpers.h"
 
 #import <Metal/MTLTexture.h>
 #import <Metal/Metal.h>
 #import <os/log.h>
 #import <os/signpost.h>
-#include <algorithm>
+#import <algorithm>
 
 #ifndef MTLGPUAddress
 typedef uint64_t MTLGPUAddress;
@@ -114,13 +115,13 @@ RDD::BufferID RenderingDeviceDriverMetal::buffer_create(uint64_t p_size, BitFiel
 	MTLResourceOptions options = 0;
 	switch (p_allocation_type) {
 		case MEMORY_ALLOCATION_TYPE_CPU:
-			options = MTLResourceHazardTrackingModeTracked | MTLResourceStorageModeShared;
+			options = base_hazard_tracking | MTLResourceStorageModeShared;
 			break;
 		case MEMORY_ALLOCATION_TYPE_GPU:
 			if (p_usage.has_flag(BUFFER_USAGE_DYNAMIC_PERSISTENT_BIT)) {
 				options = MTLResourceHazardTrackingModeUntracked | MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined;
 			} else {
-				options = MTLResourceHazardTrackingModeTracked | MTLResourceStorageModePrivate;
+				options = base_hazard_tracking | MTLResourceStorageModePrivate;
 			}
 			break;
 	}
@@ -142,6 +143,8 @@ RDD::BufferID RenderingDeviceDriverMetal::buffer_create(uint64_t p_size, BitFiel
 	}
 	buf_info->metal_buffer = obj;
 
+	[main_residency_set addAllocation:obj];
+
 	return BufferID(buf_info);
 }
 
@@ -152,7 +155,8 @@ bool RenderingDeviceDriverMetal::buffer_set_texel_format(BufferID p_buffer, Data
 
 void RenderingDeviceDriverMetal::buffer_free(BufferID p_buffer) {
 	BufferInfo *buf_info = (BufferInfo *)p_buffer.id;
-	buf_info->metal_buffer = nil; // Tell ARC to release.
+
+	[main_residency_set removeAllocation:buf_info->metal_buffer];
 
 	if (buf_info->is_dynamic()) {
 		memdelete((MetalBufferDynamicInfo *)buf_info);
@@ -201,10 +205,6 @@ uint64_t RenderingDeviceDriverMetal::buffer_get_dynamic_offsets(Span<BufferID> p
 	}
 
 	return mask;
-}
-
-void RenderingDeviceDriverMetal::buffer_flush(BufferID p_buffer) {
-	// Nothing to do.
 }
 
 uint64_t RenderingDeviceDriverMetal::buffer_get_device_address(BufferID p_buffer) {
@@ -336,10 +336,10 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 	GODOT_CLANG_WARNING_POP
 #endif
 	if (supports_memoryless && p_format.usage_bits & TEXTURE_USAGE_TRANSIENT_BIT) {
-		options = MTLResourceStorageModeMemoryless | MTLResourceHazardTrackingModeTracked;
+		options = MTLResourceStorageModeMemoryless | base_hazard_tracking;
 		desc.storageMode = MTLStorageModeMemoryless;
 	} else {
-		options = MTLResourceCPUCacheModeDefaultCache | MTLResourceHazardTrackingModeTracked;
+		options = MTLResourceCPUCacheModeDefaultCache | base_hazard_tracking;
 		if (p_format.usage_bits & TEXTURE_USAGE_CPU_READ_BIT) {
 			options |= MTLResourceStorageModeShared;
 			// The user has indicated they want to read from the texture on the CPU,
@@ -413,10 +413,14 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 
 		id<MTLBuffer> buf = [device newBufferWithLength:byte_count options:options];
 		obj = [buf newTextureWithDescriptor:desc offset:0 bytesPerRow:bytes_per_row];
+
+		[main_residency_set addAllocation:buf];
 	} else {
 		obj = [device newTextureWithDescriptor:desc];
 	}
 	ERR_FAIL_NULL_V_MSG(obj, TextureID(), "Unable to create texture.");
+
+	[main_residency_set addAllocation:obj];
 
 	return rid::make(obj);
 }
@@ -439,6 +443,8 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_from_extension(uint64_
 										 swizzle:swizzle];
 		ERR_FAIL_NULL_V_MSG(res, TextureID(), "Unable to create texture view.");
 	}
+
+	[main_residency_set addAllocation:res];
 
 	return rid::make(res);
 }
@@ -487,6 +493,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared(TextureID p_ori
 															 slices:NSMakeRange(0, slices)
 															swizzle:swizzle];
 	ERR_FAIL_NULL_V_MSG(obj, TextureID(), "Unable to create shared texture");
+	[main_residency_set addAllocation:obj];
 	return rid::make(obj);
 }
 
@@ -549,11 +556,13 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared_from_slice(Text
 															 slices:NSMakeRange(p_layer, p_layers)
 															swizzle:swizzle];
 	ERR_FAIL_NULL_V_MSG(obj, TextureID(), "Unable to create shared texture");
+	[main_residency_set addAllocation:obj];
 	return rid::make(obj);
 }
 
 void RenderingDeviceDriverMetal::texture_free(TextureID p_texture) {
-	rid::release(p_texture);
+	id<MTLTexture> obj = rid::release(p_texture);
+	[main_residency_set removeAllocation:obj];
 }
 
 uint64_t RenderingDeviceDriverMetal::texture_get_allocation_size(TextureID p_texture) {
@@ -846,7 +855,8 @@ void RenderingDeviceDriverMetal::command_pipeline_barrier(
 		VectorView<MemoryAccessBarrier> p_memory_barriers,
 		VectorView<BufferBarrier> p_buffer_barriers,
 		VectorView<TextureBarrier> p_texture_barriers) {
-	WARN_PRINT_ONCE("not implemented");
+	MDCommandBuffer *obj = (MDCommandBuffer *)(p_cmd_buffer.id);
+	obj->pipeline_barrier(p_src_stages, p_dst_stages, p_memory_barriers, p_buffer_barriers, p_texture_barriers);
 }
 
 #pragma mark - Fences
@@ -900,6 +910,7 @@ RDD::CommandQueueID RenderingDeviceDriverMetal::command_queue_create(CommandQueu
 }
 
 Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueueID p_cmd_queue, VectorView<SemaphoreID>, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID>, FenceID p_cmd_fence, VectorView<SwapChainID> p_swap_chains) {
+	[main_residency_set commit];
 	uint32_t size = p_cmd_buffers.size();
 	if (size == 0) {
 		return OK;
@@ -960,7 +971,7 @@ void RenderingDeviceDriverMetal::command_pool_free(CommandPoolID p_cmd_pool) {
 
 RDD::CommandBufferID RenderingDeviceDriverMetal::command_buffer_create(CommandPoolID p_cmd_pool) {
 	id<MTLCommandQueue> queue = rid::get(p_cmd_pool);
-	MDCommandBuffer *obj = new MDCommandBuffer(queue, this);
+	MDCommandBuffer *obj = memnew(MDCommandBuffer(queue, this));
 	command_buffers.push_back(obj);
 	return CommandBufferID(obj);
 }
@@ -1097,13 +1108,13 @@ RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p
 		textures.write[i] = tex;
 	}
 
-	MDFrameBuffer *fb = new MDFrameBuffer(textures, Size2i(p_width, p_height));
+	MDFrameBuffer *fb = memnew(MDFrameBuffer(textures, Size2i(p_width, p_height)));
 	return FramebufferID(fb);
 }
 
 void RenderingDeviceDriverMetal::framebuffer_free(FramebufferID p_framebuffer) {
 	MDFrameBuffer *obj = (MDFrameBuffer *)(p_framebuffer.id);
-	delete obj;
+	memdelete(obj);
 }
 
 #pragma mark - Shader
@@ -1345,25 +1356,35 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 		// If argument buffers are enabled, we have already verified availability, so we can skip the runtime check.
 		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability-new")
 
-		set->arg_buffer = [device newBufferWithLength:shader_set.buffer_size options:MTLResourceStorageModeShared];
+		set->arg_buffer = [device newBufferWithLength:shader_set.buffer_size options:MTLResourceStorageModeShared | base_hazard_tracking];
+#if DEV_ENABLED
+		[set->arg_buffer setLabel:[NSString stringWithFormat:@"Uniform Set %u", p_set_index]];
+#endif
 		uint64_t *ptr = (uint64_t *)set->arg_buffer.contents;
 
 		HashMap<MTLResourceUnsafe, StageResourceUsage, HashMapHasherDefault> bound_resources;
-		auto add_usage = [&bound_resources](MTLResourceUnsafe res, BitField<RDD::ShaderStage> stage, MTLResourceUsage usage) {
-			StageResourceUsage *sru = bound_resources.getptr(res);
-			if (sru == nullptr) {
-				sru = &bound_resources.insert(res, ResourceUnused)->value;
-			}
-			if (stage.has_flag(RDD::SHADER_STAGE_VERTEX_BIT)) {
-				*sru |= stage_resource_usage(RDD::SHADER_STAGE_VERTEX, usage);
-			}
-			if (stage.has_flag(RDD::SHADER_STAGE_FRAGMENT_BIT)) {
-				*sru |= stage_resource_usage(RDD::SHADER_STAGE_FRAGMENT, usage);
-			}
-			if (stage.has_flag(RDD::SHADER_STAGE_COMPUTE_BIT)) {
-				*sru |= stage_resource_usage(RDD::SHADER_STAGE_COMPUTE, usage);
-			}
-		};
+		std::function<void(MTLResourceUnsafe, BitField<RDD::ShaderStage>, MTLResourceUsage)> add_usage;
+		if (use_barriers) {
+			add_usage = [](MTLResourceUnsafe res, BitField<RDD::ShaderStage> stage, MTLResourceUsage usage) {
+				// No-op when using barriers.
+			};
+		} else {
+			add_usage = [&bound_resources](MTLResourceUnsafe res, BitField<RDD::ShaderStage> stage, MTLResourceUsage usage) {
+				StageResourceUsage *sru = bound_resources.getptr(res);
+				if (sru == nullptr) {
+					sru = &bound_resources.insert(res, ResourceUnused)->value;
+				}
+				if (stage.has_flag(RDD::SHADER_STAGE_VERTEX_BIT)) {
+					*sru |= stage_resource_usage(RDD::SHADER_STAGE_VERTEX, usage);
+				}
+				if (stage.has_flag(RDD::SHADER_STAGE_FRAGMENT_BIT)) {
+					*sru |= stage_resource_usage(RDD::SHADER_STAGE_FRAGMENT, usage);
+				}
+				if (stage.has_flag(RDD::SHADER_STAGE_COMPUTE_BIT)) {
+					*sru |= stage_resource_usage(RDD::SHADER_STAGE_COMPUTE, usage);
+				}
+			};
+		}
 
 		// Ensure the argument buffer exists for this set as some shader pipelines may
 		// have been generated with argument buffers enabled.
@@ -1452,14 +1473,16 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 			}
 		}
 
-		for (KeyValue<MTLResourceUnsafe, StageResourceUsage> const &keyval : bound_resources) {
-			ResourceVector *resources = set->usage_to_resources.getptr(keyval.value);
-			if (resources == nullptr) {
-				resources = &set->usage_to_resources.insert(keyval.value, ResourceVector())->value;
-			}
-			int64_t pos = resources->span().bisect(keyval.key, true);
-			if (pos == resources->size() || (*resources)[pos] != keyval.key) {
-				resources->insert(pos, keyval.key);
+		if (!use_barriers) {
+			for (KeyValue<MTLResourceUnsafe, StageResourceUsage> const &keyval : bound_resources) {
+				ResourceVector *resources = set->usage_to_resources.getptr(keyval.value);
+				if (resources == nullptr) {
+					resources = &set->usage_to_resources.insert(keyval.value, ResourceVector())->value;
+				}
+				int64_t pos = resources->span().bisect(keyval.key, true);
+				if (pos == resources->size() || (*resources)[pos] != keyval.key) {
+					resources->insert(pos, keyval.key);
+				}
 			}
 		}
 
@@ -1684,13 +1707,13 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 			mda.type |= MDAttachmentType::Color;
 		}
 	}
-	MDRenderPass *obj = new MDRenderPass(attachments, subpasses);
+	MDRenderPass *obj = memnew(MDRenderPass(attachments, subpasses));
 	return RenderPassID(obj);
 }
 
 void RenderingDeviceDriverMetal::render_pass_free(RenderPassID p_render_pass) {
 	MDRenderPass *obj = (MDRenderPass *)(p_render_pass.id);
-	delete obj;
+	memdelete(obj);
 }
 
 // ----- COMMANDS -----
@@ -1954,7 +1977,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	}
 
 	desc.vertexDescriptor = vert_desc;
-	desc.label = [NSString stringWithUTF8String:shader->name.get_data()];
+	desc.label = conv::to_nsstring(shader->name);
 
 	// Input assembly & tessellation.
 
@@ -2324,20 +2347,21 @@ void RenderingDeviceDriverMetal::end_segment() {
 #pragma mark - Misc
 
 void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_id, const String &p_name) {
+	NSString *label = conv::to_nsstring(p_name);
+
 	switch (p_type) {
 		case OBJECT_TYPE_TEXTURE: {
 			id<MTLTexture> tex = rid::get(p_driver_id);
-			tex.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
+			tex.label = label;
 		} break;
 		case OBJECT_TYPE_SAMPLER: {
 			// Can't set label after creation.
 		} break;
 		case OBJECT_TYPE_BUFFER: {
 			const BufferInfo *buf_info = (const BufferInfo *)p_driver_id.id;
-			buf_info->metal_buffer.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
+			buf_info->metal_buffer.label = label;
 		} break;
 		case OBJECT_TYPE_SHADER: {
-			NSString *label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
 			MDShader *shader = (MDShader *)(p_driver_id.id);
 			if (MDRenderShader *rs = dynamic_cast<MDRenderShader *>(shader); rs != nullptr) {
 				[rs->vert setLabel:label];
@@ -2350,7 +2374,7 @@ void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_
 		} break;
 		case OBJECT_TYPE_UNIFORM_SET: {
 			MDUniformSet *set = (MDUniformSet *)(p_driver_id.id);
-			set->arg_buffer.label = [NSString stringWithUTF8String:p_name.utf8().get_data()];
+			set->arg_buffer.label = label;
 		} break;
 		case OBJECT_TYPE_PIPELINE: {
 			// Can't set label after creation.
@@ -2540,7 +2564,7 @@ uint64_t RenderingDeviceDriverMetal::limit_get(Limit p_limit) {
 uint64_t RenderingDeviceDriverMetal::api_trait_get(ApiTrait p_trait) {
 	switch (p_trait) {
 		case API_TRAIT_HONORS_PIPELINE_BARRIERS:
-			return false;
+			return use_barriers;
 		case API_TRAIT_CLEARS_WITH_COPY_ENGINE:
 			return false;
 		default:
@@ -2624,7 +2648,7 @@ RenderingDeviceDriverMetal::RenderingDeviceDriverMetal(RenderingContextDriverMet
 
 RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 	for (MDCommandBuffer *cb : command_buffers) {
-		delete cb;
+		memdelete(cb);
 	}
 
 	for (KeyValue<SHA256Digest, ShaderCacheEntry *> &kv : _shader_cache) {
@@ -2731,6 +2755,33 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 	shader_container_format = memnew(RenderingShaderContainerFormatMetal(&device_profile));
 
 	_check_capabilities();
+
+	if (@available(macOS 26.0, iOS 26.0, tvOS 26.0, *)) {
+		// Check if the user has explicitly disabled resource barriers.
+		bool barriers_enabled = GLOBAL_GET("rendering/rendering_device/metal3/enable_pipeline_barriers");
+#ifdef DEV_ENABLED
+		barriers_enabled &= OS::get_singleton()->get_environment("GODOT_MTL_DISABLE_BARRIERS") != "1";
+#endif
+		if (barriers_enabled) {
+			GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
+			MTLResidencySetDescriptor *rs_desc = [MTLResidencySetDescriptor new];
+			[rs_desc setInitialCapacity:250];
+			rs_desc.label = @"Main Residency Set";
+			NSError *error;
+			main_residency_set = [device newResidencySetWithDescriptor:rs_desc error:&error];
+			if (main_residency_set == nil) {
+				String error_msg = conv::to_string(error.localizedDescription);
+				print_error(vformat("Resource barriers unavailable. Failed to create main residency set for explicit resource barriers: %s", error_msg));
+			} else {
+				use_barriers = true;
+				base_hazard_tracking = MTLResourceHazardTrackingModeUntracked;
+				[device_queue addResidencySet:main_residency_set];
+			}
+			GODOT_CLANG_WARNING_POP;
+		} else {
+			print_verbose("Metal3: Resource barriers are disabled.");
+		}
+	}
 
 	_frame_count = p_frame_count;
 

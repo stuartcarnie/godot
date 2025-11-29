@@ -81,13 +81,6 @@ enum StageResourceUsage : uint32_t {
 	ComputeWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_COMPUTE * 2),
 };
 
-typedef id<MTLResource> __unsafe_unretained MTLResourceUnsafe;
-
-template <>
-struct HashMapHasherDefaultImpl<MTLResourceUnsafe> {
-	static _FORCE_INLINE_ uint32_t hash(const MTLResourceUnsafe p_pointer) { return hash_one_uint64((uint64_t)p_pointer); }
-};
-
 typedef LocalVector<MTLResourceUnsafe> ResourceVector;
 typedef HashMap<StageResourceUsage, ResourceVector> ResourceUsageMap;
 
@@ -413,6 +406,19 @@ private:
 
 	BindingCache binding_cache;
 
+#pragma mark - Synchronization
+
+	enum {
+		STAGE_RENDER,
+		STAGE_COMPUTE,
+		STAGE_BLIT,
+		STAGE_MAX,
+	};
+	bool use_barriers = false;
+	MTLStages pending_after_stages[STAGE_MAX] = { 0, 0, 0 };
+	MTLStages pending_before_queue_stages[STAGE_MAX] = { 0, 0, 0 };
+	void _encode_barrier(id<MTLCommandEncoder> p_enc);
+
 	void reset();
 
 	RenderingDeviceDriverMetal *device_driver = nullptr;
@@ -699,16 +705,20 @@ public:
 	void copy_buffer_to_texture(RDD::BufferID p_src_buffer, RDD::TextureID p_dst_texture, VectorView<RDD::BufferTextureCopyRegion> p_regions);
 	void copy_texture_to_buffer(RDD::TextureID p_src_texture, RDD::BufferID p_dst_buffer, VectorView<RDD::BufferTextureCopyRegion> p_regions);
 
+#pragma mark - Synchronization
+
+	void pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_stages,
+			BitField<RDD::PipelineStageBits> p_dst_stages,
+			VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
+			VectorView<RDD::BufferBarrier> p_buffer_barriers,
+			VectorView<RDD::TextureBarrier> p_texture_barriers);
+
 #pragma mark - Debugging
 
 	void begin_label(const char *p_label_name, const Color &p_color);
 	void end_label();
 
-	MDCommandBuffer(id<MTLCommandQueue> p_queue, RenderingDeviceDriverMetal *p_device_driver) :
-			device_driver(p_device_driver), queue(p_queue) {
-		type = MDCommandBufferStateType::None;
-	}
-
+	MDCommandBuffer(id<MTLCommandQueue> p_queue, RenderingDeviceDriverMetal *p_device_driver);
 	MDCommandBuffer() = default;
 };
 
@@ -899,41 +909,6 @@ _FORCE_INLINE_ StageResourceUsage stage_resource_usage(RDC::ShaderStage p_stage,
 _FORCE_INLINE_ MTLResourceUsage resource_usage_for_stage(StageResourceUsage p_usage, RDC::ShaderStage p_stage) {
 	return MTLResourceUsage((p_usage >> (p_stage * 2)) & 0b11);
 }
-
-template <>
-struct HashMapComparatorDefault<RDD::ShaderID> {
-	static bool compare(const RDD::ShaderID &p_lhs, const RDD::ShaderID &p_rhs) {
-		return p_lhs.id == p_rhs.id;
-	}
-};
-
-template <>
-struct HashMapComparatorDefault<RDD::BufferID> {
-	static bool compare(const RDD::BufferID &p_lhs, const RDD::BufferID &p_rhs) {
-		return p_lhs.id == p_rhs.id;
-	}
-};
-
-template <>
-struct HashMapComparatorDefault<RDD::TextureID> {
-	static bool compare(const RDD::TextureID &p_lhs, const RDD::TextureID &p_rhs) {
-		return p_lhs.id == p_rhs.id;
-	}
-};
-
-template <>
-struct HashMapHasherDefaultImpl<RDD::BufferID> {
-	static _FORCE_INLINE_ uint32_t hash(const RDD::BufferID &p_value) {
-		return HashMapHasherDefaultImpl<uint64_t>::hash(p_value.id);
-	}
-};
-
-template <>
-struct HashMapHasherDefaultImpl<RDD::TextureID> {
-	static _FORCE_INLINE_ uint32_t hash(const RDD::TextureID &p_value) {
-		return HashMapHasherDefaultImpl<uint64_t>::hash(p_value.id);
-	}
-};
 
 // A type used to encode resources directly to a MTLCommandEncoder
 struct DirectEncoder {

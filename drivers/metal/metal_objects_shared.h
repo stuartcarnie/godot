@@ -52,6 +52,13 @@ MTL_CLASS(Texture)
 
 } //namespace MTL
 
+typedef id<MTLResource> __unsafe_unretained MTLResourceUnsafe;
+
+template <>
+struct HashMapHasherDefaultImpl<MTLResourceUnsafe> {
+	static _FORCE_INLINE_ uint32_t hash(const MTLResourceUnsafe p_pointer) { return hash_one_uint64((uint64_t)p_pointer); }
+};
+
 enum ShaderStageUsage : uint32_t {
 	None = 0,
 	Vertex = RDD::SHADER_STAGE_VERTEX_BIT,
@@ -157,6 +164,41 @@ public:
 	}
 
 	virtual ~MDFrameBuffer() = default;
+};
+
+template <>
+struct HashMapComparatorDefault<RDD::ShaderID> {
+	static bool compare(const RDD::ShaderID &p_lhs, const RDD::ShaderID &p_rhs) {
+		return p_lhs.id == p_rhs.id;
+	}
+};
+
+template <>
+struct HashMapComparatorDefault<RDD::BufferID> {
+	static bool compare(const RDD::BufferID &p_lhs, const RDD::BufferID &p_rhs) {
+		return p_lhs.id == p_rhs.id;
+	}
+};
+
+template <>
+struct HashMapComparatorDefault<RDD::TextureID> {
+	static bool compare(const RDD::TextureID &p_lhs, const RDD::TextureID &p_rhs) {
+		return p_lhs.id == p_rhs.id;
+	}
+};
+
+template <>
+struct HashMapHasherDefaultImpl<RDD::BufferID> {
+	static _FORCE_INLINE_ uint32_t hash(const RDD::BufferID &p_value) {
+		return HashMapHasherDefaultImpl<uint64_t>::hash(p_value.id);
+	}
+};
+
+template <>
+struct HashMapHasherDefaultImpl<RDD::TextureID> {
+	static _FORCE_INLINE_ uint32_t hash(const RDD::TextureID &p_value) {
+		return HashMapHasherDefaultImpl<uint64_t>::hash(p_value.id);
+	}
 };
 
 // These functions are used to convert between Objective-C objects and
