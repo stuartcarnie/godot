@@ -337,6 +337,8 @@ void ThemeClassic::populate_shared_styles(const Ref<EditorTheme> &p_theme, Edito
 			p_config.content_panel_style->set_corner_radius(CORNER_TOP_RIGHT, 0);
 			p_config.content_panel_style->set_content_margin_individual(content_panel_margin, 2 * EDSCALE + content_panel_margin, content_panel_margin, content_panel_margin);
 
+			p_config.tab_container_style = p_config.content_panel_style;
+
 			// Trees and similarly inset panels.
 
 			p_config.tree_panel_style = p_config.base_style->duplicate();
@@ -816,7 +818,7 @@ void ThemeClassic::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edi
 		style_tabbar_background->set_corner_radius(CORNER_BOTTOM_LEFT, 0);
 		style_tabbar_background->set_corner_radius(CORNER_BOTTOM_RIGHT, 0);
 		p_theme->set_stylebox("tabbar_background", "TabContainer", style_tabbar_background);
-		p_theme->set_stylebox(SceneStringName(panel), "TabContainer", p_config.content_panel_style);
+		p_theme->set_stylebox(SceneStringName(panel), "TabContainer", p_config.tab_container_style);
 
 		p_theme->set_stylebox("tab_selected", "TabContainer", style_tab_selected);
 		p_theme->set_stylebox("tab_hovered", "TabContainer", style_tab_hovered);
@@ -1521,6 +1523,7 @@ void ThemeClassic::populate_editor_styles(const Ref<EditorTheme> &p_theme, Edito
 
 		p_theme->set_stylebox("panel_container", "ProjectManager", style_panel_container);
 		p_theme->set_stylebox("project_list", "ProjectManager", p_config.tree_panel_style);
+		p_theme->set_stylebox("quick_settings_panel", "ProjectManager", p_config.tree_panel_style);
 		p_theme->set_constant("sidebar_button_icon_separation", "ProjectManager", int(6 * EDSCALE));
 		p_theme->set_icon("browse_folder", "ProjectManager", p_theme->get_icon(SNAME("FolderBrowse"), EditorStringName(EditorIcons)));
 		p_theme->set_icon("browse_file", "ProjectManager", p_theme->get_icon(SNAME("FileBrowse"), EditorStringName(EditorIcons)));
@@ -1971,6 +1974,10 @@ void ThemeClassic::populate_editor_styles(const Ref<EditorTheme> &p_theme, Edito
 		// Secondary trees and item lists.
 		p_theme->set_type_variation("TreeSecondary", "Tree");
 		p_theme->set_type_variation("ItemListSecondary", "ItemList");
+
+		// ForegroundPanel.
+		p_theme->set_type_variation("PanelForeground", "Panel");
+		p_theme->set_stylebox(SceneStringName(panel), "PanelForeground", p_config.base_empty_style);
 	}
 
 	// Editor inspector.
@@ -2088,7 +2095,7 @@ void ThemeClassic::populate_editor_styles(const Ref<EditorTheme> &p_theme, Edito
 			style_dictionary_add_item->set_expand_margin(SIDE_RIGHT, 2 * EDSCALE);
 			p_theme->set_stylebox("DictionaryAddItem" + itos(i + 1), EditorStringName(EditorStyles), style_dictionary_add_item);
 
-			// Object selector;
+			// Object selector.
 			p_theme->set_type_variation("ObjectSelectorMargin", "MarginContainer");
 			p_theme->set_constant("margin_left", "ObjectSelectorMargin", 4 * EDSCALE);
 			p_theme->set_constant("margin_right", "ObjectSelectorMargin", 6 * EDSCALE);
