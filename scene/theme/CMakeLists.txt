@@ -70,6 +70,8 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/scroll_button_left_hl.svg
         icons/scroll_button_right.svg
         icons/scroll_button_right_hl.svg
+        icons/scroll_hint_horizontal.svg
+        icons/scroll_hint_vertical.svg
         icons/slider_grabber.svg
         icons/slider_grabber_disabled.svg
         icons/slider_grabber_hl.svg

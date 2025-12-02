@@ -107,6 +107,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         BoneMapperHandle.svg
         BoneMapperHandleCircle.svg
         BoneMapperHandleSelected.svg
+        BoneTwistDisperser3D.svg
         BoxContainer.svg
         BoxMesh.svg
         BoxOccluder3D.svg
@@ -536,6 +537,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         LinkOverlay.svg
         ListSelect.svg
         Load.svg
+        LoadQuick.svg
         LocalVariable.svg
         Lock.svg
         LockViewport.svg

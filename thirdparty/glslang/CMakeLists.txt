@@ -44,3 +44,4 @@ target_sources(godot-glslang PRIVATE
         $<IF:$<PLATFORM_ID:Windows>,glslang/OSDependent/Windows/ossource.cpp,glslang/OSDependent/Unix/ossource.cpp>
 )
 target_include_directories(godot-glslang PUBLIC . ..)
+target_link_libraries(godot-glslang PUBLIC spirv-headers)

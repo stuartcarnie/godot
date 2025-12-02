@@ -7,7 +7,6 @@ target_sources(spirv-cross PRIVATE
 		include/spirv_cross/internal_interface.hpp
 		include/spirv_cross/sampler.hpp
 		include/spirv_cross/thread_group.hpp
-		spirv.hpp
 		spirv_cfg.cpp
 		spirv_cfg.hpp
 		spirv_common.hpp
@@ -27,4 +26,5 @@ target_sources(spirv-cross PRIVATE
 		spirv_reflect.hpp
 )
 target_include_directories(spirv-cross PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(spirv-cross PUBLIC spirv-headers)
 target_compile_options(spirv-cross PRIVATE -fexceptions)

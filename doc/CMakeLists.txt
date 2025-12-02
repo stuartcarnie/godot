@@ -214,6 +214,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/BoneAttachment3D.xml
         classes/BoneConstraint3D.xml
         classes/BoneMap.xml
+        classes/BoneTwistDisperser3D.xml
         classes/BoxContainer.xml
         classes/BoxMesh.xml
         classes/BoxOccluder3D.xml
