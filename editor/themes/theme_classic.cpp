@@ -35,6 +35,7 @@
 #include "editor/themes/editor_scale.h"
 #include "editor/themes/editor_theme_manager.h"
 #include "scene/gui/graph_edit.h"
+#include "scene/resources/compressed_texture.h"
 #include "scene/resources/dpi_texture.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/style_box_flat.h"
@@ -1050,6 +1051,8 @@ void ThemeClassic::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edi
 		p_theme->set_color("folder_icon_color", "FileDialog", (p_config.dark_icon_and_font ? Color(1, 1, 1) : Color(4.25, 4.25, 4.25)).lerp(p_config.accent_color, 0.7));
 		p_theme->set_color("file_disabled_color", "FileDialog", p_config.font_disabled_color);
 
+		p_theme->set_constant("thumbnail_size", "EditorFileDialog", p_config.thumb_size);
+
 		// PopupDialog.
 		p_theme->set_stylebox(SceneStringName(panel), "PopupDialog", p_config.popup_style);
 
@@ -1578,6 +1581,13 @@ void ThemeClassic::populate_editor_styles(const Ref<EditorTheme> &p_theme, Edito
 
 		Ref<StyleBoxFlat> style_widget_scroll_container = p_config.button_style_focus->duplicate();
 		p_theme->set_stylebox("focus", "ScrollContainer", style_widget_scroll_container);
+
+		// Hide scroll hints.
+		Ref<CompressedTexture2D> empty_texture;
+		empty_texture.instantiate();
+		p_theme->set_icon("scroll_hint_vertical", "ScrollContainer", empty_texture);
+		p_theme->set_icon("scroll_hint_horizontal", "ScrollContainer", empty_texture);
+		p_theme->set_icon("scroll_hint", "Tree", empty_texture);
 
 		// This stylebox is used in 3d and 2d viewports (no borders).
 		Ref<StyleBoxFlat> style_content_panel_vp = p_config.content_panel_style->duplicate();

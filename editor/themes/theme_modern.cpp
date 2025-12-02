@@ -1003,6 +1003,8 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 		p_theme->set_color("folder_icon_color", "FileDialog", (p_config.dark_icon_and_font ? Color(1, 1, 1) : Color(4.25, 4.25, 4.25)).lerp(p_config.accent_color, 0.7));
 		p_theme->set_color("file_disabled_color", "FileDialog", p_config.font_disabled_color);
 
+		p_theme->set_constant("thumbnail_size", "EditorFileDialog", p_config.thumb_size);
+
 		// PopupDialog.
 		p_theme->set_stylebox(SceneStringName(panel), "PopupDialog", p_config.dialog_style);
 
@@ -1941,9 +1943,7 @@ void ThemeModern::populate_editor_styles(const Ref<EditorTheme> &p_theme, Editor
 	// Editor inspector.
 	{
 		// Panel.
-		Ref<StyleBoxEmpty> editor_inspector_panel = p_config.base_empty_style->duplicate();
-		editor_inspector_panel->set_content_margin_all(p_config.base_margin * 2 * EDSCALE);
-		p_theme->set_stylebox(SceneStringName(panel), "EditorInspector", editor_inspector_panel);
+		p_theme->set_stylebox(SceneStringName(panel), "EditorInspector", p_config.base_empty_style);
 
 		// Vertical separation between inspector categories and sections.
 		p_theme->set_constant("v_separation", "EditorInspector", Math::ceil(p_config.base_margin * 0.5 * EDSCALE));
