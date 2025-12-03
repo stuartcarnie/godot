@@ -834,6 +834,15 @@ void EditorDockManager::open_dock(EditorDock *p_dock, bool p_set_current) {
 	_update_layout();
 }
 
+void EditorDockManager::make_dock_floating(EditorDock *p_dock) {
+	ERR_FAIL_NULL(p_dock);
+	ERR_FAIL_COND_MSG(!all_docks.has(p_dock), vformat("Cannot make unknown dock '%s' floating.", p_dock->get_display_title()));
+
+	if (!p_dock->dock_window) {
+		_open_dock_in_window(p_dock);
+	}
+}
+
 TabContainer *EditorDockManager::get_dock_tab_container(Control *p_dock) const {
 	return Object::cast_to<TabContainer>(p_dock->get_parent());
 }
@@ -1051,6 +1060,7 @@ void DockContextPopup::_tab_move_right() {
 
 void DockContextPopup::_close_dock() {
 	hide();
+	context_dock->emit_signal("closed");
 	dock_manager->close_dock(context_dock);
 }
 
@@ -1206,7 +1216,7 @@ void DockContextPopup::_dock_select_draw() {
 
 void DockContextPopup::_update_buttons() {
 	TabContainer *context_tab_container = dock_manager->get_dock_tab_container(context_dock);
-	if (context_dock->global) {
+	if (context_dock->global || context_dock->closable) {
 		close_button->set_tooltip_text(TTRC("Close this dock."));
 		close_button->set_disabled(false);
 	} else {
