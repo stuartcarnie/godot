@@ -20,12 +20,7 @@ set_abs(RENDERER_RD_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/effects/copy.glsl
         shaders/effects/copy_to_fb.glsl
         shaders/effects/cube_to_dp.glsl
-        shaders/effects/cubemap_downsampler.glsl
-        shaders/effects/cubemap_downsampler_raster.glsl
-        shaders/effects/cubemap_filter.glsl
-        shaders/effects/cubemap_filter_raster.glsl
-        shaders/effects/cubemap_roughness.glsl
-        shaders/effects/cubemap_roughness_raster.glsl
+        shaders/effects/cube_to_octmap.glsl
         shaders/effects/fsr2/fsr2_accumulate_pass.glsl
         shaders/effects/fsr2/fsr2_autogen_reactive_pass.glsl
         shaders/effects/fsr2/fsr2_compute_luminance_pyramid_pass.glsl
@@ -39,6 +34,12 @@ set_abs(RENDERER_RD_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/effects/luminance_reduce_raster.glsl
         shaders/effects/motion_vectors.glsl
         shaders/effects/motion_vectors_store.glsl
+        shaders/effects/octmap_downsampler.glsl
+        shaders/effects/octmap_downsampler_raster.glsl
+        shaders/effects/octmap_filter.glsl
+        shaders/effects/octmap_filter_raster.glsl
+        shaders/effects/octmap_roughness.glsl
+        shaders/effects/octmap_roughness_raster.glsl
         shaders/effects/resolve.glsl
         shaders/effects/resolve_raster.glsl
         shaders/effects/roughness_limiter.glsl
@@ -109,6 +110,7 @@ set_abs(RENDERER_RD_SERVER_SHADERS_INC ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/decal_data_inc.glsl
         shaders/half_inc.glsl
         shaders/light_data_inc.glsl
+        shaders/oct_inc.glsl
         shaders/samplers_inc.glsl
         shaders/scene_data_inc.glsl
         shaders/scene_forward_aa_inc.glsl

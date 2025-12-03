@@ -51,6 +51,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         AnimationTrackGroup.svg
         AnimationTrackList.svg
         AnimationTree.svg
+        AnimationTreeDock.svg
         Area2D.svg
         Area3D.svg
         Array.svg
@@ -633,6 +634,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         OmniLight3D.svg
         OneWayTile.svg
         Onion.svg
+        OpenXRActionMap.svg
         OptionButton.svg
         Orientation.svg
         Output.svg
@@ -710,6 +712,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         PointLight2D.svg
         PointMesh.svg
         Polygon2D.svg
+        PolygonDock.svg
         PolygonOccluder3D.svg
         PolygonPathFinder.svg
         Popup.svg
@@ -789,6 +792,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         SeparationRayShape2D.svg
         SeparationRayShape3D.svg
         Shader.svg
+        ShaderDock.svg
         ShaderGlobalsOverride.svg
         ShaderInclude.svg
         ShaderMaterial.svg
@@ -876,6 +880,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         TextureRect.svg
         Theme.svg
         ThemeDeselectAll.svg
+        ThemeDock.svg
         ThemeRemoveAllItems.svg
         ThemeRemoveCustomItems.svg
         ThemeSelectAll.svg
