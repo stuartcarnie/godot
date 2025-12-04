@@ -32,13 +32,13 @@
 
 #include "core/io/resource_loader.h"
 #include "core/os/keyboard.h"
+#include "core/string/translation_server.h"
 #include "editor/docks/filesystem_dock.h"
 #include "editor/docks/scene_tree_dock.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/file_system/editor_file_system.h"
-#include "editor/gui/editor_bottom_panel.h"
 #include "editor/gui/editor_file_dialog.h"
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
@@ -51,6 +51,7 @@
 #include "scene/gui/option_button.h"
 #include "scene/gui/panel_container.h"
 #include "scene/gui/separator.h"
+#include "scene/gui/split_container.h"
 #include "scene/resources/atlas_texture.h"
 
 static void _draw_shadowed_line(Control *p_control, const Point2 &p_from, const Size2 &p_size, const Size2 &p_shadow_offset, Color p_color, Color p_shadow_color) {
@@ -316,13 +317,15 @@ void SpriteFramesEditor::_sheet_update_zoom_label() {
 	// (like in most image editors). Its lower bound is clamped to 1 as some people
 	// lower the editor scale to increase the available real estate,
 	// even if their display doesn't have a particularly low DPI.
+	TranslationServer *translation_server = TranslationServer::get_singleton();
+	String locale = translation_server->get_tool_locale();
 	if (sheet_zoom >= 10) {
-		zoom_text = TS->format_number(rtos(Math::round((sheet_zoom / MAX(1, EDSCALE)) * 100)));
+		zoom_text = translation_server->format_number(rtos(Math::round((sheet_zoom / MAX(1, EDSCALE)) * 100)), locale);
 	} else {
 		// 2 decimal places if the zoom is below 10%, 1 decimal place if it's below 1000%.
-		zoom_text = TS->format_number(rtos(Math::snapped((sheet_zoom / MAX(1, EDSCALE)) * 100, (sheet_zoom >= 0.1) ? 0.1 : 0.01)));
+		zoom_text = translation_server->format_number(rtos(Math::snapped((sheet_zoom / MAX(1, EDSCALE)) * 100, (sheet_zoom >= 0.1) ? 0.1 : 0.01)), locale);
 	}
-	zoom_text += " " + TS->percent_sign();
+	zoom_text += " " + translation_server->get_percent_sign(locale);
 	split_sheet_zoom_reset->set_text(zoom_text);
 }
 
@@ -2115,9 +2118,20 @@ void SpriteFramesEditor::_node_removed(Node *p_node) {
 }
 
 SpriteFramesEditor::SpriteFramesEditor() {
+	set_name(TTRC("SpriteFrames"));
+	set_icon_name("SpriteFrames");
+	set_dock_shortcut(ED_SHORTCUT_AND_COMMAND("bottom_panels/toggle_sprite_frames_bottom_panel", TTRC("Open SpriteFrames Dock")));
+	set_default_slot(DockConstants::DOCK_SLOT_BOTTOM);
+	set_available_layouts(EditorDock::DOCK_LAYOUT_HORIZONTAL | EditorDock::DOCK_LAYOUT_FLOATING);
+	set_global(false);
+	set_transient(true);
+
+	HSplitContainer *main_split = memnew(HSplitContainer);
+	add_child(main_split);
+
 	VBoxContainer *vbc_animlist = memnew(VBoxContainer);
-	add_child(vbc_animlist);
-	vbc_animlist->set_custom_minimum_size(Size2(150, 0) * EDSCALE);
+	main_split->add_child(vbc_animlist);
+	vbc_animlist->set_custom_minimum_size(Size2(150 * EDSCALE, 0));
 
 	VBoxContainer *sub_vb = memnew(VBoxContainer);
 	vbc_animlist->add_margin_child(TTRC("Animations:"), sub_vb, true);
@@ -2234,10 +2248,10 @@ SpriteFramesEditor::SpriteFramesEditor() {
 	missing_anim_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
 	missing_anim_label->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
 	missing_anim_label->hide();
-	add_child(missing_anim_label);
+	main_split->add_child(missing_anim_label);
 
 	anim_frames_vb = memnew(VBoxContainer);
-	add_child(anim_frames_vb);
+	main_split->add_child(anim_frames_vb);
 	anim_frames_vb->set_h_size_flags(SIZE_EXPAND_FILL);
 	anim_frames_vb->hide();
 
@@ -2728,7 +2742,7 @@ SpriteFramesEditor::SpriteFramesEditor() {
 
 	// Ensure the anim search box is wide enough by default.
 	// Not by setting its minimum size so it can still be shrunk if desired.
-	set_split_offset(56 * EDSCALE);
+	main_split->set_split_offset(56 * EDSCALE);
 }
 
 void SpriteFramesEditorPlugin::edit(Object *p_object) {
@@ -2766,21 +2780,17 @@ bool SpriteFramesEditorPlugin::handles(Object *p_object) const {
 
 void SpriteFramesEditorPlugin::make_visible(bool p_visible) {
 	if (p_visible) {
-		button->show();
-		EditorNode::get_bottom_panel()->make_item_visible(frames_editor);
+		frames_editor->make_visible();
 	} else {
-		button->hide();
-		if (frames_editor->is_visible_in_tree()) {
-			EditorNode::get_bottom_panel()->hide_bottom_panel();
-		}
+		frames_editor->close();
 	}
 }
 
 SpriteFramesEditorPlugin::SpriteFramesEditorPlugin() {
 	frames_editor = memnew(SpriteFramesEditor);
 	frames_editor->set_custom_minimum_size(Size2(0, 300) * EDSCALE);
-	button = EditorNode::get_bottom_panel()->add_item(TTRC("SpriteFrames"), frames_editor, ED_SHORTCUT_AND_COMMAND("bottom_panels/toggle_sprite_frames_bottom_panel", TTRC("Toggle SpriteFrames Bottom Panel")));
-	button->hide();
+	EditorDockManager::get_singleton()->add_dock(frames_editor);
+	frames_editor->close();
 }
 
 Ref<ClipboardAnimation> ClipboardAnimation::from_sprite_frames(const Ref<SpriteFrames> &p_frames, const String &p_anim) {
