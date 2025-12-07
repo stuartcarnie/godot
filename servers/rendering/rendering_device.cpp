@@ -41,6 +41,7 @@
 #include "core/templates/fixed_vector.h"
 #include "modules/modules_enabled.gen.h"
 #include "servers/rendering/rendering_shader_container.h"
+#include "zstd/common/compiler.h"
 
 #ifdef MODULE_GLSLANG_ENABLED
 #include "modules/glslang/shader_compile.h"
@@ -6504,6 +6505,15 @@ String RenderingDevice::get_device_pipeline_cache_uuid() const {
 void RenderingDevice::swap_buffers(bool p_present) {
 	ERR_RENDER_THREAD_GUARD();
 
+	if (gpu_capture_state == GPU_CAPTURE_STATE_BEGINNING_FRAME) {
+		Error res = driver->gpu_capture_begin();
+		if (res == OK) {
+			gpu_capture_state = GPU_CAPTURE_STATE_CAPTURING_FRAME;
+		} else {
+			gpu_capture_state = GPU_CAPTURE_STATE_IDLE;
+		}
+	}
+
 	GodotProfileZoneGroupedFirst(_profile_zone, "_end_frame");
 	_end_frame();
 
@@ -6515,6 +6525,14 @@ void RenderingDevice::swap_buffers(bool p_present) {
 
 	GodotProfileZoneGrouped(_profile_zone, "_begin_frame");
 	_begin_frame(true);
+
+	if (gpu_capture_state == GPU_CAPTURE_STATE_CAPTURING_FRAME) {
+		gpu_capture_count--;
+		if (gpu_capture_count == 0) {
+			gpu_capture_state = GPU_CAPTURE_STATE_IDLE;
+			driver->gpu_capture_end();
+		}
+	}
 }
 
 void RenderingDevice::submit() {
@@ -6645,6 +6663,15 @@ void RenderingDevice::_begin_frame(bool p_presented) {
 	// Before writing to this frame, wait for it to be finished.
 	_stall_for_frame(frame);
 
+	if (gpu_capture_state == GPU_CAPTURE_STATE_BEGINNING_FRAME) {
+		Error res = driver->gpu_capture_begin();
+		if (res == OK) {
+			gpu_capture_state = GPU_CAPTURE_STATE_CAPTURING_FRAME;
+		} else {
+			gpu_capture_state = GPU_CAPTURE_STATE_IDLE;
+		}
+	}
+
 	if (command_pool_reset_enabled) {
 		GodotProfileZoneGrouped(_profile_zone, "driver->command_pool_reset");
 		bool reset = driver->command_pool_reset(frames[frame].command_pool);
@@ -6739,6 +6766,11 @@ void RenderingDevice::execute_chained_cmds(bool p_present_swap_chain, RenderingD
 	thread_local LocalVector<RDD::SemaphoreID> wait_semaphores;
 	wait_semaphores = frames[frame].semaphores_to_wait_on;
 
+	if (gpu_capture_state == GPU_CAPTURE_STATE_BEGINNING_SUBMIT) {
+		gpu_capture_state = GPU_CAPTURE_STATE_CAPTURING_SUBMIT;
+		driver->gpu_capture_begin();
+	}
+
 	for (uint32_t i = 0; i < command_buffer_count; i++) {
 		RDD::CommandBufferID command_buffer;
 		RDD::SemaphoreID signal_semaphore;
@@ -6770,6 +6802,14 @@ void RenderingDevice::execute_chained_cmds(bool p_present_swap_chain, RenderingD
 		// Make the next command buffer wait on the semaphore signaled by this one.
 		wait_semaphores.resize(1);
 		wait_semaphores[0] = signal_semaphore;
+
+		if (UNLIKELY(gpu_capture_state == GPU_CAPTURE_STATE_CAPTURING_SUBMIT)) {
+			gpu_capture_count--;
+			if (gpu_capture_count == 0) {
+				gpu_capture_state = GPU_CAPTURE_STATE_IDLE;
+				driver->gpu_capture_end();
+			}
+		}
 	}
 
 	frames[frame].semaphores_to_wait_on.clear();
@@ -7438,10 +7478,24 @@ String RenderingDevice::get_captured_timestamp_name(uint32_t p_index) const {
 /**** GPU capture ****/
 /*********************/
 
-void RenderingDevice::gpu_capture_next_frame() {
-	draw_graph.add_gpu_capture_frame();
-}
+Error RenderingDevice::gpu_capture_begin(GpuCaptureType p_type, uint32_t p_count) {
+	ERR_FAIL_COND_V_MSG(gpu_capture_state != GPU_CAPTURE_STATE_IDLE, ERR_ALREADY_IN_USE, "A GPU capture is already in progress.");
 
+	switch (p_type) {
+		case GPU_CAPTURE_PER_FRAME: {
+			ERR_FAIL_COND_V_MSG(p_count > 5, ERR_INVALID_PARAMETER, "GPU capture per frame supports a maximum of 5 frames.");
+			gpu_capture_state = GPU_CAPTURE_STATE_BEGINNING_FRAME;
+		} break;
+		case GPU_CAPTURE_PER_SUBMIT: {
+			gpu_capture_state = GPU_CAPTURE_STATE_BEGINNING_SUBMIT;
+		} break;
+		default: {
+			ERR_FAIL_V_MSG(ERR_INVALID_PARAMETER, "Invalid GPU capture type specified.");
+		} break;
+	}
+	gpu_capture_count = p_count;
+	return OK;
+}
 
 uint64_t RenderingDevice::limit_get(Limit p_limit) const {
 	return driver->limit_get(p_limit);

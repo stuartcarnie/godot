@@ -55,6 +55,9 @@ class FilterChain {
 				p_rd->free_rid(rid);
 			}
 			rid = p_rd->texture_create(p_format, RD::TextureView());
+#if DEV_ENABLED
+			p_rd->set_resource_name(rid, "Filter chain surface");
+#endif
 			size = TextureSize(p_format.width, p_format.height);
 			p_rd->texture_clear(rid, Color(0, 0, 0), 0, 1, 0, 1);
 		}

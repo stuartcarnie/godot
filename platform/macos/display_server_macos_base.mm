@@ -314,11 +314,8 @@ bool DisplayServerMacOSBase::is_dark_mode_supported() const {
 
 bool DisplayServerMacOSBase::is_dark_mode() const {
 	if (@available(macOS 10.14, *)) {
-		if (![[NSUserDefaults standardUserDefaults] objectForKey:@"AppleInterfaceStyle"]) {
-			return false;
-		} else {
-			return ([[[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"] isEqual:@"Dark"]);
-		}
+		NSAppearanceName value = [NSApp.effectiveAppearance bestMatchFromAppearancesWithNames:@[ NSAppearanceNameAqua, NSAppearanceNameDarkAqua ]];
+		return [value isEqualToString:NSAppearanceNameDarkAqua];
 	} else {
 		return false;
 	}

@@ -132,7 +132,6 @@ void RetroFXRect::_internal_process() {
 	RenderingServerDefault::redraw_request();
 }
 
-
 void RetroFXRect::_update_process() {
 	set_process_internal(true);
 }
@@ -192,6 +191,9 @@ void RetroFXRect::_update_shader_chain() {
 	tf.usage_bits = RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_CAN_COPY_TO_BIT;
 	tf.texture_type = RD::TEXTURE_TYPE_2D;
 	output_texture_rid = rd->texture_create(tf, RD::TextureView());
+#if DEV_ENABLED
+	rd->set_resource_name(output_texture_rid, "RetroFX output");
+#endif
 	rd->texture_clear(output_texture_rid, Color(0, 0, 0), 0, 1, 0, 1);
 	output_texture->set_texture_rd_rid(output_texture_rid);
 
@@ -206,7 +208,6 @@ void RetroFXRect::_update_shader_chain() {
 void RetroFXRect::_toggle_pause() {
 	set_process_internal(!is_processing_internal());
 }
-
 
 bool RetroFXRect::_get(const StringName &p_name, Variant &r_ret) const {
 	Vector<String> parts = String(p_name).split("/", true, 2);

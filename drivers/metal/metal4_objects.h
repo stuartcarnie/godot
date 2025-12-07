@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  metal_objects.h                                                       */
+/*  metal4_objects.h                                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -65,76 +65,14 @@
 #import <simd/simd.h>
 #import <zlib.h>
 #import <initializer_list>
-#import <memory>
 #import <optional>
 
-enum StageResourceUsage : uint32_t {
-	ResourceUnused = 0,
-	VertexRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_VERTEX * 2),
-	VertexWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_VERTEX * 2),
-	FragmentRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_FRAGMENT * 2),
-	FragmentWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_FRAGMENT * 2),
-	TesselationControlRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_TESSELATION_CONTROL * 2),
-	TesselationControlWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_TESSELATION_CONTROL * 2),
-	TesselationEvaluationRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_TESSELATION_EVALUATION * 2),
-	TesselationEvaluationWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_TESSELATION_EVALUATION * 2),
-	ComputeRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_COMPUTE * 2),
-	ComputeWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_COMPUTE * 2),
-};
-
-typedef LocalVector<MTLResourceUnsafe> ResourceVector;
-typedef HashMap<StageResourceUsage, ResourceVector> ResourceUsageMap;
-
-struct ResourceUsageEntry {
-	StageResourceUsage usage = ResourceUnused;
-	uint32_t unused = 0;
-
-	ResourceUsageEntry() {}
-	ResourceUsageEntry(StageResourceUsage p_usage) :
-			usage(p_usage) {}
-};
-
-template <>
-struct is_zero_constructible<ResourceUsageEntry> : std::true_type {};
-
-/*! Track the cumulative usage for a resource during a render or compute pass */
-typedef HashMap<MTLResourceUnsafe, ResourceUsageEntry> ResourceToStageUsage;
-
-/*! Track resource and ensure they are resident prior to dispatch or draw commands.
- *
- * The primary purpose of this data structure is to track all the resources that must be made resident prior
- * to issuing the next dispatch or draw command. It aggregates all resources used from argument buffers.
- *
- * As an optimization, this data structure also tracks previous usage for resources, so that
- * it may avoid binding them again in later commands if the resource is already resident and its usage flagged.
- */
-struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) ResourceTracker {
-	// A constant specifying how many iterations a resource can remain in
-	// the _previous HashSet before it will be removed permanently.
-	//
-	// Keeping them in the _previous HashMap reduces churn if resources are regularly
-	// bound. 256 is arbitrary, but if an object remains unused for 256 encoders,
-	// it will be released.
-	static constexpr uint32_t RESOURCE_UNUSED_CLEANUP_COUNT = 256;
-
-	// Used as a scratch buffer to periodically clean up resources from _previous.
-	ResourceVector _scratch;
-	// Tracks all resources and their prior usage for the duration of the encoder.
-	ResourceToStageUsage _previous;
-	// Tracks resources for the current command that must be made resident
-	ResourceUsageMap _current;
-
-	void merge_from(const ResourceUsageMap &p_from);
-	void encode(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc);
-	void encode(id<MTLComputeCommandEncoder> __unsafe_unretained p_enc);
-	void reset();
-};
+namespace MTL4 {
 
 enum class MDCommandBufferStateType {
 	None,
 	Render,
 	Compute,
-	Blit,
 };
 
 enum class MDPipelineType {
@@ -150,6 +88,7 @@ class MDComputePipeline;
 class RenderingDeviceDriverMetal;
 class MDUniformSet;
 class MDShader;
+class MD4CommandPool;
 
 struct MetalBufferDynamicInfo;
 
@@ -182,7 +121,7 @@ struct MDSubpass {
 	MTLFmtCaps getRequiredFmtCapsForAttachmentAt(uint32_t p_index) const;
 };
 
-struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDAttachment {
+struct API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDAttachment {
 private:
 	uint32_t index = 0;
 	uint32_t firstUseSubpassIndex = 0;
@@ -234,7 +173,7 @@ public:
 	bool shouldClear(MDSubpass const &p_subpass, bool p_is_stencil) const;
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDRenderPass {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDRenderPass {
 public:
 	Vector<MDAttachment> attachments;
 	Vector<MDSubpass> subpasses;
@@ -246,111 +185,7 @@ public:
 	MDRenderPass(Vector<MDAttachment> &p_attachments, Vector<MDSubpass> &p_subpasses);
 };
 
-struct BindingCache {
-	struct BufferBinding {
-		id<MTLBuffer> __unsafe_unretained buffer = nil;
-		NSUInteger offset = 0;
-
-		bool operator!=(const BufferBinding &p_other) const {
-			return buffer != p_other.buffer || offset != p_other.offset;
-		}
-	};
-
-	LocalVector<id<MTLTexture> __unsafe_unretained> textures;
-	LocalVector<id<MTLSamplerState> __unsafe_unretained> samplers;
-	LocalVector<BufferBinding> buffers;
-
-	_FORCE_INLINE_ void clear() {
-		textures.clear();
-		samplers.clear();
-		buffers.clear();
-	}
-
-private:
-	template <typename T>
-	_FORCE_INLINE_ void ensure_size(LocalVector<T> &p_vec, uint32_t p_required) {
-		if (p_vec.size() < p_required) {
-			p_vec.resize_initialized(p_required);
-		}
-	}
-
-public:
-	_FORCE_INLINE_ bool update(NSRange p_range, id<MTLTexture> __unsafe_unretained const *p_values) {
-		if (p_range.length == 0) {
-			return false;
-		}
-		uint32_t required = (uint32_t)(p_range.location + p_range.length);
-		ensure_size(textures, required);
-		bool changed = false;
-		for (NSUInteger i = 0; i < p_range.length; ++i) {
-			uint32_t slot = (uint32_t)(p_range.location + i);
-			id<MTLTexture> value = p_values[i];
-			if (textures[slot] != value) {
-				textures[slot] = value;
-				changed = true;
-			}
-		}
-		return changed;
-	}
-
-	_FORCE_INLINE_ bool update(NSRange p_range, id<MTLSamplerState> __unsafe_unretained const *p_values) {
-		if (p_range.length == 0) {
-			return false;
-		}
-		uint32_t required = (uint32_t)(p_range.location + p_range.length);
-		ensure_size(samplers, required);
-		bool changed = false;
-		for (NSUInteger i = 0; i < p_range.length; ++i) {
-			uint32_t slot = (uint32_t)(p_range.location + i);
-			id<MTLSamplerState> __unsafe_unretained value = p_values[i];
-			if (samplers[slot] != value) {
-				samplers[slot] = value;
-				changed = true;
-			}
-		}
-		return changed;
-	}
-
-	_FORCE_INLINE_ bool update(NSRange p_range, id<MTLBuffer> __unsafe_unretained const *p_values, const NSUInteger *p_offsets) {
-		if (p_range.length == 0) {
-			return false;
-		}
-		uint32_t required = (uint32_t)(p_range.location + p_range.length);
-		ensure_size(buffers, required);
-		BufferBinding *buffers_ptr = buffers.ptr() + p_range.location;
-		bool changed = false;
-		for (NSUInteger i = 0; i < p_range.length; ++i) {
-			BufferBinding &binding = *buffers_ptr;
-			BufferBinding new_binding = {
-				.buffer = p_values[i],
-				.offset = p_offsets[i],
-			};
-			if (binding != new_binding) {
-				binding = new_binding;
-				changed = true;
-			}
-			++buffers_ptr;
-		}
-		return changed;
-	}
-
-	_FORCE_INLINE_ bool update(id<MTLBuffer> __unsafe_unretained p_buffer, NSUInteger p_offset, uint32_t p_index) {
-		uint32_t required = p_index + 1;
-		ensure_size(buffers, required);
-		BufferBinding &binding = buffers.ptr()[p_index];
-		BufferBinding new_binding = {
-			.buffer = p_buffer,
-			.offset = p_offset,
-		};
-		if (binding != new_binding) {
-			binding = new_binding;
-			return true;
-		}
-		return false;
-	}
-};
-
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDCommandBuffer {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDCommandBuffer {
 	friend class MDUniformSet;
 
 private:
@@ -358,63 +193,45 @@ private:
 
 	// From RenderingDevice
 	static constexpr uint32_t MAX_PUSH_CONSTANT_SIZE = 128;
+	/// Default size for the per-frame scratch buffers is 2MiB.
+	static constexpr uint32_t DEFAULT_SCRATCH_SIZE = 1024 * 1024 * 2;
 
 	uint8_t push_constant_data[MAX_PUSH_CONSTANT_SIZE];
 	uint32_t push_constant_data_len = 0;
 	uint32_t push_constant_binding = UINT32_MAX;
 
-	BindingCache binding_cache;
-
-#pragma mark - Argument Buffer Ring Allocator
-
-	using Alloc = MDRingBuffer::Allocation;
-
-	// Used for argument buffers that contain dynamic uniforms.
-	MDRingBuffer _scratch;
-
-	/// Allocates from the ring buffer for dynamic argument buffers.
-	Alloc allocate_arg_buffer(uint32_t p_size);
-
-	struct {
-		id rs = nil; // id<MTLResidencySet>, but untyped for API availability.
-	} _frame_state;
-
-#pragma mark - Synchronization
-
 	enum {
 		STAGE_RENDER,
 		STAGE_COMPUTE,
-		STAGE_BLIT,
 		STAGE_MAX,
 	};
-	bool use_barriers = false;
-	MTLStages pending_after_stages[STAGE_MAX] = { 0, 0, 0 };
-	MTLStages pending_before_queue_stages[STAGE_MAX] = { 0, 0, 0 };
-	void _encode_barrier(id<MTLCommandEncoder> p_enc);
+	MTLStages pending_after_stages[STAGE_MAX] = { 0, 0 };
+	MTLStages pending_before_queue_stages[STAGE_MAX] = { 0, 0 };
+	void _encode_barrier(id<MTL4CommandEncoder> p_enc);
 
 	void reset();
 
 	RenderingDeviceDriverMetal *device_driver = nullptr;
-	id<MTLCommandQueue> queue = nil;
-	id<MTLCommandBuffer> commandBuffer = nil;
+	id<MTL4CommandAllocator> allocator = nil;
+	id<MTL4CommandBuffer> command_buffer = nil;
 	bool state_begin = false;
 
-	_FORCE_INLINE_ id<MTLCommandBuffer> command_buffer() {
-		DEV_ASSERT(state_begin);
-		if (commandBuffer == nil) {
-			commandBuffer = queue.commandBuffer;
-			if (use_barriers) {
-				GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability");
-				[commandBuffer useResidencySet:_frame_state.rs];
-				GODOT_CLANG_WARNING_POP;
-			}
-		}
-		return commandBuffer;
-	}
+	struct PendingBarrier {
+		MTLStages src_stages;
+		MTLStages dst_stages;
+		MTL4VisibilityOptions visibility;
+	};
+
+	struct {
+		id<MTLResidencySet> rs = nil;
+	} _frame_state;
+
+	MDRingBuffer _scratch;
+	// Used by render_clear_attachments
+	id<MTL4ArgumentTable> _args_clear;
 
 	void _end_compute_dispatch();
-	void _end_blit();
-	id<MTLBlitCommandEncoder> _ensure_blit_encoder();
+	id<MTL4ComputeCommandEncoder> _ensure_blit_encoder();
 
 	enum class CopySource {
 		Buffer,
@@ -454,14 +271,16 @@ public:
 		uint32_t current_subpass = UINT32_MAX;
 		Rect2i render_area = {};
 		bool is_rendering_entire_area = false;
-		MTLRenderPassDescriptor *desc = nil;
-		id<MTLRenderCommandEncoder> encoder = nil;
+		MTL4RenderPassDescriptor *desc = nil;
+		id<MTL4RenderCommandEncoder> encoder = nil;
+		id<MTL4ArgumentTable> args = nil;
 		id<MTLBuffer> __unsafe_unretained index_buffer = nil; // Buffer is owned by RDD.
 		MTLIndexType index_type = MTLIndexTypeUInt16;
+		_FORCE_INLINE_ size_t index_type_size() const { return index_type == MTLIndexTypeUInt16 ? sizeof(uint16_t) : sizeof(uint32_t); }
 		uint32_t index_offset = 0;
 		LocalVector<id<MTLBuffer> __unsafe_unretained> vertex_buffers;
 		LocalVector<NSUInteger> vertex_offsets;
-		ResourceTracker resource_tracker;
+		id<MTLResidencySet> residency_set;
 		// clang-format off
 		enum DirtyFlag: uint16_t {
 			DIRTY_NONE     = 0,
@@ -577,8 +396,9 @@ public:
 	// State specific for a compute pass.
 	struct ComputeState {
 		MDComputePipeline *pipeline = nullptr;
-		id<MTLComputeCommandEncoder> encoder = nil;
-		ResourceTracker resource_tracker;
+		id<MTL4ComputeCommandEncoder> encoder = nil;
+		id<MTL4ArgumentTable> args = nil;
+		id<MTLResidencySet> residency_set;
 		// clang-format off
 		enum DirtyFlag: uint16_t {
 			DIRTY_NONE     = 0,
@@ -611,16 +431,8 @@ public:
 		}
 	} compute;
 
-	// State specific to a blit pass.
-	struct {
-		id<MTLBlitCommandEncoder> encoder = nil;
-		_FORCE_INLINE_ void reset() {
-			encoder = nil;
-		}
-	} blit;
-
-	_FORCE_INLINE_ id<MTLCommandBuffer> get_command_buffer() const {
-		return commandBuffer;
+	_FORCE_INLINE_ id<MTL4CommandBuffer> get_command_buffer() const {
+		return command_buffer;
 	}
 
 	void begin();
@@ -672,7 +484,7 @@ public:
 #pragma mark - Transfer
 
 private:
-	id<MTLRenderCommandEncoder> get_new_render_encoder_with_descriptor(MTLRenderPassDescriptor *p_desc);
+	id<MTL4RenderCommandEncoder> get_new_render_encoder_with_descriptor(MTL4RenderPassDescriptor *p_desc);
 
 public:
 	void resolve_texture(RDD::TextureID p_src_texture, RDD::TextureLayout p_src_texture_layout, uint32_t p_src_layer, uint32_t p_src_mipmap, RDD::TextureID p_dst_texture, RDD::TextureLayout p_dst_texture_layout, uint32_t p_dst_layer, uint32_t p_dst_mipmap);
@@ -696,8 +508,21 @@ public:
 	void begin_label(const char *p_label_name, const Color &p_color);
 	void end_label();
 
-	MDCommandBuffer(id<MTLCommandQueue> p_queue, RenderingDeviceDriverMetal *p_device_driver);
+	MDCommandBuffer(id<MTL4CommandAllocator> p_allocator, RenderingDeviceDriverMetal *p_device_driver);
+
 	MDCommandBuffer() = default;
+	~MDCommandBuffer();
+};
+
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MD4CommandPool {
+	RenderingDeviceDriverMetal *_driver;
+	LocalVector<MDCommandBuffer *> _command_buffers;
+
+public:
+	MDCommandBuffer *new_command_buffer();
+
+	MD4CommandPool(RenderingDeviceDriverMetal *p_driver);
+	~MD4CommandPool();
 };
 
 #if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 140000) || (TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 170000)
@@ -707,7 +532,7 @@ public:
 #define MTLBindingAccessWriteOnly MTLArgumentAccessWriteOnly
 #endif
 
-struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) UniformInfo {
+struct API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) UniformInfo {
 	uint32_t binding;
 	BitField<RDD::ShaderStage> active_stages;
 	MTLDataType dataType = MTLDataTypeNone;
@@ -741,7 +566,7 @@ struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) UniformInfo {
 	}
 };
 
-struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) UniformSet {
+struct API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) UniformSet {
 	LocalVector<UniformInfo> uniforms;
 	LocalVector<uint32_t> dynamic_uniforms;
 	uint32_t buffer_size = 0;
@@ -757,9 +582,11 @@ enum class ShaderLoadStrategy {
 	DEFAULT = IMMEDIATE,
 };
 
+} // namespace MTL4
+
 /// A Metal shader library.
-@interface MDLibrary : NSObject {
-	ShaderCacheEntry *_entry;
+@interface MD4Library : NSObject {
+	MTL4::ShaderCacheEntry *_entry;
 	NSString *_original_source;
 };
 - (id<MTLLibrary>)library;
@@ -769,13 +596,13 @@ enum class ShaderLoadStrategy {
 - (NSString *)originalSource;
 #endif
 
-+ (instancetype)newLibraryWithCacheEntry:(ShaderCacheEntry *)entry
++ (instancetype)newLibraryWithCacheEntry:(MTL4::ShaderCacheEntry *)entry
 								  device:(id<MTLDevice>)device
 								  source:(NSString *)source
 								 options:(MTLCompileOptions *)options
-								strategy:(ShaderLoadStrategy)strategy;
+								strategy:(MTL4::ShaderLoadStrategy)strategy;
 
-+ (instancetype)newLibraryWithCacheEntry:(ShaderCacheEntry *)entry
++ (instancetype)newLibraryWithCacheEntry:(MTL4::ShaderCacheEntry *)entry
 								  device:(id<MTLDevice>)device
 #ifdef DEV_ENABLED
 								  source:(NSString *)source
@@ -783,27 +610,29 @@ enum class ShaderLoadStrategy {
 									data:(dispatch_data_t)data;
 @end
 
+namespace MTL4 {
+
 /// A cache entry for a Metal shader library.
 struct ShaderCacheEntry {
-	RenderingDeviceDriverMetal &owner;
+	MTL4::RenderingDeviceDriverMetal &owner;
 	/// A hash of the Metal shader source code.
 	SHA256Digest key;
 	CharString name;
 	RD::ShaderStage stage = RD::SHADER_STAGE_VERTEX;
 	/// This reference must be weak, to ensure that when the last strong reference to the library
 	/// is released, the cache entry is freed.
-	MDLibrary *__weak library = nil;
+	MD4Library *__weak library = nil;
 
 	/// Notify the cache that this entry is no longer needed.
 	void notify_free() const;
 
-	ShaderCacheEntry(RenderingDeviceDriverMetal &p_owner, SHA256Digest p_key) :
+	ShaderCacheEntry(MTL4::RenderingDeviceDriverMetal &p_owner, SHA256Digest p_key) :
 			owner(p_owner), key(p_key) {
 	}
 	~ShaderCacheEntry() = default;
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) DynamicOffsetLayout {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) DynamicOffsetLayout {
 	struct Data {
 		uint8_t offset : 4;
 		uint8_t count : 4;
@@ -835,7 +664,7 @@ public:
 	}
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDShader {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDShader {
 public:
 	CharString name;
 	Vector<UniformSet> sets;
@@ -852,80 +681,41 @@ public:
 	virtual ~MDShader() = default;
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDComputeShader final : public MDShader {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDComputeShader final : public MDShader {
 public:
 	MTLSize local = {};
 
-	MDLibrary *kernel;
+	MD4Library *kernel;
 
-	MDComputeShader(CharString p_name, Vector<UniformSet> p_sets, bool p_uses_argument_buffers, MDLibrary *p_kernel);
+	MDComputeShader(CharString p_name, Vector<UniformSet> p_sets, bool p_uses_argument_buffers, MD4Library *p_kernel);
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDRenderShader final : public MDShader {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDRenderShader final : public MDShader {
 public:
 	bool needs_view_mask_buffer = false;
 
-	MDLibrary *vert;
-	MDLibrary *frag;
+	MD4Library *vert;
+	MD4Library *frag;
 
 	MDRenderShader(CharString p_name,
 			Vector<UniformSet> p_sets,
 			bool p_needs_view_mask_buffer,
 			bool p_uses_argument_buffers,
-			MDLibrary *p_vert, MDLibrary *p_frag);
+			MD4Library *p_vert, MD4Library *p_frag);
 };
 
-_FORCE_INLINE_ StageResourceUsage &operator|=(StageResourceUsage &p_a, uint32_t p_b) {
-	p_a = StageResourceUsage(uint32_t(p_a) | p_b);
-	return p_a;
-}
-
-_FORCE_INLINE_ StageResourceUsage stage_resource_usage(RDC::ShaderStage p_stage, MTLResourceUsage p_usage) {
-	return StageResourceUsage(p_usage << (p_stage * 2));
-}
-
-_FORCE_INLINE_ MTLResourceUsage resource_usage_for_stage(StageResourceUsage p_usage, RDC::ShaderStage p_stage) {
-	return MTLResourceUsage((p_usage >> (p_stage * 2)) & 0b11);
-}
-
-// A type used to encode resources directly to a MTLCommandEncoder
-struct DirectEncoder {
-	id<MTLCommandEncoder> __unsafe_unretained encoder;
-	BindingCache &cache;
-	enum Mode {
-		RENDER,
-		COMPUTE
-	};
-	Mode mode;
-
-	void set(id<MTLBuffer> __unsafe_unretained *p_buffers, const NSUInteger *p_offsets, NSRange p_range);
-	void set(id<MTLBuffer> __unsafe_unretained p_buffer, const NSUInteger p_offset, uint32_t p_index);
-	void set(id<MTLTexture> __unsafe_unretained *p_textures, NSRange p_range);
-	void set(id<MTLSamplerState> __unsafe_unretained *p_samplers, NSRange p_range);
-
-	DirectEncoder(id<MTLCommandEncoder> __unsafe_unretained p_encoder, BindingCache &p_cache) :
-			encoder(p_encoder), cache(p_cache) {
-		if ([p_encoder conformsToProtocol:@protocol(MTLRenderCommandEncoder)]) {
-			mode = RENDER;
-		} else {
-			mode = COMPUTE;
-		}
-	}
-};
-
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDUniformSet {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDUniformSet {
 public:
 	id<MTLBuffer> arg_buffer = nil;
 	Vector<uint8_t> arg_buffer_data; // Stored for dynamic uniform sets.
-	ResourceUsageMap usage_to_resources;
 	Vector<RDD::BoundUniform> uniforms;
 
 	void bind_uniforms_argument_buffers(MDShader *p_shader, MDCommandBuffer &p_cmd_buffer, uint32_t p_set_index, uint32_t p_dynamic_offsets);
 	void bind_uniforms_argument_buffers_compute(MDShader *p_shader, MDCommandBuffer &p_cmd_buffer, uint32_t p_set_index, uint32_t p_dynamic_offsets);
-	void bind_uniforms_direct(MDShader *p_shader, DirectEncoder p_enc, uint32_t p_set_index, uint32_t p_dynamic_offsets);
+	void bind_uniforms_direct(MDShader *p_shader, id<MTLResidencySet> p_rs, id<MTL4ArgumentTable> p_args, uint32_t p_set_index, uint32_t p_dynamic_offsets);
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDPipeline {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDPipeline {
 public:
 	MDPipelineType type;
 
@@ -934,7 +724,7 @@ public:
 	virtual ~MDPipeline() = default;
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDRenderPipeline final : public MDPipeline {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDRenderPipeline final : public MDPipeline {
 public:
 	id<MTLRenderPipelineState> state = nil;
 	id<MTLDepthStencilState> depth_stencil = nil;
@@ -958,7 +748,7 @@ public:
 			float depth_bias = 0.0;
 			float slope_scale = 0.0;
 			float clamp = 0.0;
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+			_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
 				if (!enabled) {
 					return;
 				}
@@ -970,7 +760,7 @@ public:
 			bool enabled = false;
 			uint32_t front_reference = 0;
 			uint32_t back_reference = 0;
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+			_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
 				if (!enabled) {
 					return;
 				}
@@ -985,14 +775,14 @@ public:
 			float b = 0.0;
 			float a = 0.0;
 
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+			_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
 				//if (!enabled)
 				//	return;
 				[p_enc setBlendColorRed:r green:g blue:b alpha:a];
 			}
 		} blend;
 
-		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+		_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
 			[p_enc setCullMode:cull_mode];
 			[p_enc setTriangleFillMode:fill_mode];
 			[p_enc setDepthClipMode:clip_mode];
@@ -1011,7 +801,7 @@ public:
 	~MDRenderPipeline() final = default;
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDComputePipeline final : public MDPipeline {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDComputePipeline final : public MDPipeline {
 public:
 	id<MTLComputePipelineState> state = nil;
 	struct {
@@ -1025,13 +815,16 @@ public:
 	~MDComputePipeline() final = default;
 };
 
+} // namespace MTL4
+
 namespace rid {
-#define MAKE_ID(FROM, TO)                \
-	_FORCE_INLINE_ TO make(FROM p_obj) { \
-		return TO(owned(p_obj));         \
+#define MAKE_ID(FROM, TO)                                     \
+	API_AVAILABLE(macos(26), ios(26), tvos(26), visionos(26)) \
+	_FORCE_INLINE_ TO make(FROM p_obj) {                      \
+		return TO(owned(p_obj));                              \
 	}
 
-MAKE_ID(id<MTLCommandQueue>, RDD::CommandPoolID)
+MAKE_ID(id<MTL4CommandQueue>, RDD::CommandQueueID);
 
 #undef MAKE_ID
 } //namespace rid

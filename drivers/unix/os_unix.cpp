@@ -115,7 +115,7 @@ static double _clock_scale = 0;
 static void _setup_clock() {
 	mach_timebase_info_data_t info;
 	kern_return_t ret = mach_timebase_info(&info);
-	ERR_FAIL_COND_MSG(ret != 0, "OS CLOCK IS NOT WORKING!");
+	ERR_FAIL_COND_MSG(ret != KERN_SUCCESS, "OS CLOCK IS NOT WORKING!");
 	_clock_scale = ((double)info.numer / (double)info.denom) / 1000.0;
 	_clock_start = mach_absolute_time() * _clock_scale;
 }
@@ -378,12 +378,17 @@ OS::TimeZoneInfo OS_Unix::get_time_zone_info() const {
 }
 
 void OS_Unix::delay_usec(uint32_t p_usec) const {
+#if defined(__APPLE__)
+	uint64_t abs_time = p_usec / _clock_scale;
+	mach_wait_until(mach_absolute_time() + abs_time);
+#else
 	struct timespec requested = { static_cast<time_t>(p_usec / 1000000), (static_cast<long>(p_usec) % 1000000) * 1000 };
 	struct timespec remaining;
 	while (nanosleep(&requested, &remaining) == -1 && errno == EINTR) {
 		requested.tv_sec = remaining.tv_sec;
 		requested.tv_nsec = remaining.tv_nsec;
 	}
+#endif
 }
 
 uint64_t OS_Unix::get_ticks_usec() const {

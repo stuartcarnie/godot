@@ -931,7 +931,7 @@ private:
 
 #ifndef DISABLE_DEPRECATED
 public:
-	enum BarrierMask {
+	enum BarrierMask{
 		BARRIER_MASK_VERTEX = 1,
 		BARRIER_MASK_FRAGMENT = 8,
 		BARRIER_MASK_COMPUTE = 2,
@@ -942,7 +942,7 @@ public:
 		BARRIER_MASK_NO_BARRIER = 0x8000,
 	};
 
-	enum InitialAction {
+	enum InitialAction{
 		INITIAL_ACTION_LOAD,
 		INITIAL_ACTION_CLEAR,
 		INITIAL_ACTION_DISCARD,
@@ -954,7 +954,7 @@ public:
 		INITIAL_ACTION_CONTINUE = INITIAL_ACTION_LOAD,
 	};
 
-	enum FinalAction {
+	enum FinalAction{
 		FINAL_ACTION_STORE,
 		FINAL_ACTION_DISCARD,
 		FINAL_ACTION_MAX,
@@ -1685,8 +1685,32 @@ public:
 	/*********************/
 	/**** GPU capture ****/
 	/*********************/
+
+private:
+	uint32_t gpu_capture_count = 0;
+	enum GpuCaptureState {
+		GPU_CAPTURE_STATE_IDLE,
+		GPU_CAPTURE_STATE_BEGINNING_FRAME,
+		GPU_CAPTURE_STATE_BEGINNING_SUBMIT,
+		GPU_CAPTURE_STATE_CAPTURING_FRAME,
+		GPU_CAPTURE_STATE_CAPTURING_SUBMIT,
+	} gpu_capture_state = GPU_CAPTURE_STATE_IDLE;
+
 public:
-	void gpu_capture_next_frame();
+	enum GpuCaptureType {
+		/*! @brief Capture at the end of a frame */
+		GPU_CAPTURE_PER_FRAME,
+		/*! @brief Capture at the end of a submission */
+		GPU_CAPTURE_PER_SUBMIT,
+	};
+
+	/*!
+	 * @brief Begin GPU capture.
+	 *
+	 * @param p_type Type of capture to perform.
+	 * @param p_count Number of frames or submissions to capture.
+	 */
+	Error gpu_capture_begin(GpuCaptureType p_type = GPU_CAPTURE_PER_FRAME, uint32_t p_count = 1);
 
 	/****************/
 	/**** LIMITS ****/

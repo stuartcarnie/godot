@@ -748,7 +748,8 @@ public:
 	/****************/
 	virtual void command_insert_breadcrumb(CommandBufferID p_cmd_buffer, uint32_t p_data) = 0;
 
-	virtual void gpu_capture_next_frame() = 0;
+	virtual Error gpu_capture_begin() = 0;
+	virtual void gpu_capture_end() = 0;
 
 	/********************/
 	/**** SUBMISSION ****/

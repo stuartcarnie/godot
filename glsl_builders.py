@@ -128,9 +128,10 @@ public:
 	}}
 """)
         file.write(f"""\
+
 protected:
-#ifdef DYNAMIC_CORE_SHADERS
-    char const * rel_shader_path() const override {{ return "{os.path.relpath(shader)}"; }}
+#ifdef DEV_ENABLED
+	const char *rel_shader_path() const override {{ return "{os.path.relpath(shader)}"; }}
 #endif
 }};
 """)

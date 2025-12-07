@@ -69,6 +69,13 @@ class PixelFormats;
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingContextDriverMetal : public RenderingContextDriver {
 	bool capture_available = false;
 
+	enum class DriverVersion {
+		Metal,
+		Metal4,
+	};
+
+	DriverVersion driver_version = DriverVersion::Metal;
+
 protected:
 	METAL_DEVICE metal_device = nullptr;
 	Device device; // There is only one device on Apple Silicon.
@@ -117,6 +124,9 @@ public:
 		virtual Error resize(uint32_t p_desired_framebuffer_count) = 0;
 		virtual RDD::FramebufferID acquire_next_frame_buffer() = 0;
 		virtual void present(MDCommandBuffer *p_cmd_buffer) = 0;
+		virtual METAL_DRAWABLE next_drawable() = 0;
+		API_AVAILABLE(macos(26.0), ios(26.0))
+		virtual METAL_RESIDENCY_SET get_residency_set() const = 0;
 		void set_max_fps(int p_max_fps) { present_minimum_duration = p_max_fps ? 1.0 / p_max_fps : 0.0; }
 	};
 

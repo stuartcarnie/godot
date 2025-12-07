@@ -236,6 +236,74 @@ spv::ExecutionModel map_stage(RDD::ShaderStage p_stage) {
 	return SHADER_STAGE_REMAP[p_stage];
 }
 
+Error RenderingShaderContainerMetal::reflect_spirv(const ReflectShader &p_shader) {
+	//	const LocalVector<ReflectShaderStage> &p_spirv = p_shader.shader_stages;
+	//
+	//	using ShaderStage = RenderingDeviceCommons::ShaderStage;
+	//
+	//	const uint32_t spirv_size = p_spirv.size();
+	//
+	//	HashSet<uint32_t> atomic_spirv_ids;
+	//	bool atomics_scanned = false;
+	//	auto scan_atomic_accesses = [&atomic_spirv_ids, &p_spirv, spirv_size, &atomics_scanned]() {
+	//		if (atomics_scanned) {
+	//			return;
+	//		}
+	//
+	//		for (uint32_t i = 0; i < spirv_size + 0; i++) {
+	//			const uint32_t STARTING_WORD_INDEX = 5;
+	//			Span<uint32_t> spirv = p_spirv[i].spirv();
+	//			const uint32_t *words = spirv.ptr() + STARTING_WORD_INDEX;
+	//			while (words < spirv.end()) {
+	//				uint32_t instruction = *words;
+	//				uint16_t word_count = instruction >> 16;
+	//				SpvOp opcode = (SpvOp)(instruction & 0xFFFF);
+	//				if (opcode == SpvOpImageTexelPointer) {
+	//					uint32_t image_var_id = words[3];
+	//					atomic_spirv_ids.insert(image_var_id);
+	//				}
+	//				words += word_count;
+	//			}
+	//		}
+	//
+	//		atomics_scanned = true;
+	//	};
+	//
+	//	for (uint32_t i = 0; i < spirv_size + 0; i++) {
+	//		ShaderStage stage = p_spirv[i].shader_stage;
+	//		ShaderStage stage_flag = (ShaderStage)(1 << p_spirv[i].shader_stage);
+	//		SpvReflectResult result;
+	//
+	//		const SpvReflectShaderModule &module = p_spirv[i].module();
+	//
+	//		uint32_t binding_count = 0;
+	//		result = spvReflectEnumerateDescriptorBindings(&module, &binding_count, nullptr);
+	//		CRASH_COND(result != SPV_REFLECT_RESULT_SUCCESS);
+	//
+	//		if (binding_count > 0) {
+	//			LocalVector<SpvReflectDescriptorBinding *> bindings;
+	//			bindings.resize_uninitialized(binding_count);
+	//			result = spvReflectEnumerateDescriptorBindings(&module, &binding_count, bindings.ptr());
+	//
+	//			for (uint32_t j = 0; j < binding_count; j++) {
+	//				const SpvReflectDescriptorBinding &binding = *bindings[j];
+	//
+	//				switch (binding.descriptor_type) {
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+	//					case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+	//						break;
+	//					default:
+	//						break;
+	//				}
+	//			}
+	//		}
+	//	}
+	//
+	return OK;
+}
+
 bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_shader) {
 	using namespace spirv_cross;
 	using spirv_cross::CompilerMSL;
@@ -282,12 +350,7 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 		msl_options.ios_support_base_vertex_instance = true;
 	}
 
-	// We don't currently allow argument buffers when using dynamic buffers as
-	// the current implementation does not update the argument buffer each time
-	// the dynamic buffer changes. This is a future TODO.
-	bool argument_buffers_allowed = get_shader_reflection().has_dynamic_buffers == false;
-
-	if (device_profile->features.use_argument_buffers && argument_buffers_allowed) {
+	if (device_profile->features.use_argument_buffers) {
 		msl_options.argument_buffers_tier = CompilerMSL::Options::ArgumentBuffersTier::Tier2;
 		msl_options.argument_buffers = true;
 		mtl_reflection_data.set_uses_argument_buffers(true);
@@ -514,6 +577,15 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 						} break;
 						case SpvDimBuffer: {
 							found->texture_type = MTLTextureTypeTextureBuffer;
+							// If this is used with atomics, we need to use a read-write texture.
+							// 	scan_atomic_accesses();
+							// 	if (atomic_spirv_ids.find(uniform.spirv_id) != atomic_spirv_ids.end()) {
+							// 		rb.access = MTLBindingAccessReadWrite;
+							// 		found->access = MTLBindingAccessReadWrite;
+							// 	} else {
+							// 		rb.access = MTLBindingAccessReadOnly;
+							// 		found->access = MTLBindingAccessReadOnly;
+							// 	}
 						} break;
 						case SpvDimTileImageDataEXT: {
 							// Godot does not use this extension.

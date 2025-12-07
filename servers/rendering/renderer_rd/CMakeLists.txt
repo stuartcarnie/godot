@@ -179,4 +179,5 @@ target_link_libraries(servers PUBLIC godot-glslang spirv-reflect smaa)
 target_compile_definitions(servers
         PRIVATE
         $<$<BOOL:${WANT_DYNAMIC_CORE_SHADERS}>:DYNAMIC_CORE_SHADERS GODOT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}">
+        USE_VAO
 )

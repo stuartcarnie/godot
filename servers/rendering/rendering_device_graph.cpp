@@ -30,6 +30,13 @@
 
 #include "rendering_device_graph.h"
 
+#ifdef __APPLE__
+#include "drivers/apple/apple_tracing.h"
+
+// #define BACKTRACE_ENABLED
+#define BACKTRACE_MAX_FRAMES 128
+#endif
+
 #define PRINT_RENDER_GRAPH 0
 #define FORCE_FULL_ACCESS_BITS 0
 #define PRINT_RESOURCE_TRACKER_TOTAL 0
@@ -293,27 +300,75 @@ int32_t RenderingDeviceGraph::_add_to_write_list(int32_t p_command_index, Rect2i
 #define GRAPH_ALIGN(x) (((x) + 7u) & 0xFFFFFFF8u)
 
 RenderingDeviceGraph::RecordedCommand *RenderingDeviceGraph::_allocate_command(uint32_t p_command_size, int32_t &r_command_index) {
+#ifdef BACKTRACE_ENABLED
+	// Capture backtrace for debugging purposes.
+	void *backtrace_frames[BACKTRACE_MAX_FRAMES];
+	int backtrace_frame_count = backtrace(backtrace_frames, BACKTRACE_MAX_FRAMES, 3);
+	uint32_t extra_size = sizeof(void *) * backtrace_frame_count + sizeof(uint32_t);
+#else
+	const uint32_t extra_size = 0;
+#endif
 	uint32_t command_data_offset = command_data.size();
 	command_data_offset = GRAPH_ALIGN(command_data_offset);
 	command_data_offsets.push_back(command_data_offset);
-	command_data.resize(command_data_offset + p_command_size);
+	command_data.resize(command_data_offset + p_command_size + extra_size);
 	r_command_index = command_count++;
 	RecordedCommand *new_command = reinterpret_cast<RecordedCommand *>(&command_data[command_data_offset]);
 	*new_command = RecordedCommand();
+#ifdef BACKTRACE_ENABLED
+	// Store backtrace information at the end of the command.
+	uint8_t *backtrace_storage = reinterpret_cast<uint8_t *>(new_command) + p_command_size;
+	uint32_t *backtrace_count_storage = reinterpret_cast<uint32_t *>(backtrace_storage);
+	*backtrace_count_storage = backtrace_frame_count;
+	void **backtrace_frames_storage = reinterpret_cast<void **>(backtrace_storage + sizeof(uint32_t));
+	memcpy(backtrace_frames_storage, backtrace_frames, sizeof(void *) * backtrace_frame_count);
+#endif
 	return new_command;
 }
 
 RenderingDeviceGraph::DrawListInstruction *RenderingDeviceGraph::_allocate_draw_list_instruction(uint32_t p_instruction_size) {
+#ifdef BACKTRACE_ENABLED
+	// Capture backtrace for debugging purposes.
+	void *backtrace_frames[BACKTRACE_MAX_FRAMES];
+	int backtrace_frame_count = backtrace(backtrace_frames, BACKTRACE_MAX_FRAMES, 3);
+	uint32_t extra_size = sizeof(void *) * backtrace_frame_count + sizeof(uint32_t);
+#else
+	const uint32_t extra_size = 0;
+#endif
 	uint32_t draw_list_data_offset = draw_instruction_list.data.size();
 	draw_list_data_offset = GRAPH_ALIGN(draw_list_data_offset);
-	draw_instruction_list.data.resize(draw_list_data_offset + p_instruction_size);
+	draw_instruction_list.data.resize(draw_list_data_offset + p_instruction_size + extra_size);
+#ifdef BACKTRACE_ENABLED
+	// Store backtrace information at the end of the instruction.
+	uint8_t *backtrace_storage = reinterpret_cast<uint8_t *>(&draw_instruction_list.data[draw_list_data_offset + p_instruction_size]);
+	uint32_t *backtrace_count_storage = reinterpret_cast<uint32_t *>(backtrace_storage);
+	*backtrace_count_storage = backtrace_frame_count;
+	void **backtrace_frames_storage = reinterpret_cast<void **>(backtrace_storage + sizeof(uint32_t));
+	memcpy(backtrace_frames_storage, backtrace_frames, sizeof(void *) * backtrace_frame_count);
+#endif
 	return reinterpret_cast<DrawListInstruction *>(&draw_instruction_list.data[draw_list_data_offset]);
 }
 
 RenderingDeviceGraph::ComputeListInstruction *RenderingDeviceGraph::_allocate_compute_list_instruction(uint32_t p_instruction_size) {
+#ifdef BACKTRACE_ENABLED
+	// Capture backtrace for debugging purposes.
+	void *backtrace_frames[BACKTRACE_MAX_FRAMES];
+	int backtrace_frame_count = backtrace(backtrace_frames, BACKTRACE_MAX_FRAMES, 3);
+	uint32_t extra_size = sizeof(void *) * backtrace_frame_count + sizeof(uint32_t);
+#else
+	const uint32_t extra_size = 0;
+#endif
 	uint32_t compute_list_data_offset = compute_instruction_list.data.size();
 	compute_list_data_offset = GRAPH_ALIGN(compute_list_data_offset);
-	compute_instruction_list.data.resize(compute_list_data_offset + p_instruction_size);
+	compute_instruction_list.data.resize(compute_list_data_offset + p_instruction_size + extra_size);
+#ifdef BACKTRACE_ENABLED
+	// Store backtrace information at the end of the instruction.
+	uint8_t *backtrace_storage = reinterpret_cast<uint8_t *>(&compute_instruction_list.data[compute_list_data_offset + p_instruction_size]);
+	uint32_t *backtrace_count_storage = reinterpret_cast<uint32_t *>(backtrace_storage);
+	*backtrace_count_storage = backtrace_frame_count;
+	void **backtrace_frames_storage = reinterpret_cast<void **>(backtrace_storage + sizeof(uint32_t));
+	memcpy(backtrace_frames_storage, backtrace_frames, sizeof(void *) * backtrace_frame_count);
+#endif
 	return reinterpret_cast<ComputeListInstruction *>(&compute_instruction_list.data[compute_list_data_offset]);
 }
 
@@ -802,6 +857,11 @@ void RenderingDeviceGraph::_run_compute_list_command(RDD::CommandBufferID p_comm
 				return;
 		}
 
+#ifdef BACKTRACE_ENABLED
+		uint32_t count = *(uint32_t const *)&p_instruction_data[instruction_data_cursor];
+		instruction_data_cursor += sizeof(uint32_t) + sizeof(void *) * count;
+#endif
+
 		instruction_data_cursor = GRAPH_ALIGN(instruction_data_cursor);
 	}
 }
@@ -845,6 +905,10 @@ static uint32_t draw_list_total_size = 0;
 void RenderingDeviceGraph::_run_draw_list_command(RDD::CommandBufferID p_command_buffer, const uint8_t *p_instruction_data, uint32_t p_instruction_data_size) {
 #if PRINT_DRAW_LIST_STATS
 	draw_list_total_size += p_instruction_data_size;
+#endif
+
+#if DEV_ENABLED
+	uint32_t draw_count = 0;
 #endif
 
 	uint32_t instruction_data_cursor = 0;
@@ -951,8 +1015,121 @@ void RenderingDeviceGraph::_run_draw_list_command(RDD::CommandBufferID p_command
 				return;
 		}
 
+#ifdef BACKTRACE_ENABLED
+		uint32_t count = *(uint32_t const *)&p_instruction_data[instruction_data_cursor];
+		instruction_data_cursor += sizeof(uint32_t) + sizeof(void *) * count;
+#endif
+
+#ifdef DEV_ENABLED
+		switch (instruction->type) {
+			case DrawListInstruction::TYPE_DRAW:
+			case DrawListInstruction::TYPE_DRAW_INDEXED:
+			case DrawListInstruction::TYPE_DRAW_INDIRECT:
+			case DrawListInstruction::TYPE_DRAW_INDEXED_INDIRECT:
+			case DrawListInstruction::TYPE_CLEAR_ATTACHMENTS:
+				draw_count++;
+				break;
+			default:
+				break;
+		}
+#endif
+
 		instruction_data_cursor = GRAPH_ALIGN(instruction_data_cursor);
 	}
+
+#ifdef DEV_ENABLED
+	if (draw_count == 0) {
+#ifdef BACKTRACE_ENABLED
+		AppleSymbolicatedFrame *symbols = (AppleSymbolicatedFrame *)alloca(sizeof(AppleSymbolicatedFrame) * BACKTRACE_MAX_FRAMES);
+		memnew_arr_placement(symbols, BACKTRACE_MAX_FRAMES);
+
+		uint32_t _instruction_data_cursor = 0;
+		while (_instruction_data_cursor < p_instruction_data_size) {
+			DEV_ASSERT((_instruction_data_cursor + sizeof(DrawListInstruction)) <= p_instruction_data_size);
+
+			const DrawListInstruction *instruction = reinterpret_cast<const DrawListInstruction *>(&p_instruction_data[_instruction_data_cursor]);
+			uint32_t instruction_size = 0;
+			switch (instruction->type) {
+				case DrawListInstruction::TYPE_BIND_INDEX_BUFFER: {
+					instruction_size = sizeof(DrawListBindIndexBufferInstruction);
+				} break;
+				case DrawListInstruction::TYPE_BIND_PIPELINE: {
+					instruction_size = sizeof(DrawListBindPipelineInstruction);
+				} break;
+				case DrawListInstruction::TYPE_BIND_UNIFORM_SETS: {
+					const DrawListBindUniformSetsInstruction *bind_uniform_sets_instruction = reinterpret_cast<const DrawListBindUniformSetsInstruction *>(instruction);
+					instruction_size = sizeof(DrawListBindUniformSetsInstruction) + sizeof(RDD::UniformSetID) * bind_uniform_sets_instruction->set_count;
+				} break;
+				case DrawListInstruction::TYPE_BIND_VERTEX_BUFFERS: {
+					const DrawListBindVertexBuffersInstruction *bind_vertex_buffers_instruction = reinterpret_cast<const DrawListBindVertexBuffersInstruction *>(instruction);
+					instruction_size = sizeof(DrawListBindVertexBuffersInstruction);
+					instruction_size += sizeof(RDD::BufferID) * bind_vertex_buffers_instruction->vertex_buffers_count;
+					instruction_size += sizeof(uint64_t) * bind_vertex_buffers_instruction->vertex_buffers_count;
+				} break;
+				case DrawListInstruction::TYPE_CLEAR_ATTACHMENTS: {
+					const DrawListClearAttachmentsInstruction *clear_attachments_instruction = reinterpret_cast<const DrawListClearAttachmentsInstruction *>(instruction);
+					instruction_size = sizeof(DrawListClearAttachmentsInstruction);
+					instruction_size += sizeof(RDD::AttachmentClear) * clear_attachments_instruction->attachments_clear_count;
+					instruction_size += sizeof(Rect2i) * clear_attachments_instruction->attachments_clear_rect_count;
+				} break;
+				case DrawListInstruction::TYPE_DRAW: {
+					instruction_size = sizeof(DrawListDrawInstruction);
+				} break;
+				case DrawListInstruction::TYPE_DRAW_INDEXED: {
+					instruction_size = sizeof(DrawListDrawIndexedInstruction);
+				} break;
+				case DrawListInstruction::TYPE_DRAW_INDIRECT: {
+					instruction_size = sizeof(DrawListDrawIndirectInstruction);
+				} break;
+				case DrawListInstruction::TYPE_DRAW_INDEXED_INDIRECT: {
+					instruction_size = sizeof(DrawListDrawIndexedIndirectInstruction);
+				} break;
+				case DrawListInstruction::TYPE_EXECUTE_COMMANDS: {
+					instruction_size = sizeof(DrawListExecuteCommandsInstruction);
+				} break;
+				case DrawListInstruction::TYPE_NEXT_SUBPASS: {
+					instruction_size = sizeof(DrawListNextSubpassInstruction);
+				} break;
+				case DrawListInstruction::TYPE_SET_BLEND_CONSTANTS: {
+					instruction_size = sizeof(DrawListSetBlendConstantsInstruction);
+				} break;
+				case DrawListInstruction::TYPE_SET_LINE_WIDTH: {
+					instruction_size = sizeof(DrawListSetLineWidthInstruction);
+				} break;
+				case DrawListInstruction::TYPE_SET_PUSH_CONSTANT: {
+					const DrawListSetPushConstantInstruction *set_push_constant_instruction = reinterpret_cast<const DrawListSetPushConstantInstruction *>(instruction);
+					instruction_size = sizeof(DrawListSetPushConstantInstruction);
+					instruction_size += set_push_constant_instruction->size;
+				} break;
+				case DrawListInstruction::TYPE_SET_SCISSOR: {
+					instruction_size = sizeof(DrawListSetScissorInstruction);
+				} break;
+				case DrawListInstruction::TYPE_SET_VIEWPORT: {
+					instruction_size = sizeof(DrawListSetViewportInstruction);
+				} break;
+				case DrawListInstruction::TYPE_UNIFORM_SET_PREPARE_FOR_USE: {
+					instruction_size = sizeof(DrawListUniformSetPrepareForUseInstruction);
+				} break;
+				default:
+					DEV_ASSERT(false && "Unknown draw list instruction type.");
+					return;
+			}
+
+			uint8_t const *backtrace_data = reinterpret_cast<const uint8_t *>(&p_instruction_data[_instruction_data_cursor] + instruction_size);
+			uint32_t depth = reinterpret_cast<uint32_t const *>(backtrace_data)[0];
+			void **bt = (void **)(backtrace_data + sizeof(uint32_t));
+			apple_symbolicate(bt, depth, symbols, depth);
+
+			_instruction_data_cursor += instruction_size + sizeof(uint32_t) + sizeof(void *) * depth;
+			_instruction_data_cursor = GRAPH_ALIGN(_instruction_data_cursor);
+		}
+		// call destructor for each frame
+		for (int i = 0; i < BACKTRACE_MAX_FRAMES; i++) {
+			symbols[i].~AppleSymbolicatedFrame();
+		}
+#endif
+	}
+#endif
 }
 
 void RenderingDeviceGraph::_add_draw_list_begin(FramebufferCache *p_framebuffer_cache, RDD::RenderPassID p_render_pass, RDD::FramebufferID p_framebuffer, Rect2i p_region, VectorView<AttachmentOperation> p_attachment_operations, VectorView<RDD::RenderPassClearValue> p_attachment_clear_values, BitField<RDD::PipelineStageBits> p_stages, uint32_t p_breadcrumb, bool p_split_cmd_buffer) {
@@ -1626,7 +1803,6 @@ void RenderingDeviceGraph::begin() {
 	command_synchronization_index = -1;
 	command_synchronization_pending = false;
 	command_label_index = -1;
-	gpu_capture_frame = false;
 	frames[frame].secondary_command_buffers_used = 0;
 	draw_instruction_list.index = 0;
 	compute_instruction_list.index = 0;
@@ -2235,10 +2411,6 @@ void RenderingDeviceGraph::add_capture_timestamp(RDD::QueryPoolID p_query_pool, 
 	_add_command_to_graph(nullptr, nullptr, 0, command_index, command);
 }
 
-void RenderingDeviceGraph::add_gpu_capture_frame() {
-	gpu_capture_frame = true;
-}
-
 void RenderingDeviceGraph::add_synchronization() {
 	// Synchronization is only acknowledged if commands have been recorded on the graph already.
 	if (command_count > 0) {
@@ -2374,11 +2546,6 @@ void RenderingDeviceGraph::end(bool p_reorder_commands, bool p_full_barriers, RD
 	}
 
 	_wait_for_secondary_command_buffer_tasks();
-
-	if (gpu_capture_frame) {
-		driver->gpu_capture_next_frame();
-		gpu_capture_frame = false;
-	}
 
 	if (command_count > 0) {
 		int32_t current_label_index = -1;

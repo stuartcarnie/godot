@@ -177,6 +177,8 @@ private:
 
 	Error compile_metal_source(const char *p_source, const StageData &p_stage_data, Vector<uint8_t> &r_binary_data);
 
+	Error reflect_spirv(const ReflectShader &p_shader);
+
 public:
 	static constexpr uint32_t FORMAT_VERSION = 2;
 

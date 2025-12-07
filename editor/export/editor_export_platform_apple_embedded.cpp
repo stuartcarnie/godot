@@ -1644,7 +1644,7 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 	EditorProgress ep("export", export_project_only ? TTR("Exporting for " + get_name() + " (Project Files Only)") : TTR("Exporting for " + get_name() + ""), export_project_only ? 2 : 5, true);
 
 	String team_id = p_preset->get("application/app_store_team_id");
-	ERR_FAIL_COND_V_MSG(team_id.length() == 0, ERR_CANT_OPEN, "App Store Team ID not specified - cannot configure the project.");
+	ERR_FAIL_COND_V_MSG(team_id.is_empty(), ERR_CANT_OPEN, "App Store Team ID not specified - cannot configure the project.");
 
 	String src_pkg_name;
 	if (p_debug) {
@@ -1759,10 +1759,8 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 	String library_to_use = "libgodot." + get_platform_name() + "." + String(p_debug ? "debug" : "release") + ".xcframework";
 
 	print_line("Static framework: " + library_to_use);
-	String pkg_name;
-	if (String(get_project_setting(p_preset, "application/config/name")) != "") {
-		pkg_name = String(get_project_setting(p_preset, "application/config/name"));
-	} else {
+	String pkg_name = String(get_project_setting(p_preset, "application/config/name"));
+	if (pkg_name.is_empty()) {
 		pkg_name = "Unnamed";
 	}
 
@@ -2326,16 +2324,7 @@ bool EditorExportPlatformAppleEmbedded::_check_xcode_install() {
 void EditorExportPlatformAppleEmbedded::_check_for_changes_poll_thread(void *ud) {
 	EditorExportPlatformAppleEmbedded *ea = static_cast<EditorExportPlatformAppleEmbedded *>(ud);
 
-	String device_types;
-	bool first = true;
-	for (const String &d : ea->get_device_types()) {
-		if (first) {
-			first = false;
-		} else {
-			device_types += "|";
-		}
-		device_types += d;
-	}
+	String device_types = String("|").join(ea->get_device_types());
 
 	while (!ea->quit_request.is_set()) {
 		// Nothing to do if we already know the plugins have changed.
@@ -2358,48 +2347,6 @@ void EditorExportPlatformAppleEmbedded::_check_for_changes_poll_thread(void *ud)
 
 		// Check for devices updates.
 		Vector<Device> ldevices;
-
-		// Enum real devices (via ios_deploy, pre Xcode 15).
-		String ios_deploy_setting = "export/" + ea->get_platform_name() + "/ios_deploy";
-		if (EditorSettings::get_singleton() && EditorSettings::get_singleton()->has_setting(ios_deploy_setting)) {
-			String idepl = EDITOR_GET(ios_deploy_setting);
-			if (ea->has_runnable_preset.is_set() && !idepl.is_empty()) {
-				String devices_json;
-				List<String> args;
-				args.push_back("-c");
-				args.push_back("-timeout");
-				args.push_back("1");
-				args.push_back("-j");
-				args.push_back("-u");
-				args.push_back("-I");
-
-				int ec = 0;
-				Error err = OS::get_singleton()->execute(idepl, args, &devices_json, &ec, true);
-				if (err == OK && ec == 0) {
-					Ref<JSON> json;
-					json.instantiate();
-					devices_json = "{ \"devices\":[" + devices_json.replace("}{", "},{") + "]}";
-					err = json->parse(devices_json);
-					if (err == OK) {
-						Dictionary data = json->get_data();
-						Array devices = data["devices"];
-						for (int i = 0; i < devices.size(); i++) {
-							Dictionary device_event = devices[i];
-							if (device_event["Event"] == "DeviceDetected") {
-								Dictionary device_info = device_event["Device"];
-								Device nd;
-								nd.id = device_info["DeviceIdentifier"];
-								nd.name = device_info["DeviceName"].operator String() + " (ios_deploy, " + ((device_event["Interface"] == "WIFI") ? "network" : "wired") + ")";
-								nd.wifi = device_event["Interface"] == "WIFI";
-								nd.use_ios_deploy = true;
-								ldevices.push_back(nd);
-							}
-						}
-					}
-				}
-			}
-		}
-		// Enum devices (via Xcode).
 		if (ea->has_runnable_preset.is_set() && _check_xcode_install() && (FileAccess::exists("/usr/bin/xcrun") || FileAccess::exists("/bin/xcrun"))) {
 			String devices_json;
 			List<String> args;
@@ -2432,8 +2379,8 @@ void EditorExportPlatformAppleEmbedded::_check_for_changes_poll_thread(void *ud)
 						if (dev_props.has("developerModeStatus") && conn_props.has("pairingState") && conn_props.has("transportType") && conn_props["pairingState"] == "paired" && dev_props["developerModeStatus"] == "enabled") {
 							Device nd;
 							nd.id = device_info["identifier"];
-							nd.name = dev_props["name"].operator String() + " (devicectl, " + ((conn_props["transportType"] == "localNetwork") ? "network" : "wired") + ")";
-							nd.wifi = conn_props["transportType"] == "localNetwork";
+							nd.name = dev_props.get("name", "").operator String() + " (devicectl, " + ((conn_props.get("transportType", "") == "localNetwork") ? "network" : "wired") + ")";
+							nd.wifi = conn_props.get("transportType", "") == "localNetwork";
 							ldevices.push_back(nd);
 						}
 					}
@@ -2697,94 +2644,52 @@ Error EditorExportPlatformAppleEmbedded::run(const Ref<EditorExportPreset> &p_pr
 		cmd_args_list.push_back("--debug-navigation");
 	}
 
-	if (dev.use_ios_deploy) {
-		// Deploy and run on real device (via ios-deploy).
-		if (ep.step("Installing and running on device...", 4)) {
-			CLEANUP_AND_RETURN(ERR_SKIP);
-		} else {
-			List<String> args;
-			args.push_back("-u");
-			args.push_back("-I");
-			args.push_back("--id");
-			args.push_back(dev.id);
-			args.push_back("--justlaunch");
-			args.push_back("--bundle");
-			args.push_back(EditorPaths::get_singleton()->get_temp_dir().path_join(id).path_join("export.xcarchive/Products/Applications/export.app"));
-			String app_args;
-			for (const String &E : cmd_args_list) {
-				app_args += E + " ";
-			}
-			if (!app_args.is_empty()) {
-				args.push_back("--args");
-				args.push_back(app_args);
-			}
-
-			String idepl = EDITOR_GET("export/" + get_platform_name() + "/ios_deploy");
-			if (idepl.is_empty()) {
-				idepl = "ios-deploy";
-			}
-			String log;
-			int ec;
-			err = OS::get_singleton()->execute(idepl, args, &log, &ec, true);
-			if (err != OK) {
-				add_message(EXPORT_MESSAGE_WARNING, TTR("Run"), TTR("Could not start ios-deploy executable."));
-				CLEANUP_AND_RETURN(err);
-			}
-			if (ec != 0) {
-				print_line("ios-deploy:\n" + log);
-				add_message(EXPORT_MESSAGE_ERROR, TTR("Run"), TTR("Installation/running failed, see editor log for details."));
-				CLEANUP_AND_RETURN(ERR_UNCONFIGURED);
-			}
-		}
+	if (ep.step("Installing to device...", 3)) {
+		CLEANUP_AND_RETURN(ERR_SKIP);
 	} else {
-		// Deploy and run on real device (via Xcode).
-		if (ep.step("Installing to device...", 3)) {
-			CLEANUP_AND_RETURN(ERR_SKIP);
-		} else {
-			List<String> args;
-			args.push_back("devicectl");
-			args.push_back("device");
-			args.push_back("install");
-			args.push_back("app");
-			args.push_back("-d");
-			args.push_back(dev.id);
-			args.push_back(EditorPaths::get_singleton()->get_temp_dir().path_join(id).path_join("export.xcarchive/Products/Applications/export.app"));
+		List<String> args;
+		args.push_back("devicectl");
+		args.push_back("device");
+		args.push_back("install");
+		args.push_back("app");
+		args.push_back("-d");
+		args.push_back(dev.id);
+		args.push_back(EditorPaths::get_singleton()->get_temp_dir().path_join(id).path_join("export.xcarchive/Products/Applications/export.app"));
 
-			String log;
-			int ec = _execute("xcrun", args, [&log](const String &p_data) {
-				log.append_utf32(p_data.span());
-			});
-			if (ec != 0) {
-				print_line("device install:\n" + log);
-				add_message(EXPORT_MESSAGE_ERROR, TTR("Run"), TTR("Installation failed, see editor log for details."));
-				CLEANUP_AND_RETURN(ERR_UNCONFIGURED);
-			}
+		String log;
+		int ec = _execute("xcrun", args, [&log](const String &p_data) {
+			log.append_utf32(p_data.span());
+		});
+		if (ec != 0) {
+			print_line("device install:\n" + log);
+			add_message(EXPORT_MESSAGE_ERROR, TTR("Run"), TTR("Installation failed, see editor log for details."));
+			CLEANUP_AND_RETURN(ERR_UNCONFIGURED);
+		}
+	}
+
+	if (ep.step("Running on device...", 4)) {
+		CLEANUP_AND_RETURN(ERR_SKIP);
+	} else {
+		List<String> args;
+		args.push_back("devicectl");
+		args.push_back("device");
+		args.push_back("process");
+		args.push_back("launch");
+		args.push_back("--terminate-existing");
+		args.push_back("-d");
+		args.push_back(dev.id);
+		args.push_back(p_preset->get("application/bundle_identifier"));
+		for (const String &E : cmd_args_list) {
+			args.push_back(E);
 		}
 
-		if (ep.step("Running on device...", 4)) {
-			CLEANUP_AND_RETURN(ERR_SKIP);
-		} else {
-			List<String> args;
-			args.push_back("devicectl");
-			args.push_back("device");
-			args.push_back("process");
-			args.push_back("launch");
-			args.push_back("--terminate-existing");
-			args.push_back("-d");
-			args.push_back(dev.id);
-			args.push_back(p_preset->get("application/bundle_identifier"));
-			for (const String &E : cmd_args_list) {
-				args.push_back(E);
-			}
-
-			String log;
-			int ec = _execute("xcrun", args, [&log](const String &p_data) {
-				log.append_utf32(p_data.span());
-			});
-			if (ec != 0) {
-				print_line("devicectl launch:\n" + log);
-				add_message(EXPORT_MESSAGE_ERROR, TTR("Run"), TTR("Running failed, see editor log for details."));
-			}
+		String log;
+		int ec = _execute("xcrun", args, [&log](const String &p_data) {
+			log.append_utf32(p_data.span());
+		});
+		if (ec != 0) {
+			print_line("devicectl launch:\n" + log);
+			add_message(EXPORT_MESSAGE_ERROR, TTR("Run"), TTR("Running failed, see editor log for details."));
 		}
 	}
 

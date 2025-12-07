@@ -377,10 +377,11 @@ bool ProjectSettings::_set(const StringName &p_name, const Variant &p_value) {
 bool ProjectSettings::_get(const StringName &p_name, Variant &r_ret) const {
 	_THREAD_SAFE_METHOD_
 
-	if (!props.has(p_name)) {
+	const RBMap<StringName, VariantContainer>::Element *E = props.find(p_name);
+	if (E == nullptr) {
 		return false;
 	}
-	r_ret = props[p_name].variant;
+	r_ret = E->get().variant;
 	return true;
 }
 
@@ -1823,6 +1824,8 @@ ProjectSettings::ProjectSettings() {
 	custom_prop_info["rendering/rendering_device/d3d12/max_resource_descriptors"] = PropertyInfo(Variant::INT, "rendering/rendering_device/d3d12/max_resource_descriptors", PROPERTY_HINT_RANGE, "512,1000000");
 	GLOBAL_DEF_RST("rendering/rendering_device/d3d12/max_sampler_descriptors", 1024);
 	custom_prop_info["rendering/rendering_device/d3d12/max_sampler_descriptors"] = PropertyInfo(Variant::INT, "rendering/rendering_device/d3d12/max_sampler_descriptors", PROPERTY_HINT_RANGE, "256,2048");
+
+	GLOBAL_DEF_RST(PropertyInfo(Variant::BOOL, "rendering/rendering_device/metal3/enable_pipeline_barriers"), false);
 
 	// The default value must match the minor part of the Agility SDK version
 	// installed by the scripts provided in the repository

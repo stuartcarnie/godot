@@ -39,7 +39,7 @@
 
 #define ENABLE_SHADER_CACHE 1
 
-#ifdef DYNAMIC_CORE_SHADERS
+#ifdef DEV_ENABLED
 #include "core/config/project_settings.h"
 #endif
 
@@ -155,7 +155,7 @@ struct RDHeader {
 	ShaderSection reading = ShaderSection::Vertex;
 };
 
-#ifdef DYNAMIC_CORE_SHADERS
+#ifdef DEV_ENABLED
 
 Error include_file_in_rd_header(String &filename, RDHeader &header_data, int depth = 0) {
 	Ref<FileAccess> f = FileAccess::open(filename, FileAccess::READ);
@@ -192,7 +192,7 @@ Error include_file_in_rd_header(String &filename, RDHeader &header_data, int dep
 
 			String included_file;
 			if (include_line.begins_with("thirdparty/")) {
-				included_file = ShaderRD::shader_source_root.path_join(include_line);
+				included_file = Engine::get_singleton()->godot_source_root().path_join(include_line);
 			} else {
 				included_file = filename.get_base_dir().path_join(include_line);
 			}
@@ -231,35 +231,40 @@ Error include_file_in_rd_header(String &filename, RDHeader &header_data, int dep
 void ShaderRD::setup(const char *p_vertex_code, const char *p_fragment_code, const char *p_compute_code, const char *p_name) {
 	name = p_name;
 
-#ifdef DYNAMIC_CORE_SHADERS
-
+#ifdef DEV_ENABLED
 	CharString compute_code, vertex_code, fragment_code;
-	GLOBAL_DEF("rendering/shaders/load_from_file/" + String(p_name), false);
-	bool load_from_file = GLOBAL_GET("rendering/shaders/load_from_file/" + String(p_name));
-	if (load_from_file && strlen(rel_shader_path()) > 0) {
-		String shader_path = ShaderRD::shader_source_root.path_join(rel_shader_path());
+	const String &source_root = Engine::get_singleton()->godot_source_root();
+	bool dynamic_load_enabled = !source_root.is_empty();
+	if (dynamic_load_enabled) {
+		// Define a global boolean property using the shader name, which can be enabled / disabled
+		// adhoc.
+		GLOBAL_DEF("rendering/shaders/load_from_file/" + String(p_name), false);
+		bool load_from_file = GLOBAL_GET("rendering/shaders/load_from_file/" + String(p_name));
+		if (load_from_file && strlen(rel_shader_path()) > 0) {
+			String shader_path = source_root.path_join(rel_shader_path());
 
-		RDHeader header_data;
-		Error res = include_file_in_rd_header(shader_path, header_data);
-		if (res == OK) {
-			if (!header_data.compute_lines.is_empty()) {
-				String code = String("\n").join(header_data.compute_lines) + String("\n");
-				compute_code = code.utf8();
-				p_compute_code = compute_code.get_data();
+			RDHeader header_data;
+			Error res = include_file_in_rd_header(shader_path, header_data);
+			if (res == OK) {
+				if (!header_data.compute_lines.is_empty()) {
+					String code = String("\n").join(header_data.compute_lines) + String("\n");
+					compute_code = code.utf8();
+					p_compute_code = compute_code.get_data();
+				} else {
+					String code = String("\n").join(header_data.vertex_lines) + String("\n");
+					vertex_code = code.utf8();
+					p_vertex_code = vertex_code.get_data();
+
+					code = String("\n").join(header_data.fragment_lines) + String("\n");
+					fragment_code = code.utf8();
+					p_fragment_code = fragment_code.get_data();
+				}
 			} else {
-				String code = String("\n").join(header_data.vertex_lines) + String("\n");
-				vertex_code = code.utf8();
-				p_vertex_code = vertex_code.get_data();
-
-				code = String("\n").join(header_data.fragment_lines) + String("\n");
-				fragment_code = code.utf8();
-				p_fragment_code = fragment_code.get_data();
+				// If it can't be parsed, print an error and use the default.
+				ERR_PRINT("Error parsing shader file: " + shader_path);
 			}
-		} else {
-			ERR_PRINT("Error parsing shader file: " + shader_path);
 		}
 	}
-
 #endif
 
 	if (p_compute_code) {
@@ -1210,9 +1215,6 @@ String ShaderRD::shader_cache_res_dir;
 bool ShaderRD::shader_cache_save_compressed = true;
 bool ShaderRD::shader_cache_save_compressed_zstd = true;
 bool ShaderRD::shader_cache_save_debug = true;
-#ifdef DYNAMIC_CORE_SHADERS
-String ShaderRD::shader_source_root = String(GODOT_SOURCE_ROOT);
-#endif
 
 ShaderRD::~ShaderRD() {
 	LocalVector<RID> remaining = version_owner.get_owned_list();

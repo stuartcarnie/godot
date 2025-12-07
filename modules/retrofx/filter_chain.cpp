@@ -490,6 +490,9 @@ RID FilterChain::get_checker_texture() {
 		tformat.texture_type = RD::TEXTURE_TYPE_2D;
 
 		checker_texture = RD::get_singleton()->texture_create(tformat, RD::TextureView(), { checkerboard });
+#if DEV_ENABLED
+		RD::get_singleton()->set_resource_name(checker_texture, "Filter chain checker pattern");
+#endif
 	}
 	return checker_texture;
 }

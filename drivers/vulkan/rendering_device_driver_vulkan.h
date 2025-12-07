@@ -686,7 +686,8 @@ public:
 	/****************/
 	virtual void command_insert_breadcrumb(CommandBufferID p_cmd_buffer, uint32_t p_data) override final;
 
-	virtual void gpu_capture_next_frame() override final {};
+	virtual Error gpu_capture_begin() override final { return ERR_UNAVAILABLE; }
+	virtual void gpu_capture_end() override final {}
 
 	void print_lost_device_info();
 	void on_device_lost() const;

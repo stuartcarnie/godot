@@ -33,9 +33,18 @@
 #include "core/io/dir_access.h"
 #include "core/os/os.h"
 
+// #define CMAKE
+#ifdef CMAKE
+static String godot_source_root = String(GODOT_SOURCE_ROOT);
+#endif
+
 String TestUtils::get_data_path(const String &p_file) {
+#ifdef CMAKE
+	return godot_source_root.path_join("tests/data").path_join(p_file);
+#else
 	String data_path = "../tests/data";
 	return get_executable_dir().path_join(data_path.path_join(p_file));
+#endif
 }
 
 String TestUtils::get_executable_dir() {

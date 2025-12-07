@@ -73,6 +73,7 @@
 
 #if defined(RD_ENABLED)
 #include "servers/rendering/renderer_rd/renderer_compositor_rd.h"
+#include "servers/rendering/rendering_device.h"
 #endif
 
 #if defined(ACCESSKIT_ENABLED)
@@ -626,6 +627,18 @@ void DisplayServerMacOS::send_event(NSEvent *p_event) {
 	// Special case handling of shortcuts that don't arrive at the regular keyDown handler
 	if ([p_event type] == NSEventTypeKeyDown) {
 		NSEventModifierFlags flags = [p_event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+
+		// Cmd+Opt+Shift+F12: trigger GPU frame capture.
+		NSEventModifierFlags special = flags & (NSEventModifierFlagCommand | NSEventModifierFlagOption | NSEventModifierFlagShift);
+		if ((special == (NSEventModifierFlagCommand | NSEventModifierFlagOption | NSEventModifierFlagShift)) && [p_event keyCode] == kVK_F12) {
+#ifdef RD_ENABLED
+			RD *rd = RD::get_singleton();
+			if (rd) {
+				rd->gpu_capture_begin();
+			}
+#endif
+			return;
+		}
 
 		// Command-period
 		if ((flags == NSEventModifierFlagCommand) && [p_event keyCode] == 0x2f) {
@@ -1569,6 +1582,7 @@ Rect2i DisplayServerMacOS::screen_get_usable_rect(int p_screen) const {
 }
 
 Color DisplayServerMacOS::screen_get_pixel(const Point2i &p_position) const {
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 15000 || 1
 	HashSet<CGWindowID> exclude_windows;
 	for (HashMap<WindowID, WindowData>::ConstIterator E = windows.begin(); E; ++E) {
 		if (E->value.hide_from_capture) {
@@ -1606,9 +1620,13 @@ Color DisplayServerMacOS::screen_get_pixel(const Point2i &p_position) const {
 		CGImageRelease(image);
 	}
 	return color;
+#else
+	ERR_FAIL_V_MSG(Color(), "Not implemented for macOS 15");
+#endif
 }
 
 Ref<Image> DisplayServerMacOS::screen_get_image(int p_screen) const {
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 15000
 	p_screen = _get_screen_index(p_screen);
 	int screen_count = get_screen_count();
 	ERR_FAIL_INDEX_V(p_screen, screen_count, Ref<Image>());
@@ -1658,9 +1676,13 @@ Ref<Image> DisplayServerMacOS::screen_get_image(int p_screen) const {
 		CGImageRelease(image);
 	}
 	return img;
+#else
+	ERR_FAIL_V_MSG(Ref<Image>(), "Not implemented for macOS 15");
+#endif
 }
 
 Ref<Image> DisplayServerMacOS::screen_get_image_rect(const Rect2i &p_rect) const {
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 15000
 	HashSet<CGWindowID> exclude_windows;
 	for (HashMap<WindowID, WindowData>::ConstIterator E = windows.begin(); E; ++E) {
 		if (E->value.hide_from_capture) {
@@ -1706,6 +1728,9 @@ Ref<Image> DisplayServerMacOS::screen_get_image_rect(const Rect2i &p_rect) const
 		CGImageRelease(image);
 	}
 	return img;
+#else
+	ERR_FAIL_V_MSG(Ref<Image>(), "Not implemented for macOS 15");
+#endif
 }
 
 float DisplayServerMacOS::screen_get_refresh_rate(int p_screen) const {

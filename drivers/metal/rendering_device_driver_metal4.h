@@ -30,8 +30,8 @@
 
 #pragma once
 
+#import "metal4_objects.h"
 #import "metal_device_profile.h"
-#import "metal_objects.h"
 
 #include "servers/rendering/rendering_device_driver.h"
 
@@ -39,6 +39,7 @@
 #import <variant>
 
 class RenderingShaderContainerFormatMetal;
+class RenderingContextDriverMetal;
 
 #ifdef DEBUG_ENABLED
 #ifndef _DEBUG
@@ -46,9 +47,9 @@ class RenderingShaderContainerFormatMetal;
 #endif
 #endif
 
-class RenderingContextDriverMetal;
+namespace MTL4 {
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMetal : public RenderingDeviceDriver {
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) RenderingDeviceDriverMetal : public RenderingDeviceDriver {
 	friend struct ShaderCacheEntry;
 	friend class MDCommandBuffer;
 	friend class MDUniformSet;
@@ -84,15 +85,14 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 	// DEV: When true, attempting to create a pipeline will fail if it cannot use the archive.
 	bool archive_fail_on_miss = false;
 
-	id<MTLCommandQueue> device_queue = nil;
-	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
+	id<MTL4CommandQueue> device_queue = nil;
+	id<MTL4CommandQueue> transfer_queue = nil;
 	// Residency set for the device_queue.
 	id<MTLResidencySet> main_residency_set = nil;
 	/// Resources to be added to the `main_residency_set`.
 	LocalVector<MTLResourceUnsafe> _residency_add;
 	/// Resources to be removed from the `main_residency_set`.
 	LocalVector<MTLResourceUnsafe> _residency_del;
-	GODOT_CLANG_WARNING_POP
 
 #pragma mark - Copy Queue
 
@@ -117,7 +117,6 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 		copy_queue_buffer_offset = aligned_offset + p_size;
 	}
 
-	/// Returns a pointer to the current position in the copy queue buffer.
 	_FORCE_INLINE_ void *_copy_queue_buffer_ptr() const {
 		return static_cast<uint8_t *>(copy_queue_buffer.contents) + copy_queue_buffer_offset;
 	}
@@ -228,11 +227,6 @@ public:
 
 #pragma mark - Barriers
 
-private:
-	bool use_barriers = false;
-	MTLResourceOptions base_hazard_tracking = MTLResourceHazardTrackingModeTracked;
-
-public:
 	virtual void command_pipeline_barrier(
 			CommandBufferID p_cmd_buffer,
 			BitField<PipelineStageBits> p_src_stages,
@@ -245,63 +239,11 @@ public:
 
 private:
 	struct Fence {
-		virtual void signal(id<MTLCommandBuffer> p_cmd_buffer) = 0;
-		virtual Error wait(uint32_t p_timeout_ms) = 0;
-		virtual ~Fence() = default;
-	};
-
-	struct FenceEvent : public Fence {
 		id<MTLSharedEvent> event;
 		uint64_t value;
-		FenceEvent(id<MTLSharedEvent> p_event) :
+		Fence(id<MTLSharedEvent> p_event) :
 				event(p_event),
 				value(0) {}
-
-		virtual void signal(id<MTLCommandBuffer> p_cb) override {
-			if (p_cb) {
-				value++;
-				[p_cb encodeSignalEvent:event value:value];
-			}
-		}
-
-		virtual Error wait(uint32_t p_timeout_ms) override {
-			GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-			BOOL signaled = [event waitUntilSignaledValue:value timeoutMS:p_timeout_ms];
-			GODOT_CLANG_WARNING_POP
-			if (!signaled) {
-#ifdef DEBUG_ENABLED
-				ERR_PRINT("timeout waiting for fence");
-#endif
-				return ERR_TIMEOUT;
-			}
-
-			return OK;
-		}
-	};
-
-	struct FenceSemaphore : public Fence {
-		dispatch_semaphore_t semaphore;
-		FenceSemaphore() :
-				semaphore(dispatch_semaphore_create(0)) {}
-
-		virtual void signal(id<MTLCommandBuffer> p_cb) override {
-			if (p_cb) {
-				[p_cb addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
-					dispatch_semaphore_signal(semaphore);
-				}];
-			} else {
-				dispatch_semaphore_signal(semaphore);
-			}
-		}
-
-		virtual Error wait(uint32_t p_timeout_ms) override {
-			dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, static_cast<int64_t>(p_timeout_ms) * 1000000);
-			long result = dispatch_semaphore_wait(semaphore, timeout);
-			if (result != 0) {
-				return ERR_TIMEOUT;
-			}
-			return OK;
-		}
 	};
 
 public:
@@ -330,10 +272,6 @@ public:
 	virtual CommandQueueFamilyID command_queue_family_get(BitField<CommandQueueFamilyBits> p_cmd_queue_family_bits, RenderingContextDriver::SurfaceID p_surface = 0) override final;
 
 	// ----- QUEUE -----
-private:
-	Error _execute_and_present_barriers(CommandQueueID p_cmd_queue, VectorView<SemaphoreID> p_wait_semaphores, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_cmd_semaphores, FenceID p_cmd_fence, VectorView<SwapChainID> p_swap_chains);
-	Error _execute_and_present(CommandQueueID p_cmd_queue, VectorView<SemaphoreID> p_wait_semaphores, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_cmd_semaphores, FenceID p_cmd_fence, VectorView<SwapChainID> p_swap_chains);
-
 public:
 	virtual CommandQueueID command_queue_create(CommandQueueFamilyID p_cmd_queue_family, bool p_identify_as_main_queue = false) override final;
 	virtual Error command_queue_execute_and_present(CommandQueueID p_cmd_queue, VectorView<SemaphoreID> p_wait_semaphores, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_cmd_semaphores, FenceID p_cmd_fence, VectorView<SwapChainID> p_swap_chains) override final;
@@ -341,6 +279,10 @@ public:
 
 	// ----- POOL -----
 
+private:
+	LocalVector<MD4CommandPool *> command_pools;
+
+public:
 	virtual CommandPoolID command_pool_create(CommandQueueFamilyID p_cmd_queue_family, CommandBufferType p_cmd_buffer_type) override final;
 	virtual bool command_pool_reset(CommandPoolID p_cmd_pool) override final;
 	virtual void command_pool_free(CommandPoolID p_cmd_pool) override final;
@@ -430,7 +372,7 @@ public:
 #pragma mark Pipeline
 
 private:
-	Result<id<MTLFunction>> _create_function(MDLibrary *p_library, NSString *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants);
+	Result<id<MTLFunction>> _create_function(MD4Library *p_library, NSString *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants);
 
 public:
 	virtual void pipeline_free(PipelineID p_pipeline_id) override final;
@@ -560,7 +502,7 @@ public:
 	virtual const MultiviewCapabilities &get_multiview_capabilities() override final;
 	virtual const FragmentShadingRateCapabilities &get_fragment_shading_rate_capabilities() override final;
 	virtual const FragmentDensityMapCapabilities &get_fragment_density_map_capabilities() override final;
-	virtual String get_api_name() const override final { return "Metal"; }
+	virtual String get_api_name() const override final { return "Metal4"; }
 	virtual String get_api_version() const override final;
 	virtual String get_pipeline_cache_uuid() const override final;
 	virtual const Capabilities &get_capabilities() const override final;
@@ -589,7 +531,7 @@ public:
 };
 
 // Defined outside because we need to forward declare it in metal_objects.h
-struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MetalBufferDynamicInfo : public RenderingDeviceDriverMetal::BufferInfo {
+struct API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MetalBufferDynamicInfo : public RenderingDeviceDriverMetal::BufferInfo {
 	uint64_t size_bytes; // Contains the real buffer size / frame_count.
 	uint32_t next_frame_index(uint32_t p_frame_count) {
 		// This is the next frame index to use for this buffer.
@@ -601,3 +543,5 @@ struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MetalBufferDynamicInfo 
 	uint64_t last_frame_mapped = 0;
 #endif
 };
+
+} // namespace MTL4

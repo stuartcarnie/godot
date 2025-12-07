@@ -77,7 +77,6 @@ class EditorExportPlatformAppleEmbedded : public EditorExportPlatform {
 		String id;
 		String name;
 		bool wifi = false;
-		bool use_ios_deploy = false;
 	};
 
 	Vector<Device> devices;
