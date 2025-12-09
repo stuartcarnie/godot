@@ -62,6 +62,8 @@ target_sources(godot-module-openxr PRIVATE
         openxr_render_model_extension.h
         openxr_valve_analog_threshold_extension.cpp
         openxr_valve_analog_threshold_extension.h
+        openxr_valve_controller_extension.cpp
+        openxr_valve_controller_extension.h
         openxr_visibility_mask_extension.cpp
         openxr_visibility_mask_extension.h
         openxr_wmr_controller_extension.cpp
