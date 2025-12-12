@@ -33,7 +33,7 @@ if (WANT_EDITOR)
 endif ()
 add_subdirectory(mbedtls)
 add_subdirectory(meshoptimizer)
-add_subdirectory(minimp3)
+add_subdirectory(mp3)
 add_subdirectory(mobile_vr)
 
 # TODO: Not implemented

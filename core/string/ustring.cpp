@@ -5205,9 +5205,7 @@ String String::sprintf(const Span<Variant> &values, bool *error) const {
 	static const String MINUS("-");
 	static const String PLUS("+");
 
-	LocalVector<char32_t> buffer;
-	buffer.reserve(length());
-
+	String formatted;
 	char32_t *self = (char32_t *)get_data();
 	bool in_format = false;
 	uint64_t value_index = 0;
@@ -5229,8 +5227,7 @@ String String::sprintf(const Span<Variant> &values, bool *error) const {
 		if (in_format) { // We have % - let's see what else we get.
 			switch (c) {
 				case '%': { // Replace %% with %
-					// formatted += c;
-					buffer.push_back(c);
+					formatted.append_utf32_unchecked(Span(&c, 1));
 					in_format = false;
 					break;
 				}
@@ -5301,12 +5298,7 @@ String String::sprintf(const Span<Variant> &values, bool *error) const {
 						}
 					}
 
-					char32_t const *ptr = str.ptr();
-					for (int i = 0; i < str.length(); i++) {
-						buffer.push_back(*ptr);
-						ptr++;
-					}
-					// formatted += str;
+					formatted += str;
 					++value_index;
 					in_format = false;
 
@@ -5352,12 +5344,7 @@ String String::sprintf(const Span<Variant> &values, bool *error) const {
 						}
 					}
 
-					char32_t const *ptr = str.ptr();
-					for (int i = 0; i < str.length(); i++) {
-						buffer.push_back(*ptr);
-						ptr++;
-					}
-					//formatted += str;
+					formatted += str;
 					++value_index;
 					in_format = false;
 					break;
@@ -5422,17 +5409,12 @@ String String::sprintf(const Span<Variant> &values, bool *error) const {
 						str += number_str;
 
 						if (i < count - 1) {
-							str += ", ";
+							str.append_utf32_unchecked(U", ");
 						}
 					}
-					str += ")";
+					str.append_utf32_unchecked(U")");
 
-					char32_t const *ptr = str.ptr();
-					for (int i = 0; i < str.length(); i++) {
-						buffer.push_back(*ptr);
-						ptr++;
-					}
-					// formatted += str;
+					formatted += str;
 					++value_index;
 					in_format = false;
 					break;
@@ -5450,12 +5432,7 @@ String String::sprintf(const Span<Variant> &values, bool *error) const {
 						str = str.lpad(min_chars);
 					}
 
-					char32_t const *ptr = str.ptr();
-					for (int i = 0; i < str.length(); i++) {
-						buffer.push_back(*ptr);
-						ptr++;
-					}
-					// formatted += str;
+					formatted += str;
 					++value_index;
 					in_format = false;
 					break;
@@ -5493,12 +5470,7 @@ String String::sprintf(const Span<Variant> &values, bool *error) const {
 						str = str.lpad(min_chars);
 					}
 
-					char32_t const *ptr = str.ptr();
-					for (int i = 0; i < str.length(); i++) {
-						buffer.push_back(*ptr);
-						ptr++;
-					}
-					// formatted += str;
+					formatted += str;
 					++value_index;
 					in_format = false;
 					break;
@@ -5594,8 +5566,7 @@ String String::sprintf(const Span<Variant> &values, bool *error) const {
 					in_decimals = false;
 					break;
 				default:
-					buffer.push_back(c);
-					// formatted += c;
+					formatted.append_utf32_unchecked(Span(&c, 1));
 			}
 		}
 	}
@@ -5611,8 +5582,6 @@ String String::sprintf(const Span<Variant> &values, bool *error) const {
 	if (error) {
 		*error = false;
 	}
-	String formatted;
-	formatted.copy_from_unchecked(buffer.ptr(), buffer.size());
 	return formatted;
 }
 

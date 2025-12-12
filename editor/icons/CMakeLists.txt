@@ -593,8 +593,6 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         MultiMesh.svg
         MultiMeshInstance2D.svg
         MultiMeshInstance3D.svg
-        MultiplayerSpawner.svg
-        MultiplayerSynchronizer.svg
         NavigationAgent2D.svg
         NavigationAgent3D.svg
         NavigationLink2D.svg
@@ -741,6 +739,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         QuadMesh.svg
         QuadOccluder3D.svg
         Quaternion.svg
+        RDShaderFile.svg
         RID.svg
         RandomNumberGenerator.svg
         Range.svg

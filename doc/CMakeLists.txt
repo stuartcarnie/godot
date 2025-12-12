@@ -19,6 +19,7 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/fbx/doc_classes/FBXState.xml
         ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/@GDScript.xml
         ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/GDScript.xml
+        ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/GDScriptSyntaxHighlighter.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/EditorSceneFormatImporterBlend.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/EditorSceneFormatImporterGLTF.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFAccessor.xml
@@ -31,6 +32,7 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFLight.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFMesh.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFNode.xml
+        ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFObjectModelProperty.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFPhysicsBody.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFPhysicsShape.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFSkeleton.xml
@@ -40,18 +42,20 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFTexture.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFTextureSampler.xml
         ${CMAKE_SOURCE_DIR}/modules/gridmap/doc_classes/GridMap.xml
+        ${CMAKE_SOURCE_DIR}/modules/gridmap/doc_classes/GridMapEditorPlugin.xml
         ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamInteractive.xml
         ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamPlaybackInteractive.xml
         ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamPlaybackPlaylist.xml
         ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamPlaybackSynchronized.xml
         ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamPlaylist.xml
         ${CMAKE_SOURCE_DIR}/modules/interactive_music/doc_classes/AudioStreamSynchronized.xml
-        ${CMAKE_SOURCE_DIR}/modules/minimp3/doc_classes/AudioStreamMP3.xml
-        ${CMAKE_SOURCE_DIR}/modules/minimp3/doc_classes/ResourceImporterMP3.xml
         ${CMAKE_SOURCE_DIR}/modules/mobile_vr/doc_classes/MobileVRInterface.xml
         ${CMAKE_SOURCE_DIR}/modules/mono/doc_classes/CSharpScript.xml
+        ${CMAKE_SOURCE_DIR}/modules/mp3/doc_classes/AudioStreamMP3.xml
+        ${CMAKE_SOURCE_DIR}/modules/mp3/doc_classes/ResourceImporterMP3.xml
         ${CMAKE_SOURCE_DIR}/modules/multiplayer/doc_classes/MultiplayerSpawner.xml
         ${CMAKE_SOURCE_DIR}/modules/multiplayer/doc_classes/MultiplayerSynchronizer.xml
+        ${CMAKE_SOURCE_DIR}/modules/multiplayer/doc_classes/OfflineMultiplayerPeer.xml
         ${CMAKE_SOURCE_DIR}/modules/multiplayer/doc_classes/SceneMultiplayer.xml
         ${CMAKE_SOURCE_DIR}/modules/multiplayer/doc_classes/SceneReplicationConfig.xml
         ${CMAKE_SOURCE_DIR}/modules/noise/doc_classes/FastNoiseLite.xml
@@ -62,14 +66,67 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/ogg/doc_classes/OggPacketSequencePlayback.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAPIExtension.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAction.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRActionBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRActionMap.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRActionSet.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAnalogThresholdModifier.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAnchorTracker.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAndroidThreadSettingsExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRBindingModifier.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRBindingModifierEditor.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRCompositionLayer.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRCompositionLayerCylinder.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRCompositionLayerEquirect.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRCompositionLayerQuad.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRDpadBindingModifier.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRExtensionWrapper.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRExtensionWrapperExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRFrameSynthesisExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRFutureExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRFutureResult.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRHand.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRHapticBase.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRHapticVibration.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBinding.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfile.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfileEditor.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfileEditorBase.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfileMetadata.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInterface.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRMarkerTracker.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRPlaneTracker.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRRenderModel.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRRenderModelExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRRenderModelManager.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialAnchorCapability.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialCapabilityConfigurationAnchor.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialCapabilityConfigurationAprilTag.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialCapabilityConfigurationAruco.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialCapabilityConfigurationBaseHeader.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialCapabilityConfigurationMicroQrCode.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialCapabilityConfigurationPlaneTracking.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialCapabilityConfigurationQrCode.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentAnchorList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentBounded2DList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentBounded3DList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentData.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentMarkerList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentMesh2DList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentMesh3DList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentParentList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentPersistenceList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentPlaneAlignmentList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentPlaneSemanticLabelList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentPolygon2DList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialContextPersistenceConfig.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialEntityExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialEntityTracker.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialMarkerTrackingCapability.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialPlaneTrackingCapability.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialQueryResultData.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRStructureBase.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRVisibilityMask.xml
         ${CMAKE_SOURCE_DIR}/modules/regex/doc_classes/RegEx.xml
         ${CMAKE_SOURCE_DIR}/modules/regex/doc_classes/RegExMatch.xml
         ${CMAKE_SOURCE_DIR}/modules/text_server_adv/doc_classes/TextServerAdvanced.xml
