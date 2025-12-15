@@ -9,6 +9,7 @@ target_sources(msdfgen PRIVATE
         core/Scanline.cpp
         core/Shape.cpp
         core/contour-combiners.cpp
+        core/convergent-curve-ordering.cpp
         core/edge-coloring.cpp
         core/edge-segments.cpp
         core/edge-selectors.cpp

@@ -49,6 +49,8 @@ target_sources(icu4c PRIVATE
         common/errorcode.cpp
         common/filteredbrk.cpp
         common/filterednormalizer2.cpp
+        common/fixedstring.cpp
+        common/fixedstring.h
         common/hash.h
         common/icudataver.cpp
         common/icuplug.cpp
@@ -347,6 +349,8 @@ target_sources(icu4c PRIVATE
         common/unicode/utf32.h
         common/unicode/utf8.h
         common/unicode/utf_old.h
+        common/unicode/utfiterator.h
+        common/unicode/utfstring.h
         common/unicode/utrace.h
         common/unicode/utypes.h
         common/unicode/uvernum.h

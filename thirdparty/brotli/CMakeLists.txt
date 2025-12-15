@@ -14,10 +14,12 @@ target_sources(brotli PRIVATE
         common/context.h
         common/dictionary.c
         common/dictionary.h
+        common/dictionary_inc.h
         common/platform.c
         common/platform.h
         common/shared_dictionary.c
         common/shared_dictionary_internal.h
+        common/static_init.h
         common/transform.c
         common/transform.h
         common/version.h
@@ -26,9 +28,13 @@ target_sources(brotli PRIVATE
         dec/decode.c
         dec/huffman.c
         dec/huffman.h
+        dec/prefix.c
         dec/prefix.h
+        dec/prefix_inc.h
         dec/state.c
         dec/state.h
+        dec/static_init.c
+        dec/static_init.h
 )
 # [[[end]]]
 target_include_directories(brotli PUBLIC include)

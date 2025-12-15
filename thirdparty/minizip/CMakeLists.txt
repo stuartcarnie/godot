@@ -9,8 +9,10 @@ godot_add_library(minizip FOLDER thirdparty STATIC)
 # ]]]
 target_sources(minizip PRIVATE
         crypt.h
+        ints.h
         ioapi.c
         ioapi.h
+        skipset.h
         unzip.c
         unzip.h
         zip.c

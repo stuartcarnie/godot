@@ -39,7 +39,6 @@ target_sources(manifold PRIVATE
         src/shared.h
         src/smoothing.cpp
         src/sort.cpp
-        src/sparse.h
         src/subdivision.cpp
         src/svd.h
         src/tree2d.cpp
