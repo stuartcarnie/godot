@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 if __name__ != "__main__":
     raise SystemExit(f'Utility script "{__file__}" should not be used as a module!')
@@ -32,7 +32,7 @@ else:
 
 # Mesa NIR
 # Check for latest version: https://github.com/godotengine/godot-nir-static/releases/latest
-mesa_version = "23.1.9-2"
+mesa_version = "25.3.1"
 # WinPixEventRuntime
 # Check for latest version: https://www.nuget.org/api/v2/package/WinPixEventRuntime (check downloaded filename)
 pix_version = "1.0.240308001"
