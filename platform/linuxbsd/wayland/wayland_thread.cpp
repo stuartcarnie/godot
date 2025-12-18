@@ -824,7 +824,7 @@ void WaylandThread::_wl_registry_on_global_remove(void *data, struct wl_registry
 
 	if (name == registry->wp_viewporter_name) {
 		for (KeyValue<DisplayServer::WindowID, WindowState> &pair : registry->wayland_thread->windows) {
-			WindowState ws = pair.value;
+			WindowState &ws = pair.value;
 			if (registry->wp_viewporter) {
 				wp_viewporter_destroy(registry->wp_viewporter);
 				registry->wp_viewporter = nullptr;
@@ -862,7 +862,7 @@ void WaylandThread::_wl_registry_on_global_remove(void *data, struct wl_registry
 
 	if (name == registry->wp_fractional_scale_manager_name) {
 		for (KeyValue<DisplayServer::WindowID, WindowState> &pair : registry->wayland_thread->windows) {
-			WindowState ws = pair.value;
+			WindowState &ws = pair.value;
 
 			if (registry->wp_fractional_scale_manager) {
 				wp_fractional_scale_manager_v1_destroy(registry->wp_fractional_scale_manager);
@@ -1680,6 +1680,16 @@ void WaylandThread::_wl_seat_on_capabilities(void *data, struct wl_seat *wl_seat
 			ss->xkb_compose_state = nullptr;
 		}
 
+		if (ss->xkb_keymap) {
+			xkb_keymap_unref(ss->xkb_keymap);
+			ss->xkb_keymap = nullptr;
+		}
+
+		if (ss->xkb_state) {
+			xkb_state_unref(ss->xkb_state);
+			ss->xkb_state = nullptr;
+		}
+
 		if (ss->wl_keyboard) {
 			wl_keyboard_destroy(ss->wl_keyboard);
 			ss->wl_keyboard = nullptr;
@@ -2309,7 +2319,7 @@ void WaylandThread::_wl_keyboard_on_repeat_info(void *data, struct wl_keyboard *
 	SeatState *ss = (SeatState *)data;
 	ERR_FAIL_NULL(ss);
 
-	ss->repeat_key_delay_msec = 1000 / rate;
+	ss->repeat_key_delay_msec = rate ? 1000 / rate : 0;
 	ss->repeat_start_delay_msec = delay;
 }
 
@@ -3425,7 +3435,7 @@ int WaylandThread::window_state_get_preferred_buffer_scale(WindowState *p_ws) {
 	return max_size;
 }
 
-double WaylandThread::window_state_get_scale_factor(WindowState *p_ws) {
+double WaylandThread::window_state_get_scale_factor(const WindowState *p_ws) {
 	ERR_FAIL_NULL_V(p_ws, 1);
 
 	if (p_ws->fractional_scale > 0) {
@@ -3959,6 +3969,10 @@ struct wl_surface *WaylandThread::window_get_wl_surface(DisplayServer::WindowID 
 }
 
 WaylandThread::WindowState *WaylandThread::window_get_state(DisplayServer::WindowID p_window_id) {
+	return windows.getptr(p_window_id);
+}
+
+const WaylandThread::WindowState *WaylandThread::window_get_state(DisplayServer::WindowID p_window_id) const {
 	return windows.getptr(p_window_id);
 }
 
@@ -4735,16 +4749,22 @@ Error WaylandThread::init() {
 #ifdef LIBDECOR_ENABLED
 	bool libdecor_found = true;
 
+	bool skip_libdecor = OS::get_singleton()->get_environment("GODOT_WAYLAND_DISABLE_LIBDECOR") == "1";
+
 #ifdef SOWRAP_ENABLED
-	if (initialize_libdecor(dylibloader_verbose) != 0) {
+	if (!skip_libdecor && initialize_libdecor(dylibloader_verbose) != 0) {
 		libdecor_found = false;
 	}
 #endif // SOWRAP_ENABLED
 
-	if (libdecor_found) {
-		libdecor_context = libdecor_new(wl_display, (struct libdecor_interface *)&libdecor_interface);
+	if (skip_libdecor) {
+		print_verbose("Skipping libdecor check because GODOT_WAYLAND_DISABLE_LIBDECOR is set to 1.");
 	} else {
-		print_verbose("libdecor not found. Client-side decorations disabled.");
+		if (libdecor_found) {
+			libdecor_context = libdecor_new(wl_display, (struct libdecor_interface *)&libdecor_interface);
+		} else {
+			print_verbose("libdecor not found. Client-side decorations disabled.");
+		}
 	}
 #endif // LIBDECOR_ENABLED
 
@@ -5401,7 +5421,17 @@ void WaylandThread::destroy() {
 			zwp_tablet_tool_v2_destroy(tool);
 		}
 
+		zwp_text_input_v3_destroy(ss->wp_text_input);
+
 		memdelete(ss);
+	}
+
+	if (registry.wp_tablet_manager) {
+		zwp_tablet_manager_v2_destroy(registry.wp_tablet_manager);
+	}
+
+	if (registry.wp_text_input_manager) {
+		zwp_text_input_manager_v3_destroy(registry.wp_text_input_manager);
 	}
 
 	for (struct wl_output *wl_output : registry.wl_outputs) {

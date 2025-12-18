@@ -1230,8 +1230,22 @@ bool TextServerAdvanced::_ensure_glyph(FontAdvanced *p_font_data, const Vector2i
 
 	HashMap<int32_t, FontGlyph>::Iterator E = fd->glyph_map.find(p_glyph);
 	if (E) {
-		r_glyph = E->value;
-		return E->value.found;
+		bool tx_valid = true;
+		if (E->value.texture_idx >= 0) {
+			if (E->value.texture_idx < fd->textures.size()) {
+				tx_valid = fd->textures[E->value.texture_idx].image.is_valid();
+			} else {
+				tx_valid = false;
+			}
+		}
+		if (tx_valid) {
+			r_glyph = E->value;
+			return E->value.found;
+#ifdef DEBUG_ENABLED
+		} else {
+			WARN_PRINT(vformat("Invalid texture cache for glyph %x in font %s, glyph will be re-rendered. Re-import this font to regenerate textures.", glyph_index, p_font_data->font_name));
+#endif
+		}
 	}
 
 	if (glyph_index == 0) { // Non graphical or invalid glyph, do not render.
@@ -2012,6 +2026,22 @@ _FORCE_INLINE_ void TextServerAdvanced::_font_clear_cache(FontAdvanced *p_font_d
 	p_font_data->supported_features.clear();
 	p_font_data->supported_varaitions.clear();
 	p_font_data->supported_scripts.clear();
+}
+
+bool TextServerAdvanced::_font_is_color(const RID &p_font_rid) const {
+	FontAdvanced *fd = _get_font_data(p_font_rid);
+	ERR_FAIL_NULL_V(fd, false);
+
+	MutexLock lock(fd->mutex);
+	Vector2i size = _get_size(fd, 16);
+
+	FontForSizeAdvanced *ffsd = nullptr;
+	ERR_FAIL_COND_V(!_ensure_cache_for_size(fd, size, ffsd), false);
+#ifdef MODULE_FREETYPE_ENABLED
+	return ffsd->face && FT_HAS_COLOR(ffsd->face);
+#else
+	return false;
+#endif
 }
 
 hb_font_t *TextServerAdvanced::_font_get_hb_handle(const RID &p_font_rid, int64_t p_size, bool &r_is_color) const {
@@ -4224,6 +4254,9 @@ bool TextServerAdvanced::_font_is_language_supported(const RID &p_font_rid, cons
 	if (fd->language_support_overrides.has(p_language)) {
 		return fd->language_support_overrides[p_language];
 	} else {
+		if (fd->language_support_overrides.has("*")) {
+			return fd->language_support_overrides["*"];
+		}
 		return true;
 	}
 }
@@ -4272,6 +4305,9 @@ bool TextServerAdvanced::_font_is_script_supported(const RID &p_font_rid, const 
 	if (fd->script_support_overrides.has(p_script)) {
 		return fd->script_support_overrides[p_script];
 	} else {
+		if (fd->script_support_overrides.has("*")) {
+			return fd->script_support_overrides["*"];
+		}
 		Vector2i size = _get_size(fd, 16);
 		FontForSizeAdvanced *ffsd = nullptr;
 		ERR_FAIL_COND_V(!_ensure_cache_for_size(fd, size, ffsd), false);
@@ -6740,7 +6776,7 @@ UBreakIterator *TextServerAdvanced::_create_line_break_iterator_for_locale(const
 	return ubrk_clone(bi, r_err);
 }
 
-void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int64_t p_start, int64_t p_end, hb_script_t p_script, hb_direction_t p_direction, FontPriorityList &p_fonts, int64_t p_span, int64_t p_fb_index, int64_t p_prev_start, int64_t p_prev_end, RID p_prev_font) {
+void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int64_t p_start, int64_t p_end, const String &p_language, hb_script_t p_script, hb_direction_t p_direction, FontPriorityList &p_fonts, int64_t p_span, int64_t p_fb_index, int64_t p_prev_start, int64_t p_prev_end, RID p_prev_font) {
 	RID f;
 	int fs = p_sd->spans[p_span].font_size;
 	if (p_fb_index >= 0 && p_fb_index < p_fonts.size()) {
@@ -6748,8 +6784,7 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int64_t p_star
 		f = p_fonts[p_fb_index];
 	} else if (OS::get_singleton()->has_feature("system_fonts") && p_fonts.size() > 0 && ((p_fb_index == p_fonts.size()) || (p_fb_index > p_fonts.size() && p_start != p_prev_start))) {
 		// Try system fallback.
-		RID fdef = p_fonts[0];
-		if (_font_is_allow_system_fallback(fdef)) {
+		if (_font_is_allow_system_fallback(p_fonts[0])) {
 			_update_chars(p_sd);
 
 			int64_t next = p_end;
@@ -6764,7 +6799,7 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int64_t p_star
 			String script_code = String(scr_buffer);
 
 			String text = p_sd->text.substr(p_start, next - p_start);
-			f = _find_sys_font_for_text(fdef, script_code, p_sd->spans[p_span].language, text);
+			f = _find_sys_font_for_text(p_fonts[0], script_code, p_language, text);
 		}
 	}
 
@@ -6857,9 +6892,9 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int64_t p_star
 	Vector2i fss = _get_size(fd, fs);
 	hb_font_t *hb_font = _font_get_hb_handle(f, fs, color);
 
-	if (p_script == HB_TAG('Z', 's', 'y', 'e') && !color) {
+	if (p_script == HB_TAG('Z', 's', 'y', 'e') && !color && _font_is_allow_system_fallback(p_fonts[0])) {
 		// Color emoji is requested, skip non-color font.
-		_shape_run(p_sd, p_start, p_end, p_script, p_direction, p_fonts, p_span, p_fb_index + 1, p_start, p_end, f);
+		_shape_run(p_sd, p_start, p_end, p_language, p_script, p_direction, p_fonts, p_span, p_fb_index + 1, p_start, p_end, f);
 		return;
 	}
 
@@ -6885,13 +6920,8 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int64_t p_star
 	hb_buffer_set_flags(p_sd->hb_buffer, (hb_buffer_flags_t)flags);
 	hb_buffer_set_script(p_sd->hb_buffer, (p_script == HB_TAG('Z', 's', 'y', 'e')) ? HB_SCRIPT_COMMON : p_script);
 
-	if (p_sd->spans[p_span].language.is_empty()) {
-		hb_language_t lang = hb_language_from_string(TranslationServer::get_singleton()->get_tool_locale().ascii().get_data(), -1);
-		hb_buffer_set_language(p_sd->hb_buffer, lang);
-	} else {
-		hb_language_t lang = hb_language_from_string(p_sd->spans[p_span].language.ascii().get_data(), -1);
-		hb_buffer_set_language(p_sd->hb_buffer, lang);
-	}
+	hb_language_t lang = hb_language_from_string(p_language.ascii().get_data(), -1);
+	hb_buffer_set_language(p_sd->hb_buffer, lang);
 
 	hb_buffer_add_utf32(p_sd->hb_buffer, (const uint32_t *)p_sd->text.ptr(), p_sd->text.length(), p_start, p_end - p_start);
 
@@ -7075,7 +7105,7 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int64_t p_star
 		for (unsigned int i = 0; i < glyph_count; i++) {
 			if ((w[i].flags & GRAPHEME_IS_VALID) == GRAPHEME_IS_VALID) {
 				if (failed_subrun_start != p_end + 1) {
-					_shape_run(p_sd, failed_subrun_start, failed_subrun_end, p_script, p_direction, p_fonts, p_span, p_fb_index + 1, p_start, p_end, (p_fb_index >= p_fonts.size()) ? f : RID());
+					_shape_run(p_sd, failed_subrun_start, failed_subrun_end, p_language, p_script, p_direction, p_fonts, p_span, p_fb_index + 1, p_start, p_end, (p_fb_index >= p_fonts.size()) ? f : RID());
 					failed_subrun_start = p_end + 1;
 					failed_subrun_end = p_start;
 				}
@@ -7106,7 +7136,7 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int64_t p_star
 		}
 		memfree(w);
 		if (failed_subrun_start != p_end + 1) {
-			_shape_run(p_sd, failed_subrun_start, failed_subrun_end, p_script, p_direction, p_fonts, p_span, p_fb_index + 1, p_start, p_end, (p_fb_index >= p_fonts.size()) ? f : RID());
+			_shape_run(p_sd, failed_subrun_start, failed_subrun_end, p_language, p_script, p_direction, p_fonts, p_span, p_fb_index + 1, p_start, p_end, (p_fb_index >= p_fonts.size()) ? f : RID());
 		}
 		p_sd->ascent = MAX(p_sd->ascent, _font_get_ascent(f, fs) + _font_get_spacing(f, SPACING_TOP));
 		p_sd->descent = MAX(p_sd->descent, _font_get_descent(f, fs) + _font_get_spacing(f, SPACING_BOTTOM));
@@ -7128,7 +7158,7 @@ void TextServerAdvanced::_shape_run(ShapedTextDataAdvanced *p_sd, int64_t p_star
 			p_sd->upos = MAX(p_sd->upos, _font_get_underline_position(f, fs));
 			p_sd->uthk = MAX(p_sd->uthk, _font_get_underline_thickness(f, fs));
 		} else {
-			_shape_run(p_sd, p_start, p_end, p_script, p_direction, p_fonts, p_span, p_fb_index + 1, p_start, p_end, f);
+			_shape_run(p_sd, p_start, p_end, p_language, p_script, p_direction, p_fonts, p_span, p_fb_index + 1, p_start, p_end, f);
 		}
 	}
 }
@@ -7156,6 +7186,8 @@ bool TextServerAdvanced::_shaped_text_shape(const RID &p_shaped) {
 		sd->valid.set();
 		return true;
 	}
+
+	const String &project_locale = TranslationServer::get_singleton()->get_tool_locale();
 
 	sd->utf16 = sd->text.utf16();
 	const UChar *data = sd->utf16.get_data();
@@ -7324,8 +7356,18 @@ bool TextServerAdvanced::_shaped_text_shape(const RID &p_shaped) {
 							}
 							sd->glyphs.push_back(gl);
 						} else {
-							FontPriorityList fonts(this, span.fonts, span.language, script_code);
-							_shape_run(sd, MAX(span.start - sd->start, script_run_start), MIN(span.end - sd->start, script_run_end), sd->script_iter->script_ranges[j].script, bidi_run_direction, fonts, k, 0, 0, 0, RID());
+							// Select best matching language for the run.
+							String language = span.language;
+							if (!language.contains("force")) {
+								if (language.is_empty() || !TranslationServer::get_singleton()->is_script_suppored_by_locale(language, script_code)) {
+									language = project_locale;
+									if (language.is_empty() || !TranslationServer::get_singleton()->is_script_suppored_by_locale(language, script_code)) {
+										language = os_locale;
+									}
+								}
+							}
+							FontPriorityList fonts(this, span.fonts, language.left(3).remove_char('_'), script_code, sd->script_iter->script_ranges[j].script == HB_TAG('Z', 's', 'y', 'e'));
+							_shape_run(sd, MAX(span.start - sd->start, script_run_start), MIN(span.end - sd->start, script_run_end), language, sd->script_iter->script_ranges[j].script, bidi_run_direction, fonts, k, 0, 0, 0, RID());
 						}
 					}
 				}
@@ -8075,6 +8117,8 @@ void TextServerAdvanced::_update_settings() {
 }
 
 TextServerAdvanced::TextServerAdvanced() {
+	os_locale = OS::get_singleton()->get_locale();
+
 	_insert_feature_sets();
 	_bmp_create_font_funcs();
 	_update_settings();

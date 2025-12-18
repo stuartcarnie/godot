@@ -157,6 +157,10 @@ cppcheck-cppcheck-build-dir/
 *.geany
 .geanyprj
 
+# GNU patch
+*.orig
+*.rej
+
 # Gprof
 gmon.out
 
