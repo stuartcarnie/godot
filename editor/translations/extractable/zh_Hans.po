@@ -1,4 +1,4 @@
-# Chinese (Simplified) translation of the Godot Engine extractable strings.
+# Chinese (Simplified Han script) translation of the Godot Engine extractable strings.
 # Copyright (c) 2014-present Godot Engine contributors.
 # Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.
 # This file is distributed under the same license as the Godot source code.
@@ -9,17 +9,14 @@ msgstr ""
 "POT-Creation-Date: 2018-01-20 12:15+0200\n"
 "PO-Revision-Date: 2024-02-23 09:02+0000\n"
 "Last-Translator: Haoyu Qiu <timothyqiu32@gmail.com>\n"
-"Language-Team: Chinese (Simplified) <https://hosted.weblate.org/projects/"
-"godot-engine/godot/zh_Hans/>\n"
-"Language: zh_CN\n"
+"Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
+"projects/godot-engine/godot/zh_Hans/>\n"
+"Language: zh_Hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "X-Generator: Weblate 5.5-dev\n"
-
-msgid "All Recognized"
-msgstr "所有可用类型"
 
 msgid "New Code Region"
 msgstr "新建代码区域"
@@ -72,6 +69,9 @@ msgstr "选择此文件夹"
 
 msgid "You don't have permission to access contents of this folder."
 msgstr "你无权访问此文件夹的内容。"
+
+msgid "All Recognized"
+msgstr "所有可用类型"
 
 msgid "All Files"
 msgstr "所有文件"
