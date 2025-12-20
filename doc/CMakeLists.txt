@@ -1093,7 +1093,7 @@ generate_documentation_compressed("${GODOT_SOURCE_DOCUMENTATION_SOURCE}" "${GODO
 set_abs(GODOT_DOCUMENTATION_TRANSLATIONS ${CMAKE_CURRENT_SOURCE_DIR}
         translations/es.po
         translations/fr.po
-        translations/zh_CN.po
+        translations/zh_Hans.po
 )
 
 set(GODOT_DOCUMENTATION_TRANSLATIONS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/doc_translations.gen.h ${CMAKE_BINARY_INCLUDE_DIR}/editor/translations/doc_translations.gen.cpp)

@@ -32,12 +32,10 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         editor/ko.po
         editor/lv.po
         editor/ms.po
-        editor/nb.po
         editor/nl.po
         editor/pl.po
         editor/pt.po
         editor/pt_BR.po
-        editor/ro.po
         editor/ru.po
         editor/sk.po
         editor/sv.po
@@ -47,8 +45,8 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         editor/tr.po
         editor/uk.po
         editor/vi.po
-        editor/zh_CN.po
-        editor/zh_TW.po
+        editor/zh_Hans.po
+        editor/zh_Hant.po
 )
 # [[[end]]]
 
@@ -64,7 +62,6 @@ generate_file(make_editor_translations "${GODOT_EDITOR_TRANSLATIONS_SOURCE}" "${
 #   cog.outl(')')
 # ]]]
 set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
-        properties/ar.po
         properties/cs.po
         properties/de.po
         properties/es.po
@@ -87,8 +84,8 @@ set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         properties/tr.po
         properties/uk.po
         properties/vi.po
-        properties/zh_CN.po
-        properties/zh_TW.po
+        properties/zh_Hans.po
+        properties/zh_Hant.po
 )
 # [[[end]]]
 
