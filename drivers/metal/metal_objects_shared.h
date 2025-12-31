@@ -33,6 +33,11 @@
 #import "metal_device_properties.h"
 #import "metal_utils.h"
 #import "pixel_formats.h"
+#import "sha256_digest.h"
+
+#import <memory>
+
+class RenderingDeviceDriverMetal;
 
 using RDC = RenderingDeviceCommons;
 
@@ -118,7 +123,7 @@ struct ClearAttKey {
 /// A ring buffer backed by MTLBuffer instances for transient GPU allocations.
 /// Allocations are 16-byte aligned with a minimum size of 16 bytes.
 /// When the current buffer is exhausted, a new buffer is allocated.
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDRingBuffer {
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDRingBuffer {
 public:
 	static constexpr uint32_t DEFAULT_BUFFER_SIZE = 512 * 1024;
 	static constexpr uint32_t MIN_BLOCK_SIZE = 16;
@@ -234,7 +239,7 @@ public:
 
 #pragma mark - Resource Factory
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDResourceFactory {
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDResourceFactory {
 private:
 	id<MTLDevice> device;
 	PixelFormats &pixel_formats;
@@ -259,7 +264,7 @@ public:
 	~MDResourceFactory() = default;
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDResourceCache {
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDResourceCache {
 private:
 	typedef HashMap<ClearAttKey, id<MTLRenderPipelineState>> HashMap;
 	std::unique_ptr<MDResourceFactory> resource_factory;
@@ -300,7 +305,7 @@ _FORCE_INLINE_ static uint32_t to_index(RDD::ShaderStage p_s) {
 	}
 }
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDFrameBuffer {
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDFrameBuffer {
 	Vector<MTL::Texture> textures;
 
 public:
@@ -407,3 +412,730 @@ _FORCE_INLINE_ auto release(RDD::ID p_id) {
 }
 
 } // namespace rid
+
+#pragma mark - Render Pass Types
+
+class MDRenderPass;
+
+enum class MDAttachmentType : uint8_t {
+	None = 0,
+	Color = 1 << 0,
+	Depth = 1 << 1,
+	Stencil = 1 << 2,
+};
+
+_FORCE_INLINE_ MDAttachmentType &operator|=(MDAttachmentType &p_a, MDAttachmentType p_b) {
+	flags::set(p_a, p_b);
+	return p_a;
+}
+
+_FORCE_INLINE_ bool operator&(MDAttachmentType p_a, MDAttachmentType p_b) {
+	return uint8_t(p_a) & uint8_t(p_b);
+}
+
+struct MDSubpass {
+	uint32_t subpass_index = 0;
+	uint32_t view_count = 0;
+	LocalVector<RDD::AttachmentReference> input_references;
+	LocalVector<RDD::AttachmentReference> color_references;
+	RDD::AttachmentReference depth_stencil_reference;
+	LocalVector<RDD::AttachmentReference> resolve_references;
+
+	MTLFmtCaps getRequiredFmtCapsForAttachmentAt(uint32_t p_index) const;
+};
+
+struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDAttachment {
+private:
+	uint32_t index = 0;
+	uint32_t firstUseSubpassIndex = 0;
+	uint32_t lastUseSubpassIndex = 0;
+
+public:
+	MTLPixelFormat format = MTLPixelFormatInvalid;
+	MDAttachmentType type = MDAttachmentType::None;
+	MTLLoadAction loadAction = MTLLoadActionDontCare;
+	MTLStoreAction storeAction = MTLStoreActionDontCare;
+	MTLLoadAction stencilLoadAction = MTLLoadActionDontCare;
+	MTLStoreAction stencilStoreAction = MTLStoreActionDontCare;
+	uint32_t samples = 1;
+
+	/*!
+	 * @brief Returns true if this attachment is first used in the given subpass.
+	 * @param p_subpass
+	 * @return
+	 */
+	_FORCE_INLINE_ bool isFirstUseOf(MDSubpass const &p_subpass) const {
+		return p_subpass.subpass_index == firstUseSubpassIndex;
+	}
+
+	/*!
+	 * @brief Returns true if this attachment is last used in the given subpass.
+	 * @param p_subpass
+	 * @return
+	 */
+	_FORCE_INLINE_ bool isLastUseOf(MDSubpass const &p_subpass) const {
+		return p_subpass.subpass_index == lastUseSubpassIndex;
+	}
+
+	void linkToSubpass(MDRenderPass const &p_pass);
+
+	MTLStoreAction getMTLStoreAction(MDSubpass const &p_subpass,
+			bool p_is_rendering_entire_area,
+			bool p_has_resolve,
+			bool p_can_resolve,
+			bool p_is_stencil) const;
+	bool configureDescriptor(MTLRenderPassAttachmentDescriptor *p_desc,
+			PixelFormats &p_pf,
+			MDSubpass const &p_subpass,
+			id<MTLTexture> p_attachment,
+			bool p_is_rendering_entire_area,
+			bool p_has_resolve,
+			bool p_can_resolve,
+			bool p_is_stencil) const;
+	/** Returns whether this attachment should be cleared in the subpass. */
+	bool shouldClear(MDSubpass const &p_subpass, bool p_is_stencil) const;
+};
+
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDRenderPass {
+public:
+	Vector<MDAttachment> attachments;
+	Vector<MDSubpass> subpasses;
+
+	uint32_t get_sample_count() const {
+		return attachments.is_empty() ? 1 : attachments[0].samples;
+	}
+
+	MDRenderPass(Vector<MDAttachment> &p_attachments, Vector<MDSubpass> &p_subpasses);
+};
+
+#pragma mark - Command Buffer Helpers
+
+_FORCE_INLINE_ static MTLSize mipmapLevelSizeFromTexture(id<MTLTexture> p_tex, NSUInteger p_level) {
+	MTLSize lvlSize;
+	lvlSize.width = MAX(p_tex.width >> p_level, 1UL);
+	lvlSize.height = MAX(p_tex.height >> p_level, 1UL);
+	lvlSize.depth = MAX(p_tex.depth >> p_level, 1UL);
+	return lvlSize;
+}
+
+_FORCE_INLINE_ static MTLSize MTLSizeFromVector3i(Vector3i p_size) {
+	return MTLSizeMake(p_size.x, p_size.y, p_size.z);
+}
+
+_FORCE_INLINE_ static MTLOrigin MTLOriginFromVector3i(Vector3i p_origin) {
+	return MTLOriginMake(p_origin.x, p_origin.y, p_origin.z);
+}
+
+// Clamps the size so that the sum of the origin and size do not exceed the maximum size.
+_FORCE_INLINE_ static MTLSize clampMTLSize(MTLSize p_size, MTLOrigin p_origin, MTLSize p_max_size) {
+	MTLSize clamped;
+	clamped.width = MIN(p_size.width, p_max_size.width - p_origin.x);
+	clamped.height = MIN(p_size.height, p_max_size.height - p_origin.y);
+	clamped.depth = MIN(p_size.depth, p_max_size.depth - p_origin.z);
+	return clamped;
+}
+
+API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0))
+_FORCE_INLINE_ static bool isArrayTexture(MTLTextureType p_type) {
+	return (p_type == MTLTextureType3D ||
+			p_type == MTLTextureType2DArray ||
+			p_type == MTLTextureType2DMultisampleArray ||
+			p_type == MTLTextureType1DArray);
+}
+
+_FORCE_INLINE_ static bool operator==(MTLSize p_a, MTLSize p_b) {
+	return p_a.width == p_b.width && p_a.height == p_b.height && p_a.depth == p_b.depth;
+}
+
+#pragma mark - Pipeline Stage Conversion
+
+GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
+
+_FORCE_INLINE_ static MTLStages convert_src_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
+	p_stages.clear_flag(RDD::PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+
+	if (p_stages.has_flag(RDD::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT | RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
+		return MTLStageAll;
+	}
+
+	MTLStages mtlStages = 0;
+
+	// Vertex stage mappings
+	if (p_stages & (RDD::PIPELINE_STAGE_DRAW_INDIRECT_BIT | RDD::PIPELINE_STAGE_VERTEX_INPUT_BIT | RDD::PIPELINE_STAGE_VERTEX_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | RDD::PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
+		mtlStages |= MTLStageVertex;
+	}
+
+	// Fragment stage mappings (includes resolve, which on Metal is handled in the render pipeline)
+	if (p_stages & (RDD::PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RDD::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT | RDD::PIPELINE_STAGE_RESOLVE_BIT | RDD::PIPELINE_STAGE_CLEAR_STORAGE_BIT)) {
+		mtlStages |= MTLStageFragment;
+	}
+
+	// Compute stage
+	if (p_stages & RDD::PIPELINE_STAGE_COMPUTE_SHADER_BIT) {
+		mtlStages |= MTLStageDispatch;
+	}
+
+	// Blit stage (transfer operations)
+	if (p_stages & (RDD::PIPELINE_STAGE_COPY_BIT)) {
+		mtlStages |= MTLStageBlit;
+	}
+
+	// ALL_GRAPHICS_BIT special case
+	if (p_stages & RDD::PIPELINE_STAGE_ALL_GRAPHICS_BIT) {
+		mtlStages |= (MTLStageVertex | MTLStageFragment);
+	}
+
+	return mtlStages;
+}
+
+_FORCE_INLINE_ static MTLStages convert_dst_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
+	p_stages.clear_flag(RDD::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+
+	if (p_stages.has_flag(RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT | RDD::PIPELINE_STAGE_TOP_OF_PIPE_BIT)) {
+		return MTLStageAll;
+	}
+
+	MTLStages mtlStages = 0;
+
+	if (p_stages & (RDD::PIPELINE_STAGE_DRAW_INDIRECT_BIT | RDD::PIPELINE_STAGE_VERTEX_INPUT_BIT | RDD::PIPELINE_STAGE_VERTEX_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | RDD::PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
+		mtlStages |= MTLStageVertex;
+	}
+
+	if (p_stages & (RDD::PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RDD::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT | RDD::PIPELINE_STAGE_RESOLVE_BIT)) {
+		mtlStages |= MTLStageFragment;
+	}
+
+	if (p_stages & RDD::PIPELINE_STAGE_COMPUTE_SHADER_BIT) {
+		mtlStages |= MTLStageDispatch;
+	}
+
+	if (p_stages & (RDD::PIPELINE_STAGE_COPY_BIT | RDD::PIPELINE_STAGE_CLEAR_STORAGE_BIT)) {
+		mtlStages |= MTLStageBlit;
+	}
+
+	if (p_stages & RDD::PIPELINE_STAGE_ALL_GRAPHICS_BIT) {
+		mtlStages |= (MTLStageVertex | MTLStageFragment);
+	}
+
+	return mtlStages;
+}
+
+GODOT_CLANG_WARNING_POP
+
+#pragma mark - Command Buffer Base
+
+enum class MDCommandBufferStateType {
+	None,
+	Render,
+	Compute,
+	Blit, // Only used by Metal 3
+};
+
+/// Base struct for render state shared between MTL3 and MTL4 implementations.
+struct RenderStateBase {
+	LocalVector<MTLViewport> viewports;
+	LocalVector<MTLScissorRect> scissors;
+	std::optional<Color> blend_constants;
+
+	// clang-format off
+	enum DirtyFlag : uint16_t {
+		DIRTY_NONE     = 0,
+		DIRTY_PIPELINE = 1 << 0,
+		DIRTY_UNIFORMS = 1 << 1,
+		DIRTY_PUSH     = 1 << 2,
+		DIRTY_DEPTH    = 1 << 3,
+		DIRTY_VERTEX   = 1 << 4,
+		DIRTY_VIEWPORT = 1 << 5,
+		DIRTY_SCISSOR  = 1 << 6,
+		DIRTY_BLEND    = 1 << 7,
+		DIRTY_RASTER   = 1 << 8,
+		DIRTY_ALL      = (1 << 9) - 1,
+	};
+	// clang-format on
+	BitField<DirtyFlag> dirty = DIRTY_NONE;
+};
+
+/// Abstract base class for Metal command buffers, shared between MTL3 and MTL4 implementations.
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDCommandBufferBase {
+	LocalVector<id> _retained_resources;
+
+protected:
+	// From RenderingDevice
+	static constexpr uint32_t MAX_PUSH_CONSTANT_SIZE = 128;
+
+	MDCommandBufferStateType type = MDCommandBufferStateType::None;
+
+	uint8_t push_constant_data[MAX_PUSH_CONSTANT_SIZE];
+	uint32_t push_constant_data_len = 0;
+	uint32_t push_constant_binding = UINT32_MAX;
+
+	::RenderingDeviceDriverMetal *device_driver = nullptr;
+
+	void release_resources();
+
+	/// Called when push constants are modified to mark the appropriate dirty flags.
+	virtual void mark_push_constants_dirty() = 0;
+
+	/// Returns a reference to the render state base for viewport/scissor/blend operations.
+	virtual RenderStateBase &get_render_state_base() = 0;
+
+	/// Returns the view count for the current subpass.
+	virtual uint32_t get_current_view_count() const = 0;
+
+	/// Accessors for render pass state.
+	virtual MDRenderPass *get_render_pass() const = 0;
+	virtual MDFrameBuffer *get_frame_buffer() const = 0;
+	virtual const MDSubpass &get_current_subpass() const = 0;
+	virtual LocalVector<RDD::RenderPassClearValue> &get_clear_values() = 0;
+	virtual const Rect2i &get_render_area() const = 0;
+	virtual void end_render_encoding() = 0;
+
+	void _populate_vertices(simd::float4 *p_vertices, Size2i p_fb_size, VectorView<Rect2i> p_rects);
+	uint32_t _populate_vertices(simd::float4 *p_vertices, uint32_t p_index, Rect2i const &p_rect, Size2i p_fb_size);
+	void _end_render_pass();
+	void _render_clear_render_area();
+
+public:
+	virtual ~MDCommandBufferBase() = default;
+
+	virtual void begin() = 0;
+	virtual void commit() = 0;
+	virtual void end() = 0;
+
+	virtual void bind_pipeline(RDD::PipelineID p_pipeline) = 0;
+	void encode_push_constant_data(RDD::ShaderID p_shader, VectorView<uint32_t> p_data);
+
+	void retain_resource(id p_resource);
+
+#pragma mark - Render Commands
+
+	virtual void render_bind_uniform_sets(VectorView<RDD::UniformSetID> p_uniform_sets, RDD::ShaderID p_shader, uint32_t p_first_set_index, uint32_t p_set_count, uint32_t p_dynamic_offsets) = 0;
+	virtual void render_clear_attachments(VectorView<RDD::AttachmentClear> p_attachment_clears, VectorView<Rect2i> p_rects) = 0;
+	void render_set_viewport(VectorView<Rect2i> p_viewports);
+	void render_set_scissor(VectorView<Rect2i> p_scissors);
+	void render_set_blend_constants(const Color &p_constants);
+	virtual void render_begin_pass(RDD::RenderPassID p_render_pass,
+			RDD::FramebufferID p_frameBuffer,
+			RDD::CommandBufferType p_cmd_buffer_type,
+			const Rect2i &p_rect,
+			VectorView<RDD::RenderPassClearValue> p_clear_values) = 0;
+	virtual void render_next_subpass() = 0;
+	virtual void render_draw(uint32_t p_vertex_count,
+			uint32_t p_instance_count,
+			uint32_t p_base_vertex,
+			uint32_t p_first_instance) = 0;
+	virtual void render_bind_vertex_buffers(uint32_t p_binding_count, const RDD::BufferID *p_buffers, const uint64_t *p_offsets, uint64_t p_dynamic_offsets) = 0;
+	virtual void render_bind_index_buffer(RDD::BufferID p_buffer, RDD::IndexBufferFormat p_format, uint64_t p_offset) = 0;
+
+	virtual void render_draw_indexed(uint32_t p_index_count,
+			uint32_t p_instance_count,
+			uint32_t p_first_index,
+			int32_t p_vertex_offset,
+			uint32_t p_first_instance) = 0;
+
+	virtual void render_draw_indexed_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride) = 0;
+	virtual void render_draw_indexed_indirect_count(RDD::BufferID p_indirect_buffer, uint64_t p_offset, RDD::BufferID p_count_buffer, uint64_t p_count_buffer_offset, uint32_t p_max_draw_count, uint32_t p_stride) = 0;
+	virtual void render_draw_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride) = 0;
+	virtual void render_draw_indirect_count(RDD::BufferID p_indirect_buffer, uint64_t p_offset, RDD::BufferID p_count_buffer, uint64_t p_count_buffer_offset, uint32_t p_max_draw_count, uint32_t p_stride) = 0;
+
+	virtual void render_end_pass() = 0;
+
+#pragma mark - Compute Commands
+
+	virtual void compute_bind_uniform_sets(VectorView<RDD::UniformSetID> p_uniform_sets, RDD::ShaderID p_shader, uint32_t p_first_set_index, uint32_t p_set_count, uint32_t p_dynamic_offsets) = 0;
+	virtual void compute_dispatch(uint32_t p_x_groups, uint32_t p_y_groups, uint32_t p_z_groups) = 0;
+	virtual void compute_dispatch_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset) = 0;
+
+#pragma mark - Transfer
+
+	virtual void resolve_texture(RDD::TextureID p_src_texture, RDD::TextureLayout p_src_texture_layout, uint32_t p_src_layer, uint32_t p_src_mipmap, RDD::TextureID p_dst_texture, RDD::TextureLayout p_dst_texture_layout, uint32_t p_dst_layer, uint32_t p_dst_mipmap) = 0;
+	virtual void clear_color_texture(RDD::TextureID p_texture, RDD::TextureLayout p_texture_layout, const Color &p_color, const RDD::TextureSubresourceRange &p_subresources) = 0;
+	virtual void clear_buffer(RDD::BufferID p_buffer, uint64_t p_offset, uint64_t p_size) = 0;
+	virtual void copy_buffer(RDD::BufferID p_src_buffer, RDD::BufferID p_dst_buffer, VectorView<RDD::BufferCopyRegion> p_regions) = 0;
+	virtual void copy_texture(RDD::TextureID p_src_texture, RDD::TextureID p_dst_texture, VectorView<RDD::TextureCopyRegion> p_regions) = 0;
+	virtual void copy_buffer_to_texture(RDD::BufferID p_src_buffer, RDD::TextureID p_dst_texture, VectorView<RDD::BufferTextureCopyRegion> p_regions) = 0;
+	virtual void copy_texture_to_buffer(RDD::TextureID p_src_texture, RDD::BufferID p_dst_buffer, VectorView<RDD::BufferTextureCopyRegion> p_regions) = 0;
+
+#pragma mark - Synchronization
+
+	virtual void pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_stages,
+			BitField<RDD::PipelineStageBits> p_dst_stages,
+			VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
+			VectorView<RDD::BufferBarrier> p_buffer_barriers,
+			VectorView<RDD::TextureBarrier> p_texture_barriers) = 0;
+
+#pragma mark - Debugging
+
+	virtual void begin_label(const char *p_label_name, const Color &p_color) = 0;
+	virtual void end_label() = 0;
+};
+
+#pragma mark - Uniform Types
+
+#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 140000) || (TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 170000)
+#define MTLBindingAccess MTLArgumentAccess
+#define MTLBindingAccessReadOnly MTLArgumentAccessReadOnly
+#define MTLBindingAccessReadWrite MTLArgumentAccessReadWrite
+#define MTLBindingAccessWriteOnly MTLArgumentAccessWriteOnly
+#endif
+
+struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) UniformInfo {
+	uint32_t binding;
+	BitField<RDD::ShaderStage> active_stages;
+	MTLDataType dataType = MTLDataTypeNone;
+	MTLBindingAccess access = MTLBindingAccessReadOnly;
+	MTLResourceUsage usage = 0;
+	MTLTextureType textureType = MTLTextureType2D;
+	uint32_t imageFormat = 0;
+	uint32_t arrayLength = 0;
+	bool isMultisampled = 0;
+
+	struct Indexes {
+		uint32_t buffer = UINT32_MAX;
+		uint32_t texture = UINT32_MAX;
+		uint32_t sampler = UINT32_MAX;
+	};
+	Indexes slot;
+	Indexes arg_buffer;
+
+	enum class IndexType {
+		SLOT,
+		ARG,
+	};
+
+	_FORCE_INLINE_ Indexes &get_indexes(IndexType p_type) {
+		switch (p_type) {
+			case IndexType::SLOT:
+				return slot;
+			case IndexType::ARG:
+				return arg_buffer;
+		}
+	}
+};
+
+struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) UniformSet {
+	LocalVector<UniformInfo> uniforms;
+	LocalVector<uint32_t> dynamic_uniforms;
+	uint32_t buffer_size = 0;
+};
+
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) DynamicOffsetLayout {
+	struct Data {
+		uint8_t offset : 4;
+		uint8_t count : 4;
+	};
+
+	union {
+		Data data[MAX_DYNAMIC_BUFFERS];
+		uint64_t _val = 0;
+	};
+
+public:
+	_FORCE_INLINE_ bool is_empty() const { return _val == 0; }
+
+	_FORCE_INLINE_ uint32_t get_count(uint32_t p_set_index) const {
+		return data[p_set_index].count;
+	}
+
+	_FORCE_INLINE_ uint32_t get_offset(uint32_t p_set_index) const {
+		return data[p_set_index].offset;
+	}
+
+	_FORCE_INLINE_ void set_offset_count(uint32_t p_set_index, uint8_t p_offset, uint8_t p_count) {
+		data[p_set_index].offset = p_offset;
+		data[p_set_index].count = p_count;
+	}
+
+	_FORCE_INLINE_ uint32_t get_offset_index_shift(uint32_t p_set_index, uint32_t p_dynamic_index = 0) const {
+		return (data[p_set_index].offset + p_dynamic_index) * 4u;
+	}
+};
+
+#pragma mark - Shader Types
+
+struct ShaderCacheEntry;
+
+enum class ShaderLoadStrategy {
+	IMMEDIATE,
+	LAZY,
+
+	/// The default strategy is to load the shader immediately.
+	DEFAULT = IMMEDIATE,
+};
+
+/// A Metal shader library.
+class MDLibrary : public std::enable_shared_from_this<MDLibrary> {
+protected:
+	ShaderCacheEntry *_entry = nullptr;
+#ifdef DEV_ENABLED
+	NSString *_original_source = nil;
+#endif
+
+	MDLibrary(ShaderCacheEntry *p_entry
+#ifdef DEV_ENABLED
+			,
+			NSString *p_source
+#endif
+	);
+
+public:
+	virtual ~MDLibrary();
+
+	virtual id<MTLLibrary> get_library() = 0;
+	virtual NSError *get_error() = 0;
+	virtual void set_label(NSString *p_label);
+#ifdef DEV_ENABLED
+	NSString *get_original_source() const { return _original_source; }
+#endif
+
+	static std::shared_ptr<MDLibrary> create(ShaderCacheEntry *p_entry,
+			id<MTLDevice> p_device,
+			NSString *p_source,
+			MTLCompileOptions *p_options,
+			ShaderLoadStrategy p_strategy);
+
+	static std::shared_ptr<MDLibrary> create(ShaderCacheEntry *p_entry,
+			id<MTLDevice> p_device,
+#ifdef DEV_ENABLED
+			NSString *p_source,
+#endif
+			dispatch_data_t p_data);
+};
+
+/// A cache entry for a Metal shader library.
+struct ShaderCacheEntry {
+	RenderingDeviceDriverMetal &owner;
+	/// A hash of the Metal shader source code.
+	SHA256Digest key;
+	CharString name;
+	RD::ShaderStage stage = RD::SHADER_STAGE_VERTEX;
+	/// Weak reference to the library; allows cache lookup without preventing cleanup.
+	std::weak_ptr<MDLibrary> library;
+
+	/// Notify the cache that this entry is no longer needed.
+	void notify_free() const;
+
+	ShaderCacheEntry(RenderingDeviceDriverMetal &p_owner, SHA256Digest p_key) :
+			owner(p_owner), key(p_key) {
+	}
+	~ShaderCacheEntry() = default;
+};
+
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDShader {
+public:
+	CharString name;
+	Vector<UniformSet> sets;
+	struct {
+		BitField<RDD::ShaderStage> stages = {};
+		uint32_t binding = UINT32_MAX;
+		uint32_t size = 0;
+	} push_constants;
+	DynamicOffsetLayout dynamic_offset_layout;
+	bool uses_argument_buffers = true;
+
+	MDShader(CharString p_name, Vector<UniformSet> p_sets, bool p_uses_argument_buffers) :
+			name(p_name), sets(p_sets), uses_argument_buffers(p_uses_argument_buffers) {}
+	virtual ~MDShader() = default;
+};
+
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDComputeShader final : public MDShader {
+public:
+	MTLSize local = {};
+
+	std::shared_ptr<MDLibrary> kernel;
+
+	MDComputeShader(CharString p_name, Vector<UniformSet> p_sets, bool p_uses_argument_buffers, std::shared_ptr<MDLibrary> p_kernel);
+};
+
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDRenderShader final : public MDShader {
+public:
+	bool needs_view_mask_buffer = false;
+
+	std::shared_ptr<MDLibrary> vert;
+	std::shared_ptr<MDLibrary> frag;
+
+	MDRenderShader(CharString p_name,
+			Vector<UniformSet> p_sets,
+			bool p_needs_view_mask_buffer,
+			bool p_uses_argument_buffers,
+			std::shared_ptr<MDLibrary> p_vert, std::shared_ptr<MDLibrary> p_frag);
+};
+
+#pragma mark - Uniform Set
+
+enum StageResourceUsage : uint32_t {
+	ResourceUnused = 0,
+	VertexRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_VERTEX * 2),
+	VertexWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_VERTEX * 2),
+	FragmentRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_FRAGMENT * 2),
+	FragmentWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_FRAGMENT * 2),
+	TesselationControlRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_TESSELATION_CONTROL * 2),
+	TesselationControlWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_TESSELATION_CONTROL * 2),
+	TesselationEvaluationRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_TESSELATION_EVALUATION * 2),
+	TesselationEvaluationWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_TESSELATION_EVALUATION * 2),
+	ComputeRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_COMPUTE * 2),
+	ComputeWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_COMPUTE * 2),
+};
+
+typedef LocalVector<MTLResourceUnsafe> ResourceVector;
+typedef HashMap<StageResourceUsage, ResourceVector> ResourceUsageMap;
+
+_FORCE_INLINE_ StageResourceUsage &operator|=(StageResourceUsage &p_a, uint32_t p_b) {
+	p_a = StageResourceUsage(uint32_t(p_a) | p_b);
+	return p_a;
+}
+
+_FORCE_INLINE_ StageResourceUsage stage_resource_usage(RDC::ShaderStage p_stage, MTLResourceUsage p_usage) {
+	return StageResourceUsage(p_usage << (p_stage * 2));
+}
+
+_FORCE_INLINE_ MTLResourceUsage resource_usage_for_stage(StageResourceUsage p_usage, RDC::ShaderStage p_stage) {
+	return MTLResourceUsage((p_usage >> (p_stage * 2)) & 0b11);
+}
+
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDUniformSet {
+public:
+	id<MTLBuffer> arg_buffer = nil;
+	Vector<uint8_t> arg_buffer_data; // Stored for dynamic uniform sets.
+	ResourceUsageMap usage_to_resources; // Used by Metal 3 for resource tracking.
+	Vector<RDD::BoundUniform> uniforms;
+};
+
+#pragma mark - Pipeline Types
+
+enum class MDPipelineType {
+	None,
+	Render,
+	Compute,
+};
+
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDPipeline {
+public:
+	MDPipelineType type;
+
+	explicit MDPipeline(MDPipelineType p_type) :
+			type(p_type) {}
+	virtual ~MDPipeline() = default;
+};
+
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDRenderPipeline final : public MDPipeline {
+public:
+	id<MTLRenderPipelineState> state = nil;
+	id<MTLDepthStencilState> depth_stencil = nil;
+	uint32_t push_constant_size = 0;
+	uint32_t push_constant_stages_mask = 0;
+	SampleCount sample_count = SampleCount1;
+
+	struct {
+		MTLCullMode cull_mode = MTLCullModeNone;
+		MTLTriangleFillMode fill_mode = MTLTriangleFillModeFill;
+		MTLDepthClipMode clip_mode = MTLDepthClipModeClip;
+		MTLWinding winding = MTLWindingClockwise;
+		MTLPrimitiveType render_primitive = MTLPrimitiveTypePoint;
+
+		struct {
+			bool enabled = false;
+		} depth_test;
+
+		struct {
+			bool enabled = false;
+			float depth_bias = 0.0;
+			float slope_scale = 0.0;
+			float clamp = 0.0;
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+				if (!enabled) {
+					return;
+				}
+				[p_enc setDepthBias:depth_bias slopeScale:slope_scale clamp:clamp];
+			}
+			API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0))
+			_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
+				if (!enabled) {
+					return;
+				}
+				[p_enc setDepthBias:depth_bias slopeScale:slope_scale clamp:clamp];
+			}
+		} depth_bias;
+
+		struct {
+			bool enabled = false;
+			uint32_t front_reference = 0;
+			uint32_t back_reference = 0;
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+				if (!enabled) {
+					return;
+				}
+				[p_enc setStencilFrontReferenceValue:front_reference backReferenceValue:back_reference];
+			}
+			API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0))
+			_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
+				if (!enabled) {
+					return;
+				}
+				[p_enc setStencilFrontReferenceValue:front_reference backReferenceValue:back_reference];
+			}
+		} stencil;
+
+		struct {
+			bool enabled = false;
+			float r = 0.0;
+			float g = 0.0;
+			float b = 0.0;
+			float a = 0.0;
+
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+				//if (!enabled)
+				//	return;
+				[p_enc setBlendColorRed:r green:g blue:b alpha:a];
+			}
+			API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0))
+			_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
+				//if (!enabled)
+				//	return;
+				[p_enc setBlendColorRed:r green:g blue:b alpha:a];
+			}
+		} blend;
+
+		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+			[p_enc setCullMode:cull_mode];
+			[p_enc setTriangleFillMode:fill_mode];
+			[p_enc setDepthClipMode:clip_mode];
+			[p_enc setFrontFacingWinding:winding];
+			depth_bias.apply(p_enc);
+			stencil.apply(p_enc);
+			blend.apply(p_enc);
+		}
+
+		API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0))
+		_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
+			[p_enc setCullMode:cull_mode];
+			[p_enc setTriangleFillMode:fill_mode];
+			[p_enc setDepthClipMode:clip_mode];
+			[p_enc setFrontFacingWinding:winding];
+			depth_bias.apply(p_enc);
+			stencil.apply(p_enc);
+			blend.apply(p_enc);
+		}
+
+	} raster_state;
+
+	MDRenderShader *shader = nil;
+
+	MDRenderPipeline() :
+			MDPipeline(MDPipelineType::Render) {}
+	~MDRenderPipeline() final = default;
+};
+
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDComputePipeline final : public MDPipeline {
+public:
+	id<MTLComputePipelineState> state = nil;
+	struct {
+		MTLSize local = {};
+	} compute_state;
+
+	MDComputeShader *shader = nil;
+
+	explicit MDComputePipeline(id<MTLComputePipelineState> p_state) :
+			MDPipeline(MDPipelineType::Compute), state(p_state) {}
+	~MDComputePipeline() final = default;
+};

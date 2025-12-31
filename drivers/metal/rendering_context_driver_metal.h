@@ -38,7 +38,7 @@
 #import <CoreGraphics/CGGeometry.h>
 
 #ifdef __OBJC__
-#import "metal_objects.h"
+#import "metal_objects_shared.h"
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CALayer.h>
@@ -49,8 +49,11 @@
 typedef enum MTLPixelFormat {
 	MTLPixelFormatBGRA8Unorm = 80,
 } MTLPixelFormat;
-class MDCommandBuffer;
 #endif
+
+namespace MTL3 {
+class MDCommandBuffer;
+}
 
 class PixelFormats;
 
@@ -123,7 +126,7 @@ public:
 		MTLPixelFormat get_pixel_format() const { return MTLPixelFormatBGRA8Unorm; }
 		virtual Error resize(uint32_t p_desired_framebuffer_count) = 0;
 		virtual RDD::FramebufferID acquire_next_frame_buffer() = 0;
-		virtual void present(MDCommandBuffer *p_cmd_buffer) = 0;
+		virtual void present(MTL3::MDCommandBuffer *p_cmd_buffer) = 0;
 		virtual METAL_DRAWABLE next_drawable() = 0;
 		API_AVAILABLE(macos(26.0), ios(26.0))
 		virtual METAL_RESIDENCY_SET get_residency_set() const = 0;

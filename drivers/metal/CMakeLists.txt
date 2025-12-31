@@ -9,14 +9,14 @@ godot_add_library(metal FOLDER drivers STATIC)
 # ]]]
 target_sources(metal PRIVATE
         inflection_map.h
+        metal3_objects.h
+        metal3_objects.mm
         metal4_objects.h
         metal4_objects.mm
         metal_device_profile.cpp
         metal_device_profile.h
         metal_device_properties.h
         metal_device_properties.mm
-        metal_objects.h
-        metal_objects.mm
         metal_objects_shared.h
         metal_objects_shared.mm
         metal_utils.h
@@ -26,6 +26,8 @@ target_sources(metal PRIVATE
         rendering_context_driver_metal.mm
         rendering_device_driver_metal.h
         rendering_device_driver_metal.mm
+        rendering_device_driver_metal3.h
+        rendering_device_driver_metal3.mm
         rendering_device_driver_metal4.h
         rendering_device_driver_metal4.mm
         rendering_shader_container_metal.h
@@ -35,7 +37,7 @@ target_sources(metal PRIVATE
 # [[[end]]]
 target_compile_features(metal PRIVATE cxx_std_20)
 set_target_properties(metal PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
-target_link_libraries(metal PUBLIC core spirv-cross)
+target_link_libraries(metal PUBLIC core spirv-cross PRIVATE metal-cpp)
 target_compile_definitions(metal
         PUBLIC
         METAL_ENABLED=1

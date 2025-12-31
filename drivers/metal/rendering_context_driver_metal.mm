@@ -30,7 +30,8 @@
 
 #import "rendering_context_driver_metal.h"
 
-#import "rendering_device_driver_metal.h"
+#import "metal3_objects.h"
+#import "rendering_device_driver_metal3.h"
 #ifdef METAL4_ENABLED
 #import "rendering_device_driver_metal4.h"
 #endif
@@ -114,7 +115,7 @@ uint32_t RenderingContextDriverMetal::device_get_count() const {
 RenderingDeviceDriver *RenderingContextDriverMetal::driver_create() {
 	switch (driver_version) {
 		case DriverVersion::Metal:
-			return memnew(RenderingDeviceDriverMetal(this));
+			return memnew(MTL3::RenderingDeviceDriverMetal(this));
 		case DriverVersion::Metal4: {
 #ifdef METAL4_ENABLED
 			// We've already validated Metal4 is available
@@ -214,7 +215,7 @@ public:
 		return RDD::FramebufferID(&frame_buffer);
 	}
 
-	void present(MDCommandBuffer *p_cmd_buffer) override final {
+	void present(MTL3::MDCommandBuffer *p_cmd_buffer) override final {
 		if (count == 0) {
 			return;
 		}
@@ -342,7 +343,7 @@ public:
 		return RDD::FramebufferID(&frame_buffers[rear]);
 	}
 
-	void present(MDCommandBuffer *p_cmd_buffer) override final {
+	void present(MTL3::MDCommandBuffer *p_cmd_buffer) override final {
 		MDFrameBuffer *frame_buffer = &frame_buffers[rear];
 
 		if (drawables[rear] != nil) {

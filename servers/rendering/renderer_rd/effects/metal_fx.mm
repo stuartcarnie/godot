@@ -32,10 +32,13 @@
 
 #import "../storage_rd/render_scene_buffers_rd.h"
 #import "drivers/metal/pixel_formats.h"
-#import "drivers/metal/rendering_device_driver_metal.h"
+#import "drivers/metal/rendering_device_driver_metal3.h"
+#import "drivers/metal/rendering_device_driver_metal4.h"
 
 #import <Metal/Metal.h>
 #import <MetalFX/MetalFX.h>
+
+#import <objc/runtime.h>
 
 using namespace RendererRD;
 
@@ -53,22 +56,25 @@ MFXSpatialEffect::~MFXSpatialEffect() {
 void MFXSpatialEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_buffer, CallbackArgs *p_userdata) {
 	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 
-	MDCommandBuffer *obj = (MDCommandBuffer *)(p_command_buffer.id);
+	MDCommandBufferBase *obj = (MDCommandBufferBase *)(p_command_buffer.id);
 	obj->end();
 
 	id<MTLTexture> src_texture = rid::get(p_userdata->src);
 	id<MTLTexture> dst_texture = rid::get(p_userdata->dst);
 
-	__block id<MTLFXSpatialScaler> scaler = p_userdata->ctx.scaler;
+	id<MTLFXSpatialScalerBase> scaler = (id<MTLFXSpatialScalerBase>)p_userdata->ctx.scaler;
 	scaler.colorTexture = src_texture;
 	scaler.outputTexture = dst_texture;
-	[scaler encodeToCommandBuffer:obj->get_command_buffer()];
-	// TODO(sgc): add API to retain objects until the command buffer completes
-	[obj->get_command_buffer() addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
-		// This block retains a reference to the scaler until the command buffer.
-		// completes.
-		scaler = nil;
-	}];
+	if (p_userdata->ctx.is_metal_4) {
+		id<MTL4FXSpatialScaler> s = (id<MTL4FXSpatialScaler>)scaler;
+		MTL4::MDCommandBuffer *obj = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
+		[s encodeToCommandBuffer:obj->get_command_buffer()];
+	} else {
+		id<MTLFXSpatialScaler> s = (id<MTLFXSpatialScaler>)scaler;
+		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
+		[s encodeToCommandBuffer:obj->get_command_buffer()];
+	}
+	obj->retain_resource(scaler);
 
 	CallbackArgs::free(&p_userdata);
 
@@ -114,9 +120,21 @@ MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const
 	desc.colorTextureFormat = pf.getMTLPixelFormat(p_params.input_format);
 	desc.outputTextureFormat = pf.getMTLPixelFormat(p_params.output_format);
 	desc.colorProcessingMode = MTLFXSpatialScalerColorProcessingModeLinear;
-	id<MTLFXSpatialScaler> scaler = [desc newSpatialScalerWithDevice:dev];
+
 	MFXSpatialContext *context = memnew(MFXSpatialContext);
-	context->scaler = scaler;
+	if (MTL3::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL3::RenderingDeviceDriverMetal *>(rdd); dd) {
+		id<MTLFXSpatialScaler> scaler = [desc newSpatialScalerWithDevice:dev];
+		context->scaler = scaler;
+	} else if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
+		id<MTL4FXSpatialScaler> scaler = [desc newSpatialScalerWithDevice:dev compiler:dd->get_compiler()];
+		Ivar ivar = class_getInstanceVariable([scaler class], "_outputTextureBarrierStages");
+		if (ivar) {
+			uint64_t *ptr = (uint64_t *)((char *)(__bridge void *)scaler + ivar_getOffset(ivar));
+			*ptr = MTLStageAll;
+		}
+		context->scaler = scaler;
+		context->is_metal_4 = true;
+	}
 
 	GODOT_CLANG_WARNING_POP
 
@@ -155,13 +173,24 @@ MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) con
 
 	desc.outputTextureFormat = pf.getMTLPixelFormat(p_params.output_format);
 
-	id<MTLFXTemporalScaler> scaler = [desc newTemporalScalerWithDevice:dev];
 	MFXTemporalContext *context = memnew(MFXTemporalContext);
-	context->scaler = scaler;
+	if (MTL3::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL3::RenderingDeviceDriverMetal *>(rdd); dd) {
+		context->scaler = [desc newTemporalScalerWithDevice:dev];
+	} else if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
+		context->scaler = [desc newTemporalScalerWithDevice:dev compiler:dd->get_compiler()];
+		Ivar ivar = class_getInstanceVariable([context->scaler class], "_outputTextureBarrierStages");
+		if (ivar) {
+			uint64_t *ptr = (uint64_t *)((char *)(__bridge void *)context->scaler + ivar_getOffset(ivar));
+			*ptr = MTLStageAll;
+		} else {
+			print_error("Failed to set _outputTextureBarrierStages on MTL4FXTemporalScaler.");
+		}
+		context->is_metal_4 = true;
+	}
 
-	scaler.motionVectorScaleX = p_params.motion_vector_scale.x;
-	scaler.motionVectorScaleY = p_params.motion_vector_scale.y;
-	scaler.depthReversed = true; // Godot uses reverse Z per https://github.com/godotengine/godot/pull/88328
+	context->scaler.motionVectorScaleX = p_params.motion_vector_scale.x;
+	context->scaler.motionVectorScaleY = p_params.motion_vector_scale.y;
+	context->scaler.depthReversed = true; // Godot uses reverse Z per https://github.com/godotengine/godot/pull/88328
 
 	GODOT_CLANG_WARNING_POP
 
@@ -190,7 +219,7 @@ void MFXTemporalEffect::process(RendererRD::MFXTemporalContext *p_ctx, RendererR
 void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_buffer, CallbackArgs *p_userdata) {
 	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 
-	MDCommandBuffer *obj = (MDCommandBuffer *)(p_command_buffer.id);
+	MDCommandBufferBase *obj = (MDCommandBufferBase *)(p_command_buffer.id);
 	obj->end();
 
 	id<MTLTexture> src_texture = rid::get(p_userdata->src);
@@ -200,7 +229,7 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 
 	id<MTLTexture> dst_texture = rid::get(p_userdata->dst);
 
-	__block id<MTLFXTemporalScaler> scaler = p_userdata->ctx.scaler;
+	id<MTLFXTemporalScalerBase> scaler = (id<MTLFXTemporalScalerBase>)p_userdata->ctx.scaler;
 	scaler.reset = p_userdata->reset;
 	scaler.colorTexture = src_texture;
 	scaler.depthTexture = depth;
@@ -209,13 +238,16 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 	scaler.jitterOffsetX = p_userdata->jitter_offset.x;
 	scaler.jitterOffsetY = p_userdata->jitter_offset.y;
 	scaler.outputTexture = dst_texture;
-	[scaler encodeToCommandBuffer:obj->get_command_buffer()];
-	// TODO(sgc): add API to retain objects until the command buffer completes
-	[obj->get_command_buffer() addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
-		// This block retains a reference to the scaler until the command buffer.
-		// completes.
-		scaler = nil;
-	}];
+	if (p_userdata->ctx.is_metal_4) {
+		id<MTL4FXTemporalScaler> s = (id<MTL4FXTemporalScaler>)scaler;
+		MTL4::MDCommandBuffer *obj = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
+		[s encodeToCommandBuffer:obj->get_command_buffer()];
+	} else {
+		id<MTLFXTemporalScaler> s = (id<MTLFXTemporalScaler>)scaler;
+		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
+		[s encodeToCommandBuffer:obj->get_command_buffer()];
+	}
+	obj->retain_resource(scaler);
 
 	CallbackArgs::free(&p_userdata);
 
