@@ -145,7 +145,7 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 	for (uint32_t i = 0; i < p_swap_chains.size(); i++) {
 		SwapChain *swap_chain = (SwapChain *)(p_swap_chains[i].id);
 		RenderingContextDriverMetal::Surface *metal_surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
-		id<MTLDrawable> drawable = metal_surface->next_drawable();
+		id<MTLDrawable> drawable = (__bridge id<MTLDrawable>)metal_surface->next_drawable();
 		if (drawable) {
 			[queue waitForDrawable:drawable];
 			drawables[i] = drawable;
@@ -238,7 +238,7 @@ RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 #pragma mark - Initialization
 
 Error RenderingDeviceDriverMetal::_create_device() {
-	device = context_driver->get_metal_device();
+	device = (__bridge id<MTLDevice>)context_driver->get_metal_device();
 
 	MTL4CommandQueueDescriptor *desc = [MTL4CommandQueueDescriptor new];
 	desc.label = @"Main Queue";
@@ -280,6 +280,11 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 	}
 
 	return OK;
+}
+
+// Factory function for C++ compatibility
+RenderingDeviceDriver *create_rendering_device_driver(RenderingContextDriverMetal *p_context) {
+	return memnew(RenderingDeviceDriverMetal(p_context));
 }
 
 } //namespace API_AVAILABLE(macos(26.0),ios(26.0),tvos(26.0),visionos(26.0))MTL4

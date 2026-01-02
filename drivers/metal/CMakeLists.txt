@@ -23,7 +23,7 @@ target_sources(metal PRIVATE
         pixel_formats.h
         pixel_formats.cpp
         rendering_context_driver_metal.h
-        rendering_context_driver_metal.mm
+        rendering_context_driver_metal.cpp
         rendering_device_driver_metal.h
         rendering_device_driver_metal.mm
         rendering_device_driver_metal3.h

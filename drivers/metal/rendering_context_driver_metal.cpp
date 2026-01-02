@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_metal.mm                                     */
+/*  rendering_context_driver_metal.cpp                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,18 +28,34 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import "rendering_context_driver_metal.h"
+#include "rendering_context_driver_metal.h"
 
-#import "metal3_objects.h"
-#import "rendering_device_driver_metal3.h"
-#ifdef METAL4_ENABLED
-#import "rendering_device_driver_metal4.h"
-#endif
+#include "metal_fwd.h"
+#include "metal_objects_shared.h"
 
 #include "core/templates/sort_array.h"
 
-#import <os/log.h>
-#import <os/signpost.h>
+#include <os/log.h>
+#include <os/signpost.h>
+
+#include <objc/message.h>
+
+// Selector helper for calling ObjC methods from C++
+#define _APPLE_PRIVATE_DEF_SEL(accessor, symbol) static SEL s_k##accessor = sel_registerName(symbol)
+#define _APPLE_PRIVATE_SEL(accessor) (Private::Selector::s_k##accessor)
+
+namespace Private::Selector {
+
+_APPLE_PRIVATE_DEF_SEL(setOpaque_, "setOpaque:");
+
+template <typename _Ret, typename... _Args>
+_NS_INLINE _Ret sendMessage(const void *pObj, SEL selector, _Args... args) {
+	using SendMessageProc = _Ret (*)(const void *, SEL, _Args...);
+	const SendMessageProc pProc = reinterpret_cast<SendMessageProc>(&objc_msgSend);
+	return (*pProc)(pObj, selector, args...);
+}
+
+} // namespace Private::Selector
 
 #pragma mark - Logging
 
@@ -52,12 +68,6 @@ __attribute__((constructor)) static void InitializeLogging(void) {
 	LOG_INTERVALS = os_log_create("org.godotengine.godot.metal", "events");
 }
 
-@protocol MTLDeviceEx <MTLDevice>
-#if TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 130300
-- (void)setShouldMaximizeConcurrentCompilation:(BOOL)v;
-#endif
-@end
-
 RenderingContextDriverMetal::RenderingContextDriverMetal() {
 }
 
@@ -69,19 +79,19 @@ Error RenderingContextDriverMetal::initialize() {
 		capture_available = true;
 	}
 
-	metal_device = MTLCreateSystemDefaultDevice();
+	metal_device = MTL::CreateSystemDefaultDevice();
 #if TARGET_OS_OSX
-	if (@available(macOS 13.3, *)) {
-		[id<MTLDeviceEx>(metal_device) setShouldMaximizeConcurrentCompilation:YES];
+	if (__builtin_available(macOS 13.3, *)) {
+		metal_device->setShouldMaximizeConcurrentCompilation(true);
 	}
 #endif
 	device.type = DEVICE_TYPE_INTEGRATED_GPU;
 	device.vendor = Vendor::VENDOR_APPLE;
 	device.workarounds = Workarounds();
 
-	MetalDeviceProperties props((__bridge MTL::Device *)metal_device);
+	MetalDeviceProperties props(metal_device);
 	int version = (int)props.features.highestFamily - (int)MTL::GPUFamilyApple1 + 1;
-	device.name = vformat("%s (Apple%d)", metal_device.name.UTF8String, version);
+	device.name = vformat("%s (Apple%d)", metal_device->name()->utf8String(), version);
 
 #ifdef METAL4_ENABLED
 	// TODO(sgc): Only enable once Metal4 is stable.
@@ -115,13 +125,13 @@ uint32_t RenderingContextDriverMetal::device_get_count() const {
 RenderingDeviceDriver *RenderingContextDriverMetal::driver_create() {
 	switch (driver_version) {
 		case DriverVersion::Metal:
-			return memnew(MTL3::RenderingDeviceDriverMetal(this));
+			return MTL3::create_rendering_device_driver(this);
 		case DriverVersion::Metal4: {
 #ifdef METAL4_ENABLED
 			// We've already validated Metal4 is available
 			GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 
-			return memnew(MTL4::RenderingDeviceDriverMetal(this));
+			return MTL4::create_rendering_device_driver(this);
 
 			GODOT_CLANG_WARNING_POP
 #else
@@ -129,6 +139,7 @@ RenderingDeviceDriver *RenderingContextDriverMetal::driver_create() {
 #endif
 		}
 	}
+	return nullptr;
 }
 
 void RenderingContextDriverMetal::driver_free(RenderingDeviceDriver *p_driver) {
@@ -136,25 +147,25 @@ void RenderingContextDriverMetal::driver_free(RenderingDeviceDriver *p_driver) {
 }
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) SurfaceLayer : public RenderingContextDriverMetal::Surface {
-	CAMetalLayer *__unsafe_unretained layer = nil;
+	CA::MetalLayer *layer = nullptr;
 	LocalVector<MDFrameBuffer> frame_buffers;
-	LocalVector<id<MTLDrawable>> drawables;
+	LocalVector<MTL::Drawable *> drawables;
 	uint32_t rear = -1;
 	uint32_t front = 0;
 	uint32_t count = 0;
 
 public:
-	SurfaceLayer(CAMetalLayer *p_layer, id<MTLDevice> p_device) :
+	SurfaceLayer(CA::MetalLayer *p_layer, MTL::Device *p_device) :
 			Surface(p_device), layer(p_layer) {
-		layer.allowsNextDrawableTimeout = YES;
-		layer.framebufferOnly = YES;
-		layer.opaque = OS::get_singleton()->is_layered_allowed() ? NO : YES;
-		layer.pixelFormat = get_pixel_format();
-		layer.device = p_device;
+		layer->setAllowsNextDrawableTimeout(true);
+		layer->setFramebufferOnly(true);
+		Private::Selector::sendMessage<void>(layer, _APPLE_PRIVATE_SEL(setOpaque_), !OS::get_singleton()->is_layered_allowed());
+		layer->setPixelFormat(get_pixel_format());
+		layer->setDevice(p_device);
 	}
 
 	~SurfaceLayer() override {
-		layer = nil;
+		layer = nullptr;
 	}
 
 	Error resize(uint32_t p_desired_framebuffer_count) override final {
@@ -164,14 +175,14 @@ public:
 		}
 
 		CGSize drawableSize = CGSizeMake(width, height);
-		CGSize current = layer.drawableSize;
+		CGSize current = layer->drawableSize();
 		if (!CGSizeEqualToSize(current, drawableSize)) {
-			layer.drawableSize = drawableSize;
+			layer->setDrawableSize(drawableSize);
 		}
 
 		// Metal supports a maximum of 3 drawables.
 		p_desired_framebuffer_count = MIN(3U, p_desired_framebuffer_count);
-		layer.maximumDrawableCount = p_desired_framebuffer_count;
+		layer->setMaximumDrawableCount(p_desired_framebuffer_count);
 
 #if TARGET_OS_OSX
 		// Display sync is only supported on macOS.
@@ -179,10 +190,10 @@ public:
 			case DisplayServer::VSYNC_MAILBOX:
 			case DisplayServer::VSYNC_ADAPTIVE:
 			case DisplayServer::VSYNC_ENABLED:
-				layer.displaySyncEnabled = YES;
+				layer->setDisplaySyncEnabled(true);
 				break;
 			case DisplayServer::VSYNC_DISABLED:
-				layer.displaySyncEnabled = NO;
+				layer->setDisplaySyncEnabled(false);
 				break;
 		}
 #endif
@@ -207,10 +218,10 @@ public:
 		MDFrameBuffer &frame_buffer = frame_buffers[rear];
 		frame_buffer.size = Size2i(width, height);
 
-		id<CAMetalDrawable> drawable = layer.nextDrawable;
+		CA::MetalDrawable *drawable = layer->nextDrawable();
 		ERR_FAIL_NULL_V_MSG(drawable, RDD::FramebufferID(), "no drawable available");
 		drawables[rear] = drawable;
-		frame_buffer.set_texture(0, drawable.texture);
+		frame_buffer.set_texture(0, drawable->texture());
 
 		return RDD::FramebufferID(&frame_buffer);
 	}
@@ -222,28 +233,28 @@ public:
 
 		// Release texture and drawable.
 		frame_buffers[front].unset_texture(0);
-		id<MTLDrawable> drawable = drawables[front];
-		drawables[front] = nil;
+		MTL::Drawable *drawable = drawables[front];
+		drawables[front] = nullptr;
 
 		count--;
 		front = (front + 1) % frame_buffers.size();
 
 		if (vsync_mode != DisplayServer::VSYNC_DISABLED) {
-			[p_cmd_buffer->get_command_buffer() presentDrawable:drawable afterMinimumDuration:present_minimum_duration];
+			MTL3::get_command_buffer_cpp(p_cmd_buffer)->presentDrawableAfterMinimumDuration(drawable, present_minimum_duration);
 		} else {
-			[p_cmd_buffer->get_command_buffer() presentDrawable:drawable];
+			MTL3::get_command_buffer_cpp(p_cmd_buffer)->presentDrawable(drawable);
 		}
 	}
 
-	id<MTLDrawable> next_drawable() override final {
+	MTL::Drawable *next_drawable() override final {
 		if (count == 0) {
-			return nil;
+			return nullptr;
 		}
 
 		// Release texture and drawable.
 		frame_buffers[front].unset_texture(0);
-		id<MTLDrawable> drawable = drawables[front];
-		drawables[front] = nil;
+		MTL::Drawable *drawable = drawables[front];
+		drawables[front] = nullptr;
 
 		count--;
 		front = (front + 1) % frame_buffers.size();
@@ -252,32 +263,32 @@ public:
 	}
 
 	API_AVAILABLE(macos(26.0), ios(26.0))
-	id<MTLResidencySet> get_residency_set() const override final {
-		return layer.residencySet;
+	MTL::ResidencySet *get_residency_set() const override final {
+		return layer->residencySet();
 	}
 };
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) SurfaceOffscreen : public RenderingContextDriverMetal::Surface {
 	int frame_buffer_size = 3;
 	MDFrameBuffer *frame_buffers;
-	LocalVector<id<MTLTexture>> textures;
-	LocalVector<id<MTLDrawable>> drawables;
+	LocalVector<MTL::Texture *> textures;
+	LocalVector<MTL::Drawable *> drawables;
 
 	int32_t rear = -1;
 	std::atomic_int count;
 	uint64_t target_time = 0;
-	CAMetalLayer *layer;
+	CA::MetalLayer *layer;
 
 public:
-	SurfaceOffscreen(CAMetalLayer *p_layer, id<MTLDevice> p_device) :
+	SurfaceOffscreen(CA::MetalLayer *p_layer, MTL::Device *p_device) :
 			Surface(p_device), layer(p_layer) {
-		layer.allowsNextDrawableTimeout = YES;
-		layer.framebufferOnly = YES;
-		layer.opaque = OS::get_singleton()->is_layered_allowed() ? NO : YES;
-		layer.pixelFormat = get_pixel_format();
-		layer.device = p_device;
+		layer->setAllowsNextDrawableTimeout(true);
+		layer->setFramebufferOnly(true);
+		Private::Selector::sendMessage<void>(layer, _APPLE_PRIVATE_SEL(setOpaque_), !OS::get_singleton()->is_layered_allowed());
+		layer->setPixelFormat(get_pixel_format());
+		layer->setDevice(p_device);
 #if TARGET_OS_OSX
-		layer.displaySyncEnabled = NO;
+		layer->setDisplaySyncEnabled(false);
 #endif
 		target_time = OS::get_singleton()->get_ticks_usec();
 
@@ -301,9 +312,9 @@ public:
 		}
 
 		CGSize drawableSize = CGSizeMake(width, height);
-		CGSize current = layer.drawableSize;
+		CGSize current = layer->drawableSize();
 		if (!CGSizeEqualToSize(current, drawableSize)) {
-			layer.drawableSize = drawableSize;
+			layer->setDrawableSize(drawableSize);
 		}
 
 		return OK;
@@ -320,22 +331,22 @@ public:
 
 		MDFrameBuffer &frame_buffer = frame_buffers[rear];
 
-		if (textures[rear] == nil || textures[rear].width != width || textures[rear].height != height) {
-			MTLTextureDescriptor *texture_descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:get_pixel_format() width:width height:height mipmapped:NO];
-			texture_descriptor.usage = MTLTextureUsageRenderTarget;
-			texture_descriptor.hazardTrackingMode = MTLHazardTrackingModeUntracked;
-			texture_descriptor.storageMode = MTLStorageModePrivate;
-			textures[rear] = [device newTextureWithDescriptor:texture_descriptor];
+		if (textures[rear] == nullptr || textures[rear]->width() != width || textures[rear]->height() != height) {
+			MTL::TextureDescriptor *texture_descriptor = MTL::TextureDescriptor::texture2DDescriptor(get_pixel_format(), width, height, false);
+			texture_descriptor->setUsage(MTL::TextureUsageRenderTarget);
+			texture_descriptor->setHazardTrackingMode(MTL::HazardTrackingModeUntracked);
+			texture_descriptor->setStorageMode(MTL::StorageModePrivate);
+			textures[rear] = device->newTexture(texture_descriptor);
 		}
 
 		frame_buffer.size = Size2i(width, height);
 		uint64_t now = OS::get_singleton()->get_ticks_usec();
 		if (now >= target_time) {
 			target_time = now + 1'000'000; // 1 second into the future.
-			id<CAMetalDrawable> drawable = layer.nextDrawable;
+			CA::MetalDrawable *drawable = layer->nextDrawable();
 			ERR_FAIL_NULL_V_MSG(drawable, RDD::FramebufferID(), "no drawable available");
 			drawables[rear] = drawable;
-			frame_buffer.set_texture(0, drawable.texture);
+			frame_buffer.set_texture(0, drawable->texture());
 		} else {
 			frame_buffer.set_texture(0, textures[rear]);
 		}
@@ -346,26 +357,26 @@ public:
 	void present(MTL3::MDCommandBuffer *p_cmd_buffer) override final {
 		MDFrameBuffer *frame_buffer = &frame_buffers[rear];
 
-		if (drawables[rear] != nil) {
-			[p_cmd_buffer->get_command_buffer() presentDrawable:drawables[rear]];
-			drawables[rear] = nil;
+		if (drawables[rear] != nullptr) {
+			MTL3::get_command_buffer_cpp(p_cmd_buffer)->presentDrawable(drawables[rear]);
+			drawables[rear] = nullptr;
 		}
 
-		[p_cmd_buffer->get_command_buffer() addScheduledHandler:^(id<MTLCommandBuffer> p_command_buffer) {
+		MTL3::get_command_buffer_cpp(p_cmd_buffer)->addScheduledHandler([frame_buffer, this](MTL::CommandBuffer *) {
 			frame_buffer->unset_texture(0);
 			count.fetch_add(-1, std::memory_order_relaxed);
-		}];
+		});
 	}
 
-	id<MTLDrawable> next_drawable() override final {
+	MTL::Drawable *next_drawable() override final {
 		if (count == 0) {
-			return nil;
+			return nullptr;
 		}
 
 		MDFrameBuffer *frame_buffer = &frame_buffers[rear];
 
-		id<MTLDrawable> next = drawables[rear];
-		drawables[rear] = nil;
+		MTL::Drawable *next = drawables[rear];
+		drawables[rear] = nullptr;
 
 		frame_buffer->unset_texture(0);
 		count--;
@@ -374,8 +385,8 @@ public:
 	}
 
 	API_AVAILABLE(macos(26.0), ios(26.0))
-	id<MTLResidencySet> get_residency_set() const override final {
-		return layer.residencySet;
+	MTL::ResidencySet *get_residency_set() const override final {
+		return layer->residencySet();
 	}
 };
 

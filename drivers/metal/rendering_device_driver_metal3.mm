@@ -252,7 +252,7 @@ Error RenderingDeviceDriverMetal::_execute_and_present_barriers(CommandQueueID p
 		for (uint32_t i = 0; i < p_swap_chains.size(); i++) {
 			SwapChain *swap_chain = (SwapChain *)(p_swap_chains[i].id);
 			RenderingContextDriverMetal::Surface *metal_surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
-			id<MTLDrawable> drawable = metal_surface->next_drawable();
+			id<MTLDrawable> drawable = (__bridge id<MTLDrawable>)metal_surface->next_drawable();
 			if (drawable) {
 				drawables.push_back(DrawRequest{
 						.drawable = drawable,
@@ -366,6 +366,11 @@ RDD::CommandBufferID RenderingDeviceDriverMetal::command_buffer_create(CommandPo
 	MDCommandBuffer *obj = memnew(MDCommandBuffer(queue, this));
 	command_buffers.push_back(obj);
 	return CommandBufferID(obj);
+}
+
+// Factory function for C++ compatibility
+RenderingDeviceDriver *create_rendering_device_driver(RenderingContextDriverMetal *p_context) {
+	return memnew(RenderingDeviceDriverMetal(p_context));
 }
 
 } // namespace MTL3

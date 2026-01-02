@@ -90,6 +90,10 @@ void MDCommandBuffer::end_label() {
 	[command_buffer() popDebugGroup];
 }
 
+MTL::CommandBuffer *MDCommandBuffer::get_command_buffer_cpp() const {
+	return (__bridge MTL::CommandBuffer *)commandBuffer;
+}
+
 void MDCommandBuffer::begin() {
 	DEV_ASSERT(commandBuffer == nil && !state_begin);
 	state_begin = true;
@@ -1764,3 +1768,10 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers_compute(MDUniformSet *p_se
 }
 
 GODOT_CLANG_WARNING_POP
+
+// Free function for C++ compatibility (must be in namespace MTL3)
+namespace MTL3 {
+MTL::CommandBuffer *get_command_buffer_cpp(MDCommandBuffer *p_cmd_buffer) {
+	return p_cmd_buffer->get_command_buffer_cpp();
+}
+} // namespace MTL3

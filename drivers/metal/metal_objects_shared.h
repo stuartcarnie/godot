@@ -41,9 +41,49 @@ class RenderingDeviceDriverMetal;
 
 using RDC = RenderingDeviceCommons;
 
+// Provide Metal type aliases for pure C++ compilation
+#ifndef __OBJC__
+using MTLPixelFormat = MTL::PixelFormat;
+using MTLLoadAction = MTL::LoadAction;
+using MTLStoreAction = MTL::StoreAction;
+using MTLTextureType = MTL::TextureType;
+using MTLDataType = MTL::DataType;
+using MTLResourceUsage = MTL::ResourceUsage;
+using MTLCullMode = MTL::CullMode;
+using MTLTriangleFillMode = MTL::TriangleFillMode;
+using MTLDepthClipMode = MTL::DepthClipMode;
+using MTLWinding = MTL::Winding;
+using MTLPrimitiveType = MTL::PrimitiveType;
+using MTLSize = MTL::Size;
+using MTLOrigin = MTL::Origin;
+constexpr auto MTLPixelFormatInvalid = MTL::PixelFormatInvalid;
+constexpr auto MTLLoadActionDontCare = MTL::LoadActionDontCare;
+constexpr auto MTLStoreActionDontCare = MTL::StoreActionDontCare;
+constexpr auto MTLTextureType2D = MTL::TextureType2D;
+constexpr auto MTLTextureType3D = MTL::TextureType3D;
+constexpr auto MTLTextureType2DArray = MTL::TextureType2DArray;
+constexpr auto MTLTextureType2DMultisampleArray = MTL::TextureType2DMultisampleArray;
+constexpr auto MTLTextureType1DArray = MTL::TextureType1DArray;
+constexpr auto MTLDataTypeNone = MTL::DataTypeNone;
+constexpr auto MTLCullModeNone = MTL::CullModeNone;
+constexpr auto MTLTriangleFillModeFill = MTL::TriangleFillModeFill;
+constexpr auto MTLDepthClipModeClip = MTL::DepthClipModeClip;
+constexpr auto MTLWindingClockwise = MTL::WindingClockwise;
+constexpr auto MTLPrimitiveTypePoint = MTL::PrimitiveTypePoint;
+using MTLStages = NS::UInteger;
+constexpr auto MTLStageVertex = MTL::StageVertex;
+constexpr auto MTLStageFragment = MTL::StageFragment;
+constexpr auto MTLStageDispatch = MTL::StageDispatch;
+constexpr auto MTLStageBlit = MTL::StageBlit;
+constexpr auto MTLStageAll = MTLStageVertex | MTLStageFragment | MTLStageDispatch | MTLStageBlit;
+inline MTLSize MTLSizeMake(NS::UInteger w, NS::UInteger h, NS::UInteger d) { return MTL::Size{w, h, d}; }
+inline MTLOrigin MTLOriginMake(NS::UInteger x, NS::UInteger y, NS::UInteger z) { return MTL::Origin{x, y, z}; }
+#endif
+
 // These types can be used in Vector and other containers that use
 // pointer operations not supported by ARC.
 namespace GDMTL {
+#ifdef __OBJC__
 #define MTL_CLASS(name)                               \
 	class name {                                      \
 	public:                                           \
@@ -53,17 +93,34 @@ namespace GDMTL {
 		}                                             \
 		id<MTL##name> m_obj;                          \
 	};
+#else
+#define MTL_CLASS(name)                                       \
+	class name {                                              \
+	public:                                                   \
+		name(MTL::name *obj = nullptr) : m_obj(obj) {}        \
+		operator MTL::name *() const { return m_obj; }        \
+		bool operator==(std::nullptr_t) const {               \
+			return m_obj == nullptr;                          \
+		}                                                     \
+		bool operator!=(std::nullptr_t) const {               \
+			return m_obj != nullptr;                          \
+		}                                                     \
+		MTL::name *m_obj;                                     \
+	};
+#endif
 
 MTL_CLASS(Texture)
 
-} //namespace MTL
+} //namespace GDMTL
 
+#ifdef __OBJC__
 typedef id<MTLResource> __unsafe_unretained MTLResourceUnsafe;
 
 template <>
 struct HashMapHasherDefaultImpl<MTLResourceUnsafe> {
 	static _FORCE_INLINE_ uint32_t hash(const MTLResourceUnsafe p_pointer) { return hash_one_uint64((uint64_t)p_pointer); }
 };
+#endif
 
 enum ShaderStageUsage : uint32_t {
 	None = 0,
@@ -117,6 +174,8 @@ struct ClearAttKey {
 		return hash_fmix32(h);
 	}
 };
+
+#ifdef __OBJC__
 
 #pragma mark - Ring Buffer
 
@@ -288,6 +347,8 @@ public:
 	~MDResourceCache() = default;
 };
 
+#endif // __OBJC__ - End of ObjC-only classes (MDRingBuffer, MDResourceFactory, MDResourceCache)
+
 /**
  * Returns an index that can be used to map a shader stage to an index in a fixed-size array that is used for
  * a single pipeline type.
@@ -321,7 +382,7 @@ public:
 
 	/// Returns true if the texture at the given index is not nil.
 	_ALWAYS_INLINE_ bool has_texture(uint32_t p_idx) const {
-		return textures[p_idx] != nil;
+		return textures[p_idx] != nullptr;
 	}
 
 	/// Set the texture at the given index.
@@ -331,7 +392,7 @@ public:
 
 	/// Unset or nil the texture at the given index.
 	_ALWAYS_INLINE_ void unset_texture(uint32_t p_idx) {
-		textures.write[p_idx] = nil;
+		textures.write[p_idx] = nullptr;
 	}
 
 	/// Resizes buffers to the specified size.
@@ -377,6 +438,7 @@ struct HashMapHasherDefaultImpl<RDD::TextureID> {
 	}
 };
 
+#ifdef __OBJC__
 // These functions are used to convert between Objective-C objects and
 // the RIDs used by Godot, respecting automatic reference counting.
 namespace rid {
@@ -412,6 +474,7 @@ _FORCE_INLINE_ auto release(RDD::ID p_id) {
 }
 
 } // namespace rid
+#endif // __OBJC__
 
 #pragma mark - Render Pass Types
 
@@ -484,6 +547,7 @@ public:
 			bool p_has_resolve,
 			bool p_can_resolve,
 			bool p_is_stencil) const;
+#ifdef __OBJC__
 	bool configureDescriptor(MTLRenderPassAttachmentDescriptor *p_desc,
 			PixelFormats &p_pf,
 			MDSubpass const &p_subpass,
@@ -492,6 +556,7 @@ public:
 			bool p_has_resolve,
 			bool p_can_resolve,
 			bool p_is_stencil) const;
+#endif
 	/** Returns whether this attachment should be cleared in the subpass. */
 	bool shouldClear(MDSubpass const &p_subpass, bool p_is_stencil) const;
 };
@@ -510,6 +575,7 @@ public:
 
 #pragma mark - Command Buffer Helpers
 
+#ifdef __OBJC__
 _FORCE_INLINE_ static MTLSize mipmapLevelSizeFromTexture(id<MTLTexture> p_tex, NSUInteger p_level) {
 	MTLSize lvlSize;
 	lvlSize.width = MAX(p_tex.width >> p_level, 1UL);
@@ -517,6 +583,7 @@ _FORCE_INLINE_ static MTLSize mipmapLevelSizeFromTexture(id<MTLTexture> p_tex, N
 	lvlSize.depth = MAX(p_tex.depth >> p_level, 1UL);
 	return lvlSize;
 }
+#endif
 
 _FORCE_INLINE_ static MTLSize MTLSizeFromVector3i(Vector3i p_size) {
 	return MTLSizeMake(p_size.x, p_size.y, p_size.z);
@@ -631,6 +698,7 @@ enum class MDCommandBufferStateType {
 	Blit, // Only used by Metal 3
 };
 
+#ifdef __OBJC__
 /// Base struct for render state shared between MTL3 and MTL4 implementations.
 struct RenderStateBase {
 	LocalVector<MTLViewport> viewports;
@@ -1139,3 +1207,5 @@ public:
 			MDPipeline(MDPipelineType::Compute), state(p_state) {}
 	~MDComputePipeline() final = default;
 };
+
+#endif // __OBJC__ - End of ObjC-only types (RenderStateBase, MDCommandBufferBase, UniformInfo, MDShader, MDPipeline, etc.)

@@ -524,6 +524,8 @@ public:
 		return commandBuffer;
 	}
 
+	MTL::CommandBuffer *get_command_buffer_cpp() const;
+
 	void begin() override;
 	void commit() override;
 	void end() override;

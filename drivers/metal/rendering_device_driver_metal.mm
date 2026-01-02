@@ -917,7 +917,7 @@ RDD::SwapChainID RenderingDeviceDriverMetal::swap_chain_create(RenderingContextD
 	RenderingContextDriverMetal::Surface const *surface = (RenderingContextDriverMetal::Surface *)(p_surface);
 	if (use_barriers) {
 		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-		add_residency_set_to_main_queue(surface->get_residency_set());
+		add_residency_set_to_main_queue((__bridge id<MTLResidencySet>)surface->get_residency_set());
 		GODOT_CLANG_WARNING_POP
 	}
 
@@ -994,7 +994,7 @@ void RenderingDeviceDriverMetal::swap_chain_free(SwapChainID p_swap_chain) {
 	if (use_barriers) {
 		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 		RenderingContextDriverMetal::Surface *surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
-		remove_residency_set_to_main_queue(surface->get_residency_set());
+		remove_residency_set_to_main_queue((__bridge id<MTLResidencySet>)surface->get_residency_set());
 		GODOT_CLANG_WARNING_POP
 	}
 	_swap_chain_release(swap_chain);
@@ -2738,7 +2738,7 @@ RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 #pragma mark - Initialization
 
 Error RenderingDeviceDriverMetal::_create_device() {
-	device = context_driver->get_metal_device();
+	device = (__bridge id<MTLDevice>)context_driver->get_metal_device();
 
 	device_scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithDevice:device];
 	device_scope.label = @"Godot Frame";
