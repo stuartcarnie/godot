@@ -117,8 +117,8 @@ MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const
 	desc.outputWidth = (NSUInteger)p_params.output_size.width;
 	desc.outputHeight = (NSUInteger)p_params.output_size.height;
 
-	desc.colorTextureFormat = pf.getMTLPixelFormat(p_params.input_format);
-	desc.outputTextureFormat = pf.getMTLPixelFormat(p_params.output_format);
+	desc.colorTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.input_format);
+	desc.outputTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.output_format);
 	desc.colorProcessingMode = MTLFXSpatialScalerColorProcessingModeLinear;
 
 	MFXSpatialContext *context = memnew(MFXSpatialContext);
@@ -166,12 +166,12 @@ MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) con
 	desc.outputWidth = (NSUInteger)p_params.output_size.width;
 	desc.outputHeight = (NSUInteger)p_params.output_size.height;
 
-	desc.colorTextureFormat = pf.getMTLPixelFormat(p_params.input_format);
-	desc.depthTextureFormat = pf.getMTLPixelFormat(p_params.depth_format);
-	desc.motionTextureFormat = pf.getMTLPixelFormat(p_params.motion_format);
+	desc.colorTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.input_format);
+	desc.depthTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.depth_format);
+	desc.motionTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.motion_format);
 	desc.autoExposureEnabled = NO;
 
-	desc.outputTextureFormat = pf.getMTLPixelFormat(p_params.output_format);
+	desc.outputTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.output_format);
 
 	MFXTemporalContext *context = memnew(MFXTemporalContext);
 	if (MTL3::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL3::RenderingDeviceDriverMetal *>(rdd); dd) {

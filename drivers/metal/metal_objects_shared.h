@@ -43,7 +43,7 @@ using RDC = RenderingDeviceCommons;
 
 // These types can be used in Vector and other containers that use
 // pointer operations not supported by ARC.
-namespace MTL {
+namespace GDMTL {
 #define MTL_CLASS(name)                               \
 	class name {                                      \
 	public:                                           \
@@ -306,16 +306,16 @@ _FORCE_INLINE_ static uint32_t to_index(RDD::ShaderStage p_s) {
 }
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDFrameBuffer {
-	Vector<MTL::Texture> textures;
+	Vector<GDMTL::Texture> textures;
 
 public:
 	Size2i size;
-	MDFrameBuffer(Vector<MTL::Texture> p_textures, Size2i p_size) :
+	MDFrameBuffer(Vector<GDMTL::Texture> p_textures, Size2i p_size) :
 			textures(p_textures), size(p_size) {}
 	MDFrameBuffer() {}
 
 	/// Returns the texture at the given index.
-	_ALWAYS_INLINE_ MTL::Texture get_texture(uint32_t p_idx) const {
+	_ALWAYS_INLINE_ GDMTL::Texture get_texture(uint32_t p_idx) const {
 		return textures[p_idx];
 	}
 
@@ -325,7 +325,7 @@ public:
 	}
 
 	/// Set the texture at the given index.
-	_ALWAYS_INLINE_ void set_texture(uint32_t p_idx, MTL::Texture p_texture) {
+	_ALWAYS_INLINE_ void set_texture(uint32_t p_idx, GDMTL::Texture p_texture) {
 		textures.write[p_idx] = p_texture;
 	}
 

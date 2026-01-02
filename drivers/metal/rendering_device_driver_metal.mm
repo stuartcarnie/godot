@@ -236,7 +236,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 	desc.textureType = TEXTURE_TYPE[p_format.texture_type];
 
 	PixelFormats &formats = *pixel_formats;
-	desc.pixelFormat = formats.getMTLPixelFormat(p_format.format);
+	desc.pixelFormat = (MTLPixelFormat)formats.getMTLPixelFormat(p_format.format);
 	MTLFmtCaps format_caps = formats.getCapabilities(desc.pixelFormat);
 
 	desc.width = p_format.width;
@@ -320,7 +320,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 	const bool supports_memoryless = true;
 #else
 	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wdeprecated-declarations")
-	const bool supports_memoryless = (*device_properties).features.highestFamily >= MTLGPUFamilyApple2 && (*device_properties).features.highestFamily < MTLGPUFamilyMac1;
+	const bool supports_memoryless = (*device_properties).features.highestFamily >= MTL::GPUFamilyApple2 && (*device_properties).features.highestFamily < MTL::GPUFamilyMac1;
 	GODOT_CLANG_WARNING_POP
 #endif
 	if (supports_memoryless && p_format.usage_bits & TEXTURE_USAGE_TRANSIENT_BIT) {
@@ -417,7 +417,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_from_extension(uint64_
 	id<MTLTexture> res = (__bridge id<MTLTexture>)(void *)(uintptr_t)p_native_texture;
 
 	// If the requested format is different, we need to create a view.
-	MTLPixelFormat format = pixel_formats->getMTLPixelFormat(p_format);
+	MTLPixelFormat format = (MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_format);
 	if (res.pixelFormat != format) {
 		MTLTextureSwizzleChannels swizzle = MTLTextureSwizzleChannelsMake(
 				MTLTextureSwizzleRed,
@@ -456,7 +456,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared(TextureID p_ori
 	}
 #endif
 
-	MTLPixelFormat format = pixel_formats->getMTLPixelFormat(p_view.format);
+	MTLPixelFormat format = (MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_view.format);
 
 	static const MTLTextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
 		static_cast<MTLTextureSwizzle>(255), // IDENTITY
@@ -519,7 +519,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared_from_slice(Text
 		} break;
 	}
 
-	MTLPixelFormat format = pixel_formats->getMTLPixelFormat(p_view.format);
+	MTLPixelFormat format = (MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_view.format);
 
 	static const MTLTextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
 		static_cast<MTLTextureSwizzle>(255), // IDENTITY
@@ -663,7 +663,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::texture_get_data(TextureID p_texture
 
 BitField<RDD::TextureUsageBits> RenderingDeviceDriverMetal::texture_get_usages_supported_by_format(DataFormat p_format, bool p_cpu_readable) {
 	PixelFormats &pf = *pixel_formats;
-	if (pf.getMTLPixelFormat(p_format) == MTLPixelFormatInvalid) {
+	if (pf.getMTLPixelFormat(p_format) == MTL::PixelFormatInvalid) {
 		return 0;
 	}
 
@@ -838,7 +838,7 @@ RDD::VertexFormatID RenderingDeviceDriverMetal::vertex_format_create(Span<Vertex
 	}
 
 	for (const VertexAttribute &vf : p_vertex_attribs) {
-		desc.attributes[vf.location].format = pixel_formats->getMTLVertexFormat(vf.format);
+		desc.attributes[vf.location].format = (MTLVertexFormat)pixel_formats->getMTLVertexFormat(vf.format);
 		desc.attributes[vf.location].offset = vf.offset;
 		uint32_t idx = get_metal_buffer_index_for_vertex_attribute_binding(vf.binding);
 		desc.attributes[vf.location].bufferIndex = idx;
@@ -1007,7 +1007,7 @@ void RenderingDeviceDriverMetal::swap_chain_free(SwapChainID p_swap_chain) {
 RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p_render_pass, VectorView<TextureID> p_attachments, uint32_t p_width, uint32_t p_height) {
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
 
-	Vector<MTL::Texture> textures;
+	Vector<GDMTL::Texture> textures;
 	textures.resize(p_attachments.size());
 
 	for (uint32_t i = 0; i < p_attachments.size(); i += 1) {
@@ -1089,7 +1089,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 			RDD::ShaderID(),
 			"Shader was compiled for a newer version of Metal");
 
-	MTLGPUFamily compiled_gpu_family = static_cast<MTLGPUFamily>(mtl_reflection_data.profile.gpu);
+	MTL::GPUFamily compiled_gpu_family = static_cast<MTL::GPUFamily>(mtl_reflection_data.profile.gpu);
 	ERR_FAIL_COND_V_MSG(device_properties->features.highestFamily < compiled_gpu_family,
 			RDD::ShaderID(),
 			"Shader was generated for a newer Apple GPU");
@@ -1627,7 +1627,7 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 	for (uint32_t i = 0; i < p_attachments.size(); i++) {
 		Attachment const &a = p_attachments[i];
 		MDAttachment &mda = attachments.write[i];
-		MTLPixelFormat format = pf.getMTLPixelFormat(a.format);
+		MTLPixelFormat format = (MTLPixelFormat)pf.getMTLPixelFormat(a.format);
 		mda.format = format;
 		if (a.samples > TEXTURE_SAMPLES_1) {
 			mda.samples = (*device_properties).find_nearest_supported_sample_count(a.samples);
@@ -2691,7 +2691,7 @@ bool RenderingDeviceDriverMetal::is_composite_alpha_supported(CommandQueueID p_q
 }
 
 size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const {
-	return [device minimumLinearTextureAlignmentForPixelFormat:pixel_formats->getMTLPixelFormat(p_format)];
+	return [device minimumLinearTextureAlignmentForPixelFormat:(MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_format)];
 }
 
 size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(MTLPixelFormat p_format) const {
@@ -2775,31 +2775,31 @@ static MetalDeviceProfile device_profile_from_properties(MetalDeviceProperties *
 
 	// highestFamily will only be set to an Apple GPU family
 	switch (p_device_properties->features.highestFamily) {
-		case MTLGPUFamilyApple1:
+		case MTL::GPUFamilyApple1:
 			res.gpu = DP::GPU::Apple1;
 			break;
-		case MTLGPUFamilyApple2:
+		case MTL::GPUFamilyApple2:
 			res.gpu = DP::GPU::Apple2;
 			break;
-		case MTLGPUFamilyApple3:
+		case MTL::GPUFamilyApple3:
 			res.gpu = DP::GPU::Apple3;
 			break;
-		case MTLGPUFamilyApple4:
+		case MTL::GPUFamilyApple4:
 			res.gpu = DP::GPU::Apple4;
 			break;
-		case MTLGPUFamilyApple5:
+		case MTL::GPUFamilyApple5:
 			res.gpu = DP::GPU::Apple5;
 			break;
-		case MTLGPUFamilyApple6:
+		case MTL::GPUFamilyApple6:
 			res.gpu = DP::GPU::Apple6;
 			break;
-		case MTLGPUFamilyApple7:
+		case MTL::GPUFamilyApple7:
 			res.gpu = DP::GPU::Apple7;
 			break;
-		case MTLGPUFamilyApple8:
+		case MTL::GPUFamilyApple8:
 			res.gpu = DP::GPU::Apple8;
 			break;
-		case MTLGPUFamilyApple9:
+		case MTL::GPUFamilyApple9:
 			res.gpu = DP::GPU::Apple9;
 			break;
 		default: {
@@ -2816,7 +2816,7 @@ Error RenderingDeviceDriverMetal::_initialize(uint32_t p_device_index, uint32_t 
 	Error err = _create_device();
 	ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
 
-	device_properties = memnew(MetalDeviceProperties(device));
+	device_properties = memnew(MetalDeviceProperties((__bridge MTL::Device *)device));
 	device_profile = device_profile_from_properties(device_properties);
 	resource_cache = std::make_unique<MDResourceCache>(device, *pixel_formats, device_properties->limits.maxPerStageBufferCount);
 	shader_container_format = memnew(RenderingShaderContainerFormatMetal(&device_profile));
@@ -2831,7 +2831,7 @@ Error RenderingDeviceDriverMetal::_initialize(uint32_t p_device_index, uint32_t 
 	// Set the pipeline cache ID based on the Metal version.
 	pipeline_cache_id = "metal-driver-" + get_api_version();
 
-	pixel_formats = memnew(PixelFormats(device, device_properties->features));
+	pixel_formats = memnew(PixelFormats((__bridge MTL::Device *)device, device_properties->features));
 	if (device_properties->features.layeredRendering) {
 		multiview_capabilities.is_supported = true;
 		multiview_capabilities.max_view_count = device_properties->limits.maxViewports;
@@ -2846,7 +2846,7 @@ Error RenderingDeviceDriverMetal::_initialize(uint32_t p_device_index, uint32_t 
 	}
 
 	// The Metal renderer requires Apple4 family. This is 2017 era A11 chips and newer.
-	if (device_properties->features.highestFamily < MTLGPUFamilyApple4) {
+	if (device_properties->features.highestFamily < MTL::GPUFamilyApple4) {
 		String error_string = vformat("Your Apple GPU does not support the following features, which are required to use Metal-based renderers in Godot:\n\n");
 		if (!device_properties->features.imageCubeArray) {
 			error_string += "- No support for image cube arrays.\n";

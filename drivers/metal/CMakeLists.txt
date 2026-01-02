@@ -38,7 +38,7 @@ target_sources(metal PRIVATE
 # [[[end]]]
 target_compile_features(metal PRIVATE cxx_std_20)
 set_target_properties(metal PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
-target_link_libraries(metal PUBLIC core spirv-cross PRIVATE metal-cpp)
+target_link_libraries(metal PUBLIC core spirv-cross metal-cpp)
 target_compile_definitions(metal
         PUBLIC
         METAL_ENABLED=1

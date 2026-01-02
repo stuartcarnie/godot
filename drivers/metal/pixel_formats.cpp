@@ -269,13 +269,17 @@ MTLFormatDesc &PixelFormats::getMTLVertexFormatDesc(MTL::VertexFormat p_format) 
 }
 
 PixelFormats::PixelFormats(MTL::Device *p_device, const MetalFeatures &p_feat) :
-		device(p_device) {
+		device(p_device->retain()) {
 	initMTLPixelFormatCapabilities();
 	initMTLVertexFormatCapabilities(p_feat);
 	modifyMTLFormatCapabilities(p_feat);
 
 	initDataFormatCapabilities();
 	buildDFFormatMaps();
+}
+
+PixelFormats::~PixelFormats() {
+	device->release();
 }
 
 #define addDataFormatDescFull(DATA_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A) \

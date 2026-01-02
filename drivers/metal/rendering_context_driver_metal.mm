@@ -79,8 +79,8 @@ Error RenderingContextDriverMetal::initialize() {
 	device.vendor = Vendor::VENDOR_APPLE;
 	device.workarounds = Workarounds();
 
-	MetalDeviceProperties props(metal_device);
-	int version = (int)props.features.highestFamily - (int)MTLGPUFamilyApple1 + 1;
+	MetalDeviceProperties props((__bridge MTL::Device *)metal_device);
+	int version = (int)props.features.highestFamily - (int)MTL::GPUFamilyApple1 + 1;
 	device.name = vformat("%s (Apple%d)", metal_device.name.UTF8String, version);
 
 #ifdef METAL4_ENABLED
