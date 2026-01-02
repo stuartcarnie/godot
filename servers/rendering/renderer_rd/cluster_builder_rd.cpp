@@ -489,7 +489,7 @@ void ClusterBuilderRD::begin(const Transform3D &p_view_transform, const Projecti
 void ClusterBuilderRD::bake_cluster() {
 	RENDER_TIMESTAMP("> Bake 3D Cluster");
 
-	RD::get_singleton()->draw_command_begin_label("Bake Light Cluster");
+	RD::DrawCommandLabel label = RD::get_singleton()->draw_command_label("Bake Light Cluster");
 
 	// Clear cluster buffer.
 	RD::get_singleton()->buffer_clear(cluster_buffer, 0, cluster_buffer_size);
@@ -589,7 +589,6 @@ void ClusterBuilderRD::bake_cluster() {
 		}
 	}
 	RENDER_TIMESTAMP("< Bake 3D Cluster");
-	RD::get_singleton()->draw_command_end_label();
 }
 
 void ClusterBuilderRD::debug(ElementType p_element) {
@@ -635,6 +634,7 @@ void ClusterBuilderRD::set_shared(ClusterBuilderSharedDataRD *p_shared) {
 
 ClusterBuilderRD::ClusterBuilderRD() {
 	state_uniform = RD::get_singleton()->uniform_buffer_create(sizeof(StateUniform));
+	RD::get_singleton()->set_resource_name(state_uniform, "Cluster Builder State");
 }
 
 ClusterBuilderRD::~ClusterBuilderRD() {

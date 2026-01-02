@@ -570,12 +570,12 @@ void Fog::volumetric_fog_update(const VolumetricFogSettings &p_settings, const P
 	RenderingDevice *rd = RD::get_singleton();
 
 	RENDER_TIMESTAMP("> Volumetric Fog");
-	rd->draw_command_begin_label("Volumetric Fog");
+	RD::DrawCommandLabel label_volumetric_fog = rd->draw_command_label("Volumetric Fog");
 
 	Ref<VolumetricFog> fog = p_settings.vfog;
 
 	if (p_fog_volumes.size() > 0) {
-		rd->draw_command_begin_label("Render Volumetric Fog Volumes");
+		RD::DrawCommandLabel label_fog_volumes = rd->draw_command_label("Render Volumetric Fog Volumes");
 
 		RENDER_TIMESTAMP("Render FogVolumes");
 
@@ -789,8 +789,6 @@ void Fog::volumetric_fog_update(const VolumetricFogSettings &p_settings, const P
 		if (any_uses_time || RendererSceneRenderRD::get_singleton()->environment_get_volumetric_fog_temporal_reprojection(p_settings.env)) {
 			RenderingServerDefault::redraw_request();
 		}
-
-		rd->draw_command_end_label();
 
 		rd->compute_list_end();
 	}
@@ -1144,34 +1142,37 @@ void Fog::volumetric_fog_update(const VolumetricFogSettings &p_settings, const P
 	sky_transform = sky_transform.inverse() * p_cam_transform.basis;
 	RendererRD::MaterialStorage::store_transform_3x3(sky_transform, params.radiance_inverse_xform);
 
-	rd->draw_command_begin_label("Render Volumetric Fog");
+	RD::ComputeListID compute_list;
 
-	RENDER_TIMESTAMP("Render Fog");
-	rd->buffer_update(volumetric_fog.params_ubo, 0, sizeof(VolumetricFogShader::ParamsUBO), &params);
+	{
+		RD::DrawCommandLabel label_render_fog = rd->draw_command_label("Render Volumetric Fog");
 
-	RD::ComputeListID compute_list = rd->compute_list_begin();
+		RENDER_TIMESTAMP("Render Fog");
+		rd->buffer_update(volumetric_fog.params_ubo, 0, sizeof(VolumetricFogShader::ParamsUBO), &params);
 
-	rd->compute_list_bind_compute_pipeline(compute_list, volumetric_fog.process_pipelines[using_sdfgi ? VolumetricFogShader::VOLUMETRIC_FOG_PROCESS_SHADER_DENSITY_WITH_SDFGI : VolumetricFogShader::VOLUMETRIC_FOG_PROCESS_SHADER_DENSITY].get_rid());
+		compute_list = rd->compute_list_begin();
 
-	rd->compute_list_bind_uniform_set(compute_list, fog->gi_dependent_sets.process_uniform_set_density, 0);
+		rd->compute_list_bind_compute_pipeline(compute_list, volumetric_fog.process_pipelines[using_sdfgi ? VolumetricFogShader::VOLUMETRIC_FOG_PROCESS_SHADER_DENSITY_WITH_SDFGI : VolumetricFogShader::VOLUMETRIC_FOG_PROCESS_SHADER_DENSITY].get_rid());
 
-	if (using_sdfgi) {
-		rd->compute_list_bind_uniform_set(compute_list, fog->sdfgi_uniform_set, 1);
-	}
-	rd->compute_list_dispatch_threads(compute_list, fog->width, fog->height, fog->depth);
-	rd->compute_list_add_barrier(compute_list);
+		rd->compute_list_bind_uniform_set(compute_list, fog->gi_dependent_sets.process_uniform_set_density, 0);
 
-	// Copy fog to history buffer
-	if (RendererSceneRenderRD::get_singleton()->environment_get_volumetric_fog_temporal_reprojection(p_settings.env)) {
-		rd->compute_list_bind_compute_pipeline(compute_list, volumetric_fog.process_pipelines[VolumetricFogShader::VOLUMETRIC_FOG_PROCESS_SHADER_COPY].get_rid());
-		rd->compute_list_bind_uniform_set(compute_list, fog->copy_uniform_set, 0);
+		if (using_sdfgi) {
+			rd->compute_list_bind_uniform_set(compute_list, fog->sdfgi_uniform_set, 1);
+		}
 		rd->compute_list_dispatch_threads(compute_list, fog->width, fog->height, fog->depth);
 		rd->compute_list_add_barrier(compute_list);
+
+		// Copy fog to history buffer
+		if (RendererSceneRenderRD::get_singleton()->environment_get_volumetric_fog_temporal_reprojection(p_settings.env)) {
+			rd->compute_list_bind_compute_pipeline(compute_list, volumetric_fog.process_pipelines[VolumetricFogShader::VOLUMETRIC_FOG_PROCESS_SHADER_COPY].get_rid());
+			rd->compute_list_bind_uniform_set(compute_list, fog->copy_uniform_set, 0);
+			rd->compute_list_dispatch_threads(compute_list, fog->width, fog->height, fog->depth);
+			rd->compute_list_add_barrier(compute_list);
+		}
 	}
-	rd->draw_command_end_label();
 
 	if (p_settings.volumetric_fog_filter_active) {
-		rd->draw_command_begin_label("Filter Fog");
+		RD::DrawCommandLabel label_filter_fog = rd->draw_command_label("Filter Fog");
 
 		RENDER_TIMESTAMP("Filter Fog");
 
@@ -1191,11 +1192,10 @@ void Fog::volumetric_fog_update(const VolumetricFogSettings &p_settings, const P
 		rd->compute_list_dispatch_threads(compute_list, fog->width, fog->height, fog->depth);
 
 		rd->compute_list_add_barrier(compute_list);
-		rd->draw_command_end_label();
 	}
 
 	RENDER_TIMESTAMP("Integrate Fog");
-	rd->draw_command_begin_label("Integrate Fog");
+	RD::DrawCommandLabel label_integrate_fog = rd->draw_command_label("Integrate Fog");
 
 	rd->compute_list_bind_compute_pipeline(compute_list, volumetric_fog.process_pipelines[VolumetricFogShader::VOLUMETRIC_FOG_PROCESS_SHADER_FOG].get_rid());
 	rd->compute_list_bind_uniform_set(compute_list, fog->gi_dependent_sets.process_uniform_set, 0);
@@ -1204,6 +1204,4 @@ void Fog::volumetric_fog_update(const VolumetricFogSettings &p_settings, const P
 	rd->compute_list_end();
 
 	RENDER_TIMESTAMP("< Volumetric Fog");
-	rd->draw_command_end_label();
-	rd->draw_command_end_label();
 }
