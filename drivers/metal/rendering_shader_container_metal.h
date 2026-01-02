@@ -30,11 +30,11 @@
 
 #pragma once
 
-#import "metal_device_profile.h"
-#import "sha256_digest.h"
+#include "metal_device_profile.h"
+#include "sha256_digest.h"
 
-#import "servers/rendering/rendering_device_driver.h"
-#import "servers/rendering/rendering_shader_container.h"
+#include "servers/rendering/rendering_device_driver.h"
+#include "servers/rendering/rendering_shader_container.h"
 
 constexpr uint32_t R32UI_ALIGNMENT_CONSTANT_ID = 65535;
 /// Metal buffer index for the view mask when rendering multi-view.

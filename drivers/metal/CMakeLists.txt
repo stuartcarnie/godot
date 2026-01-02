@@ -31,7 +31,7 @@ target_sources(metal PRIVATE
         rendering_device_driver_metal4.h
         rendering_device_driver_metal4.mm
         rendering_shader_container_metal.h
-        rendering_shader_container_metal.mm
+        rendering_shader_container_metal.cpp
         sha256_digest.h
         test.cpp
 )

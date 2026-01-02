@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_shader_container_metal.mm                                   */
+/*  rendering_shader_container_metal.cpp                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,21 +28,21 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import "rendering_shader_container_metal.h"
+#include "rendering_shader_container_metal.h"
 
-#import "metal_utils.h"
+#include "metal_utils.h"
 
-#import "core/io/file_access.h"
-#import "core/io/marshalls.h"
-#import "core/templates/fixed_vector.h"
-#import "servers/rendering/rendering_device.h"
+#include "core/io/file_access.h"
+#include "core/io/marshalls.h"
+#include "core/templates/fixed_vector.h"
+#include "servers/rendering/rendering_device.h"
 
 #include "thirdparty/spirv-reflect/spirv_reflect.h"
 
-#import <Metal/Metal.h>
-#import <spirv.hpp>
-#import <spirv_msl.hpp>
-#import <spirv_parser.hpp>
+#include <Metal/Metal.hpp>
+#include <spirv.hpp>
+#include <spirv_msl.hpp>
+#include <spirv_parser.hpp>
 
 void RenderingShaderContainerMetal::_initialize_toolchain_properties() {
 	if (compiler_props.is_valid()) {
@@ -447,9 +447,9 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 					case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
 						if (!(binding.decoration_flags & SPV_REFLECT_DECORATION_NON_WRITABLE)) {
 							if (!(binding.decoration_flags & SPV_REFLECT_DECORATION_NON_READABLE)) {
-								found->access = MTLBindingAccessReadWrite;
+								found->access = MTL::BindingAccessReadWrite;
 							} else {
-								found->access = MTLBindingAccessWriteOnly;
+								found->access = MTL::BindingAccessWriteOnly;
 							}
 						}
 					} break;
@@ -457,9 +457,9 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 					case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
 						if (!(binding.decoration_flags & SPV_REFLECT_DECORATION_NON_WRITABLE) && !(binding.block.decoration_flags & SPV_REFLECT_DECORATION_NON_WRITABLE)) {
 							if (!(binding.decoration_flags & SPV_REFLECT_DECORATION_NON_READABLE) && !(binding.block.decoration_flags & SPV_REFLECT_DECORATION_NON_READABLE)) {
-								found->access = MTLBindingAccessReadWrite;
+								found->access = MTL::BindingAccessReadWrite;
 							} else {
-								found->access = MTLBindingAccessWriteOnly;
+								found->access = MTL::BindingAccessWriteOnly;
 							}
 						}
 					} break;
@@ -468,14 +468,14 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 				}
 
 				switch (found->access) {
-					case MTLBindingAccessReadOnly:
-						found->usage = MTLResourceUsageRead;
+					case MTL::BindingAccessReadOnly:
+						found->usage = MTL::ResourceUsageRead;
 						break;
-					case MTLBindingAccessWriteOnly:
-						found->usage = MTLResourceUsageWrite;
+					case MTL::BindingAccessWriteOnly:
+						found->usage = MTL::ResourceUsageWrite;
 						break;
-					case MTLBindingAccessReadWrite:
-						found->usage = MTLResourceUsageRead | MTLResourceUsageWrite;
+					case MTL::BindingAccessReadWrite:
+						found->usage = MTL::ResourceUsageRead | MTL::ResourceUsageWrite;
 						break;
 				}
 
@@ -487,7 +487,7 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 
 				switch (type) {
 					case RDC::UNIFORM_TYPE_SAMPLER: {
-						found->data_type = MTLDataTypeSampler;
+						found->data_type = MTL::DataTypeSampler;
 						found->get_indexes(UniformData::IndexType::SLOT).sampler = next_index(Sampler, binding_stride);
 						found->get_indexes(UniformData::IndexType::ARG).sampler = next_arg_index(binding_stride);
 
@@ -496,7 +496,7 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 					} break;
 					case RDC::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE:
 					case RDC::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE_BUFFER: {
-						found->data_type = MTLDataTypeTexture;
+						found->data_type = MTL::DataTypeTexture;
 						found->get_indexes(UniformData::IndexType::SLOT).texture = next_index(Texture, binding_stride);
 						found->get_indexes(UniformData::IndexType::SLOT).sampler = next_index(Sampler, binding_stride);
 						found->get_indexes(UniformData::IndexType::ARG).texture = next_arg_index(binding_stride);
@@ -506,7 +506,7 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 					case RDC::UNIFORM_TYPE_TEXTURE:
 					case RDC::UNIFORM_TYPE_IMAGE:
 					case RDC::UNIFORM_TYPE_TEXTURE_BUFFER: {
-						found->data_type = MTLDataTypeTexture;
+						found->data_type = MTL::DataTypeTexture;
 						found->get_indexes(UniformData::IndexType::SLOT).texture = next_index(Texture, binding_stride);
 						found->get_indexes(UniformData::IndexType::ARG).texture = next_arg_index(binding_stride);
 						rb.basetype = SPIRType::BaseType::Image;
@@ -518,13 +518,13 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 					case RDC::UNIFORM_TYPE_STORAGE_BUFFER_DYNAMIC:
 					case RDC::UNIFORM_TYPE_UNIFORM_BUFFER:
 					case RDC::UNIFORM_TYPE_STORAGE_BUFFER: {
-						found->data_type = MTLDataTypePointer;
+						found->data_type = MTL::DataTypePointer;
 						found->get_indexes(UniformData::IndexType::SLOT).buffer = next_index(Buffer, binding_stride);
 						found->get_indexes(UniformData::IndexType::ARG).buffer = next_arg_index(binding_stride);
 						rb.basetype = SPIRType::BaseType::Void;
 					} break;
 					case RDC::UNIFORM_TYPE_INPUT_ATTACHMENT: {
-						found->data_type = MTLDataTypeTexture;
+						found->data_type = MTL::DataTypeTexture;
 						found->get_indexes(UniformData::IndexType::SLOT).texture = next_index(Texture, binding_stride);
 						found->get_indexes(UniformData::IndexType::ARG).texture = next_arg_index(binding_stride);
 						rb.basetype = SPIRType::BaseType::Image;
@@ -539,44 +539,44 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 				rb.msl_texture = found->get_indexes(shader_index_type).texture;
 				rb.msl_sampler = found->get_indexes(shader_index_type).sampler;
 
-				if (found->data_type == MTLDataTypeTexture) {
+				if (found->data_type == MTL::DataTypeTexture) {
 					const SpvReflectImageTraits &image = uniform.get_spv_reflect().image;
 
 					switch (image.dim) {
 						case SpvDim1D: {
 							if (image.arrayed) {
-								found->texture_type = MTLTextureType1DArray;
+								found->texture_type = MTL::TextureType1DArray;
 							} else {
-								found->texture_type = MTLTextureType1D;
+								found->texture_type = MTL::TextureType1D;
 							}
 						} break;
 						case SpvDimSubpassData:
 						case SpvDim2D: {
 							if (image.arrayed && image.ms) {
-								found->texture_type = MTLTextureType2DMultisampleArray;
+								found->texture_type = MTL::TextureType2DMultisampleArray;
 							} else if (image.arrayed) {
-								found->texture_type = MTLTextureType2DArray;
+								found->texture_type = MTL::TextureType2DArray;
 							} else if (image.ms) {
-								found->texture_type = MTLTextureType2DMultisample;
+								found->texture_type = MTL::TextureType2DMultisample;
 							} else {
-								found->texture_type = MTLTextureType2D;
+								found->texture_type = MTL::TextureType2D;
 							}
 						} break;
 						case SpvDim3D: {
-							found->texture_type = MTLTextureType3D;
+							found->texture_type = MTL::TextureType3D;
 						} break;
 						case SpvDimCube: {
 							if (image.arrayed) {
-								found->texture_type = MTLTextureTypeCubeArray;
+								found->texture_type = MTL::TextureTypeCubeArray;
 							} else {
-								found->texture_type = MTLTextureTypeCube;
+								found->texture_type = MTL::TextureTypeCube;
 							}
 						} break;
 						case SpvDimRect: {
 							// Ignored.
 						} break;
 						case SpvDimBuffer: {
-							found->texture_type = MTLTextureTypeTextureBuffer;
+							found->texture_type = MTL::TextureTypeTextureBuffer;
 							// If this is used with atomics, we need to use a read-write texture.
 							// 	scan_atomic_accesses();
 							// 	if (atomic_spirv_ids.find(uniform.spirv_id) != atomic_spirv_ids.end()) {
