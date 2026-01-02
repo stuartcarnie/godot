@@ -15,13 +15,13 @@ target_sources(metal PRIVATE
         metal4_objects.mm
         metal_device_profile.cpp
         metal_device_profile.h
+        metal_device_properties.cpp
         metal_device_properties.h
-        metal_device_properties.mm
         metal_objects_shared.h
         metal_objects_shared.mm
         metal_utils.h
         pixel_formats.h
-        pixel_formats.mm
+        pixel_formats.cpp
         rendering_context_driver_metal.h
         rendering_context_driver_metal.mm
         rendering_device_driver_metal.h
@@ -33,6 +33,7 @@ target_sources(metal PRIVATE
         rendering_shader_container_metal.h
         rendering_shader_container_metal.mm
         sha256_digest.h
+        test.cpp
 )
 # [[[end]]]
 target_compile_features(metal PRIVATE cxx_std_20)
