@@ -242,7 +242,7 @@ public:
 			dirty.set_flag(DirtyFlag::DIRTY_BLEND);
 		}
 
-		MTLScissorRect clip_to_render_area(MTLScissorRect p_rect) const {
+		MTL::ScissorRect clip_to_render_area(MTL::ScissorRect p_rect) const {
 			uint32_t raLeft = render_area.position.x;
 			uint32_t raRight = raLeft + render_area.size.width;
 			uint32_t raBottom = render_area.position.y;

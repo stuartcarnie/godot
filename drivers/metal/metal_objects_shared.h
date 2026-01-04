@@ -35,6 +35,7 @@
 #include "pixel_formats.h"
 #include "sha256_digest.h"
 
+#include <CoreFoundation/CoreFoundation.h>
 #include <memory>
 
 class RenderingDeviceDriverMetal;
@@ -693,11 +694,10 @@ enum class MDCommandBufferStateType {
 	Blit, // Only used by Metal 3
 };
 
-#ifdef __OBJC__
 /// Base struct for render state shared between MTL3 and MTL4 implementations.
 struct RenderStateBase {
-	LocalVector<MTLViewport> viewports;
-	LocalVector<MTLScissorRect> scissors;
+	LocalVector<MTL::Viewport> viewports;
+	LocalVector<MTL::ScissorRect> scissors;
 	std::optional<Color> blend_constants;
 
 	// clang-format off
@@ -720,7 +720,7 @@ struct RenderStateBase {
 
 /// Abstract base class for Metal command buffers, shared between MTL3 and MTL4 implementations.
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDCommandBufferBase {
-	LocalVector<id> _retained_resources;
+	LocalVector<CFTypeRef> _retained_resources;
 
 protected:
 	// From RenderingDevice
@@ -759,7 +759,7 @@ protected:
 	void _render_clear_render_area();
 
 public:
-	virtual ~MDCommandBufferBase() = default;
+	virtual ~MDCommandBufferBase() { release_resources(); }
 
 	virtual void begin() = 0;
 	virtual void commit() = 0;
@@ -768,7 +768,7 @@ public:
 	virtual void bind_pipeline(RDD::PipelineID p_pipeline) = 0;
 	void encode_push_constant_data(RDD::ShaderID p_shader, VectorView<uint32_t> p_data);
 
-	void retain_resource(id p_resource);
+	void retain_resource(CFTypeRef p_resource);
 
 #pragma mark - Render Commands
 
@@ -832,6 +832,8 @@ public:
 	virtual void begin_label(const char *p_label_name, const Color &p_color) = 0;
 	virtual void end_label() = 0;
 };
+
+#ifdef __OBJC__
 
 #pragma mark - Uniform Types
 

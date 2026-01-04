@@ -74,7 +74,7 @@ void MFXSpatialEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_bu
 		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
 		[s encodeToCommandBuffer:obj->get_command_buffer()];
 	}
-	obj->retain_resource(scaler);
+	obj->retain_resource((__bridge CFTypeRef)scaler);
 
 	CallbackArgs::free(&p_userdata);
 
@@ -247,7 +247,7 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
 		[s encodeToCommandBuffer:obj->get_command_buffer()];
 	}
-	obj->retain_resource(scaler);
+	obj->retain_resource((__bridge CFTypeRef)scaler);
 
 	CallbackArgs::free(&p_userdata);
 

@@ -447,11 +447,15 @@ MDRenderPass::MDRenderPass(Vector<MDAttachment> &p_attachments, Vector<MDSubpass
 
 #pragma mark - Command Buffer Base
 
-void MDCommandBufferBase::retain_resource(id p_resource) {
+void MDCommandBufferBase::retain_resource(CFTypeRef p_resource) {
+	CFRetain(p_resource);
 	_retained_resources.push_back(p_resource);
 }
 
 void MDCommandBufferBase::release_resources() {
+	for (CFTypeRef r : _retained_resources) {
+		CFRelease(r);
+	}
 	_retained_resources.clear();
 }
 

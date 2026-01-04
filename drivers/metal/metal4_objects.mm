@@ -819,7 +819,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_VIEWPORT)) {
-		[render.encoder setViewports:render.viewports.ptr() count:render.viewports.size()];
+		[render.encoder setViewports:reinterpret_cast<const MTLViewport *>(render.viewports.ptr()) count:render.viewports.size()];
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_DEPTH)) {
@@ -832,11 +832,11 @@ void MDCommandBuffer::_render_set_dirty_state() {
 
 	if (render.dirty.has_flag(RenderState::DIRTY_SCISSOR) && !render.scissors.is_empty()) {
 		size_t len = render.scissors.size();
-		MTLScissorRect *rects = ALLOCA_ARRAY(MTLScissorRect, len);
+		MTL::ScissorRect *rects = ALLOCA_ARRAY(MTL::ScissorRect, len);
 		for (size_t i = 0; i < len; i++) {
 			rects[i] = render.clip_to_render_area(render.scissors[i]);
 		}
-		[render.encoder setScissorRects:rects count:len];
+		[render.encoder setScissorRects:reinterpret_cast<const MTLScissorRect *>(rects) count:len];
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_BLEND) && render.blend_constants.has_value()) {
