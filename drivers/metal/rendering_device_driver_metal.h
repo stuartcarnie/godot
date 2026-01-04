@@ -30,13 +30,13 @@
 
 #pragma once
 
-#import "metal_device_profile.h"
-#import "metal_objects_shared.h"
+#include "metal_device_profile.h"
+#include "metal_objects_shared.h"
 
 #include "servers/rendering/rendering_device_driver.h"
 
-#import <Metal/Metal.h>
-#import <variant>
+#include <Metal/Metal.hpp>
+#include <variant>
 
 class RenderingShaderContainerFormatMetal;
 
@@ -69,7 +69,7 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 protected:
 	RenderingContextDriverMetal *context_driver = nullptr;
 	RenderingContextDriver::Device context_device;
-	id<MTLDevice> device = nil;
+	MTL::Device *device = nullptr;
 
 	uint32_t _frame_count = 1;
 	/// frame_index is a cyclic counter derived from the current frame number modulo frame_count,
@@ -88,7 +88,7 @@ protected:
 	RDD::FragmentShadingRateCapabilities fsr_capabilities;
 	RDD::FragmentDensityMapCapabilities fdm_capabilities;
 
-	id<MTLBinaryArchive> archive = nil;
+	MTL::BinaryArchive *archive = nullptr;
 	uint32_t archive_count = 0;
 	// DEV: When true, attempting to create a pipeline will fail if it cannot use the archive.
 	bool archive_fail_on_miss = false;
@@ -101,75 +101,75 @@ protected:
 #pragma mark - Copy Queue
 
 	/// A command queue used for internal copy operations.
-	id<MTLCommandQueue> copy_queue = nil;
+	MTL::CommandQueue *copy_queue = nullptr;
 	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-	id<MTLResidencySet> copy_queue_rs = nil;
+	MTL::ResidencySet *copy_queue_rs = nullptr;
 	GODOT_CLANG_WARNING_POP
-	// If this is not nil, there are pending copy operations.
-	id<MTLCommandBuffer> copy_queue_command_buffer = nil;
-	id<MTLBlitCommandEncoder> copy_queue_blit_encoder = nil;
-	id<MTLBuffer> copy_queue_buffer = nil;
-	NSUInteger copy_queue_buffer_offset = 0;
+	// If this is not nullptr, there are pending copy operations.
+	MTL::CommandBuffer *copy_queue_command_buffer = nullptr;
+	MTL::BlitCommandEncoder *copy_queue_blit_encoder = nullptr;
+	MTL::Buffer *copy_queue_buffer = nullptr;
+	NS::UInteger copy_queue_buffer_offset = 0;
 
-	_FORCE_INLINE_ NSUInteger _copy_queue_buffer_available() const {
-		return copy_queue_buffer.length - copy_queue_buffer_offset;
+	_FORCE_INLINE_ NS::UInteger _copy_queue_buffer_available() const {
+		return copy_queue_buffer->length() - copy_queue_buffer_offset;
 	}
 
 	/// Marks p_size bytes as consumed from the copy queue buffer, aligning the offset to 16 bytes.
-	_FORCE_INLINE_ void _copy_queue_buffer_consume(NSUInteger p_size) {
-		NSUInteger aligned_offset = round_up_to_alignment(copy_queue_buffer_offset, 16);
+	_FORCE_INLINE_ void _copy_queue_buffer_consume(NS::UInteger p_size) {
+		NS::UInteger aligned_offset = round_up_to_alignment(copy_queue_buffer_offset, 16);
 		copy_queue_buffer_offset = aligned_offset + p_size;
 	}
 
 	/// Returns a pointer to the current position in the copy queue buffer.
 	_FORCE_INLINE_ void *_copy_queue_buffer_ptr() const {
-		return static_cast<uint8_t *>(copy_queue_buffer.contents) + copy_queue_buffer_offset;
+		return static_cast<uint8_t *>(copy_queue_buffer->contents()) + copy_queue_buffer_offset;
 	}
 
-	_FORCE_INLINE_ id<MTLCommandBuffer> _copy_queue_command_buffer() {
-		if (copy_queue_command_buffer == nil) {
-			DEV_ASSERT(copy_queue_blit_encoder == nil);
+	_FORCE_INLINE_ MTL::CommandBuffer *_copy_queue_command_buffer() {
+		if (copy_queue_command_buffer == nullptr) {
+			DEV_ASSERT(copy_queue_blit_encoder == nullptr);
 
-			copy_queue_command_buffer = copy_queue.commandBufferWithUnretainedReferences;
+			copy_queue_command_buffer = copy_queue->commandBufferWithUnretainedReferences();
 		}
 		return copy_queue_command_buffer;
 	}
 
-	_FORCE_INLINE_ id<MTLBlitCommandEncoder> _copy_queue_blit_encoder() {
-		if (copy_queue_blit_encoder == nil) {
-			copy_queue_blit_encoder = [_copy_queue_command_buffer() blitCommandEncoder];
+	_FORCE_INLINE_ MTL::BlitCommandEncoder *_copy_queue_blit_encoder() {
+		if (copy_queue_blit_encoder == nullptr) {
+			copy_queue_blit_encoder = _copy_queue_command_buffer()->blitCommandEncoder();
 		}
 		return copy_queue_blit_encoder;
 	}
 
-	void _copy_queue_copy_to_buffer(Span<uint8_t> p_src_data, id<MTLBuffer> __unsafe_unretained p_dst_buffer, uint64_t p_dst_offset = 0);
+	void _copy_queue_copy_to_buffer(Span<uint8_t> p_src_data, MTL::Buffer *p_dst_buffer, uint64_t p_dst_offset = 0);
 	void _copy_queue_flush();
 	Error _copy_queue_initialize();
 
-	id<MTLCaptureScope> device_scope = nil;
+	MTL::CaptureScope *device_scope = nullptr;
 	bool capture_active = false;
 
 	String pipeline_cache_id;
 
-	virtual id get_command_queue() const = 0;
+	virtual MTL::CommandQueue *get_command_queue() const = 0;
 	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-	virtual void add_residency_set_to_main_queue(id<MTLResidencySet> p_set) = 0;
-	virtual void remove_residency_set_to_main_queue(id<MTLResidencySet> p_set) = 0;
-	id<MTLResidencySet> main_residency_set = nil;
+	virtual void add_residency_set_to_main_queue(MTL::ResidencySet *p_set) = 0;
+	virtual void remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) = 0;
+	MTL::ResidencySet *main_residency_set = nullptr;
 	GODOT_CLANG_WARNING_POP
 
 	bool use_barriers = false;
-	MTLResourceOptions base_hazard_tracking = MTLResourceHazardTrackingModeTracked;
+	MTL::ResourceOptions base_hazard_tracking = MTL::ResourceHazardTrackingModeTracked;
 
 	virtual Error _create_device();
-	void _track_resource(id<MTLResource> p_resource) {
+	void _track_resource(MTL::Resource *p_resource) {
 		if (use_barriers) {
-			_residency_add.push_back(p_resource);
+			_residency_add.push_back((__bridge id<MTLResource>)p_resource);
 		}
 	}
-	void _untrack_resource(id<MTLResource> p_resource) {
+	void _untrack_resource(MTL::Resource *p_resource) {
 		if (use_barriers) {
-			_residency_del.push_back(p_resource);
+			_residency_del.push_back((__bridge id<MTLResource>)p_resource);
 		}
 	}
 	void _check_capabilities();
@@ -510,7 +510,7 @@ public:
 	virtual bool is_composite_alpha_supported(CommandQueueID p_queue) const override final;
 
 	// Metal-specific.
-	id<MTLDevice> get_device() const { return device; }
+	MTL::Device *get_device() const { return device; }
 	PixelFormats &get_pixel_formats() const { return *pixel_formats; }
 	MDResourceCache &get_resource_cache() const { return *resource_cache; }
 	MetalDeviceProperties const &get_device_properties() const { return *device_properties; }

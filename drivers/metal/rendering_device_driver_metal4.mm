@@ -54,7 +54,7 @@ namespace API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MTL4
 #pragma mark - Fences
 
 RDD::FenceID RenderingDeviceDriverMetal::fence_create() {
-	Fence *fence = memnew(Fence(device.newSharedEvent));
+	Fence *fence = memnew(Fence((__bridge id<MTLSharedEvent>)device->newSharedEvent()));
 	return FenceID(fence);
 }
 
@@ -77,7 +77,7 @@ void RenderingDeviceDriverMetal::fence_free(FenceID p_fence) {
 #pragma mark - Semaphores
 
 RDD::SemaphoreID RenderingDeviceDriverMetal::semaphore_create() {
-	Semaphore *sem = memnew(Semaphore(device.newEvent));
+	Semaphore *sem = memnew(Semaphore((__bridge id<MTLEvent>)device->newEvent()));
 	return SemaphoreID(sem);
 }
 
@@ -102,18 +102,19 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 	DEV_ASSERT((p_swap_chains.size() > 0 && queue == device_queue) || p_swap_chains.size() == 0);
 
 	bool changed = false;
+	id<MTLResidencySet> mrs = (__bridge id<MTLResidencySet>)main_residency_set;
 	if (!_residency_add.is_empty()) {
-		[main_residency_set addAllocations:(id<MTLAllocation> *)_residency_add.ptr() count:_residency_add.size()];
+		[mrs addAllocations:(id<MTLAllocation> *)_residency_add.ptr() count:_residency_add.size()];
 		_residency_add.clear();
 		changed = true;
 	}
 	if (!_residency_del.is_empty()) {
-		[main_residency_set removeAllocations:(id<MTLAllocation> *)_residency_del.ptr() count:_residency_del.size()];
+		[mrs removeAllocations:(id<MTLAllocation> *)_residency_del.ptr() count:_residency_del.size()];
 		_residency_del.clear();
 		changed = true;
 	}
 	if (changed) {
-		[main_residency_set commit];
+		[mrs commit];
 	}
 
 	uint32_t size = p_cmd_buffers.size();
@@ -182,8 +183,9 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 
 	if (p_swap_chains.size() > 0) {
 		// Used as a signal that we're presenting, so this is the end of a frame.
-		[device_scope endScope];
-		[device_scope beginScope];
+		id<MTLCaptureScope> scope = (__bridge id<MTLCaptureScope>)device_scope;
+		[scope endScope];
+		[scope beginScope];
 	}
 
 	return OK;
@@ -238,29 +240,32 @@ RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 #pragma mark - Initialization
 
 Error RenderingDeviceDriverMetal::_create_device() {
-	device = (__bridge id<MTLDevice>)context_driver->get_metal_device();
+	device = context_driver->get_metal_device();
+	id<MTLDevice> mtl_device = (__bridge id<MTLDevice>)device;
 
 	MTL4CommandQueueDescriptor *desc = [MTL4CommandQueueDescriptor new];
 	desc.label = @"Main Queue";
-	device_queue = [device newMTL4CommandQueueWithDescriptor:desc error:nil];
+	device_queue = [mtl_device newMTL4CommandQueueWithDescriptor:desc error:nil];
 	ERR_FAIL_NULL_V_MSG(device_queue, ERR_CANT_CREATE, "Failed to create main queue");
 	desc.label = @"Transfer Queue";
-	transfer_queue = [device newMTL4CommandQueueWithDescriptor:desc error:nil];
+	transfer_queue = [mtl_device newMTL4CommandQueueWithDescriptor:desc error:nil];
 	ERR_FAIL_NULL_V_MSG(transfer_queue, ERR_CANT_CREATE, "Failed to create transfer queue");
 
-	device_scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithDevice:device];
-	device_scope.label = @"Godot Frame";
-	[device_scope beginScope]; // Allow Xcode to capture the first frame, if desired.
+	id<MTLCaptureScope> scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithDevice:mtl_device];
+	device_scope = (__bridge MTL::CaptureScope *)scope;
+	scope.label = @"Godot Frame";
+	[scope beginScope]; // Allow Xcode to capture the first frame, if desired.
 
 	MTLResidencySetDescriptor *rs_desc = [MTLResidencySetDescriptor new];
 	[rs_desc setInitialCapacity:10];
 	rs_desc.label = @"Main Residency Set";
 	NSError *error;
-	main_residency_set = [device newResidencySetWithDescriptor:rs_desc error:&error];
+	id<MTLResidencySet> mrs = [mtl_device newResidencySetWithDescriptor:rs_desc error:&error];
+	main_residency_set = (__bridge MTL::ResidencySet *)mrs;
 	CRASH_COND_MSG(error != nil, vformat("Failed to create residency set: %s", String(error.localizedDescription.UTF8String)));
 
-	[device_queue addResidencySet:main_residency_set];
-	[transfer_queue addResidencySet:main_residency_set];
+	[device_queue addResidencySet:mrs];
+	[transfer_queue addResidencySet:mrs];
 
 	return OK;
 }
@@ -276,7 +281,7 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 	{
 		MTL4CompilerDescriptor *desc = [MTL4CompilerDescriptor new];
 		NSError *error = nil;
-		compiler = [device newCompilerWithDescriptor:desc error:&error];
+		compiler = [(__bridge id<MTLDevice>)device newCompilerWithDescriptor:desc error:&error];
 	}
 
 	return OK;

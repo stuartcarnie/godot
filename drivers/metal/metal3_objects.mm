@@ -249,13 +249,13 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 					td.storageMode = MTLStorageModeMemoryless;
 					td.usage = MTLTextureUsageRenderTarget;
 					td.sampleCount = render.pipeline->sample_count;
-					tex = [device_driver->get_device() newTextureWithDescriptor:td];
+					tex = [(__bridge id<MTLDevice>)device_driver->get_device() newTextureWithDescriptor:td];
 
 					td.textureType = MTLTextureType2D;
 					td.storageMode = MTLStorageModePrivate;
 					td.usage = MTLTextureUsageShaderWrite;
 					td.sampleCount = 1;
-					res_tex = [device_driver->get_device() newTextureWithDescriptor:td];
+					res_tex = [(__bridge id<MTLDevice>)device_driver->get_device() newTextureWithDescriptor:td];
 				});
 				render.desc.colorAttachments[0].texture = tex;
 				render.desc.colorAttachments[0].loadAction = MTLLoadActionClear;

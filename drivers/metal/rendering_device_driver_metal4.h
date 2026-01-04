@@ -51,12 +51,12 @@ class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) Renderin
 	Error _create_device() override;
 
 protected:
-	id get_command_queue() const override { return device_queue; }
-	void add_residency_set_to_main_queue(id<MTLResidencySet> p_set) override {
-		[device_queue addResidencySet:p_set];
+	MTL::CommandQueue *get_command_queue() const override { return (__bridge MTL::CommandQueue *)device_queue; }
+	void add_residency_set_to_main_queue(MTL::ResidencySet *p_set) override {
+		[device_queue addResidencySet:(__bridge id<MTLResidencySet>)p_set];
 	}
-	void remove_residency_set_to_main_queue(id<MTLResidencySet> p_set) override {
-		[device_queue removeResidencySet:p_set];
+	void remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) override {
+		[device_queue removeResidencySet:(__bridge id<MTLResidencySet>)p_set];
 	}
 
 public:

@@ -69,9 +69,9 @@ namespace MTL4 {
 GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability-new")
 
 MDCommandBuffer::MDCommandBuffer(id<MTL4CommandAllocator> p_allocator, RenderingDeviceDriverMetal *p_device_driver) :
-		allocator(p_allocator), command_buffer([p_device_driver->get_device() newCommandBuffer]), _scratch((__bridge MTL::Device *)p_device_driver->get_device(), DEFAULT_SCRATCH_SIZE) {
+		allocator(p_allocator), command_buffer([(__bridge id<MTLDevice>)p_device_driver->get_device() newCommandBuffer]), _scratch(p_device_driver->get_device(), DEFAULT_SCRATCH_SIZE) {
 	device_driver = p_device_driver;
-	id<MTLDevice> device = device_driver->get_device();
+	id<MTLDevice> device = (__bridge id<MTLDevice>)device_driver->get_device();
 
 	MTLResidencySetDescriptor *rs_desc = [MTLResidencySetDescriptor new];
 	[rs_desc setInitialCapacity:10];
@@ -246,13 +246,13 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 					td.storageMode = MTLStorageModeMemoryless;
 					td.usage = MTLTextureUsageRenderTarget;
 					td.sampleCount = render.pipeline->sample_count;
-					tex = [device_driver->get_device() newTextureWithDescriptor:td];
+					tex = [(__bridge id<MTLDevice>)device_driver->get_device() newTextureWithDescriptor:td];
 
 					td.textureType = MTLTextureType2D;
 					td.storageMode = MTLStorageModePrivate;
 					td.usage = MTLTextureUsageShaderWrite;
 					td.sampleCount = 1;
-					res_tex = [device_driver->get_device() newTextureWithDescriptor:td];
+					res_tex = [(__bridge id<MTLDevice>)device_driver->get_device() newTextureWithDescriptor:td];
 				});
 				render.desc.colorAttachments[0].texture = tex;
 				render.desc.colorAttachments[0].loadAction = MTLLoadActionClear;
@@ -794,7 +794,7 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 void MDCommandBuffer::_render_set_dirty_state() {
 	_render_bind_uniform_sets();
 
-	id<MTLDevice> __unsafe_unretained dev = this->device_driver->get_device();
+	id<MTLDevice> __unsafe_unretained dev = (__bridge id<MTLDevice>)this->device_driver->get_device();
 
 	if (render.dirty.has_flag(RenderState::DIRTY_PUSH)) {
 		if (push_constant_binding != UINT32_MAX) {
@@ -1060,7 +1060,7 @@ void MDCommandBuffer::render_bind_vertex_buffers(uint32_t p_binding_count, const
 	}
 
 	if (render.encoder) {
-		id<MTLDevice> dev = device_driver->get_device();
+		id<MTLDevice> dev = (__bridge id<MTLDevice>)device_driver->get_device();
 		uint32_t first = device_driver->get_metal_buffer_index_for_vertex_attribute_binding(p_binding_count - 1);
 
 		id<MTLBuffer> __unsafe_unretained *buf_ptr = render.vertex_buffers.ptr();
@@ -1353,7 +1353,7 @@ void MDCommandBuffer::_end_compute_dispatch() {
 #pragma mark - Command Pool
 
 MDCommandBuffer *MD4CommandPool::new_command_buffer() {
-	MDCommandBuffer *obj = memnew(MDCommandBuffer(_driver->get_device().newCommandAllocator, _driver));
+	MDCommandBuffer *obj = memnew(MDCommandBuffer((__bridge id<MTL4CommandAllocator>)_driver->get_device()->newCommandAllocator(), _driver));
 	_command_buffers.push_back(obj);
 	return obj;
 }

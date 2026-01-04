@@ -114,7 +114,7 @@ RDD::BufferID RenderingDeviceDriverMetal::buffer_create(uint64_t p_size, BitFiel
 			break;
 	}
 
-	id<MTLBuffer> obj = [device newBufferWithLength:p_size options:options];
+	id<MTLBuffer> obj = [(__bridge id<MTLDevice>)device newBufferWithLength:p_size options:options];
 	ERR_FAIL_NULL_V_MSG(obj, BufferID(), "Can't create buffer of size: " + itos(p_size));
 
 	BufferInfo *buf_info;
@@ -131,7 +131,7 @@ RDD::BufferID RenderingDeviceDriverMetal::buffer_create(uint64_t p_size, BitFiel
 	}
 	buf_info->metal_buffer = obj;
 
-	_track_resource(obj);
+	_track_resource((__bridge MTL::Resource *)obj);
 
 	return BufferID(buf_info);
 }
@@ -144,7 +144,7 @@ bool RenderingDeviceDriverMetal::buffer_set_texel_format(BufferID p_buffer, Data
 void RenderingDeviceDriverMetal::buffer_free(BufferID p_buffer) {
 	BufferInfo *buf_info = (BufferInfo *)p_buffer.id;
 
-	_untrack_resource(buf_info->metal_buffer);
+	_untrack_resource((__bridge MTL::Resource *)buf_info->metal_buffer);
 
 	if (buf_info->is_dynamic()) {
 		memdelete((MetalBufferDynamicInfo *)buf_info);
@@ -399,16 +399,16 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 		size_t bytes_per_layer = formats.getBytesPerLayer(pixel_format, bytes_per_row, p_format.height);
 		size_t byte_count = bytes_per_layer * p_format.depth * p_format.array_layers;
 
-		id<MTLBuffer> buf = [device newBufferWithLength:byte_count options:options];
+		id<MTLBuffer> buf = [(__bridge id<MTLDevice>)device newBufferWithLength:byte_count options:options];
 		obj = [buf newTextureWithDescriptor:desc offset:0 bytesPerRow:bytes_per_row];
 
-		_track_resource(buf);
+		_track_resource((__bridge MTL::Resource *)buf);
 	} else {
-		obj = [device newTextureWithDescriptor:desc];
+		obj = [(__bridge id<MTLDevice>)device newTextureWithDescriptor:desc];
 	}
 	ERR_FAIL_NULL_V_MSG(obj, TextureID(), "Unable to create texture.");
 
-	_track_resource(obj);
+	_track_resource((__bridge MTL::Resource *)obj);
 
 	return rid::make(obj);
 }
@@ -432,7 +432,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_from_extension(uint64_
 		ERR_FAIL_NULL_V_MSG(res, TextureID(), "Unable to create texture view.");
 	}
 
-	_track_resource(res);
+	_track_resource((__bridge MTL::Resource *)res);
 
 	return rid::make(res);
 }
@@ -481,7 +481,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared(TextureID p_ori
 															 slices:NSMakeRange(0, slices)
 															swizzle:swizzle];
 	ERR_FAIL_NULL_V_MSG(obj, TextureID(), "Unable to create shared texture");
-	_track_resource(obj);
+	_track_resource((__bridge MTL::Resource *)obj);
 	return rid::make(obj);
 }
 
@@ -544,13 +544,13 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared_from_slice(Text
 															 slices:NSMakeRange(p_layer, p_layers)
 															swizzle:swizzle];
 	ERR_FAIL_NULL_V_MSG(obj, TextureID(), "Unable to create shared texture");
-	_track_resource(obj);
+	_track_resource((__bridge MTL::Resource *)obj);
 	return rid::make(obj);
 }
 
 void RenderingDeviceDriverMetal::texture_free(TextureID p_texture) {
 	id<MTLTexture> obj = rid::release(p_texture);
-	_untrack_resource(obj);
+	_untrack_resource((__bridge MTL::Resource *)obj);
 }
 
 uint64_t RenderingDeviceDriverMetal::texture_get_allocation_size(TextureID p_texture) {
@@ -592,7 +592,8 @@ Vector<uint8_t> RenderingDeviceDriverMetal::texture_get_data(TextureID p_texture
 
 	if (obj.storageMode == MTLStorageModePrivate) {
 		// Need to copy to a temporary texture instead.
-		id<MTLCommandQueue> tmp = [device newCommandQueue];
+		id<MTLDevice> mtl_device = (__bridge id<MTLDevice>)device;
+		id<MTLCommandQueue> tmp = [mtl_device newCommandQueue];
 		id<MTLCommandBuffer> cmd = [tmp commandBuffer];
 		id<MTLBlitCommandEncoder> blit = [cmd blitCommandEncoder];
 		MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:obj.pixelFormat width:obj.width height:obj.height mipmapped:(obj.mipmapLevelCount > 1)];
@@ -600,7 +601,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::texture_get_data(TextureID p_texture
 		desc.depth = obj.depth;
 		desc.arrayLength = obj.arrayLength;
 		desc.storageMode = MTLStorageModeShared;
-		id<MTLTexture> temporary = [device newTextureWithDescriptor:desc];
+		id<MTLTexture> temporary = [mtl_device newTextureWithDescriptor:desc];
 		[blit copyFromTexture:obj toTexture:temporary];
 		[blit endEncoding];
 		[cmd commit];
@@ -797,7 +798,7 @@ RDD::SamplerID RenderingDeviceDriverMetal::sampler_create(const SamplerState &p_
 	}
 #endif
 
-	id<MTLSamplerState> obj = [device newSamplerStateWithDescriptor:desc];
+	id<MTLSamplerState> obj = [(__bridge id<MTLDevice>)device newSamplerStateWithDescriptor:desc];
 	ERR_FAIL_NULL_V_MSG(obj, SamplerID(), "newSamplerStateWithDescriptor failed");
 	return rid::make(obj);
 }
@@ -917,7 +918,7 @@ RDD::SwapChainID RenderingDeviceDriverMetal::swap_chain_create(RenderingContextD
 	RenderingContextDriverMetal::Surface const *surface = (RenderingContextDriverMetal::Surface *)(p_surface);
 	if (use_barriers) {
 		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-		add_residency_set_to_main_queue((__bridge id<MTLResidencySet>)surface->get_residency_set());
+		add_residency_set_to_main_queue(surface->get_residency_set());
 		GODOT_CLANG_WARNING_POP
 	}
 
@@ -994,7 +995,7 @@ void RenderingDeviceDriverMetal::swap_chain_free(SwapChainID p_swap_chain) {
 	if (use_barriers) {
 		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 		RenderingContextDriverMetal::Surface *surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
-		remove_residency_set_to_main_queue((__bridge id<MTLResidencySet>)surface->get_residency_set());
+		remove_residency_set_to_main_queue(surface->get_residency_set());
 		GODOT_CLANG_WARNING_POP
 	}
 	_swap_chain_release(swap_chain);
@@ -1145,7 +1146,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 					RDD::ShaderID(),
 					"Metal shader binary was generated for a newer target OS");
 			dispatch_data_t binary = dispatch_data_create(decompressed_code.ptr() + shader_data.source_size, shader_data.library_size, dispatch_get_main_queue(), DISPATCH_DATA_DESTRUCTOR_DEFAULT);
-			library = MDLibrary::create(cd, (__bridge MTL::Device *)device,
+			library = MDLibrary::create(cd, device,
 #if DEV_ENABLED
 					(__bridge NS::String *)source,
 #endif
@@ -1157,7 +1158,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 #else
 			options.fastMathEnabled = YES;
 #endif
-			library = MDLibrary::create(cd, (__bridge MTL::Device *)device, (__bridge NS::String *)source, (__bridge MTL::CompileOptions *)options, _shader_load_strategy);
+			library = MDLibrary::create(cd, device, (__bridge NS::String *)source, (__bridge MTL::CompileOptions *)options, _shader_load_strategy);
 		}
 
 		_shader_cache[shader_data.hash] = cd;
@@ -1409,12 +1410,12 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 		}
 
 		if (!is_dynamic) {
-			set->arg_buffer = [device newBufferWithLength:shader_set.buffer_size options:base_hazard_tracking | MTLResourceStorageModePrivate];
+			set->arg_buffer = [(__bridge id<MTLDevice>)device newBufferWithLength:shader_set.buffer_size options:base_hazard_tracking | MTLResourceStorageModePrivate];
 #if DEV_ENABLED
 			[set->arg_buffer setLabel:[NSString stringWithFormat:@"Uniform Set %u", p_set_index]];
 #endif
-			_track_resource(set->arg_buffer);
-			_copy_queue_copy_to_buffer(arg_buffer_data, set->arg_buffer);
+			_track_resource((__bridge MTL::Resource *)set->arg_buffer);
+			_copy_queue_copy_to_buffer(arg_buffer_data, (__bridge MTL::Buffer *)set->arg_buffer);
 		} else {
 			// Store the arg buffer data for dynamic uniform sets.
 			// It will be copied and updated at bind time.
@@ -1436,7 +1437,7 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 void RenderingDeviceDriverMetal::uniform_set_free(UniformSetID p_uniform_set) {
 	MDUniformSet *obj = (MDUniformSet *)p_uniform_set.id;
 	if (obj->arg_buffer) {
-		_untrack_resource(obj->arg_buffer);
+		_untrack_resource((__bridge MTL::Resource *)obj->arg_buffer);
 	}
 	memdelete(obj);
 }
@@ -1552,12 +1553,12 @@ bool RenderingDeviceDriverMetal::pipeline_cache_create(const Vector<uint8_t> &p_
 		desc.url = [NSURL fileURLWithPath:nPath];
 	}
 	NSError *error = nil;
-	archive = [device newBinaryArchiveWithDescriptor:desc error:&error];
+	archive = (__bridge MTL::BinaryArchive *)[(__bridge id<MTLDevice>)device newBinaryArchiveWithDescriptor:desc error:&error];
 	return true;
 }
 
 void RenderingDeviceDriverMetal::pipeline_cache_free() {
-	archive = nil;
+	archive = nullptr;
 }
 
 size_t RenderingDeviceDriverMetal::pipeline_cache_query_size() {
@@ -1581,7 +1582,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::pipeline_cache_serialize() {
 											attributes:nil
 												 error:nil];
 	NSError *error = nil;
-	if ([archive serializeToURL:target error:&error]) {
+	if ([(__bridge id<MTLBinaryArchive>)archive serializeToURL:target error:&error]) {
 		return Vector<uint8_t>();
 	} else {
 		print_line(error.localizedDescription.UTF8String);
@@ -2063,7 +2064,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 			}
 		}
 
-		pipeline->depth_stencil = [device newDepthStencilStateWithDescriptor:ds_desc];
+		pipeline->depth_stencil = [(__bridge id<MTLDevice>)device newDepthStencilStateWithDescriptor:ds_desc];
 		ERR_FAIL_NULL_V_MSG(pipeline->depth_stencil, PipelineID(), "Failed to create depth stencil state");
 	} else {
 		// TODO(sgc): FB13671991 raised as Apple docs state calling setDepthStencilState:nil is valid, but currently generates an exception
@@ -2150,15 +2151,16 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	}
 
 	MTLPipelineOption options = MTLPipelineOptionNone;
-	if (archive) {
-		desc.binaryArchives = @[ archive ];
+	id<MTLBinaryArchive> arc = (__bridge id<MTLBinaryArchive>)archive;
+	if (arc) {
+		desc.binaryArchives = @[ arc ];
 		if (archive_fail_on_miss) {
 			options |= MTLPipelineOptionFailOnBinaryArchiveMiss;
 		}
 	}
 
 	NSError *error = nil;
-	pipeline->state = [device newRenderPipelineStateWithDescriptor:desc
+	pipeline->state = [(__bridge id<MTLDevice>)device newRenderPipelineStateWithDescriptor:desc
 														   options:options
 														reflection:nil
 															 error:&error];
@@ -2166,8 +2168,8 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 
 	ERR_FAIL_COND_V_MSG(error != nil, PipelineID(), ([NSString stringWithFormat:@"error creating pipeline: %@", error.localizedDescription].UTF8String));
 
-	if (archive) {
-		if ([archive addRenderPipelineFunctionsWithDescriptor:desc error:&error]) {
+	if (arc) {
+		if ([arc addRenderPipelineFunctionsWithDescriptor:desc error:&error]) {
 			archive_count += 1;
 		} else {
 			print_error(error.localizedDescription.UTF8String);
@@ -2232,15 +2234,16 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 	}
 
 	MTLPipelineOption options = MTLPipelineOptionNone;
-	if (archive) {
-		desc.binaryArchives = @[ archive ];
+	id<MTLBinaryArchive> arc = (__bridge id<MTLBinaryArchive>)archive;
+	if (arc) {
+		desc.binaryArchives = @[ arc ];
 		if (archive_fail_on_miss) {
 			options |= MTLPipelineOptionFailOnBinaryArchiveMiss;
 		}
 	}
 
 	NSError *error;
-	id<MTLComputePipelineState> state = [device newComputePipelineStateWithDescriptor:desc
+	id<MTLComputePipelineState> state = [(__bridge id<MTLDevice>)device newComputePipelineStateWithDescriptor:desc
 																			  options:options
 																		   reflection:nil
 																				error:&error];
@@ -2250,8 +2253,8 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 	pipeline->compute_state.local = shader->local;
 	pipeline->shader = shader;
 
-	if (archive) {
-		if ([archive addComputePipelineFunctionsWithDescriptor:desc error:&error]) {
+	if (arc) {
+		if ([arc addComputePipelineFunctionsWithDescriptor:desc error:&error]) {
 			archive_count += 1;
 		} else {
 			print_error(error.localizedDescription.UTF8String);
@@ -2310,7 +2313,7 @@ Error RenderingDeviceDriverMetal::gpu_capture_begin() {
 
 	// Determine target
 	MTLCaptureDescriptor *desc = [MTLCaptureDescriptor new];
-	desc.captureObject = device;
+	desc.captureObject = (__bridge id<MTLDevice>)device;
 	if ([MTLCaptureManager.sharedCaptureManager supportsDestination:MTLCaptureDestinationDeveloperTools]) {
 		desc.destination = MTLCaptureDestinationDeveloperTools;
 	} else {
@@ -2394,7 +2397,7 @@ void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_
 uint64_t RenderingDeviceDriverMetal::get_resource_native_handle(DriverResource p_type, ID p_driver_id) {
 	switch (p_type) {
 		case DRIVER_RESOURCE_LOGICAL_DEVICE: {
-			return (uint64_t)(uintptr_t)(__bridge void *)device;
+			return (uint64_t)(uintptr_t)device;
 		}
 		case DRIVER_RESOURCE_PHYSICAL_DEVICE: {
 			return 0;
@@ -2403,7 +2406,7 @@ uint64_t RenderingDeviceDriverMetal::get_resource_native_handle(DriverResource p
 			return 0;
 		}
 		case DRIVER_RESOURCE_COMMAND_QUEUE: {
-			return (uint64_t)(uintptr_t)(__bridge void *)get_command_queue();
+			return (uint64_t)(uintptr_t)get_command_queue();
 		}
 		case DRIVER_RESOURCE_QUEUE_FAMILY: {
 			return 0;
@@ -2440,68 +2443,64 @@ uint64_t RenderingDeviceDriverMetal::get_resource_native_handle(DriverResource p
 	}
 }
 
-void RenderingDeviceDriverMetal::_copy_queue_copy_to_buffer(Span<uint8_t> p_src_data, id<MTLBuffer> __unsafe_unretained p_dst_buffer, uint64_t p_dst_offset) {
+void RenderingDeviceDriverMetal::_copy_queue_copy_to_buffer(Span<uint8_t> p_src_data, MTL::Buffer *p_dst_buffer, uint64_t p_dst_offset) {
 	if (_copy_queue_buffer_available() < p_src_data.size()) {
 		_copy_queue_flush();
 	}
 
-	id<MTLBlitCommandEncoder> __unsafe_unretained blit_encoder = _copy_queue_blit_encoder();
+	MTL::BlitCommandEncoder *blit_encoder = _copy_queue_blit_encoder();
 
 	memcpy(_copy_queue_buffer_ptr(), p_src_data.ptr(), p_src_data.size());
 
-	[copy_queue_rs addAllocation:p_dst_buffer];
-	[blit_encoder copyFromBuffer:copy_queue_buffer
-					sourceOffset:copy_queue_buffer_offset
-						toBuffer:p_dst_buffer
-			   destinationOffset:p_dst_offset
-							size:p_src_data.size()];
+	copy_queue_rs->addAllocation(p_dst_buffer);
+	blit_encoder->copyFromBuffer(copy_queue_buffer, copy_queue_buffer_offset, p_dst_buffer, p_dst_offset, p_src_data.size());
 
 	_copy_queue_buffer_consume(p_src_data.size());
 }
 
 void RenderingDeviceDriverMetal::_copy_queue_flush() {
-	if (copy_queue_blit_encoder == nil) {
+	if (copy_queue_blit_encoder == nullptr) {
 		return;
 	}
 
-	[copy_queue_rs addAllocation:copy_queue_buffer];
-	[copy_queue_rs commit];
+	copy_queue_rs->addAllocation(copy_queue_buffer);
+	copy_queue_rs->commit();
 
-	[copy_queue_blit_encoder endEncoding];
-	copy_queue_blit_encoder = nil;
-	[copy_queue_command_buffer commit];
-	[copy_queue_command_buffer waitUntilCompleted];
-	copy_queue_command_buffer = nil;
+	copy_queue_blit_encoder->endEncoding();
+	copy_queue_blit_encoder = nullptr;
+	copy_queue_command_buffer->commit();
+	copy_queue_command_buffer->waitUntilCompleted();
+	copy_queue_command_buffer = nullptr;
 	copy_queue_buffer_offset = 0;
-	[copy_queue_rs removeAllAllocations];
+	copy_queue_rs->removeAllAllocations();
 }
 
 Error RenderingDeviceDriverMetal::_copy_queue_initialize() {
-	DEV_ASSERT(copy_queue == nil);
+	DEV_ASSERT(copy_queue == nullptr);
 
-	copy_queue = [device newCommandQueue];
-	copy_queue.label = @"Copy Command Queue";
+	copy_queue = device->newCommandQueue();
+	copy_queue->setLabel(MTLSTR("Copy Command Queue"));
 	ERR_FAIL_NULL_V(copy_queue, ERR_CANT_CREATE);
 
 	// Reserve 64 KiB for copy commands. If the buffer fills, it will be flushed automatically.
-	copy_queue_buffer = [device newBufferWithLength:64 * 1024
-											options:MTLResourceStorageModeShared | MTLResourceHazardTrackingModeUntracked];
-	copy_queue_buffer.label = @"Copy Command Scratch Buffer";
+	copy_queue_buffer = device->newBuffer(64 * 1024, MTL::ResourceStorageModeShared | MTL::ResourceHazardTrackingModeUntracked);
+	copy_queue_buffer->setLabel(MTLSTR("Copy Command Scratch Buffer"));
 
 	if (@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 1.0, *)) {
-		MTLResidencySetDescriptor *rs_desc = [MTLResidencySetDescriptor new];
-		[rs_desc setInitialCapacity:2];
-		rs_desc.label = @"Copy Queue Residency Set";
-		NSError *error;
-		copy_queue_rs = [device newResidencySetWithDescriptor:rs_desc error:&error];
-		[copy_queue addResidencySet:copy_queue_rs];
+		MTL::ResidencySetDescriptor *rs_desc = MTL::ResidencySetDescriptor::alloc()->init();
+		rs_desc->setInitialCapacity(2);
+		rs_desc->setLabel(MTLSTR("Copy Queue Residency Set"));
+		NS::Error *error = nullptr;
+		copy_queue_rs = device->newResidencySet(rs_desc, &error);
+		rs_desc->release();
+		copy_queue->addResidencySet(copy_queue_rs);
 	}
 
 	return OK;
 }
 
 uint64_t RenderingDeviceDriverMetal::get_total_memory_used() {
-	return device.currentAllocatedSize;
+	return device->currentAllocatedSize();
 }
 
 uint64_t RenderingDeviceDriverMetal::get_lazily_memory_used() {
@@ -2691,11 +2690,11 @@ bool RenderingDeviceDriverMetal::is_composite_alpha_supported(CommandQueueID p_q
 }
 
 size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const {
-	return [device minimumLinearTextureAlignmentForPixelFormat:(MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_format)];
+	return [(__bridge id<MTLDevice>)device minimumLinearTextureAlignmentForPixelFormat:(MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_format)];
 }
 
 size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(MTLPixelFormat p_format) const {
-	return [device minimumLinearTextureAlignmentForPixelFormat:p_format];
+	return [(__bridge id<MTLDevice>)device minimumLinearTextureAlignmentForPixelFormat:p_format];
 }
 
 /******************/
@@ -2738,11 +2737,12 @@ RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 #pragma mark - Initialization
 
 Error RenderingDeviceDriverMetal::_create_device() {
-	device = (__bridge id<MTLDevice>)context_driver->get_metal_device();
+	device = context_driver->get_metal_device();
 
-	device_scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithDevice:device];
-	device_scope.label = @"Godot Frame";
-	[device_scope beginScope]; // Allow Xcode to capture the first frame, if desired.
+	id<MTLCaptureScope> scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithDevice:(__bridge id<MTLDevice>)device];
+	device_scope = (__bridge MTL::CaptureScope *)scope;
+	scope.label = @"Godot Frame";
+	[scope beginScope]; // Allow Xcode to capture the first frame, if desired.
 
 	return OK;
 }
@@ -2816,9 +2816,9 @@ Error RenderingDeviceDriverMetal::_initialize(uint32_t p_device_index, uint32_t 
 	Error err = _create_device();
 	ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
 
-	device_properties = memnew(MetalDeviceProperties((__bridge MTL::Device *)device));
+	device_properties = memnew(MetalDeviceProperties(device));
 	device_profile = device_profile_from_properties(device_properties);
-	resource_cache = std::make_unique<MDResourceCache>((__bridge MTL::Device *)device, *pixel_formats, device_properties->limits.maxPerStageBufferCount);
+	resource_cache = std::make_unique<MDResourceCache>(device, *pixel_formats, device_properties->limits.maxPerStageBufferCount);
 	shader_container_format = memnew(RenderingShaderContainerFormatMetal(&device_profile));
 
 	_check_capabilities();
@@ -2831,7 +2831,7 @@ Error RenderingDeviceDriverMetal::_initialize(uint32_t p_device_index, uint32_t 
 	// Set the pipeline cache ID based on the Metal version.
 	pipeline_cache_id = "metal-driver-" + get_api_version();
 
-	pixel_formats = memnew(PixelFormats((__bridge MTL::Device *)device, device_properties->features));
+	pixel_formats = memnew(PixelFormats(device, device_properties->features));
 	if (device_properties->features.layeredRendering) {
 		multiview_capabilities.is_supported = true;
 		multiview_capabilities.max_view_count = device_properties->limits.maxViewports;

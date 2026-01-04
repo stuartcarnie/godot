@@ -80,13 +80,13 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 	Error _execute_and_present(CommandQueueID p_cmd_queue, VectorView<SemaphoreID> p_wait_semaphores, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_cmd_semaphores, FenceID p_cmd_fence, VectorView<SwapChainID> p_swap_chains);
 
 protected:
-	id get_command_queue() const override { return device_queue; }
+	MTL::CommandQueue *get_command_queue() const override { return (__bridge MTL::CommandQueue *)device_queue; }
 	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-	void add_residency_set_to_main_queue(id<MTLResidencySet> p_set) override {
-		[device_queue addResidencySet:p_set];
+	void add_residency_set_to_main_queue(MTL::ResidencySet *p_set) override {
+		[device_queue addResidencySet:(__bridge id<MTLResidencySet>)p_set];
 	}
-	void remove_residency_set_to_main_queue(id<MTLResidencySet> p_set) override {
-		[device_queue removeResidencySet:p_set];
+	void remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) override {
+		[device_queue removeResidencySet:(__bridge id<MTLResidencySet>)p_set];
 	}
 	GODOT_CLANG_WARNING_POP
 public:

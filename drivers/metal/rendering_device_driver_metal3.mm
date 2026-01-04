@@ -105,7 +105,7 @@ Error RenderingDeviceDriverMetal::_create_device() {
 	Error err = ::RenderingDeviceDriverMetal::_create_device();
 	ERR_FAIL_COND_V(err, err);
 
-	device_queue = [device newCommandQueue];
+	device_queue = [(__bridge id<MTLDevice>)device newCommandQueue];
 	device_queue.label = @"Godot Main Command Queue";
 	ERR_FAIL_NULL_V(device_queue, ERR_CANT_CREATE);
 
@@ -127,14 +127,15 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 			[rs_desc setInitialCapacity:250];
 			rs_desc.label = @"Main Residency Set";
 			NSError *error;
-			main_residency_set = [device newResidencySetWithDescriptor:rs_desc error:&error];
-			if (main_residency_set == nil) {
+			id<MTLResidencySet> mrs = [(__bridge id<MTLDevice>)device newResidencySetWithDescriptor:rs_desc error:&error];
+			main_residency_set = (__bridge MTL::ResidencySet *)mrs;
+			if (mrs == nil) {
 				String error_msg = conv::to_string(error.localizedDescription);
 				print_error(vformat("Resource barriers unavailable. Failed to create main residency set for explicit resource barriers: %s", error_msg));
 			} else {
 				use_barriers = true;
-				base_hazard_tracking = MTLResourceHazardTrackingModeUntracked;
-				[device_queue addResidencySet:main_residency_set];
+				base_hazard_tracking = MTL::ResourceHazardTrackingModeUntracked;
+				[device_queue addResidencySet:mrs];
 			}
 			GODOT_CLANG_WARNING_POP;
 		} else {
@@ -150,7 +151,7 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 RDD::FenceID RenderingDeviceDriverMetal::fence_create() {
 	Fence *fence = nullptr;
 	if (@available(macOS 10.14, iOS 12.0, tvOS 12.0, visionOS 1.0, *)) {
-		fence = memnew(FenceEvent([device newSharedEvent]));
+		fence = memnew(FenceEvent([(__bridge id<MTLDevice>)device newSharedEvent]));
 	} else {
 		fence = memnew(FenceSemaphore());
 	}
@@ -171,7 +172,7 @@ void RenderingDeviceDriverMetal::fence_free(FenceID p_fence) {
 
 RDD::SemaphoreID RenderingDeviceDriverMetal::semaphore_create() {
 	if (use_barriers) {
-		Semaphore *sem = memnew(Semaphore(device.newEvent));
+		Semaphore *sem = memnew(Semaphore((__bridge id<MTLEvent>)device->newEvent()));
 		return SemaphoreID(sem);
 	}
 	return SemaphoreID(1);
@@ -197,18 +198,19 @@ Error RenderingDeviceDriverMetal::_execute_and_present_barriers(CommandQueueID p
 	}
 
 	bool changed = false;
+	id<MTLResidencySet> mrs = (__bridge id<MTLResidencySet>)main_residency_set;
 	if (!_residency_add.is_empty()) {
-		[main_residency_set addAllocations:(id<MTLAllocation> *)_residency_add.ptr() count:_residency_add.size()];
+		[mrs addAllocations:(id<MTLAllocation> *)_residency_add.ptr() count:_residency_add.size()];
 		_residency_add.clear();
 		changed = true;
 	}
 	if (!_residency_del.is_empty()) {
-		[main_residency_set removeAllocations:(id<MTLAllocation> *)_residency_del.ptr() count:_residency_del.size()];
+		[mrs removeAllocations:(id<MTLAllocation> *)_residency_del.ptr() count:_residency_del.size()];
 		_residency_del.clear();
 		changed = true;
 	}
 	if (changed) {
-		[main_residency_set commit];
+		[mrs commit];
 	}
 
 	if (p_wait_sem.size() > 0) {
@@ -334,8 +336,9 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 
 	if (p_swap_chains.size() > 0) {
 		// Used as a signal that we're presenting, so this is the end of a frame.
-		[device_scope endScope];
-		[device_scope beginScope];
+		id<MTLCaptureScope> scope = (__bridge id<MTLCaptureScope>)device_scope;
+		[scope endScope];
+		[scope beginScope];
 	}
 
 	return OK;

@@ -108,7 +108,7 @@ MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const
 
 	RenderingDeviceDriverMetal *rdd = (RenderingDeviceDriverMetal *)RD::get_singleton()->get_device_driver();
 	PixelFormats &pf = rdd->get_pixel_formats();
-	id<MTLDevice> dev = rdd->get_device();
+	id<MTLDevice> dev = (__bridge id<MTLDevice>)rdd->get_device();
 
 	MTLFXSpatialScalerDescriptor *desc = [MTLFXSpatialScalerDescriptor new];
 	desc.inputWidth = (NSUInteger)p_params.input_size.width;
@@ -157,7 +157,7 @@ MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) con
 
 	RenderingDeviceDriverMetal *rdd = (RenderingDeviceDriverMetal *)RD::get_singleton()->get_device_driver();
 	PixelFormats &pf = rdd->get_pixel_formats();
-	id<MTLDevice> dev = rdd->get_device();
+	id<MTLDevice> dev = (__bridge id<MTLDevice>)rdd->get_device();
 
 	MTLFXTemporalScalerDescriptor *desc = [MTLFXTemporalScalerDescriptor new];
 	desc.inputWidth = (NSUInteger)p_params.input_size.width;
