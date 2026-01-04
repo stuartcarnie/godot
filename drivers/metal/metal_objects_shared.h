@@ -30,12 +30,12 @@
 
 #pragma once
 
-#import "metal_device_properties.h"
-#import "metal_utils.h"
-#import "pixel_formats.h"
-#import "sha256_digest.h"
+#include "metal_device_properties.h"
+#include "metal_utils.h"
+#include "pixel_formats.h"
+#include "sha256_digest.h"
 
-#import <memory>
+#include <memory>
 
 class RenderingDeviceDriverMetal;
 
@@ -175,8 +175,6 @@ struct ClearAttKey {
 	}
 };
 
-#ifdef __OBJC__
-
 #pragma mark - Ring Buffer
 
 /// A ring buffer backed by MTLBuffer instances for transient GPU allocations.
@@ -190,7 +188,7 @@ public:
 
 	struct Allocation {
 		void *ptr = nullptr;
-		id<MTLBuffer> buffer = nil;
+		MTL::Buffer *buffer = nullptr;
 		uint64_t gpu_address = 0;
 		uint32_t offset = 0;
 
@@ -198,16 +196,15 @@ public:
 	};
 
 private:
-	id<MTLDevice> device = nil;
-	LocalVector<id<MTLBuffer>> buffers;
+	MTL::Device *device = nullptr;
+	LocalVector<MTL::Buffer *> buffers;
 	LocalVector<uint32_t> heads;
 	uint32_t current_segment = 0;
 	uint32_t buffer_size = DEFAULT_BUFFER_SIZE;
 	bool changed = false;
 
 	_FORCE_INLINE_ uint32_t alloc_segment() {
-		id<MTLBuffer> buffer = [device newBufferWithLength:buffer_size
-												   options:MTLResourceStorageModeShared | MTLResourceHazardTrackingModeUntracked];
+		MTL::Buffer *buffer = device->newBuffer(buffer_size, MTL::ResourceStorageModeShared | MTL::ResourceHazardTrackingModeUntracked);
 		buffers.push_back(buffer);
 		heads.push_back(0);
 		changed = true;
@@ -218,12 +215,12 @@ private:
 public:
 	MDRingBuffer() = default;
 
-	MDRingBuffer(id<MTLDevice> p_device, uint32_t p_buffer_size = DEFAULT_BUFFER_SIZE) :
+	MDRingBuffer(MTL::Device *p_device, uint32_t p_buffer_size = DEFAULT_BUFFER_SIZE) :
 			device(p_device), buffer_size(p_buffer_size) {}
 
 	~MDRingBuffer() {
 		for (uint32_t i = 0; i < buffers.size(); i++) {
-			buffers[i] = nil;
+			buffers[i]->release();
 		}
 	}
 
@@ -258,13 +255,13 @@ public:
 			}
 		}
 
-		id<MTLBuffer> buffer = buffers[current_segment];
+		MTL::Buffer *buffer = buffers[current_segment];
 		Allocation alloc;
 		alloc.buffer = buffer;
 		alloc.offset = aligned_head;
-		alloc.ptr = static_cast<uint8_t *>([buffer contents]) + aligned_head;
-		if (@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)) {
-			alloc.gpu_address = buffer.gpuAddress + aligned_head;
+		alloc.ptr = static_cast<uint8_t *>(buffer->contents()) + aligned_head;
+		if (__builtin_available(macOS 13.0, iOS 16.0, tvOS 16.0, *)) {
+			alloc.gpu_address = buffer->gpuAddress() + aligned_head;
 		}
 		heads[current_segment] = aligned_head + p_size;
 
@@ -286,8 +283,8 @@ public:
 	_FORCE_INLINE_ void clear_changed() { changed = false; }
 
 	/// Returns a Span of all backing buffers.
-	_FORCE_INLINE_ Span<const id<MTLBuffer> __unsafe_unretained> get_buffers() const {
-		return Span<const id<MTLBuffer> __unsafe_unretained>(buffers.ptr(), buffers.size());
+	_FORCE_INLINE_ Span<MTL::Buffer *const> get_buffers() const {
+		return Span<MTL::Buffer *const>(buffers.ptr(), buffers.size());
 	}
 
 	/// Returns the number of buffer segments currently allocated.
@@ -300,54 +297,52 @@ public:
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDResourceFactory {
 private:
-	id<MTLDevice> device;
+	MTL::Device *device;
 	PixelFormats &pixel_formats;
 	uint32_t max_buffer_count;
 
-	id<MTLFunction> new_func(NSString *p_source, NSString *p_name, NSError **p_error);
-	id<MTLFunction> new_clear_vert_func(ClearAttKey &p_key);
-	id<MTLFunction> new_clear_frag_func(ClearAttKey &p_key);
-	NSString *get_format_type_string(MTLPixelFormat p_fmt);
+	MTL::Function *new_func(NS::String *p_source, NS::String *p_name, NS::Error **p_error);
+	MTL::Function *new_clear_vert_func(ClearAttKey &p_key);
+	MTL::Function *new_clear_frag_func(ClearAttKey &p_key);
+	NS::String *get_format_type_string(MTL::PixelFormat p_fmt);
 
 	_FORCE_INLINE_ uint32_t get_vertex_buffer_index(uint32_t p_binding) {
 		return (max_buffer_count - 1) - p_binding;
 	}
 
 public:
-	id<MTLRenderPipelineState> new_clear_pipeline_state(ClearAttKey &p_key, NSError **p_error);
-	id<MTLRenderPipelineState> new_empty_draw_pipeline_state(ClearAttKey &p_key, NSError **p_error);
-	id<MTLDepthStencilState> new_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
+	MTL::RenderPipelineState *new_clear_pipeline_state(ClearAttKey &p_key, NS::Error **p_error);
+	MTL::RenderPipelineState *new_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error);
+	MTL::DepthStencilState *new_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
 
-	MDResourceFactory(id<MTLDevice> p_device, PixelFormats &p_pixel_formats, uint32_t p_max_buffer_count) :
+	MDResourceFactory(MTL::Device *p_device, PixelFormats &p_pixel_formats, uint32_t p_max_buffer_count) :
 			device(p_device), pixel_formats(p_pixel_formats), max_buffer_count(p_max_buffer_count) {}
 	~MDResourceFactory() = default;
 };
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDResourceCache {
 private:
-	typedef HashMap<ClearAttKey, id<MTLRenderPipelineState>> HashMap;
+	typedef HashMap<ClearAttKey, MTL::RenderPipelineState *> HashMap;
 	std::unique_ptr<MDResourceFactory> resource_factory;
 	HashMap clear_states;
 	HashMap empty_draw_states;
 
 	struct {
-		id<MTLDepthStencilState> all;
-		id<MTLDepthStencilState> depth_only;
-		id<MTLDepthStencilState> stencil_only;
-		id<MTLDepthStencilState> none;
+		MTL::DepthStencilState *all = nullptr;
+		MTL::DepthStencilState *depth_only = nullptr;
+		MTL::DepthStencilState *stencil_only = nullptr;
+		MTL::DepthStencilState *none = nullptr;
 	} clear_depth_stencil_state;
 
 public:
-	id<MTLRenderPipelineState> get_clear_render_pipeline_state(ClearAttKey &p_key, NSError **p_error);
-	id<MTLRenderPipelineState> get_empty_draw_pipeline_state(ClearAttKey &p_key, NSError **p_error);
-	id<MTLDepthStencilState> get_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
+	MTL::RenderPipelineState *get_clear_render_pipeline_state(ClearAttKey &p_key, NS::Error **p_error);
+	MTL::RenderPipelineState *get_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error);
+	MTL::DepthStencilState *get_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
 
-	explicit MDResourceCache(id<MTLDevice> p_device, PixelFormats &p_pixel_formats, uint32_t p_max_buffer_count) :
+	explicit MDResourceCache(MTL::Device *p_device, PixelFormats &p_pixel_formats, uint32_t p_max_buffer_count) :
 			resource_factory(new MDResourceFactory(p_device, p_pixel_formats, p_max_buffer_count)) {}
 	~MDResourceCache() = default;
 };
-
-#endif // __OBJC__ - End of ObjC-only classes (MDRingBuffer, MDResourceFactory, MDResourceCache)
 
 /**
  * Returns an index that can be used to map a shader stage to an index in a fixed-size array that is used for

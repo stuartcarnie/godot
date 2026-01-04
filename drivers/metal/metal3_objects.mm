@@ -64,7 +64,7 @@
 using namespace MTL3;
 
 MDCommandBuffer::MDCommandBuffer(id<MTLCommandQueue> p_queue, ::RenderingDeviceDriverMetal *p_device_driver) :
-		_scratch(p_queue.device), queue(p_queue) {
+		_scratch((__bridge MTL::Device *)p_queue.device), queue(p_queue) {
 	device_driver = p_device_driver;
 	type = MDCommandBufferStateType::None;
 	use_barriers = device_driver->use_barriers;
@@ -125,8 +125,8 @@ void MDCommandBuffer::commit() {
 	end();
 	if (use_barriers) {
 		if (_scratch.is_changed()) {
-			for (id<MTLBuffer> buf : _scratch.get_buffers()) {
-				[_frame_state.rs addAllocation:buf];
+			for (MTL::Buffer *buf : _scratch.get_buffers()) {
+				[_frame_state.rs addAllocation:(__bridge id<MTLBuffer>)buf];
 			}
 			_scratch.clear_changed();
 			[_frame_state.rs commit];
@@ -764,8 +764,8 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 	MDResourceCache &cache = device_driver->get_resource_cache();
 
 	[enc pushDebugGroup:@"ClearAttachments"];
-	[enc setRenderPipelineState:cache.get_clear_render_pipeline_state(key, nil)];
-	[enc setDepthStencilState:cache.get_depth_stencil_state(
+	[enc setRenderPipelineState:(__bridge id<MTLRenderPipelineState>)cache.get_clear_render_pipeline_state(key, nullptr)];
+	[enc setDepthStencilState:(__bridge id<MTLDepthStencilState>)cache.get_depth_stencil_state(
 									  key.is_depth_enabled(),
 									  key.is_stencil_enabled())];
 	[enc setStencilReferenceValue:stencil_value];
@@ -1599,8 +1599,8 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers(MDUniformSet *p_set, MDSha
 			*(MTLGPUAddress *)(ptr + idx.buffer) = gpu_address;
 		}
 
-		[enc setVertexBuffer:alloc.buffer offset:alloc.offset atIndex:p_set_index];
-		[enc setFragmentBuffer:alloc.buffer offset:alloc.offset atIndex:p_set_index];
+		[enc setVertexBuffer:(__bridge id<MTLBuffer>)alloc.buffer offset:alloc.offset atIndex:p_set_index];
+		[enc setFragmentBuffer:(__bridge id<MTLBuffer>)alloc.buffer offset:alloc.offset atIndex:p_set_index];
 	} else {
 		[enc setVertexBuffer:p_set->arg_buffer offset:0 atIndex:p_set_index];
 		[enc setFragmentBuffer:p_set->arg_buffer offset:0 atIndex:p_set_index];
@@ -1761,7 +1761,7 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers_compute(MDUniformSet *p_se
 			*(MTLGPUAddress *)(ptr + idx.buffer) = gpu_address;
 		}
 
-		[enc setBuffer:alloc.buffer offset:alloc.offset atIndex:p_set_index];
+		[enc setBuffer:(__bridge id<MTLBuffer>)alloc.buffer offset:alloc.offset atIndex:p_set_index];
 	} else {
 		[enc setBuffer:p_set->arg_buffer offset:0 atIndex:p_set_index];
 	}

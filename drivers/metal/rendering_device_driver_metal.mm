@@ -2067,7 +2067,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 		ERR_FAIL_NULL_V_MSG(pipeline->depth_stencil, PipelineID(), "Failed to create depth stencil state");
 	} else {
 		// TODO(sgc): FB13671991 raised as Apple docs state calling setDepthStencilState:nil is valid, but currently generates an exception
-		pipeline->depth_stencil = get_resource_cache().get_depth_stencil_state(false, false);
+		pipeline->depth_stencil = (__bridge id<MTLDepthStencilState>)get_resource_cache().get_depth_stencil_state(false, false);
 	}
 
 	// Blend state.
@@ -2818,7 +2818,7 @@ Error RenderingDeviceDriverMetal::_initialize(uint32_t p_device_index, uint32_t 
 
 	device_properties = memnew(MetalDeviceProperties((__bridge MTL::Device *)device));
 	device_profile = device_profile_from_properties(device_properties);
-	resource_cache = std::make_unique<MDResourceCache>(device, *pixel_formats, device_properties->limits.maxPerStageBufferCount);
+	resource_cache = std::make_unique<MDResourceCache>((__bridge MTL::Device *)device, *pixel_formats, device_properties->limits.maxPerStageBufferCount);
 	shader_container_format = memnew(RenderingShaderContainerFormatMetal(&device_profile));
 
 	_check_capabilities();

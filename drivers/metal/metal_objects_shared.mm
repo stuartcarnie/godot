@@ -37,23 +37,24 @@
 
 #pragma mark - Resource Factory
 
-id<MTLFunction> MDResourceFactory::new_func(NSString *p_source, NSString *p_name, NSError **p_error) {
+MTL::Function *MDResourceFactory::new_func(NS::String *p_source, NS::String *p_name, NS::Error **p_error) {
 	@autoreleasepool {
 		NSError *err = nil;
 		MTLCompileOptions *options = [MTLCompileOptions new];
-		id<MTLLibrary> mtlLib = [device newLibraryWithSource:p_source
-													 options:options
-													   error:&err];
+		id<MTLDevice> objcDevice = (__bridge id<MTLDevice>)device;
+		id<MTLLibrary> mtlLib = [objcDevice newLibraryWithSource:(__bridge NSString *)p_source
+														 options:options
+														   error:&err];
 		if (err) {
-			if (p_error != nil) {
-				*p_error = err;
+			if (p_error != nullptr) {
+				*p_error = (__bridge_retained NS::Error *)err;
 			}
 		}
-		return [mtlLib newFunctionWithName:p_name];
+		return (__bridge_retained MTL::Function *)[mtlLib newFunctionWithName:(__bridge NSString *)p_name];
 	}
 }
 
-id<MTLFunction> MDResourceFactory::new_clear_vert_func(ClearAttKey &p_key) {
+MTL::Function *MDResourceFactory::new_clear_vert_func(ClearAttKey &p_key) {
 	@autoreleasepool {
 		NSString *msl = [NSString stringWithFormat:@R"(
 #include <metal_stdlib>
@@ -80,11 +81,11 @@ vertex VaryingsPos vertClear(AttributesPos attributes [[stage_in]], constant Cle
 }
 )", p_key.is_layered_rendering_enabled() ? " [[render_target_array_index]]" : "", ClearAttKey::DEPTH_INDEX];
 
-		return new_func(msl, @"vertClear", nil);
+		return new_func((__bridge NS::String *)msl, MTLSTR("vertClear"), nullptr);
 	}
 }
 
-id<MTLFunction> MDResourceFactory::new_clear_frag_func(ClearAttKey &p_key) {
+MTL::Function *MDResourceFactory::new_clear_frag_func(ClearAttKey &p_key) {
 	@autoreleasepool {
 		NSMutableString *msl = [NSMutableString stringWithCapacity:2048];
 
@@ -105,7 +106,7 @@ typedef struct {
 
 		for (uint32_t caIdx = 0; caIdx < ClearAttKey::COLOR_COUNT; caIdx++) {
 			if (p_key.is_enabled(caIdx)) {
-				NSString *typeStr = get_format_type_string((MTLPixelFormat)p_key.pixel_formats[caIdx]);
+				NSString *typeStr = (__bridge NSString *)get_format_type_string((MTL::PixelFormat)p_key.pixel_formats[caIdx]);
 				[msl appendFormat:@"    %@4 color%u [[color(%u)]];\n", typeStr, caIdx, caIdx];
 			}
 		}
@@ -117,41 +118,41 @@ fragment ClearColorsOut fragClear(VaryingsPos varyings [[stage_in]], constant Cl
 )"];
 		for (uint32_t caIdx = 0; caIdx < ClearAttKey::COLOR_COUNT; caIdx++) {
 			if (p_key.is_enabled(caIdx)) {
-				NSString *typeStr = get_format_type_string((MTLPixelFormat)p_key.pixel_formats[caIdx]);
+				NSString *typeStr = (__bridge NSString *)get_format_type_string((MTL::PixelFormat)p_key.pixel_formats[caIdx]);
 				[msl appendFormat:@"    ccOut.color%u = %@4(ccIn.colors[%u]);\n", caIdx, typeStr, caIdx];
 			}
 		}
 		[msl appendString:@R"(    return ccOut;
 })"];
 
-		return new_func(msl, @"fragClear", nil);
+		return new_func((__bridge NS::String *)msl, MTLSTR("fragClear"), nullptr);
 	}
 }
 
-NSString *MDResourceFactory::get_format_type_string(MTLPixelFormat p_fmt) {
+NS::String *MDResourceFactory::get_format_type_string(MTL::PixelFormat p_fmt) {
 	switch (pixel_formats.getFormatType(p_fmt)) {
 		case MTLFormatType::ColorInt8:
 		case MTLFormatType::ColorInt16:
-			return @"short";
+			return MTLSTR("short");
 		case MTLFormatType::ColorUInt8:
 		case MTLFormatType::ColorUInt16:
-			return @"ushort";
+			return MTLSTR("ushort");
 		case MTLFormatType::ColorInt32:
-			return @"int";
+			return MTLSTR("int");
 		case MTLFormatType::ColorUInt32:
-			return @"uint";
+			return MTLSTR("uint");
 		case MTLFormatType::ColorHalf:
-			return @"half";
+			return MTLSTR("half");
 		case MTLFormatType::ColorFloat:
 		case MTLFormatType::DepthStencil:
 		case MTLFormatType::Compressed:
-			return @"float";
+			return MTLSTR("float");
 		case MTLFormatType::None:
-			return @"unexpected_MTLPixelFormatInvalid";
+			return MTLSTR("unexpected_MTLPixelFormatInvalid");
 	}
 }
 
-id<MTLDepthStencilState> MDResourceFactory::new_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
+MTL::DepthStencilState *MDResourceFactory::new_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
 	MTLDepthStencilDescriptor *dsDesc = [MTLDepthStencilDescriptor new];
 	dsDesc.depthCompareFunction = MTLCompareFunctionAlways;
 	dsDesc.depthWriteEnabled = p_use_depth;
@@ -170,12 +171,13 @@ id<MTLDepthStencilState> MDResourceFactory::new_depth_stencil_state(bool p_use_d
 		dsDesc.backFaceStencil = nil;
 	}
 
-	return [device newDepthStencilStateWithDescriptor:dsDesc];
+	id<MTLDevice> objcDevice = (__bridge id<MTLDevice>)device;
+	return (__bridge_retained MTL::DepthStencilState *)[objcDevice newDepthStencilStateWithDescriptor:dsDesc];
 }
 
-id<MTLRenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttKey &p_key, NSError **p_error) {
-	id<MTLFunction> vtxFunc = new_clear_vert_func(p_key);
-	id<MTLFunction> fragFunc = new_clear_frag_func(p_key);
+MTL::RenderPipelineState *MDResourceFactory::new_clear_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
+	id<MTLFunction> vtxFunc = (__bridge_transfer id<MTLFunction>)new_clear_vert_func(p_key);
+	id<MTLFunction> fragFunc = (__bridge_transfer id<MTLFunction>)new_clear_frag_func(p_key);
 	MTLRenderPipelineDescriptor *plDesc = [MTLRenderPipelineDescriptor new];
 	plDesc.label = @"ClearRenderAttachments";
 	plDesc.vertexFunction = vtxFunc;
@@ -221,10 +223,16 @@ id<MTLRenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttK
 	vbDesc.stepRate = 1;
 	vbDesc.stride = vtxStride;
 
-	return [device newRenderPipelineStateWithDescriptor:plDesc error:p_error];
+	id<MTLDevice> objcDevice = (__bridge id<MTLDevice>)device;
+	NSError *err = nil;
+	id<MTLRenderPipelineState> state = [objcDevice newRenderPipelineStateWithDescriptor:plDesc error:&err];
+	if (p_error != nullptr) {
+		*p_error = (__bridge_retained NS::Error *)err;
+	}
+	return (__bridge_retained MTL::RenderPipelineState *)state;
 }
 
-id<MTLRenderPipelineState> MDResourceFactory::new_empty_draw_pipeline_state(ClearAttKey &p_key, NSError **p_error) {
+MTL::RenderPipelineState *MDResourceFactory::new_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
 	DEV_ASSERT(!p_key.is_layered_rendering_enabled());
 	DEV_ASSERT(p_key.is_enabled(0));
 	DEV_ASSERT(!p_key.is_depth_enabled());
@@ -244,13 +252,14 @@ id<MTLRenderPipelineState> MDResourceFactory::new_empty_draw_pipeline_state(Clea
 
 		NSError *err = nil;
 		MTLCompileOptions *options = [MTLCompileOptions new];
-		id<MTLLibrary> mtlLib = [device newLibraryWithSource:msl options:options error:&err];
-		if (err && p_error != nil) {
-			*p_error = err;
+		id<MTLDevice> objcDevice = (__bridge id<MTLDevice>)device;
+		id<MTLLibrary> mtlLib = [objcDevice newLibraryWithSource:msl options:options error:&err];
+		if (err && p_error != nullptr) {
+			*p_error = (__bridge_retained NS::Error *)err;
 		}
 
 		if (mtlLib == nil) {
-			return nil;
+			return nullptr;
 		}
 
 		id<MTLFunction> vtxFunc = [mtlLib newFunctionWithName:@"fullscreenNoopVert"];
@@ -267,52 +276,57 @@ id<MTLRenderPipelineState> MDResourceFactory::new_empty_draw_pipeline_state(Clea
 		colorDesc.pixelFormat = (MTLPixelFormat)p_key.pixel_formats[0];
 		colorDesc.writeMask = MTLColorWriteMaskNone;
 
-		return [device newRenderPipelineStateWithDescriptor:plDesc error:p_error];
+		err = nil;
+		id<MTLRenderPipelineState> state = [objcDevice newRenderPipelineStateWithDescriptor:plDesc error:&err];
+		if (p_error != nullptr && err != nil) {
+			*p_error = (__bridge_retained NS::Error *)err;
+		}
+		return (__bridge_retained MTL::RenderPipelineState *)state;
 	}
 }
 
 #pragma mark - Resource Cache
 
-id<MTLRenderPipelineState> MDResourceCache::get_clear_render_pipeline_state(ClearAttKey &p_key, NSError **p_error) {
+MTL::RenderPipelineState *MDResourceCache::get_clear_render_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
 	HashMap::ConstIterator it = clear_states.find(p_key);
 	if (it != clear_states.end()) {
 		return it->value;
 	}
 
-	id<MTLRenderPipelineState> state = resource_factory->new_clear_pipeline_state(p_key, p_error);
+	MTL::RenderPipelineState *state = resource_factory->new_clear_pipeline_state(p_key, p_error);
 	clear_states[p_key] = state;
 	return state;
 }
 
-id<MTLRenderPipelineState> MDResourceCache::get_empty_draw_pipeline_state(ClearAttKey &p_key, NSError **p_error) {
+MTL::RenderPipelineState *MDResourceCache::get_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
 	HashMap::ConstIterator it = empty_draw_states.find(p_key);
 	if (it != empty_draw_states.end()) {
 		return it->value;
 	}
 
-	id<MTLRenderPipelineState> state = resource_factory->new_empty_draw_pipeline_state(p_key, p_error);
+	MTL::RenderPipelineState *state = resource_factory->new_empty_draw_pipeline_state(p_key, p_error);
 	empty_draw_states[p_key] = state;
 	return state;
 }
 
-id<MTLDepthStencilState> MDResourceCache::get_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
+MTL::DepthStencilState *MDResourceCache::get_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
 	if (p_use_depth && p_use_stencil) {
-		if (clear_depth_stencil_state.all == nil) {
+		if (clear_depth_stencil_state.all == nullptr) {
 			clear_depth_stencil_state.all = resource_factory->new_depth_stencil_state(true, true);
 		}
 		return clear_depth_stencil_state.all;
 	} else if (p_use_depth) {
-		if (clear_depth_stencil_state.depth_only == nil) {
+		if (clear_depth_stencil_state.depth_only == nullptr) {
 			clear_depth_stencil_state.depth_only = resource_factory->new_depth_stencil_state(true, false);
 		}
 		return clear_depth_stencil_state.depth_only;
 	} else if (p_use_stencil) {
-		if (clear_depth_stencil_state.stencil_only == nil) {
+		if (clear_depth_stencil_state.stencil_only == nullptr) {
 			clear_depth_stencil_state.stencil_only = resource_factory->new_depth_stencil_state(false, true);
 		}
 		return clear_depth_stencil_state.stencil_only;
 	} else {
-		if (clear_depth_stencil_state.none == nil) {
+		if (clear_depth_stencil_state.none == nullptr) {
 			clear_depth_stencil_state.none = resource_factory->new_depth_stencil_state(false, false);
 		}
 		return clear_depth_stencil_state.none;

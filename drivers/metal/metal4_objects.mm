@@ -69,7 +69,7 @@ namespace MTL4 {
 GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability-new")
 
 MDCommandBuffer::MDCommandBuffer(id<MTL4CommandAllocator> p_allocator, RenderingDeviceDriverMetal *p_device_driver) :
-		allocator(p_allocator), command_buffer([p_device_driver->get_device() newCommandBuffer]), _scratch(p_device_driver->get_device(), DEFAULT_SCRATCH_SIZE) {
+		allocator(p_allocator), command_buffer([p_device_driver->get_device() newCommandBuffer]), _scratch((__bridge MTL::Device *)p_device_driver->get_device(), DEFAULT_SCRATCH_SIZE) {
 	device_driver = p_device_driver;
 	id<MTLDevice> device = device_driver->get_device();
 
@@ -135,8 +135,8 @@ void MDCommandBuffer::commit() {
 	compute.residency_set = nil;
 
 	if (_scratch.is_changed()) {
-		for (id<MTLBuffer> buf : _scratch.get_buffers()) {
-			[_frame_state.rs addAllocation:buf];
+		for (MTL::Buffer *buf : _scratch.get_buffers()) {
+			[_frame_state.rs addAllocation:(__bridge id<MTLBuffer>)buf];
 		}
 		_scratch.clear_changed();
 		[_frame_state.rs commit];
@@ -754,8 +754,8 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 	MDResourceCache &cache = device_driver->get_resource_cache();
 
 	[enc pushDebugGroup:@"ClearAttachments"];
-	[enc setRenderPipelineState:cache.get_clear_render_pipeline_state(key, nil)];
-	[enc setDepthStencilState:cache.get_depth_stencil_state(
+	[enc setRenderPipelineState:(__bridge id<MTLRenderPipelineState>)cache.get_clear_render_pipeline_state(key, nullptr)];
+	[enc setDepthStencilState:(__bridge id<MTLDepthStencilState>)cache.get_depth_stencil_state(
 									  key.is_depth_enabled(),
 									  key.is_stencil_enabled())];
 	[enc setStencilReferenceValue:stencil_value];
