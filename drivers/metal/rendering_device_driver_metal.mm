@@ -1145,9 +1145,9 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 					RDD::ShaderID(),
 					"Metal shader binary was generated for a newer target OS");
 			dispatch_data_t binary = dispatch_data_create(decompressed_code.ptr() + shader_data.source_size, shader_data.library_size, dispatch_get_main_queue(), DISPATCH_DATA_DESTRUCTOR_DEFAULT);
-			library = MDLibrary::create(cd, device,
+			library = MDLibrary::create(cd, (__bridge MTL::Device *)device,
 #if DEV_ENABLED
-					source,
+					(__bridge NS::String *)source,
 #endif
 					binary);
 		} else {
@@ -1157,7 +1157,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 #else
 			options.fastMathEnabled = YES;
 #endif
-			library = MDLibrary::create(cd, device, source, options, _shader_load_strategy);
+			library = MDLibrary::create(cd, (__bridge MTL::Device *)device, (__bridge NS::String *)source, (__bridge MTL::CompileOptions *)options, _shader_load_strategy);
 		}
 
 		_shader_cache[shader_data.hash] = cd;
@@ -1753,7 +1753,7 @@ void RenderingDeviceDriverMetal::command_render_set_line_width(CommandBufferID p
 // ----- PIPELINE -----
 
 RenderingDeviceDriverMetal::Result<id<MTLFunction>> RenderingDeviceDriverMetal::_create_function(MDLibrary *p_library, NSString *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants) {
-	id<MTLLibrary> library = p_library->get_library();
+	id<MTLLibrary> library = (__bridge id<MTLLibrary>)p_library->get_library();
 	if (!library) {
 		ERR_FAIL_V_MSG(ERR_CANT_CREATE, "Failed to compile Metal library");
 	}
@@ -2370,10 +2370,10 @@ void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_
 		case OBJECT_TYPE_SHADER: {
 			MDShader *shader = (MDShader *)(p_driver_id.id);
 			if (MDRenderShader *rs = dynamic_cast<MDRenderShader *>(shader); rs != nullptr) {
-				rs->vert->set_label(label);
-				rs->frag->set_label(label);
+				rs->vert->set_label((__bridge NS::String *)label);
+				rs->frag->set_label((__bridge NS::String *)label);
 			} else if (MDComputeShader *cs = dynamic_cast<MDComputeShader *>(shader); cs != nullptr) {
-				cs->kernel->set_label(label);
+				cs->kernel->set_label((__bridge NS::String *)label);
 			} else {
 				DEV_ASSERT(false);
 			}

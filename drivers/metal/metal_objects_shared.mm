@@ -673,7 +673,7 @@ void ShaderCacheEntry::notify_free() const {
 MDLibrary::MDLibrary(ShaderCacheEntry *p_entry
 #ifdef DEV_ENABLED
 		,
-		NSString *p_source
+		NS::String *p_source
 #endif
 		) :
 		_entry(p_entry) {
@@ -686,7 +686,7 @@ MDLibrary::~MDLibrary() {
 	_entry->notify_free();
 }
 
-void MDLibrary::set_label(NSString *p_label) {
+void MDLibrary::set_label(NS::String *p_label) {
 }
 
 #pragma mark - MDLazyLibrary
@@ -709,8 +709,8 @@ public:
 			NSString *p_source,
 			MTLCompileOptions *p_options);
 
-	id<MTLLibrary> get_library() override;
-	NSError *get_error() override;
+	MTL::Library *get_library() override;
+	NS::Error *get_error() override;
 };
 
 MDLazyLibrary::MDLazyLibrary(ShaderCacheEntry *p_entry,
@@ -720,7 +720,7 @@ MDLazyLibrary::MDLazyLibrary(ShaderCacheEntry *p_entry,
 		MDLibrary(p_entry
 #ifdef DEV_ENABLED
 				,
-				p_source
+				(__bridge NS::String *)p_source
 #endif
 				),
 		_device(p_device),
@@ -755,14 +755,14 @@ void MDLazyLibrary::_load() {
 	_loaded = true;
 }
 
-id<MTLLibrary> MDLazyLibrary::get_library() {
+MTL::Library *MDLazyLibrary::get_library() {
 	_load();
-	return _library;
+	return (__bridge MTL::Library *)_library;
 }
 
-NSError *MDLazyLibrary::get_error() {
+NS::Error *MDLazyLibrary::get_error() {
 	_load();
-	return _error;
+	return (__bridge NS::Error *)_error;
 }
 
 #pragma mark - MDImmediateLibrary
@@ -782,8 +782,8 @@ public:
 			NSString *p_source,
 			MTLCompileOptions *p_options);
 
-	id<MTLLibrary> get_library() override;
-	NSError *get_error() override;
+	MTL::Library *get_library() override;
+	NS::Error *get_error() override;
 };
 
 MDImmediateLibrary::MDImmediateLibrary(ShaderCacheEntry *p_entry,
@@ -793,7 +793,7 @@ MDImmediateLibrary::MDImmediateLibrary(ShaderCacheEntry *p_entry,
 		MDLibrary(p_entry
 #ifdef DEV_ENABLED
 				,
-				p_source
+				(__bridge NS::String *)p_source
 #endif
 		) {
 	os_signpost_id_t compile_id = (os_signpost_id_t)(uintptr_t)this;
@@ -820,20 +820,20 @@ MDImmediateLibrary::MDImmediateLibrary(ShaderCacheEntry *p_entry,
 				 }];
 }
 
-id<MTLLibrary> MDImmediateLibrary::get_library() {
+MTL::Library *MDImmediateLibrary::get_library() {
 	if (!_complete) {
 		std::unique_lock<std::mutex> lock(_cv_mutex);
 		_cv.wait(lock, [this] { return _ready; });
 	}
-	return _library;
+	return (__bridge MTL::Library *)_library;
 }
 
-NSError *MDImmediateLibrary::get_error() {
+NS::Error *MDImmediateLibrary::get_error() {
 	if (!_complete) {
 		std::unique_lock<std::mutex> lock(_cv_mutex);
 		_cv.wait(lock, [this] { return _ready; });
 	}
-	return _error;
+	return (__bridge NS::Error *)_error;
 }
 
 #pragma mark - MDBinaryLibrary
@@ -851,8 +851,8 @@ public:
 #endif
 			dispatch_data_t p_data);
 
-	id<MTLLibrary> get_library() override;
-	NSError *get_error() override;
+	MTL::Library *get_library() override;
+	NS::Error *get_error() override;
 };
 
 MDBinaryLibrary::MDBinaryLibrary(ShaderCacheEntry *p_entry,
@@ -864,7 +864,7 @@ MDBinaryLibrary::MDBinaryLibrary(ShaderCacheEntry *p_entry,
 		MDLibrary(p_entry
 #ifdef DEV_ENABLED
 				,
-				p_source
+				(__bridge NS::String *)p_source
 #endif
 		) {
 	NSError *error = nil;
@@ -876,30 +876,30 @@ MDBinaryLibrary::MDBinaryLibrary(ShaderCacheEntry *p_entry,
 	}
 }
 
-id<MTLLibrary> MDBinaryLibrary::get_library() {
-	return _library;
+MTL::Library *MDBinaryLibrary::get_library() {
+	return (__bridge MTL::Library *)_library;
 }
 
-NSError *MDBinaryLibrary::get_error() {
-	return _error;
+NS::Error *MDBinaryLibrary::get_error() {
+	return (__bridge NS::Error *)_error;
 }
 
 #pragma mark - MDLibrary Factory Methods
 
 std::shared_ptr<MDLibrary> MDLibrary::create(ShaderCacheEntry *p_entry,
-		id<MTLDevice> p_device,
-		NSString *p_source,
-		MTLCompileOptions *p_options,
+		MTL::Device *p_device,
+		NS::String *p_source,
+		MTL::CompileOptions *p_options,
 		ShaderLoadStrategy p_strategy) {
 	std::shared_ptr<MDLibrary> lib;
 	switch (p_strategy) {
 		case ShaderLoadStrategy::IMMEDIATE:
 			[[fallthrough]];
 		default:
-			lib = std::make_shared<MDImmediateLibrary>(p_entry, p_device, p_source, p_options);
+			lib = std::make_shared<MDImmediateLibrary>(p_entry, (__bridge id<MTLDevice>)p_device, (__bridge NSString *)p_source, (__bridge MTLCompileOptions *)p_options);
 			break;
 		case ShaderLoadStrategy::LAZY:
-			lib = std::make_shared<MDLazyLibrary>(p_entry, p_device, p_source, p_options);
+			lib = std::make_shared<MDLazyLibrary>(p_entry, (__bridge id<MTLDevice>)p_device, (__bridge NSString *)p_source, (__bridge MTLCompileOptions *)p_options);
 			break;
 	}
 	p_entry->library = lib;
@@ -907,14 +907,14 @@ std::shared_ptr<MDLibrary> MDLibrary::create(ShaderCacheEntry *p_entry,
 }
 
 std::shared_ptr<MDLibrary> MDLibrary::create(ShaderCacheEntry *p_entry,
-		id<MTLDevice> p_device,
+		MTL::Device *p_device,
 #ifdef DEV_ENABLED
-		NSString *p_source,
+		NS::String *p_source,
 #endif
 		dispatch_data_t p_data) {
-	std::shared_ptr<MDLibrary> lib = std::make_shared<MDBinaryLibrary>(p_entry, p_device,
+	std::shared_ptr<MDLibrary> lib = std::make_shared<MDBinaryLibrary>(p_entry, (__bridge id<MTLDevice>)p_device,
 #ifdef DEV_ENABLED
-			p_source,
+			(__bridge NSString *)p_source,
 #endif
 			p_data);
 	p_entry->library = lib;

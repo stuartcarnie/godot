@@ -30,9 +30,9 @@
 
 #pragma once
 
-#import <os/log.h>
+#include <os/log.h>
 
-#import <functional>
+#include <functional>
 
 /// Godot limits the number of dynamic buffers to 8.
 ///

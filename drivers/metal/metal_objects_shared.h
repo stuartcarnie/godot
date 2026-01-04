@@ -79,6 +79,10 @@ constexpr auto MTLStageBlit = MTL::StageBlit;
 constexpr auto MTLStageAll = MTLStageVertex | MTLStageFragment | MTLStageDispatch | MTLStageBlit;
 inline MTLSize MTLSizeMake(NS::UInteger w, NS::UInteger h, NS::UInteger d) { return MTL::Size{w, h, d}; }
 inline MTLOrigin MTLOriginMake(NS::UInteger x, NS::UInteger y, NS::UInteger z) { return MTL::Origin{x, y, z}; }
+using MTLBindingAccess = MTL::BindingAccess;
+constexpr auto MTLBindingAccessReadOnly = MTL::BindingAccessReadOnly;
+constexpr auto MTLBindingAccessReadWrite = MTL::BindingAccessReadWrite;
+constexpr auto MTLBindingAccessWriteOnly = MTL::BindingAccessWriteOnly;
 #endif
 
 // These types can be used in Vector and other containers that use
@@ -834,15 +838,16 @@ public:
 };
 
 #ifdef __OBJC__
-
-#pragma mark - Uniform Types
-
+// SDK compatibility for older macOS/iOS SDKs
 #if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 140000) || (TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 170000)
 #define MTLBindingAccess MTLArgumentAccess
 #define MTLBindingAccessReadOnly MTLArgumentAccessReadOnly
 #define MTLBindingAccessReadWrite MTLArgumentAccessReadWrite
 #define MTLBindingAccessWriteOnly MTLArgumentAccessWriteOnly
 #endif
+#endif // __OBJC__
+
+#pragma mark - Uniform Types
 
 struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) UniformInfo {
 	uint32_t binding;
@@ -918,7 +923,8 @@ public:
 
 #pragma mark - Shader Types
 
-struct ShaderCacheEntry;
+class MDLibrary; // Forward declaration for C++ code
+struct ShaderCacheEntry; // Forward declaration for C++ code
 
 enum class ShaderLoadStrategy {
 	IMMEDIATE,
@@ -933,36 +939,36 @@ class MDLibrary : public std::enable_shared_from_this<MDLibrary> {
 protected:
 	ShaderCacheEntry *_entry = nullptr;
 #ifdef DEV_ENABLED
-	NSString *_original_source = nil;
+	NS::String *_original_source = nullptr;
 #endif
 
 	MDLibrary(ShaderCacheEntry *p_entry
 #ifdef DEV_ENABLED
 			,
-			NSString *p_source
+			NS::String *p_source
 #endif
 	);
 
 public:
 	virtual ~MDLibrary();
 
-	virtual id<MTLLibrary> get_library() = 0;
-	virtual NSError *get_error() = 0;
-	virtual void set_label(NSString *p_label);
+	virtual MTL::Library *get_library() = 0;
+	virtual NS::Error *get_error() = 0;
+	virtual void set_label(NS::String *p_label);
 #ifdef DEV_ENABLED
-	NSString *get_original_source() const { return _original_source; }
+	NS::String *get_original_source() const { return _original_source; }
 #endif
 
 	static std::shared_ptr<MDLibrary> create(ShaderCacheEntry *p_entry,
-			id<MTLDevice> p_device,
-			NSString *p_source,
-			MTLCompileOptions *p_options,
+			MTL::Device *p_device,
+			NS::String *p_source,
+			MTL::CompileOptions *p_options,
 			ShaderLoadStrategy p_strategy);
 
 	static std::shared_ptr<MDLibrary> create(ShaderCacheEntry *p_entry,
-			id<MTLDevice> p_device,
+			MTL::Device *p_device,
 #ifdef DEV_ENABLED
-			NSString *p_source,
+			NS::String *p_source,
 #endif
 			dispatch_data_t p_data);
 };
@@ -1025,6 +1031,8 @@ public:
 			bool p_uses_argument_buffers,
 			std::shared_ptr<MDLibrary> p_vert, std::shared_ptr<MDLibrary> p_frag);
 };
+
+#ifdef __OBJC__
 
 #pragma mark - Uniform Set
 
