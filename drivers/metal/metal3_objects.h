@@ -248,7 +248,7 @@ public:
 
 // A type used to encode resources directly to a MTLCommandEncoder
 struct DirectEncoder {
-	id<MTLCommandEncoder> __unsafe_unretained encoder;
+	MTL::CommandEncoder *encoder;
 	BindingCache &cache;
 	enum Mode {
 		RENDER,
@@ -256,19 +256,13 @@ struct DirectEncoder {
 	};
 	Mode mode;
 
-	void set(id<MTLBuffer> __unsafe_unretained *p_buffers, const NSUInteger *p_offsets, NSRange p_range);
-	void set(id<MTLBuffer> __unsafe_unretained p_buffer, const NSUInteger p_offset, uint32_t p_index);
-	void set(id<MTLTexture> __unsafe_unretained *p_textures, NSRange p_range);
-	void set(id<MTLSamplerState> __unsafe_unretained *p_samplers, NSRange p_range);
+	void set(MTL::Buffer **p_buffers, const NS::UInteger *p_offsets, NS::Range p_range);
+	void set(MTL::Buffer *p_buffer, NS::UInteger p_offset, uint32_t p_index);
+	void set(MTL::Texture **p_textures, NS::Range p_range);
+	void set(MTL::SamplerState **p_samplers, NS::Range p_range);
 
-	DirectEncoder(id<MTLCommandEncoder> __unsafe_unretained p_encoder, BindingCache &p_cache) :
-			encoder(p_encoder), cache(p_cache) {
-		if ([p_encoder conformsToProtocol:@protocol(MTLRenderCommandEncoder)]) {
-			mode = RENDER;
-		} else {
-			mode = COMPUTE;
-		}
-	}
+	DirectEncoder(MTL::CommandEncoder *p_encoder, BindingCache &p_cache, Mode p_mode) :
+			encoder(p_encoder), cache(p_cache), mode(p_mode) {}
 };
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDCommandBuffer : public MDCommandBufferBase {

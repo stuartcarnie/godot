@@ -996,7 +996,7 @@ void MDCommandBuffer::_render_bind_uniform_sets() {
 		if (shader->uses_argument_buffers) {
 			_bind_uniforms_argument_buffers(set, shader, index, dynamic_offsets);
 		} else {
-			DirectEncoder de(render.encoder, binding_cache);
+			DirectEncoder de((__bridge MTL::CommandEncoder *)render.encoder, binding_cache, DirectEncoder::RENDER);
 			_bind_uniforms_direct(set, shader, de, index, dynamic_offsets);
 		}
 	}
@@ -1389,7 +1389,7 @@ void MDCommandBuffer::_compute_bind_uniform_sets() {
 		if (shader->uses_argument_buffers) {
 			_bind_uniforms_argument_buffers_compute(set, shader, index, dynamic_offsets);
 		} else {
-			DirectEncoder de(compute.encoder, binding_cache);
+			DirectEncoder de((__bridge MTL::CommandEncoder *)compute.encoder, binding_cache, DirectEncoder::COMPUTE);
 			_bind_uniforms_direct(set, shader, de, index, dynamic_offsets);
 		}
 	}
@@ -1495,68 +1495,65 @@ MDRenderShader::MDRenderShader(CharString p_name,
 		frag(std::move(p_frag)) {
 }
 
-void DirectEncoder::set(__unsafe_unretained id<MTLTexture> *p_textures, NSRange p_range) {
-	NS::Range range = { p_range.location, p_range.length };
-	if (cache.update(range, (MTL::Texture *const *)(void *)p_textures)) {
+void DirectEncoder::set(MTL::Texture **p_textures, NS::Range p_range) {
+	if (cache.update(p_range, p_textures)) {
 		switch (mode) {
 			case RENDER: {
-				id<MTLRenderCommandEncoder> __unsafe_unretained enc = (id<MTLRenderCommandEncoder>)encoder;
-				[enc setVertexTextures:p_textures withRange:p_range];
-				[enc setFragmentTextures:p_textures withRange:p_range];
+				MTL::RenderCommandEncoder *enc = static_cast<MTL::RenderCommandEncoder *>(encoder);
+				enc->setVertexTextures(p_textures, p_range);
+				enc->setFragmentTextures(p_textures, p_range);
 			} break;
 			case COMPUTE: {
-				id<MTLComputeCommandEncoder> __unsafe_unretained enc = (id<MTLComputeCommandEncoder>)encoder;
-				[enc setTextures:p_textures withRange:p_range];
+				MTL::ComputeCommandEncoder *enc = static_cast<MTL::ComputeCommandEncoder *>(encoder);
+				enc->setTextures(p_textures, p_range);
 			} break;
 		}
 	}
 }
 
-void DirectEncoder::set(__unsafe_unretained id<MTLBuffer> *p_buffers, const NSUInteger *p_offsets, NSRange p_range) {
-	NS::Range range = { p_range.location, p_range.length };
-	if (cache.update(range, (MTL::Buffer *const *)(void *)p_buffers, p_offsets)) {
+void DirectEncoder::set(MTL::Buffer **p_buffers, const NS::UInteger *p_offsets, NS::Range p_range) {
+	if (cache.update(p_range, p_buffers, p_offsets)) {
 		switch (mode) {
 			case RENDER: {
-				id<MTLRenderCommandEncoder> __unsafe_unretained enc = (id<MTLRenderCommandEncoder>)encoder;
-				[enc setVertexBuffers:p_buffers offsets:p_offsets withRange:p_range];
-				[enc setFragmentBuffers:p_buffers offsets:p_offsets withRange:p_range];
+				MTL::RenderCommandEncoder *enc = static_cast<MTL::RenderCommandEncoder *>(encoder);
+				enc->setVertexBuffers(p_buffers, p_offsets, p_range);
+				enc->setFragmentBuffers(p_buffers, p_offsets, p_range);
 			} break;
 			case COMPUTE: {
-				id<MTLComputeCommandEncoder> __unsafe_unretained enc = (id<MTLComputeCommandEncoder>)encoder;
-				[enc setBuffers:p_buffers offsets:p_offsets withRange:p_range];
+				MTL::ComputeCommandEncoder *enc = static_cast<MTL::ComputeCommandEncoder *>(encoder);
+				enc->setBuffers(p_buffers, p_offsets, p_range);
 			} break;
 		}
 	}
 }
 
-void DirectEncoder::set(id<MTLBuffer> __unsafe_unretained p_buffer, const NSUInteger p_offset, uint32_t p_index) {
-	if (cache.update((__bridge MTL::Buffer *)p_buffer, p_offset, p_index)) {
+void DirectEncoder::set(MTL::Buffer *p_buffer, NS::UInteger p_offset, uint32_t p_index) {
+	if (cache.update(p_buffer, p_offset, p_index)) {
 		switch (mode) {
 			case RENDER: {
-				id<MTLRenderCommandEncoder> __unsafe_unretained enc = (id<MTLRenderCommandEncoder>)encoder;
-				[enc setVertexBuffer:p_buffer offset:p_offset atIndex:p_index];
-				[enc setFragmentBuffer:p_buffer offset:p_offset atIndex:p_index];
+				MTL::RenderCommandEncoder *enc = static_cast<MTL::RenderCommandEncoder *>(encoder);
+				enc->setVertexBuffer(p_buffer, p_offset, p_index);
+				enc->setFragmentBuffer(p_buffer, p_offset, p_index);
 			} break;
 			case COMPUTE: {
-				id<MTLComputeCommandEncoder> __unsafe_unretained enc = (id<MTLComputeCommandEncoder>)encoder;
-				[enc setBuffer:p_buffer offset:p_offset atIndex:p_index];
+				MTL::ComputeCommandEncoder *enc = static_cast<MTL::ComputeCommandEncoder *>(encoder);
+				enc->setBuffer(p_buffer, p_offset, p_index);
 			} break;
 		}
 	}
 }
 
-void DirectEncoder::set(__unsafe_unretained id<MTLSamplerState> *p_samplers, NSRange p_range) {
-	NS::Range range = { p_range.location, p_range.length };
-	if (cache.update(range, (MTL::SamplerState *const *)(void *)p_samplers)) {
+void DirectEncoder::set(MTL::SamplerState **p_samplers, NS::Range p_range) {
+	if (cache.update(p_range, p_samplers)) {
 		switch (mode) {
 			case RENDER: {
-				id<MTLRenderCommandEncoder> __unsafe_unretained enc = (id<MTLRenderCommandEncoder>)encoder;
-				[enc setVertexSamplerStates:p_samplers withRange:p_range];
-				[enc setFragmentSamplerStates:p_samplers withRange:p_range];
+				MTL::RenderCommandEncoder *enc = static_cast<MTL::RenderCommandEncoder *>(encoder);
+				enc->setVertexSamplerStates(p_samplers, p_range);
+				enc->setFragmentSamplerStates(p_samplers, p_range);
 			} break;
 			case COMPUTE: {
-				id<MTLComputeCommandEncoder> __unsafe_unretained enc = (id<MTLComputeCommandEncoder>)encoder;
-				[enc setSamplerStates:p_samplers withRange:p_range];
+				MTL::ComputeCommandEncoder *enc = static_cast<MTL::ComputeCommandEncoder *>(encoder);
+				enc->setSamplerStates(p_samplers, p_range);
 			} break;
 		}
 	}
@@ -1633,60 +1630,55 @@ void MDCommandBuffer::_bind_uniforms_direct(MDUniformSet *p_set, MDShader *p_sha
 		switch (uniform.type) {
 			case RDD::UNIFORM_TYPE_SAMPLER: {
 				size_t count = uniform.ids.size();
-				id<MTLSamplerState> __unsafe_unretained *objects = ALLOCA_ARRAY(id<MTLSamplerState> __unsafe_unretained, count);
+				MTL::SamplerState **objects = ALLOCA_ARRAY(MTL::SamplerState *, count);
 				for (size_t j = 0; j < count; j += 1) {
-					objects[j] = rid::get(uniform.ids[j].id);
+					objects[j] = (__bridge MTL::SamplerState *)rid::get(uniform.ids[j].id);
 				}
-				NSRange sampler_range = NSMakeRange(indexes.sampler, count);
+				NS::Range sampler_range = { indexes.sampler, count };
 				p_enc.set(objects, sampler_range);
 			} break;
 			case RDD::UNIFORM_TYPE_SAMPLER_WITH_TEXTURE: {
 				size_t count = uniform.ids.size() / 2;
-				id<MTLTexture> __unsafe_unretained *textures = ALLOCA_ARRAY(id<MTLTexture> __unsafe_unretained, count);
-				id<MTLSamplerState> __unsafe_unretained *samplers = ALLOCA_ARRAY(id<MTLSamplerState> __unsafe_unretained, count);
+				MTL::Texture **textures = ALLOCA_ARRAY(MTL::Texture *, count);
+				MTL::SamplerState **samplers = ALLOCA_ARRAY(MTL::SamplerState *, count);
 				for (uint32_t j = 0; j < count; j += 1) {
-					id<MTLSamplerState> sampler = rid::get(uniform.ids[j * 2 + 0]);
-					id<MTLTexture> texture = rid::get(uniform.ids[j * 2 + 1]);
-					samplers[j] = sampler;
-					textures[j] = texture;
+					samplers[j] = (__bridge MTL::SamplerState *)rid::get(uniform.ids[j * 2 + 0]);
+					textures[j] = (__bridge MTL::Texture *)rid::get(uniform.ids[j * 2 + 1]);
 				}
-				NSRange sampler_range = NSMakeRange(indexes.sampler, count);
-				NSRange texture_range = NSMakeRange(indexes.texture, count);
+				NS::Range sampler_range = { indexes.sampler, count };
+				NS::Range texture_range = { indexes.texture, count };
 				p_enc.set(samplers, sampler_range);
 				p_enc.set(textures, texture_range);
 			} break;
 			case RDD::UNIFORM_TYPE_TEXTURE: {
 				size_t count = uniform.ids.size();
-				id<MTLTexture> __unsafe_unretained *objects = ALLOCA_ARRAY(id<MTLTexture> __unsafe_unretained, count);
+				MTL::Texture **objects = ALLOCA_ARRAY(MTL::Texture *, count);
 				for (size_t j = 0; j < count; j += 1) {
-					id<MTLTexture> obj = rid::get(uniform.ids[j]);
-					objects[j] = obj;
+					objects[j] = (__bridge MTL::Texture *)rid::get(uniform.ids[j]);
 				}
-				NSRange texture_range = NSMakeRange(indexes.texture, count);
+				NS::Range texture_range = { indexes.texture, count };
 				p_enc.set(objects, texture_range);
 			} break;
 			case RDD::UNIFORM_TYPE_IMAGE: {
 				size_t count = uniform.ids.size();
-				id<MTLTexture> __unsafe_unretained *objects = ALLOCA_ARRAY(id<MTLTexture> __unsafe_unretained, count);
+				MTL::Texture **objects = ALLOCA_ARRAY(MTL::Texture *, count);
 				for (size_t j = 0; j < count; j += 1) {
-					id<MTLTexture> obj = rid::get(uniform.ids[j]);
-					objects[j] = obj;
+					objects[j] = (__bridge MTL::Texture *)rid::get(uniform.ids[j]);
 				}
-				NSRange texture_range = NSMakeRange(indexes.texture, count);
+				NS::Range texture_range = { indexes.texture, count };
 				p_enc.set(objects, texture_range);
 
 				if (indexes.buffer != UINT32_MAX) {
 					// Emulated atomic image access.
-					id<MTLBuffer> __unsafe_unretained *bufs = ALLOCA_ARRAY(id<MTLBuffer> __unsafe_unretained, count);
+					MTL::Buffer **bufs = ALLOCA_ARRAY(MTL::Buffer *, count);
 					for (size_t j = 0; j < count; j += 1) {
-						id<MTLTexture> obj = rid::get(uniform.ids[j]);
-						id<MTLTexture> tex = obj.parentTexture ? obj.parentTexture : obj;
-						id<MTLBuffer> buf = tex.buffer;
-						bufs[j] = buf;
+						MTL::Texture *obj = objects[j];
+						MTL::Texture *tex = obj->parentTexture() ? obj->parentTexture() : obj;
+						bufs[j] = tex->buffer();
 					}
-					NSUInteger *offs = ALLOCA_ARRAY(NSUInteger, count);
-					bzero(offs, sizeof(NSUInteger) * count);
-					NSRange buffer_range = NSMakeRange(indexes.buffer, count);
+					NS::UInteger *offs = ALLOCA_ARRAY(NS::UInteger, count);
+					bzero(offs, sizeof(NS::UInteger) * count);
+					NS::Range buffer_range = { indexes.buffer, count };
 					p_enc.set(bufs, offs, buffer_range);
 				}
 			} break;
@@ -1702,21 +1694,20 @@ void MDCommandBuffer::_bind_uniforms_direct(MDUniformSet *p_set, MDShader *p_sha
 			case RDD::UNIFORM_TYPE_UNIFORM_BUFFER:
 			case RDD::UNIFORM_TYPE_STORAGE_BUFFER: {
 				const RDM::BufferInfo *buf_info = (const RDM::BufferInfo *)uniform.ids[0].id;
-				p_enc.set((__bridge id<MTLBuffer>)buf_info->metal_buffer.get(), 0, indexes.buffer);
+				p_enc.set(buf_info->metal_buffer.get(), 0, indexes.buffer);
 			} break;
 			case RDD::UNIFORM_TYPE_UNIFORM_BUFFER_DYNAMIC:
 			case RDD::UNIFORM_TYPE_STORAGE_BUFFER_DYNAMIC: {
 				const MetalBufferDynamicInfo *buf_info = (const MetalBufferDynamicInfo *)uniform.ids[0].id;
-				p_enc.set((__bridge id<MTLBuffer>)buf_info->metal_buffer.get(), frame_idx * buf_info->size_bytes, indexes.buffer);
+				p_enc.set(buf_info->metal_buffer.get(), frame_idx * buf_info->size_bytes, indexes.buffer);
 			} break;
 			case RDD::UNIFORM_TYPE_INPUT_ATTACHMENT: {
 				size_t count = uniform.ids.size();
-				id<MTLTexture> __unsafe_unretained *objects = ALLOCA_ARRAY(id<MTLTexture> __unsafe_unretained, count);
+				MTL::Texture **objects = ALLOCA_ARRAY(MTL::Texture *, count);
 				for (size_t j = 0; j < count; j += 1) {
-					id<MTLTexture> obj = rid::get(uniform.ids[j]);
-					objects[j] = obj;
+					objects[j] = (__bridge MTL::Texture *)rid::get(uniform.ids[j]);
 				}
-				NSRange texture_range = NSMakeRange(indexes.texture, count);
+				NS::Range texture_range = { indexes.texture, count };
 				p_enc.set(objects, texture_range);
 			} break;
 			default: {
