@@ -120,12 +120,14 @@ MTL_CLASS(Texture)
 
 #ifdef __OBJC__
 typedef id<MTLResource> __unsafe_unretained MTLResourceUnsafe;
+#else
+typedef MTL::Resource *MTLResourceUnsafe;
+#endif
 
 template <>
 struct HashMapHasherDefaultImpl<MTLResourceUnsafe> {
 	static _FORCE_INLINE_ uint32_t hash(const MTLResourceUnsafe p_pointer) { return hash_one_uint64((uint64_t)p_pointer); }
 };
-#endif
 
 enum ShaderStageUsage : uint32_t {
 	None = 0,
@@ -224,8 +226,8 @@ public:
 			device(p_device), buffer_size(p_buffer_size) {}
 
 	~MDRingBuffer() {
-		for (uint32_t i = 0; i < buffers.size(); i++) {
-			buffers[i]->release();
+		for (MTL::Buffer *buffer : buffers) {
+			buffer->release();
 		}
 	}
 
@@ -306,9 +308,9 @@ private:
 	PixelFormats &pixel_formats;
 	uint32_t max_buffer_count;
 
-	MTL::Function *new_func(NS::String *p_source, NS::String *p_name, NS::Error **p_error);
-	MTL::Function *new_clear_vert_func(ClearAttKey &p_key);
-	MTL::Function *new_clear_frag_func(ClearAttKey &p_key);
+	NS::SharedPtr<MTL::Function> new_func(NS::String *p_source, NS::String *p_name, NS::Error **p_error);
+	NS::SharedPtr<MTL::Function> new_clear_vert_func(ClearAttKey &p_key);
+	NS::SharedPtr<MTL::Function> new_clear_frag_func(ClearAttKey &p_key);
 	NS::String *get_format_type_string(MTL::PixelFormat p_fmt);
 
 	_FORCE_INLINE_ uint32_t get_vertex_buffer_index(uint32_t p_binding) {
@@ -316,9 +318,9 @@ private:
 	}
 
 public:
-	MTL::RenderPipelineState *new_clear_pipeline_state(ClearAttKey &p_key, NS::Error **p_error);
-	MTL::RenderPipelineState *new_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error);
-	MTL::DepthStencilState *new_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
+	NS::SharedPtr<MTL::RenderPipelineState> new_clear_pipeline_state(ClearAttKey &p_key, NS::Error **p_error);
+	NS::SharedPtr<MTL::RenderPipelineState> new_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error);
+	NS::SharedPtr<MTL::DepthStencilState> new_depth_stencil_state(bool p_use_depth, bool p_use_stencil);
 
 	MDResourceFactory(MTL::Device *p_device, PixelFormats &p_pixel_formats, uint32_t p_max_buffer_count) :
 			device(p_device), pixel_formats(p_pixel_formats), max_buffer_count(p_max_buffer_count) {}
@@ -327,16 +329,16 @@ public:
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDResourceCache {
 private:
-	typedef HashMap<ClearAttKey, MTL::RenderPipelineState *> HashMap;
+	typedef HashMap<ClearAttKey, NS::SharedPtr<MTL::RenderPipelineState>> HashMap;
 	std::unique_ptr<MDResourceFactory> resource_factory;
 	HashMap clear_states;
 	HashMap empty_draw_states;
 
 	struct {
-		MTL::DepthStencilState *all = nullptr;
-		MTL::DepthStencilState *depth_only = nullptr;
-		MTL::DepthStencilState *stencil_only = nullptr;
-		MTL::DepthStencilState *none = nullptr;
+		NS::SharedPtr<MTL::DepthStencilState> all;
+		NS::SharedPtr<MTL::DepthStencilState> depth_only;
+		NS::SharedPtr<MTL::DepthStencilState> stencil_only;
+		NS::SharedPtr<MTL::DepthStencilState> none;
 	} clear_depth_stencil_state;
 
 public:

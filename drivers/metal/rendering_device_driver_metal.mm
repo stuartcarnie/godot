@@ -129,9 +129,9 @@ RDD::BufferID RenderingDeviceDriverMetal::buffer_create(uint64_t p_size, BitFiel
 	} else {
 		buf_info = memnew(BufferInfo);
 	}
-	buf_info->metal_buffer = obj;
+	buf_info->metal_buffer = NS::TransferPtr((__bridge_retained MTL::Buffer *)obj);
 
-	_track_resource((__bridge MTL::Resource *)obj);
+	_track_resource(buf_info->metal_buffer.get());
 
 	return BufferID(buf_info);
 }
@@ -144,7 +144,7 @@ bool RenderingDeviceDriverMetal::buffer_set_texel_format(BufferID p_buffer, Data
 void RenderingDeviceDriverMetal::buffer_free(BufferID p_buffer) {
 	BufferInfo *buf_info = (BufferInfo *)p_buffer.id;
 
-	_untrack_resource((__bridge MTL::Resource *)buf_info->metal_buffer);
+	_untrack_resource(buf_info->metal_buffer.get());
 
 	if (buf_info->is_dynamic()) {
 		memdelete((MetalBufferDynamicInfo *)buf_info);
@@ -155,13 +155,13 @@ void RenderingDeviceDriverMetal::buffer_free(BufferID p_buffer) {
 
 uint64_t RenderingDeviceDriverMetal::buffer_get_allocation_size(BufferID p_buffer) {
 	const BufferInfo *buf_info = (const BufferInfo *)p_buffer.id;
-	return buf_info->metal_buffer.allocatedSize;
+	return buf_info->metal_buffer.get()->allocatedSize();
 }
 
 uint8_t *RenderingDeviceDriverMetal::buffer_map(BufferID p_buffer) {
 	const BufferInfo *buf_info = (const BufferInfo *)p_buffer.id;
-	ERR_FAIL_COND_V_MSG(buf_info->metal_buffer.storageMode != MTLStorageModeShared, nullptr, "Unable to map private buffers");
-	return (uint8_t *)buf_info->metal_buffer.contents;
+	ERR_FAIL_COND_V_MSG(buf_info->metal_buffer.get()->storageMode() != MTL::StorageModeShared, nullptr, "Unable to map private buffers");
+	return (uint8_t *)buf_info->metal_buffer.get()->contents();
 }
 
 void RenderingDeviceDriverMetal::buffer_unmap(BufferID p_buffer) {
@@ -175,7 +175,7 @@ uint8_t *RenderingDeviceDriverMetal::buffer_persistent_map_advance(BufferID p_bu
 	ERR_FAIL_COND_V_MSG(buf_info->last_frame_mapped == p_frames_drawn, nullptr, "Buffers with BUFFER_USAGE_DYNAMIC_PERSISTENT_BIT must only be mapped once per frame. Otherwise there could be race conditions with the GPU. Amalgamate all data uploading into one map(), use an extra buffer or remove the bit.");
 	buf_info->last_frame_mapped = p_frames_drawn;
 #endif
-	return (uint8_t *)buf_info->metal_buffer.contents + buf_info->next_frame_index(_frame_count) * buf_info->size_bytes;
+	return (uint8_t *)buf_info->metal_buffer.get()->contents() + buf_info->next_frame_index(_frame_count) * buf_info->size_bytes;
 }
 
 uint64_t RenderingDeviceDriverMetal::buffer_get_dynamic_offsets(Span<BufferID> p_buffers) {
@@ -198,7 +198,7 @@ uint64_t RenderingDeviceDriverMetal::buffer_get_dynamic_offsets(Span<BufferID> p
 uint64_t RenderingDeviceDriverMetal::buffer_get_device_address(BufferID p_buffer) {
 	if (@available(iOS 16.0, macOS 13.0, *)) {
 		const BufferInfo *buf_info = (const BufferInfo *)p_buffer.id;
-		return buf_info->metal_buffer.gpuAddress;
+		return buf_info->metal_buffer.get()->gpuAddress();
 	} else {
 #if DEV_ENABLED
 		WARN_PRINT_ONCE("buffer_get_device_address is not supported on this OS version.");
@@ -1367,9 +1367,9 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 				case UNIFORM_TYPE_STORAGE_BUFFER:
 				case UNIFORM_TYPE_UNIFORM_BUFFER: {
 					const BufferInfo *buffer = (const BufferInfo *)uniform.ids[0].id;
-					*(MTLGPUAddress *)(ptr + idx.buffer) = buffer->metal_buffer.gpuAddress;
+					*(MTLGPUAddress *)(ptr + idx.buffer) = buffer->metal_buffer.get()->gpuAddress();
 
-					ADD_USAGE(buffer->metal_buffer, ui.active_stages, ui.usage);
+					ADD_USAGE((__bridge id<MTLResource>)buffer->metal_buffer.get(), ui.active_stages, ui.usage);
 				} break;
 				case UNIFORM_TYPE_INPUT_ATTACHMENT: {
 					size_t count = uniform.ids.size();
@@ -1384,9 +1384,9 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 				case UNIFORM_TYPE_STORAGE_BUFFER_DYNAMIC: {
 					// Encode the base GPU address (frame 0); it will be updated at bind time.
 					const MetalBufferDynamicInfo *buffer = (const MetalBufferDynamicInfo *)uniform.ids[0].id;
-					*(MTLGPUAddress *)(ptr + idx.buffer) = buffer->metal_buffer.gpuAddress;
+					*(MTLGPUAddress *)(ptr + idx.buffer) = buffer->metal_buffer.get()->gpuAddress();
 
-					ADD_USAGE(buffer->metal_buffer, ui.active_stages, ui.usage);
+					ADD_USAGE((__bridge id<MTLResource>)buffer->metal_buffer.get(), ui.active_stages, ui.usage);
 				} break;
 				default: {
 					DEV_ASSERT(false);
@@ -1553,7 +1553,8 @@ bool RenderingDeviceDriverMetal::pipeline_cache_create(const Vector<uint8_t> &p_
 		desc.url = [NSURL fileURLWithPath:nPath];
 	}
 	NSError *error = nil;
-	archive = (__bridge MTL::BinaryArchive *)[(__bridge id<MTLDevice>)device newBinaryArchiveWithDescriptor:desc error:&error];
+	id<MTLBinaryArchive> objc_archive = [(__bridge id<MTLDevice>)device newBinaryArchiveWithDescriptor:desc error:&error];
+	archive = NS::TransferPtr((__bridge_retained MTL::BinaryArchive *)objc_archive);
 	return true;
 }
 
@@ -1582,7 +1583,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::pipeline_cache_serialize() {
 											attributes:nil
 												 error:nil];
 	NSError *error = nil;
-	if ([(__bridge id<MTLBinaryArchive>)archive serializeToURL:target error:&error]) {
+	if ([(__bridge id<MTLBinaryArchive>)archive.get() serializeToURL:target error:&error]) {
 		return Vector<uint8_t>();
 	} else {
 		print_line(error.localizedDescription.UTF8String);
@@ -1753,17 +1754,18 @@ void RenderingDeviceDriverMetal::command_render_set_line_width(CommandBufferID p
 
 // ----- PIPELINE -----
 
-RenderingDeviceDriverMetal::Result<id<MTLFunction>> RenderingDeviceDriverMetal::_create_function(MDLibrary *p_library, NSString *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants) {
+RenderingDeviceDriverMetal::Result<NS::SharedPtr<MTL::Function>> RenderingDeviceDriverMetal::_create_function(MDLibrary *p_library, NS::String *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants) {
 	id<MTLLibrary> library = (__bridge id<MTLLibrary>)p_library->get_library();
 	if (!library) {
 		ERR_FAIL_V_MSG(ERR_CANT_CREATE, "Failed to compile Metal library");
 	}
 
-	id<MTLFunction> function = [library newFunctionWithName:p_name];
+	NSString *objc_name = (__bridge NSString *)p_name;
+	id<MTLFunction> function = [library newFunctionWithName:objc_name];
 	ERR_FAIL_NULL_V_MSG(function, ERR_CANT_CREATE, "No function named main0");
 
 	if (function.functionConstantsDictionary.count == 0) {
-		return function;
+		return NS::TransferPtr((__bridge_retained MTL::Function *)function);
 	}
 
 	NSArray<MTLFunctionConstant *> *constants = function.functionConstantsDictionary.allValues;
@@ -1814,7 +1816,7 @@ RenderingDeviceDriverMetal::Result<id<MTLFunction>> RenderingDeviceDriverMetal::
 											 atIndex:sc.constant_id];
 				} break;
 				default:
-					ERR_FAIL_V_MSG(function, "Invalid specialization constant type");
+					ERR_FAIL_V_MSG(NS::TransferPtr((__bridge_retained MTL::Function *)function), "Invalid specialization constant type");
 			}
 			i++;
 			j++;
@@ -1837,12 +1839,12 @@ RenderingDeviceDriverMetal::Result<id<MTLFunction>> RenderingDeviceDriverMetal::
 	}
 
 	NSError *err = nil;
-	function = [library newFunctionWithName:@"main0"
+	function = [library newFunctionWithName:objc_name
 							 constantValues:constantValues
 									  error:&err];
 	ERR_FAIL_NULL_V_MSG(function, ERR_CANT_CREATE, String("specialized function failed: ") + err.localizedDescription.UTF8String);
 
-	return function;
+	return NS::TransferPtr((__bridge_retained MTL::Function *)function);
 }
 
 // RDD::PolygonCullMode == MTLCullMode.
@@ -2139,19 +2141,19 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	}
 
 	if (shader->vert) {
-		Result<id<MTLFunction>> function_or_err = _create_function(shader->vert.get(), @"main0", p_specialization_constants);
+		Result<NS::SharedPtr<MTL::Function>> function_or_err = _create_function(shader->vert.get(), MTLSTR("main0"), p_specialization_constants);
 		ERR_FAIL_COND_V(std::holds_alternative<Error>(function_or_err), PipelineID());
-		desc.vertexFunction = std::get<id<MTLFunction>>(function_or_err);
+		desc.vertexFunction = (__bridge id<MTLFunction>)std::get<NS::SharedPtr<MTL::Function>>(function_or_err).get();
 	}
 
 	if (shader->frag) {
-		Result<id<MTLFunction>> function_or_err = _create_function(shader->frag.get(), @"main0", p_specialization_constants);
+		Result<NS::SharedPtr<MTL::Function>> function_or_err = _create_function(shader->frag.get(), MTLSTR("main0"), p_specialization_constants);
 		ERR_FAIL_COND_V(std::holds_alternative<Error>(function_or_err), PipelineID());
-		desc.fragmentFunction = std::get<id<MTLFunction>>(function_or_err);
+		desc.fragmentFunction = (__bridge id<MTLFunction>)std::get<NS::SharedPtr<MTL::Function>>(function_or_err).get();
 	}
 
 	MTLPipelineOption options = MTLPipelineOptionNone;
-	id<MTLBinaryArchive> arc = (__bridge id<MTLBinaryArchive>)archive;
+	id<MTLBinaryArchive> arc = (__bridge id<MTLBinaryArchive>)archive.get();
 	if (arc) {
 		desc.binaryArchives = @[ arc ];
 		if (archive_fail_on_miss) {
@@ -2216,9 +2218,9 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 
 	os_signpost_event_emit(LOG_DRIVER, OS_SIGNPOST_ID_EXCLUSIVE, "create_pipeline");
 
-	Result<id<MTLFunction>> function_or_err = _create_function(shader->kernel.get(), @"main0", p_specialization_constants);
+	Result<NS::SharedPtr<MTL::Function>> function_or_err = _create_function(shader->kernel.get(), MTLSTR("main0"), p_specialization_constants);
 	ERR_FAIL_COND_V(std::holds_alternative<Error>(function_or_err), PipelineID());
-	id<MTLFunction> function = std::get<id<MTLFunction>>(function_or_err);
+	id<MTLFunction> function = (__bridge id<MTLFunction>)std::get<NS::SharedPtr<MTL::Function>>(function_or_err).get();
 
 	MTLComputePipelineDescriptor *desc = [MTLComputePipelineDescriptor new];
 	desc.computeFunction = function;
@@ -2234,7 +2236,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 	}
 
 	MTLPipelineOption options = MTLPipelineOptionNone;
-	id<MTLBinaryArchive> arc = (__bridge id<MTLBinaryArchive>)archive;
+	id<MTLBinaryArchive> arc = (__bridge id<MTLBinaryArchive>)archive.get();
 	if (arc) {
 		desc.binaryArchives = @[ arc ];
 		if (archive_fail_on_miss) {
@@ -2368,7 +2370,7 @@ void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_
 		} break;
 		case OBJECT_TYPE_BUFFER: {
 			const BufferInfo *buf_info = (const BufferInfo *)p_driver_id.id;
-			buf_info->metal_buffer.label = label;
+			buf_info->metal_buffer.get()->setLabel((__bridge NS::String *)label);
 		} break;
 		case OBJECT_TYPE_SHADER: {
 			MDShader *shader = (MDShader *)(p_driver_id.id);
@@ -2452,48 +2454,48 @@ void RenderingDeviceDriverMetal::_copy_queue_copy_to_buffer(Span<uint8_t> p_src_
 
 	memcpy(_copy_queue_buffer_ptr(), p_src_data.ptr(), p_src_data.size());
 
-	copy_queue_rs->addAllocation(p_dst_buffer);
-	blit_encoder->copyFromBuffer(copy_queue_buffer, copy_queue_buffer_offset, p_dst_buffer, p_dst_offset, p_src_data.size());
+	copy_queue_rs.get()->addAllocation(p_dst_buffer);
+	blit_encoder->copyFromBuffer(copy_queue_buffer.get(), copy_queue_buffer_offset, p_dst_buffer, p_dst_offset, p_src_data.size());
 
 	_copy_queue_buffer_consume(p_src_data.size());
 }
 
 void RenderingDeviceDriverMetal::_copy_queue_flush() {
-	if (copy_queue_blit_encoder == nullptr) {
+	if (!copy_queue_blit_encoder) {
 		return;
 	}
 
-	copy_queue_rs->addAllocation(copy_queue_buffer);
-	copy_queue_rs->commit();
+	copy_queue_rs.get()->addAllocation(copy_queue_buffer.get());
+	copy_queue_rs.get()->commit();
 
-	copy_queue_blit_encoder->endEncoding();
-	copy_queue_blit_encoder = nullptr;
-	copy_queue_command_buffer->commit();
-	copy_queue_command_buffer->waitUntilCompleted();
-	copy_queue_command_buffer = nullptr;
+	copy_queue_blit_encoder.get()->endEncoding();
+	copy_queue_blit_encoder.reset();
+	copy_queue_command_buffer.get()->commit();
+	copy_queue_command_buffer.get()->waitUntilCompleted();
+	copy_queue_command_buffer.reset();
 	copy_queue_buffer_offset = 0;
-	copy_queue_rs->removeAllAllocations();
+	copy_queue_rs.get()->removeAllAllocations();
 }
 
 Error RenderingDeviceDriverMetal::_copy_queue_initialize() {
-	DEV_ASSERT(copy_queue == nullptr);
+	DEV_ASSERT(!copy_queue);
 
-	copy_queue = device->newCommandQueue();
-	copy_queue->setLabel(MTLSTR("Copy Command Queue"));
-	ERR_FAIL_NULL_V(copy_queue, ERR_CANT_CREATE);
+	copy_queue = NS::TransferPtr(device->newCommandQueue());
+	copy_queue.get()->setLabel(MTLSTR("Copy Command Queue"));
+	ERR_FAIL_COND_V(!copy_queue, ERR_CANT_CREATE);
 
 	// Reserve 64 KiB for copy commands. If the buffer fills, it will be flushed automatically.
-	copy_queue_buffer = device->newBuffer(64 * 1024, MTL::ResourceStorageModeShared | MTL::ResourceHazardTrackingModeUntracked);
-	copy_queue_buffer->setLabel(MTLSTR("Copy Command Scratch Buffer"));
+	copy_queue_buffer = NS::TransferPtr(device->newBuffer(64 * 1024, MTL::ResourceStorageModeShared | MTL::ResourceHazardTrackingModeUntracked));
+	copy_queue_buffer.get()->setLabel(MTLSTR("Copy Command Scratch Buffer"));
 
 	if (@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 1.0, *)) {
 		MTL::ResidencySetDescriptor *rs_desc = MTL::ResidencySetDescriptor::alloc()->init();
 		rs_desc->setInitialCapacity(2);
 		rs_desc->setLabel(MTLSTR("Copy Queue Residency Set"));
 		NS::Error *error = nullptr;
-		copy_queue_rs = device->newResidencySet(rs_desc, &error);
+		copy_queue_rs = NS::TransferPtr(device->newResidencySet(rs_desc, &error));
 		rs_desc->release();
-		copy_queue->addResidencySet(copy_queue_rs);
+		copy_queue.get()->addResidencySet(copy_queue_rs.get());
 	}
 
 	return OK;
@@ -2740,11 +2742,23 @@ Error RenderingDeviceDriverMetal::_create_device() {
 	device = context_driver->get_metal_device();
 
 	id<MTLCaptureScope> scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithDevice:(__bridge id<MTLDevice>)device];
-	device_scope = (__bridge MTL::CaptureScope *)scope;
+	device_scope = NS::TransferPtr((__bridge_retained MTL::CaptureScope *)scope);
 	scope.label = @"Godot Frame";
 	[scope beginScope]; // Allow Xcode to capture the first frame, if desired.
 
 	return OK;
+}
+
+void RenderingDeviceDriverMetal::_track_resource(MTL::Resource *p_resource) {
+	if (use_barriers) {
+		_residency_add.push_back((__bridge MTLResourceUnsafe)p_resource);
+	}
+}
+
+void RenderingDeviceDriverMetal::_untrack_resource(MTL::Resource *p_resource) {
+	if (use_barriers) {
+		_residency_del.push_back((__bridge MTLResourceUnsafe)p_resource);
+	}
 }
 
 void RenderingDeviceDriverMetal::_check_capabilities() {

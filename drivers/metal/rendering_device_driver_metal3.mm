@@ -128,7 +128,9 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 			rs_desc.label = @"Main Residency Set";
 			NSError *error;
 			id<MTLResidencySet> mrs = [(__bridge id<MTLDevice>)device newResidencySetWithDescriptor:rs_desc error:&error];
-			main_residency_set = (__bridge MTL::ResidencySet *)mrs;
+			if (mrs) {
+				main_residency_set = NS::TransferPtr((__bridge_retained MTL::ResidencySet *)mrs);
+			}
 			if (mrs == nil) {
 				String error_msg = conv::to_string(error.localizedDescription);
 				print_error(vformat("Resource barriers unavailable. Failed to create main residency set for explicit resource barriers: %s", error_msg));
@@ -198,7 +200,7 @@ Error RenderingDeviceDriverMetal::_execute_and_present_barriers(CommandQueueID p
 	}
 
 	bool changed = false;
-	id<MTLResidencySet> mrs = (__bridge id<MTLResidencySet>)main_residency_set;
+	id<MTLResidencySet> mrs = (__bridge id<MTLResidencySet>)main_residency_set.get();
 	if (!_residency_add.is_empty()) {
 		[mrs addAllocations:(id<MTLAllocation> *)_residency_add.ptr() count:_residency_add.size()];
 		_residency_add.clear();
@@ -336,7 +338,7 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 
 	if (p_swap_chains.size() > 0) {
 		// Used as a signal that we're presenting, so this is the end of a frame.
-		id<MTLCaptureScope> scope = (__bridge id<MTLCaptureScope>)device_scope;
+		id<MTLCaptureScope> scope = (__bridge id<MTLCaptureScope>)device_scope.get();
 		[scope endScope];
 		[scope beginScope];
 	}

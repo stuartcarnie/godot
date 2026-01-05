@@ -102,7 +102,7 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 	DEV_ASSERT((p_swap_chains.size() > 0 && queue == device_queue) || p_swap_chains.size() == 0);
 
 	bool changed = false;
-	id<MTLResidencySet> mrs = (__bridge id<MTLResidencySet>)main_residency_set;
+	id<MTLResidencySet> mrs = (__bridge id<MTLResidencySet>)main_residency_set.get();
 	if (!_residency_add.is_empty()) {
 		[mrs addAllocations:(id<MTLAllocation> *)_residency_add.ptr() count:_residency_add.size()];
 		_residency_add.clear();
@@ -183,7 +183,7 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 
 	if (p_swap_chains.size() > 0) {
 		// Used as a signal that we're presenting, so this is the end of a frame.
-		id<MTLCaptureScope> scope = (__bridge id<MTLCaptureScope>)device_scope;
+		id<MTLCaptureScope> scope = (__bridge id<MTLCaptureScope>)device_scope.get();
 		[scope endScope];
 		[scope beginScope];
 	}
@@ -252,7 +252,7 @@ Error RenderingDeviceDriverMetal::_create_device() {
 	ERR_FAIL_NULL_V_MSG(transfer_queue, ERR_CANT_CREATE, "Failed to create transfer queue");
 
 	id<MTLCaptureScope> scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithDevice:mtl_device];
-	device_scope = (__bridge MTL::CaptureScope *)scope;
+	device_scope = NS::TransferPtr((__bridge_retained MTL::CaptureScope *)scope);
 	scope.label = @"Godot Frame";
 	[scope beginScope]; // Allow Xcode to capture the first frame, if desired.
 
@@ -261,7 +261,7 @@ Error RenderingDeviceDriverMetal::_create_device() {
 	rs_desc.label = @"Main Residency Set";
 	NSError *error;
 	id<MTLResidencySet> mrs = [mtl_device newResidencySetWithDescriptor:rs_desc error:&error];
-	main_residency_set = (__bridge MTL::ResidencySet *)mrs;
+	main_residency_set = NS::TransferPtr((__bridge_retained MTL::ResidencySet *)mrs);
 	CRASH_COND_MSG(error != nil, vformat("Failed to create residency set: %s", String(error.localizedDescription.UTF8String)));
 
 	[device_queue addResidencySet:mrs];

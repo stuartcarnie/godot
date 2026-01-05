@@ -37,7 +37,7 @@
 
 #pragma mark - Resource Factory
 
-MTL::Function *MDResourceFactory::new_func(NS::String *p_source, NS::String *p_name, NS::Error **p_error) {
+NS::SharedPtr<MTL::Function> MDResourceFactory::new_func(NS::String *p_source, NS::String *p_name, NS::Error **p_error) {
 	@autoreleasepool {
 		NSError *err = nil;
 		MTLCompileOptions *options = [MTLCompileOptions new];
@@ -50,11 +50,11 @@ MTL::Function *MDResourceFactory::new_func(NS::String *p_source, NS::String *p_n
 				*p_error = (__bridge_retained NS::Error *)err;
 			}
 		}
-		return (__bridge_retained MTL::Function *)[mtlLib newFunctionWithName:(__bridge NSString *)p_name];
+		return NS::TransferPtr((__bridge_retained MTL::Function *)[mtlLib newFunctionWithName:(__bridge NSString *)p_name]);
 	}
 }
 
-MTL::Function *MDResourceFactory::new_clear_vert_func(ClearAttKey &p_key) {
+NS::SharedPtr<MTL::Function> MDResourceFactory::new_clear_vert_func(ClearAttKey &p_key) {
 	@autoreleasepool {
 		NSString *msl = [NSString stringWithFormat:@R"(
 #include <metal_stdlib>
@@ -85,7 +85,7 @@ vertex VaryingsPos vertClear(AttributesPos attributes [[stage_in]], constant Cle
 	}
 }
 
-MTL::Function *MDResourceFactory::new_clear_frag_func(ClearAttKey &p_key) {
+NS::SharedPtr<MTL::Function> MDResourceFactory::new_clear_frag_func(ClearAttKey &p_key) {
 	@autoreleasepool {
 		NSMutableString *msl = [NSMutableString stringWithCapacity:2048];
 
@@ -152,7 +152,7 @@ NS::String *MDResourceFactory::get_format_type_string(MTL::PixelFormat p_fmt) {
 	}
 }
 
-MTL::DepthStencilState *MDResourceFactory::new_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
+NS::SharedPtr<MTL::DepthStencilState> MDResourceFactory::new_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
 	MTLDepthStencilDescriptor *dsDesc = [MTLDepthStencilDescriptor new];
 	dsDesc.depthCompareFunction = MTLCompareFunctionAlways;
 	dsDesc.depthWriteEnabled = p_use_depth;
@@ -172,16 +172,16 @@ MTL::DepthStencilState *MDResourceFactory::new_depth_stencil_state(bool p_use_de
 	}
 
 	id<MTLDevice> objcDevice = (__bridge id<MTLDevice>)device;
-	return (__bridge_retained MTL::DepthStencilState *)[objcDevice newDepthStencilStateWithDescriptor:dsDesc];
+	return NS::TransferPtr((__bridge_retained MTL::DepthStencilState *)[objcDevice newDepthStencilStateWithDescriptor:dsDesc]);
 }
 
-MTL::RenderPipelineState *MDResourceFactory::new_clear_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
-	id<MTLFunction> vtxFunc = (__bridge_transfer id<MTLFunction>)new_clear_vert_func(p_key);
-	id<MTLFunction> fragFunc = (__bridge_transfer id<MTLFunction>)new_clear_frag_func(p_key);
+NS::SharedPtr<MTL::RenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
+	NS::SharedPtr<MTL::Function> vtxFunc = new_clear_vert_func(p_key);
+	NS::SharedPtr<MTL::Function> fragFunc = new_clear_frag_func(p_key);
 	MTLRenderPipelineDescriptor *plDesc = [MTLRenderPipelineDescriptor new];
 	plDesc.label = @"ClearRenderAttachments";
-	plDesc.vertexFunction = vtxFunc;
-	plDesc.fragmentFunction = fragFunc;
+	plDesc.vertexFunction = (__bridge id<MTLFunction>)vtxFunc.get();
+	plDesc.fragmentFunction = (__bridge id<MTLFunction>)fragFunc.get();
 	plDesc.rasterSampleCount = p_key.sample_count;
 	plDesc.inputPrimitiveTopology = MTLPrimitiveTopologyClassTriangle;
 
@@ -229,10 +229,10 @@ MTL::RenderPipelineState *MDResourceFactory::new_clear_pipeline_state(ClearAttKe
 	if (p_error != nullptr) {
 		*p_error = (__bridge_retained NS::Error *)err;
 	}
-	return (__bridge_retained MTL::RenderPipelineState *)state;
+	return NS::TransferPtr((__bridge_retained MTL::RenderPipelineState *)state);
 }
 
-MTL::RenderPipelineState *MDResourceFactory::new_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
+NS::SharedPtr<MTL::RenderPipelineState> MDResourceFactory::new_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
 	DEV_ASSERT(!p_key.is_layered_rendering_enabled());
 	DEV_ASSERT(p_key.is_enabled(0));
 	DEV_ASSERT(!p_key.is_depth_enabled());
@@ -259,7 +259,7 @@ MTL::RenderPipelineState *MDResourceFactory::new_empty_draw_pipeline_state(Clear
 		}
 
 		if (mtlLib == nil) {
-			return nullptr;
+			return {};
 		}
 
 		id<MTLFunction> vtxFunc = [mtlLib newFunctionWithName:@"fullscreenNoopVert"];
@@ -281,7 +281,7 @@ MTL::RenderPipelineState *MDResourceFactory::new_empty_draw_pipeline_state(Clear
 		if (p_error != nullptr && err != nil) {
 			*p_error = (__bridge_retained NS::Error *)err;
 		}
-		return (__bridge_retained MTL::RenderPipelineState *)state;
+		return NS::TransferPtr((__bridge_retained MTL::RenderPipelineState *)state);
 	}
 }
 
@@ -290,46 +290,48 @@ MTL::RenderPipelineState *MDResourceFactory::new_empty_draw_pipeline_state(Clear
 MTL::RenderPipelineState *MDResourceCache::get_clear_render_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
 	HashMap::ConstIterator it = clear_states.find(p_key);
 	if (it != clear_states.end()) {
-		return it->value;
+		return it->value.get();
 	}
 
-	MTL::RenderPipelineState *state = resource_factory->new_clear_pipeline_state(p_key, p_error);
-	clear_states[p_key] = state;
-	return state;
+	NS::SharedPtr<MTL::RenderPipelineState> state = resource_factory->new_clear_pipeline_state(p_key, p_error);
+	MTL::RenderPipelineState *result = state.get();
+	clear_states[p_key] = std::move(state);
+	return result;
 }
 
 MTL::RenderPipelineState *MDResourceCache::get_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
 	HashMap::ConstIterator it = empty_draw_states.find(p_key);
 	if (it != empty_draw_states.end()) {
-		return it->value;
+		return it->value.get();
 	}
 
-	MTL::RenderPipelineState *state = resource_factory->new_empty_draw_pipeline_state(p_key, p_error);
-	empty_draw_states[p_key] = state;
-	return state;
+	NS::SharedPtr<MTL::RenderPipelineState> state = resource_factory->new_empty_draw_pipeline_state(p_key, p_error);
+	MTL::RenderPipelineState *result = state.get();
+	empty_draw_states[p_key] = std::move(state);
+	return result;
 }
 
 MTL::DepthStencilState *MDResourceCache::get_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
 	if (p_use_depth && p_use_stencil) {
-		if (clear_depth_stencil_state.all == nullptr) {
+		if (!clear_depth_stencil_state.all) {
 			clear_depth_stencil_state.all = resource_factory->new_depth_stencil_state(true, true);
 		}
-		return clear_depth_stencil_state.all;
+		return clear_depth_stencil_state.all.get();
 	} else if (p_use_depth) {
-		if (clear_depth_stencil_state.depth_only == nullptr) {
+		if (!clear_depth_stencil_state.depth_only) {
 			clear_depth_stencil_state.depth_only = resource_factory->new_depth_stencil_state(true, false);
 		}
-		return clear_depth_stencil_state.depth_only;
+		return clear_depth_stencil_state.depth_only.get();
 	} else if (p_use_stencil) {
-		if (clear_depth_stencil_state.stencil_only == nullptr) {
+		if (!clear_depth_stencil_state.stencil_only) {
 			clear_depth_stencil_state.stencil_only = resource_factory->new_depth_stencil_state(false, true);
 		}
-		return clear_depth_stencil_state.stencil_only;
+		return clear_depth_stencil_state.stencil_only.get();
 	} else {
-		if (clear_depth_stencil_state.none == nullptr) {
+		if (!clear_depth_stencil_state.none) {
 			clear_depth_stencil_state.none = resource_factory->new_depth_stencil_state(false, false);
 		}
-		return clear_depth_stencil_state.none;
+		return clear_depth_stencil_state.none.get();
 	}
 }
 

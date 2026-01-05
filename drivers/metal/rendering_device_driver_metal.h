@@ -88,7 +88,7 @@ protected:
 	RDD::FragmentShadingRateCapabilities fsr_capabilities;
 	RDD::FragmentDensityMapCapabilities fdm_capabilities;
 
-	MTL::BinaryArchive *archive = nullptr;
+	NS::SharedPtr<MTL::BinaryArchive> archive;
 	uint32_t archive_count = 0;
 	// DEV: When true, attempting to create a pipeline will fail if it cannot use the archive.
 	bool archive_fail_on_miss = false;
@@ -101,18 +101,18 @@ protected:
 #pragma mark - Copy Queue
 
 	/// A command queue used for internal copy operations.
-	MTL::CommandQueue *copy_queue = nullptr;
+	NS::SharedPtr<MTL::CommandQueue> copy_queue;
 	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-	MTL::ResidencySet *copy_queue_rs = nullptr;
+	NS::SharedPtr<MTL::ResidencySet> copy_queue_rs;
 	GODOT_CLANG_WARNING_POP
 	// If this is not nullptr, there are pending copy operations.
-	MTL::CommandBuffer *copy_queue_command_buffer = nullptr;
-	MTL::BlitCommandEncoder *copy_queue_blit_encoder = nullptr;
-	MTL::Buffer *copy_queue_buffer = nullptr;
+	NS::SharedPtr<MTL::CommandBuffer> copy_queue_command_buffer;
+	NS::SharedPtr<MTL::BlitCommandEncoder> copy_queue_blit_encoder;
+	NS::SharedPtr<MTL::Buffer> copy_queue_buffer;
 	NS::UInteger copy_queue_buffer_offset = 0;
 
 	_FORCE_INLINE_ NS::UInteger _copy_queue_buffer_available() const {
-		return copy_queue_buffer->length() - copy_queue_buffer_offset;
+		return copy_queue_buffer.get()->length() - copy_queue_buffer_offset;
 	}
 
 	/// Marks p_size bytes as consumed from the copy queue buffer, aligning the offset to 16 bytes.
@@ -123,30 +123,30 @@ protected:
 
 	/// Returns a pointer to the current position in the copy queue buffer.
 	_FORCE_INLINE_ void *_copy_queue_buffer_ptr() const {
-		return static_cast<uint8_t *>(copy_queue_buffer->contents()) + copy_queue_buffer_offset;
+		return static_cast<uint8_t *>(copy_queue_buffer.get()->contents()) + copy_queue_buffer_offset;
 	}
 
 	_FORCE_INLINE_ MTL::CommandBuffer *_copy_queue_command_buffer() {
-		if (copy_queue_command_buffer == nullptr) {
-			DEV_ASSERT(copy_queue_blit_encoder == nullptr);
-
-			copy_queue_command_buffer = copy_queue->commandBufferWithUnretainedReferences();
+		if (!copy_queue_command_buffer) {
+			DEV_ASSERT(!copy_queue_blit_encoder);
+			copy_queue_command_buffer = NS::RetainPtr(copy_queue.get()->commandBufferWithUnretainedReferences());
 		}
-		return copy_queue_command_buffer;
+		return copy_queue_command_buffer.get();
 	}
 
 	_FORCE_INLINE_ MTL::BlitCommandEncoder *_copy_queue_blit_encoder() {
-		if (copy_queue_blit_encoder == nullptr) {
-			copy_queue_blit_encoder = _copy_queue_command_buffer()->blitCommandEncoder();
+		if (!copy_queue_blit_encoder) {
+			MTL::BlitCommandEncoder *enc = _copy_queue_command_buffer()->blitCommandEncoder();
+			copy_queue_blit_encoder = NS::RetainPtr(enc);
 		}
-		return copy_queue_blit_encoder;
+		return copy_queue_blit_encoder.get();
 	}
 
 	void _copy_queue_copy_to_buffer(Span<uint8_t> p_src_data, MTL::Buffer *p_dst_buffer, uint64_t p_dst_offset = 0);
 	void _copy_queue_flush();
 	Error _copy_queue_initialize();
 
-	MTL::CaptureScope *device_scope = nullptr;
+	NS::SharedPtr<MTL::CaptureScope> device_scope;
 	bool capture_active = false;
 
 	String pipeline_cache_id;
@@ -155,23 +155,15 @@ protected:
 	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 	virtual void add_residency_set_to_main_queue(MTL::ResidencySet *p_set) = 0;
 	virtual void remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) = 0;
-	MTL::ResidencySet *main_residency_set = nullptr;
+	NS::SharedPtr<MTL::ResidencySet> main_residency_set;
 	GODOT_CLANG_WARNING_POP
 
 	bool use_barriers = false;
 	MTL::ResourceOptions base_hazard_tracking = MTL::ResourceHazardTrackingModeTracked;
 
 	virtual Error _create_device();
-	void _track_resource(MTL::Resource *p_resource) {
-		if (use_barriers) {
-			_residency_add.push_back((__bridge id<MTLResource>)p_resource);
-		}
-	}
-	void _untrack_resource(MTL::Resource *p_resource) {
-		if (use_barriers) {
-			_residency_del.push_back((__bridge id<MTLResource>)p_resource);
-		}
-	}
+	virtual void _track_resource(MTL::Resource *p_resource);
+	virtual void _untrack_resource(MTL::Resource *p_resource);
 	void _check_capabilities();
 	Error _initialize(uint32_t p_device_index, uint32_t p_frame_count);
 
@@ -197,7 +189,7 @@ public:
 
 public:
 	struct BufferInfo {
-		id<MTLBuffer> metal_buffer;
+		NS::SharedPtr<MTL::Buffer> metal_buffer;
 
 		_FORCE_INLINE_ bool is_dynamic() const { return _frame_idx != UINT32_MAX; }
 		_FORCE_INLINE_ uint32_t frame_index() const { return _frame_idx; }
@@ -374,7 +366,7 @@ public:
 #pragma mark Pipeline
 
 private:
-	Result<id<MTLFunction>> _create_function(MDLibrary *p_library, NSString *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants);
+	Result<NS::SharedPtr<MTL::Function>> _create_function(MDLibrary *p_library, NS::String *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants);
 
 public:
 	virtual void pipeline_free(PipelineID p_pipeline_id) override final;

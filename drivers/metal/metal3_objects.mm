@@ -125,9 +125,8 @@ void MDCommandBuffer::commit() {
 	end();
 	if (use_barriers) {
 		if (_scratch.is_changed()) {
-			for (MTL::Buffer *buf : _scratch.get_buffers()) {
-				[_frame_state.rs addAllocation:(__bridge id<MTLBuffer>)buf];
-			}
+			Span<MTL::Buffer *const> bufs = _scratch.get_buffers();
+			[_frame_state.rs addAllocations:(id<MTLAllocation> __unsafe_unretained *)(void *)bufs.ptr() count:bufs.size()];
 			_scratch.clear_changed();
 			[_frame_state.rs commit];
 		}
@@ -435,7 +434,7 @@ void MDCommandBuffer::clear_buffer(RDD::BufferID p_buffer, uint64_t p_offset, ui
 	id<MTLBlitCommandEncoder> blit_enc = _ensure_blit_encoder();
 	const RDM::BufferInfo *buffer = (const RDM::BufferInfo *)p_buffer.id;
 
-	[blit_enc fillBuffer:buffer->metal_buffer
+	[blit_enc fillBuffer:(__bridge id<MTLBuffer>)buffer->metal_buffer.get()
 				   range:NSMakeRange(p_offset, p_size)
 				   value:0];
 }
@@ -448,9 +447,9 @@ void MDCommandBuffer::copy_buffer(RDD::BufferID p_src_buffer, RDD::BufferID p_ds
 
 	for (uint32_t i = 0; i < p_regions.size(); i++) {
 		RDD::BufferCopyRegion region = p_regions[i];
-		[enc copyFromBuffer:src->metal_buffer
+		[enc copyFromBuffer:(__bridge id<MTLBuffer>)src->metal_buffer.get()
 					 sourceOffset:region.src_offset
-						 toBuffer:dst->metal_buffer
+						 toBuffer:(__bridge id<MTLBuffer>)dst->metal_buffer.get()
 				destinationOffset:region.dst_offset
 							 size:region.size];
 	}
@@ -625,7 +624,7 @@ void MDCommandBuffer::_copy_texture_buffer(CopySource p_source,
 		}
 
 		if (p_source == CopySource::Buffer) {
-			[enc copyFromBuffer:buffer->metal_buffer
+			[enc copyFromBuffer:(__bridge id<MTLBuffer>)buffer->metal_buffer.get()
 						   sourceOffset:region.buffer_offset
 					  sourceBytesPerRow:bytesPerRow
 					sourceBytesPerImage:bytesPerImg
@@ -641,7 +640,7 @@ void MDCommandBuffer::_copy_texture_buffer(CopySource p_source,
 								 sourceLevel:mip_level
 								sourceOrigin:txt_origin
 								  sourceSize:txt_size
-									toBuffer:buffer->metal_buffer
+									toBuffer:(__bridge id<MTLBuffer>)buffer->metal_buffer.get()
 						   destinationOffset:region.buffer_offset
 					  destinationBytesPerRow:bytesPerRow
 					destinationBytesPerImage:bytesPerImg
@@ -1167,8 +1166,8 @@ void MDCommandBuffer::render_bind_vertex_buffers(uint32_t p_binding_count, const
 			p_dynamic_offsets >>= 2;
 			dynamic_offset = frame_idx * dyn_buf->size_bytes;
 		}
-		if (render.vertex_buffers[i] != buf_info->metal_buffer) {
-			render.vertex_buffers[i] = buf_info->metal_buffer;
+		if (render.vertex_buffers[i] != (__bridge id<MTLBuffer>)buf_info->metal_buffer.get()) {
+			render.vertex_buffers[i] = (__bridge id<MTLBuffer>)buf_info->metal_buffer.get();
 			same = false;
 		}
 
@@ -1199,7 +1198,7 @@ void MDCommandBuffer::render_bind_index_buffer(RDD::BufferID p_buffer, RDD::Inde
 
 	const RenderingDeviceDriverMetal::BufferInfo *buffer = (const RenderingDeviceDriverMetal::BufferInfo *)p_buffer.id;
 
-	render.index_buffer = buffer->metal_buffer;
+	render.index_buffer = (__bridge id<MTLBuffer>)buffer->metal_buffer.get();
 	render.index_type = p_format == RDD::IndexBufferFormat::INDEX_BUFFER_FORMAT_UINT16 ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
 	render.index_offset = p_offset;
 }
@@ -1250,7 +1249,7 @@ void MDCommandBuffer::render_draw_indexed_indirect(RDD::BufferID p_indirect_buff
 						   indexType:render.index_type
 						 indexBuffer:render.index_buffer
 				   indexBufferOffset:0
-					  indirectBuffer:indirect_buffer->metal_buffer
+					  indirectBuffer:(__bridge id<MTLBuffer>)indirect_buffer->metal_buffer.get()
 				indirectBufferOffset:indirect_offset];
 		indirect_offset += p_stride;
 	}
@@ -1273,7 +1272,7 @@ void MDCommandBuffer::render_draw_indirect(RDD::BufferID p_indirect_buffer, uint
 
 	for (uint32_t i = 0; i < p_draw_count; i++) {
 		[enc drawPrimitives:render.pipeline->raster_state.render_primitive
-					  indirectBuffer:indirect_buffer->metal_buffer
+					  indirectBuffer:(__bridge id<MTLBuffer>)indirect_buffer->metal_buffer.get()
 				indirectBufferOffset:indirect_offset];
 		indirect_offset += p_stride;
 	}
@@ -1452,7 +1451,7 @@ void MDCommandBuffer::compute_dispatch_indirect(RDD::BufferID p_indirect_buffer,
 	const RenderingDeviceDriverMetal::BufferInfo *indirectBuffer = (const RenderingDeviceDriverMetal::BufferInfo *)p_indirect_buffer.id;
 
 	id<MTLComputeCommandEncoder> enc = compute.encoder;
-	[enc dispatchThreadgroupsWithIndirectBuffer:indirectBuffer->metal_buffer indirectBufferOffset:p_offset threadsPerThreadgroup:compute.pipeline->compute_state.local];
+	[enc dispatchThreadgroupsWithIndirectBuffer:(__bridge id<MTLBuffer>)indirectBuffer->metal_buffer.get() indirectBufferOffset:p_offset threadsPerThreadgroup:compute.pipeline->compute_state.local];
 }
 
 void MDCommandBuffer::reset() {
@@ -1595,7 +1594,7 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers(MDUniformSet *p_set, MDSha
 			uint32_t frame_idx = (p_dynamic_offsets >> shift) & 0xf;
 
 			const MetalBufferDynamicInfo *buf_info = (const MetalBufferDynamicInfo *)uniform.ids[0].id;
-			uint64_t gpu_address = buf_info->metal_buffer.gpuAddress + frame_idx * buf_info->size_bytes;
+			uint64_t gpu_address = buf_info->metal_buffer.get()->gpuAddress() + frame_idx * buf_info->size_bytes;
 			*(MTLGPUAddress *)(ptr + idx.buffer) = gpu_address;
 		}
 
@@ -1700,12 +1699,12 @@ void MDCommandBuffer::_bind_uniforms_direct(MDUniformSet *p_set, MDShader *p_sha
 			case RDD::UNIFORM_TYPE_UNIFORM_BUFFER:
 			case RDD::UNIFORM_TYPE_STORAGE_BUFFER: {
 				const RDM::BufferInfo *buf_info = (const RDM::BufferInfo *)uniform.ids[0].id;
-				p_enc.set(buf_info->metal_buffer, 0, indexes.buffer);
+				p_enc.set((__bridge id<MTLBuffer>)buf_info->metal_buffer.get(), 0, indexes.buffer);
 			} break;
 			case RDD::UNIFORM_TYPE_UNIFORM_BUFFER_DYNAMIC:
 			case RDD::UNIFORM_TYPE_STORAGE_BUFFER_DYNAMIC: {
 				const MetalBufferDynamicInfo *buf_info = (const MetalBufferDynamicInfo *)uniform.ids[0].id;
-				p_enc.set(buf_info->metal_buffer, frame_idx * buf_info->size_bytes, indexes.buffer);
+				p_enc.set((__bridge id<MTLBuffer>)buf_info->metal_buffer.get(), frame_idx * buf_info->size_bytes, indexes.buffer);
 			} break;
 			case RDD::UNIFORM_TYPE_INPUT_ATTACHMENT: {
 				size_t count = uniform.ids.size();
@@ -1757,7 +1756,7 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers_compute(MDUniformSet *p_se
 			uint32_t frame_idx = (p_dynamic_offsets >> shift) & 0xf;
 
 			const MetalBufferDynamicInfo *buf_info = (const MetalBufferDynamicInfo *)uniform.ids[0].id;
-			uint64_t gpu_address = buf_info->metal_buffer.gpuAddress + frame_idx * buf_info->size_bytes;
+			uint64_t gpu_address = buf_info->metal_buffer.get()->gpuAddress() + frame_idx * buf_info->size_bytes;
 			*(MTLGPUAddress *)(ptr + idx.buffer) = gpu_address;
 		}
 
