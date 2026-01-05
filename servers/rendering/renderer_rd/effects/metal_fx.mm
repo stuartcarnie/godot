@@ -68,7 +68,7 @@ void MFXSpatialEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_bu
 	if (p_userdata->ctx.is_metal_4) {
 		id<MTL4FXSpatialScaler> s = (id<MTL4FXSpatialScaler>)scaler;
 		MTL4::MDCommandBuffer *obj = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
-		[s encodeToCommandBuffer:obj->get_command_buffer()];
+		[s encodeToCommandBuffer:(__bridge id<MTL4CommandBuffer>)obj->get_command_buffer()];
 	} else {
 		id<MTLFXSpatialScaler> s = (id<MTLFXSpatialScaler>)scaler;
 		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
@@ -126,7 +126,7 @@ MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const
 		id<MTLFXSpatialScaler> scaler = [desc newSpatialScalerWithDevice:dev];
 		context->scaler = scaler;
 	} else if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
-		id<MTL4FXSpatialScaler> scaler = [desc newSpatialScalerWithDevice:dev compiler:dd->get_compiler()];
+		id<MTL4FXSpatialScaler> scaler = [desc newSpatialScalerWithDevice:dev compiler:(__bridge id<MTL4Compiler>)dd->get_compiler()];
 		Ivar ivar = class_getInstanceVariable([scaler class], "_outputTextureBarrierStages");
 		if (ivar) {
 			uint64_t *ptr = (uint64_t *)((char *)(__bridge void *)scaler + ivar_getOffset(ivar));
@@ -177,7 +177,7 @@ MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) con
 	if (MTL3::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL3::RenderingDeviceDriverMetal *>(rdd); dd) {
 		context->scaler = [desc newTemporalScalerWithDevice:dev];
 	} else if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
-		context->scaler = [desc newTemporalScalerWithDevice:dev compiler:dd->get_compiler()];
+		context->scaler = [desc newTemporalScalerWithDevice:dev compiler:(__bridge id<MTL4Compiler>)dd->get_compiler()];
 		Ivar ivar = class_getInstanceVariable([context->scaler class], "_outputTextureBarrierStages");
 		if (ivar) {
 			uint64_t *ptr = (uint64_t *)((char *)(__bridge void *)context->scaler + ivar_getOffset(ivar));
@@ -241,7 +241,7 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 	if (p_userdata->ctx.is_metal_4) {
 		id<MTL4FXTemporalScaler> s = (id<MTL4FXTemporalScaler>)scaler;
 		MTL4::MDCommandBuffer *obj = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
-		[s encodeToCommandBuffer:obj->get_command_buffer()];
+		[s encodeToCommandBuffer:(__bridge id<MTL4CommandBuffer>)obj->get_command_buffer()];
 	} else {
 		id<MTLFXTemporalScaler> s = (id<MTLFXTemporalScaler>)scaler;
 		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);

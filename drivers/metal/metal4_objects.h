@@ -50,19 +50,18 @@
 /* permissions and limitations under the License.                         */
 /**************************************************************************/
 
-#import "metal_objects_shared.h"
-#import "rendering_device_driver_metal.h"
+#include "metal_objects_shared.h"
+#include "rendering_device_driver_metal.h"
 
 #include "servers/rendering/rendering_device_driver.h"
 
-#import <CommonCrypto/CommonDigest.h>
-#import <Foundation/Foundation.h>
-#import <Metal/Metal.h>
-#import <QuartzCore/CAMetalLayer.h>
-#import <simd/simd.h>
-#import <zlib.h>
-#import <initializer_list>
-#import <optional>
+#include <CommonCrypto/CommonDigest.h>
+#include <Foundation/Foundation.hpp>
+#include <Metal/Metal.hpp>
+#include <simd/simd.h>
+#include <zlib.h>
+#include <initializer_list>
+#include <optional>
 
 namespace MTL4 {
 
@@ -77,14 +76,16 @@ using ::MDCommandBufferStateType;
 using ::MDFrameBuffer;
 using ::MDRenderPass;
 using ::MDRingBuffer;
+using ::MDShader;
 using ::MDSubpass;
+using ::MDUniformSet;
 using ::MetalBufferDynamicInfo;
 using ::RenderStateBase;
 
 using RDM = RenderingDeviceDriverMetal;
 
 class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MDCommandBuffer : public MDCommandBufferBase {
-	friend class ::MDUniformSet;
+	friend class MDUniformSet;
 
 private:
 #pragma mark - Common State
@@ -99,30 +100,30 @@ private:
 	};
 	MTLStages pending_after_stages[STAGE_MAX] = { 0, 0 };
 	MTLStages pending_before_queue_stages[STAGE_MAX] = { 0, 0 };
-	void _encode_barrier(id<MTL4CommandEncoder> p_enc);
+	void _encode_barrier(MTL4::CommandEncoder *p_enc);
 
 	void reset();
 
-	id<MTL4CommandAllocator> allocator = nil;
-	id<MTL4CommandBuffer> command_buffer = nil;
+	NS::SharedPtr<MTL4::CommandAllocator> allocator;
+	NS::SharedPtr<MTL4::CommandBuffer> command_buffer;
 	bool state_begin = false;
 
 	struct PendingBarrier {
 		MTLStages src_stages;
 		MTLStages dst_stages;
-		MTL4VisibilityOptions visibility;
+		MTL4::VisibilityOptions visibility;
 	};
 
 	struct {
-		id<MTLResidencySet> rs = nil;
+		NS::SharedPtr<MTL::ResidencySet> rs;
 	} _frame_state;
 
 	MDRingBuffer _scratch;
 	// Used by render_clear_attachments
-	id<MTL4ArgumentTable> _args_clear;
+	NS::SharedPtr<MTL4::ArgumentTable> _args_clear;
 
 	void _end_compute_dispatch();
-	id<MTL4ComputeCommandEncoder> _ensure_blit_encoder();
+	MTL4::ComputeCommandEncoder *_ensure_blit_encoder();
 
 	enum class CopySource {
 		Buffer,
@@ -138,7 +139,7 @@ private:
 	void _render_set_dirty_state();
 	void _render_bind_uniform_sets();
 	void _bind_uniforms_argument_buffers(MDUniformSet *p_set, MDShader *p_shader, uint32_t p_set_index, uint32_t p_dynamic_offsets);
-	void _bind_uniforms_direct(MDUniformSet *p_set, MDShader *p_shader, id<MTLResidencySet> p_rs, id<MTL4ArgumentTable> p_args, uint32_t p_set_index, uint32_t p_dynamic_offsets);
+	void _bind_uniforms_direct(MDUniformSet *p_set, MDShader *p_shader, MTL::ResidencySet *p_rs, MTL4::ArgumentTable *p_args, uint32_t p_set_index, uint32_t p_dynamic_offsets);
 
 #pragma mark - Compute
 
@@ -166,16 +167,16 @@ public:
 		uint32_t current_subpass = UINT32_MAX;
 		Rect2i render_area = {};
 		bool is_rendering_entire_area = false;
-		MTL4RenderPassDescriptor *desc = nil;
-		id<MTL4RenderCommandEncoder> encoder = nil;
-		id<MTL4ArgumentTable> args = nil;
-		id<MTLBuffer> __unsafe_unretained index_buffer = nil; // Buffer is owned by RDD.
-		MTLIndexType index_type = MTLIndexTypeUInt16;
-		_FORCE_INLINE_ size_t index_type_size() const { return index_type == MTLIndexTypeUInt16 ? sizeof(uint16_t) : sizeof(uint32_t); }
+		NS::SharedPtr<MTL4::RenderPassDescriptor> desc;
+		NS::SharedPtr<MTL4::RenderCommandEncoder> encoder;
+		NS::SharedPtr<MTL4::ArgumentTable> args;
+		MTL::Buffer *index_buffer = nullptr; // Buffer is owned by RDD.
+		MTL::IndexType index_type = MTL::IndexTypeUInt16;
+		_FORCE_INLINE_ size_t index_type_size() const { return index_type == MTL::IndexTypeUInt16 ? sizeof(uint16_t) : sizeof(uint32_t); }
 		uint32_t index_offset = 0;
-		LocalVector<id<MTLBuffer> __unsafe_unretained> vertex_buffers;
-		LocalVector<NSUInteger> vertex_offsets;
-		id<MTLResidencySet> residency_set;
+		LocalVector<MTL::Buffer *> vertex_buffers;
+		LocalVector<NS::UInteger> vertex_offsets;
+		NS::SharedPtr<MTL::ResidencySet> residency_set;
 
 		LocalVector<MDUniformSet *> uniform_sets;
 		uint32_t dynamic_offsets = 0;
@@ -275,9 +276,9 @@ public:
 	// State specific for a compute pass.
 	struct ComputeState {
 		MDComputePipeline *pipeline = nullptr;
-		id<MTL4ComputeCommandEncoder> encoder = nil;
-		id<MTL4ArgumentTable> args = nil;
-		id<MTLResidencySet> residency_set;
+		NS::SharedPtr<MTL4::ComputeCommandEncoder> encoder;
+		NS::SharedPtr<MTL4::ArgumentTable> args;
+		NS::SharedPtr<MTL::ResidencySet> residency_set;
 		// clang-format off
 		enum DirtyFlag: uint16_t {
 			DIRTY_NONE     = 0,
@@ -310,8 +311,8 @@ public:
 		}
 	} compute;
 
-	_FORCE_INLINE_ id<MTL4CommandBuffer> get_command_buffer() const {
-		return command_buffer;
+	_FORCE_INLINE_ MTL4::CommandBuffer *get_command_buffer() const {
+		return command_buffer.get();
 	}
 
 	void begin() override;
@@ -359,7 +360,7 @@ public:
 #pragma mark - Transfer
 
 private:
-	id<MTL4RenderCommandEncoder> get_new_render_encoder_with_descriptor(MTL4RenderPassDescriptor *p_desc);
+	MTL4::RenderCommandEncoder *get_new_render_encoder_with_descriptor(MTL4::RenderPassDescriptor *p_desc);
 
 public:
 	void resolve_texture(RDD::TextureID p_src_texture, RDD::TextureLayout p_src_texture_layout, uint32_t p_src_layer, uint32_t p_src_mipmap, RDD::TextureID p_dst_texture, RDD::TextureLayout p_dst_texture_layout, uint32_t p_dst_layer, uint32_t p_dst_mipmap) override;
@@ -383,7 +384,7 @@ public:
 	void begin_label(const char *p_label_name, const Color &p_color) override;
 	void end_label() override;
 
-	MDCommandBuffer(id<MTL4CommandAllocator> p_allocator, RenderingDeviceDriverMetal *p_device_driver);
+	MDCommandBuffer(MTL4::CommandAllocator *p_allocator, RenderingDeviceDriverMetal *p_device_driver);
 
 	MDCommandBuffer() = default;
 	~MDCommandBuffer();
@@ -415,16 +416,39 @@ using ::ShaderLoadStrategy;
 using ::UniformInfo;
 using ::UniformSet;
 
+// C++ helper to get mipmap level size from texture
+_FORCE_INLINE_ static MTL::Size mipmapLevelSizeFromTexture(MTL::Texture *p_tex, NS::UInteger p_level) {
+	MTL::Size lvlSize;
+	lvlSize.width = MAX(p_tex->width() >> p_level, 1UL);
+	lvlSize.height = MAX(p_tex->height() >> p_level, 1UL);
+	lvlSize.depth = MAX(p_tex->depth() >> p_level, 1UL);
+	return lvlSize;
+}
+
 } // namespace MTL4
 
 namespace rid {
 #define MAKE_ID(FROM, TO)                                     \
 	API_AVAILABLE(macos(26), ios(26), tvos(26), visionos(26)) \
 	_FORCE_INLINE_ TO make(FROM p_obj) {                      \
-		return TO(owned(p_obj));                              \
+		return TO(reinterpret_cast<uint64_t>(p_obj));         \
 	}
 
-MAKE_ID(id<MTL4CommandQueue>, RDD::CommandQueueID);
+MAKE_ID(MTL4::CommandQueue *, RDD::CommandQueueID);
 
 #undef MAKE_ID
+
+// C++ template to get a Metal C++ pointer from an ID.
+template <typename T>
+API_AVAILABLE(macos(26), ios(26), tvos(26), visionos(26))
+_FORCE_INLINE_ T *get(RDD::ID p_id) {
+	return reinterpret_cast<T *>(p_id.id);
+}
+
+template <typename T>
+API_AVAILABLE(macos(26), ios(26), tvos(26), visionos(26))
+_FORCE_INLINE_ T *get(uint64_t p_id) {
+	return reinterpret_cast<T *>(p_id);
+}
+
 } //namespace rid

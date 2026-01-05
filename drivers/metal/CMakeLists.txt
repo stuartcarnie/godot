@@ -12,7 +12,7 @@ target_sources(metal PRIVATE
         metal3_objects.h
         metal3_objects.mm
         metal4_objects.h
-        metal4_objects.mm
+        metal4_objects.cpp
         metal_device_profile.cpp
         metal_device_profile.h
         metal_device_properties.cpp
@@ -29,7 +29,7 @@ target_sources(metal PRIVATE
         rendering_device_driver_metal3.h
         rendering_device_driver_metal3.mm
         rendering_device_driver_metal4.h
-        rendering_device_driver_metal4.mm
+        rendering_device_driver_metal4.cpp
         rendering_shader_container_metal.h
         rendering_shader_container_metal.cpp
         sha256_digest.h

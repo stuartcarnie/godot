@@ -83,6 +83,11 @@ using MTLBindingAccess = MTL::BindingAccess;
 constexpr auto MTLBindingAccessReadOnly = MTL::BindingAccessReadOnly;
 constexpr auto MTLBindingAccessReadWrite = MTL::BindingAccessReadWrite;
 constexpr auto MTLBindingAccessWriteOnly = MTL::BindingAccessWriteOnly;
+constexpr auto MTLResourceUsageRead = MTL::ResourceUsageRead;
+constexpr auto MTLResourceUsageWrite = MTL::ResourceUsageWrite;
+using MTLIndexType = MTL::IndexType;
+constexpr auto MTLIndexTypeUInt16 = MTL::IndexTypeUInt16;
+constexpr auto MTLIndexTypeUInt32 = MTL::IndexTypeUInt32;
 #endif
 
 // These types can be used in Vector and other containers that use
@@ -559,6 +564,39 @@ public:
 			bool p_can_resolve,
 			bool p_is_stencil) const;
 #endif
+	// C++ template version of configureDescriptor for metal-cpp types.
+	template <typename AttachDesc>
+	bool configureDescriptor(AttachDesc *p_desc,
+			PixelFormats &p_pf,
+			MDSubpass const &p_subpass,
+			MTL::Texture *p_attachment,
+			bool p_is_rendering_entire_area,
+			bool p_has_resolve,
+			bool p_can_resolve,
+			bool p_is_stencil) const {
+		p_desc->setTexture(p_attachment);
+
+		MTL::LoadAction load;
+		if (!p_is_rendering_entire_area || !isFirstUseOf(p_subpass)) {
+			load = MTL::LoadActionLoad;
+		} else {
+			load = p_is_stencil ? (MTL::LoadAction)stencilLoadAction : (MTL::LoadAction)loadAction;
+		}
+
+		p_desc->setLoadAction(load);
+
+		MTL::PixelFormat mtlFmt = p_attachment->pixelFormat();
+		bool isDepthFormat = p_pf.isDepthFormat(mtlFmt);
+		bool isStencilFormat = p_pf.isStencilFormat(mtlFmt);
+		if (isStencilFormat && !p_is_stencil && !isDepthFormat) {
+			p_desc->setStoreAction(MTL::StoreActionDontCare);
+		} else {
+			p_desc->setStoreAction((MTL::StoreAction)getMTLStoreAction(p_subpass, p_is_rendering_entire_area, p_has_resolve, p_can_resolve, p_is_stencil));
+		}
+
+		return load == MTL::LoadActionClear;
+	}
+
 	/** Returns whether this attachment should be cleared in the subpass. */
 	bool shouldClear(MDSubpass const &p_subpass, bool p_is_stencil) const;
 };
@@ -1034,8 +1072,6 @@ public:
 			std::shared_ptr<MDLibrary> p_vert, std::shared_ptr<MDLibrary> p_frag);
 };
 
-#ifdef __OBJC__
-
 #pragma mark - Uniform Set
 
 enum StageResourceUsage : uint32_t {
@@ -1070,7 +1106,11 @@ _FORCE_INLINE_ MTLResourceUsage resource_usage_for_stage(StageResourceUsage p_us
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDUniformSet {
 public:
+#ifdef __OBJC__
 	id<MTLBuffer> arg_buffer = nil;
+#else
+	MTL::Buffer *arg_buffer = nullptr;
+#endif
 	Vector<uint8_t> arg_buffer_data; // Stored for dynamic uniform sets.
 	ResourceUsageMap usage_to_resources; // Used by Metal 3 for resource tracking.
 	Vector<RDD::BoundUniform> uniforms;
@@ -1095,8 +1135,13 @@ public:
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDRenderPipeline final : public MDPipeline {
 public:
+#ifdef __OBJC__
 	id<MTLRenderPipelineState> state = nil;
 	id<MTLDepthStencilState> depth_stencil = nil;
+#else
+	MTL::RenderPipelineState *state = nullptr;
+	MTL::DepthStencilState *depth_stencil = nullptr;
+#endif
 	uint32_t push_constant_size = 0;
 	uint32_t push_constant_stages_mask = 0;
 	SampleCount sample_count = SampleCount1;
@@ -1117,38 +1162,44 @@ public:
 			float depth_bias = 0.0;
 			float slope_scale = 0.0;
 			float clamp = 0.0;
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+#ifdef __OBJC__
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> p_enc) const {
 				if (!enabled) {
 					return;
 				}
 				[p_enc setDepthBias:depth_bias slopeScale:slope_scale clamp:clamp];
 			}
-			API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0))
-			_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
+#else
+			template <typename T>
+			_FORCE_INLINE_ void apply(T *p_enc) const {
 				if (!enabled) {
 					return;
 				}
-				[p_enc setDepthBias:depth_bias slopeScale:slope_scale clamp:clamp];
+				p_enc->setDepthBias(depth_bias, slope_scale, clamp);
 			}
+#endif
 		} depth_bias;
 
 		struct {
 			bool enabled = false;
 			uint32_t front_reference = 0;
 			uint32_t back_reference = 0;
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+#ifdef __OBJC__
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> p_enc) const {
 				if (!enabled) {
 					return;
 				}
 				[p_enc setStencilFrontReferenceValue:front_reference backReferenceValue:back_reference];
 			}
-			API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0))
-			_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
+#else
+			template <typename T>
+			_FORCE_INLINE_ void apply(T *p_enc) const {
 				if (!enabled) {
 					return;
 				}
-				[p_enc setStencilFrontReferenceValue:front_reference backReferenceValue:back_reference];
+				p_enc->setStencilReferenceValues(front_reference, back_reference);
 			}
+#endif
 		} stencil;
 
 		struct {
@@ -1158,20 +1209,20 @@ public:
 			float b = 0.0;
 			float a = 0.0;
 
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
-				//if (!enabled)
-				//	return;
+#ifdef __OBJC__
+			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> p_enc) const {
 				[p_enc setBlendColorRed:r green:g blue:b alpha:a];
 			}
-			API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0))
-			_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
-				//if (!enabled)
-				//	return;
-				[p_enc setBlendColorRed:r green:g blue:b alpha:a];
+#else
+			template <typename T>
+			_FORCE_INLINE_ void apply(T *p_enc) const {
+				p_enc->setBlendColor(r, g, b, a);
 			}
+#endif
 		} blend;
 
-		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) const {
+#ifdef __OBJC__
+		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> p_enc) const {
 			[p_enc setCullMode:cull_mode];
 			[p_enc setTriangleFillMode:fill_mode];
 			[p_enc setDepthClipMode:clip_mode];
@@ -1180,21 +1231,22 @@ public:
 			stencil.apply(p_enc);
 			blend.apply(p_enc);
 		}
-
-		API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0))
-		_FORCE_INLINE_ void apply(id<MTL4RenderCommandEncoder> __unsafe_unretained p_enc) const {
-			[p_enc setCullMode:cull_mode];
-			[p_enc setTriangleFillMode:fill_mode];
-			[p_enc setDepthClipMode:clip_mode];
-			[p_enc setFrontFacingWinding:winding];
+#else
+		template <typename T>
+		_FORCE_INLINE_ void apply(T *p_enc) const {
+			p_enc->setCullMode(cull_mode);
+			p_enc->setTriangleFillMode(fill_mode);
+			p_enc->setDepthClipMode(clip_mode);
+			p_enc->setFrontFacingWinding(winding);
 			depth_bias.apply(p_enc);
 			stencil.apply(p_enc);
 			blend.apply(p_enc);
 		}
+#endif
 
 	} raster_state;
 
-	MDRenderShader *shader = nil;
+	MDRenderShader *shader = nullptr;
 
 	MDRenderPipeline() :
 			MDPipeline(MDPipelineType::Render) {}
@@ -1203,16 +1255,23 @@ public:
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDComputePipeline final : public MDPipeline {
 public:
+#ifdef __OBJC__
 	id<MTLComputePipelineState> state = nil;
+#else
+	MTL::ComputePipelineState *state = nullptr;
+#endif
 	struct {
 		MTLSize local = {};
 	} compute_state;
 
-	MDComputeShader *shader = nil;
+	MDComputeShader *shader = nullptr;
 
+#ifdef __OBJC__
 	explicit MDComputePipeline(id<MTLComputePipelineState> p_state) :
 			MDPipeline(MDPipelineType::Compute), state(p_state) {}
+#else
+	explicit MDComputePipeline(MTL::ComputePipelineState *p_state) :
+			MDPipeline(MDPipelineType::Compute), state(p_state) {}
+#endif
 	~MDComputePipeline() final = default;
 };
-
-#endif // __OBJC__ - End of ObjC-only types (RenderStateBase, MDCommandBufferBase, UniformInfo, MDShader, MDPipeline, etc.)

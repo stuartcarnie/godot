@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_device_driver_metal4.mm                                     */
+/*  rendering_device_driver_metal4.cpp                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,20 +30,13 @@
 
 #ifdef METAL4_ENABLED
 
-#import "rendering_device_driver_metal4.h"
+#include "rendering_device_driver_metal4.h"
 
-#import "pixel_formats.h"
-#import "rendering_context_driver_metal.h"
+#include "pixel_formats.h"
+#include "rendering_context_driver_metal.h"
 
-#import "core/config/project_settings.h"
-#import "core/string/ustring.h"
-
-#import <Metal/Metal.h>
-#import <os/log.h>
-
-#pragma mark - Logging
-
-extern os_log_t LOG_DRIVER;
+#include "core/config/project_settings.h"
+#include "core/string/ustring.h"
 
 namespace API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MTL4 {
 
@@ -54,14 +47,14 @@ namespace API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MTL4
 #pragma mark - Fences
 
 RDD::FenceID RenderingDeviceDriverMetal::fence_create() {
-	Fence *fence = memnew(Fence((__bridge id<MTLSharedEvent>)device->newSharedEvent()));
+	Fence *fence = memnew(Fence(NS::TransferPtr(device->newSharedEvent())));
 	return FenceID(fence);
 }
 
 Error RenderingDeviceDriverMetal::fence_wait(FenceID p_fence) {
 	Fence *fence = (Fence *)(p_fence.id);
 
-	BOOL signaled = [fence->event waitUntilSignaledValue:fence->value timeoutMS:1000];
+	bool signaled = fence->event->waitUntilSignaledValue(fence->value, 1000);
 	if (!signaled) {
 		ERR_PRINT("timeout waiting for fence");
 	}
@@ -77,7 +70,7 @@ void RenderingDeviceDriverMetal::fence_free(FenceID p_fence) {
 #pragma mark - Semaphores
 
 RDD::SemaphoreID RenderingDeviceDriverMetal::semaphore_create() {
-	Semaphore *sem = memnew(Semaphore((__bridge id<MTLEvent>)device->newEvent()));
+	Semaphore *sem = memnew(Semaphore(NS::TransferPtr(device->newEvent())));
 	return SemaphoreID(sem);
 }
 
@@ -90,31 +83,31 @@ void RenderingDeviceDriverMetal::semaphore_free(SemaphoreID p_semaphore) {
 
 RDD::CommandQueueID RenderingDeviceDriverMetal::command_queue_create(CommandQueueFamilyID p_cmd_queue_family, bool p_identify_as_main_queue) {
 	if ((CommandQueueFamilyBits)p_cmd_queue_family.id == COMMAND_QUEUE_FAMILY_GRAPHICS_BIT || p_identify_as_main_queue) {
-		return rid::make(device_queue);
+		return CommandQueueID(reinterpret_cast<uint64_t>(device_queue.get()));
 	}
-	return rid::make(transfer_queue);
+	return CommandQueueID(reinterpret_cast<uint64_t>(transfer_queue.get()));
 }
 
 Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueueID p_cmd_queue, VectorView<SemaphoreID> p_wait_sem, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_cmd_sem, FenceID p_cmd_fence, VectorView<SwapChainID> p_swap_chains) {
-	id<MTL4CommandQueue> queue = rid::get(p_cmd_queue);
+	MTL4::CommandQueue *queue = reinterpret_cast<MTL4::CommandQueue *>(p_cmd_queue.id);
 
 	// If we have swap chains to present, this must be the device_queue.
-	DEV_ASSERT((p_swap_chains.size() > 0 && queue == device_queue) || p_swap_chains.size() == 0);
+	DEV_ASSERT((p_swap_chains.size() > 0 && queue == device_queue.get()) || p_swap_chains.size() == 0);
 
 	bool changed = false;
-	id<MTLResidencySet> mrs = (__bridge id<MTLResidencySet>)main_residency_set.get();
+	MTL::ResidencySet *mrs = main_residency_set.get();
 	if (!_residency_add.is_empty()) {
-		[mrs addAllocations:(id<MTLAllocation> *)_residency_add.ptr() count:_residency_add.size()];
+		mrs->addAllocations(reinterpret_cast<const MTL::Allocation *const *>(_residency_add.ptr()), _residency_add.size());
 		_residency_add.clear();
 		changed = true;
 	}
 	if (!_residency_del.is_empty()) {
-		[mrs removeAllocations:(id<MTLAllocation> *)_residency_del.ptr() count:_residency_del.size()];
+		mrs->removeAllocations(reinterpret_cast<const MTL::Allocation *const *>(_residency_del.ptr()), _residency_del.size());
 		_residency_del.clear();
 		changed = true;
 	}
 	if (changed) {
-		[mrs commit];
+		mrs->commit();
 	}
 
 	uint32_t size = p_cmd_buffers.size();
@@ -124,47 +117,47 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 
 	for (uint32_t i = 0; i < p_wait_sem.size(); i++) {
 		Semaphore *sem = (Semaphore *)p_wait_sem[i].id;
-		[queue waitForEvent:sem->event value:sem->value];
+		queue->wait(sem->event.get(), sem->value);
 	}
 
 	if (size > 1) {
 		uint32_t pre_commit_count = size - 1;
-		id<MTL4CommandBuffer> __unsafe_unretained *cmds = ALLOCA_ARRAY(id<MTL4CommandBuffer> __unsafe_unretained, pre_commit_count);
+		MTL4::CommandBuffer **cmds = ALLOCA_ARRAY(MTL4::CommandBuffer *, pre_commit_count);
 		for (uint32_t i = 0; i < pre_commit_count; i++) {
 			MDCommandBuffer *cmd_buffer = (MDCommandBuffer *)(p_cmd_buffers[i].id);
 			cmd_buffer->commit();
 			cmds[i] = cmd_buffer->get_command_buffer();
 		}
-		[queue commit:cmds count:pre_commit_count];
+		queue->commit(cmds, pre_commit_count);
 	}
 
 	MDCommandBuffer *cmd_buffer = (MDCommandBuffer *)(p_cmd_buffers[size - 1].id);
 	cmd_buffer->commit();
 
-	id<MTLDrawable> __unsafe_unretained *drawables = ALLOCA_ARRAY(id<MTLDrawable> __unsafe_unretained, p_swap_chains.size());
-	bzero(drawables, sizeof(id<MTLDrawable>) * p_swap_chains.size());
+	MTL::Drawable **drawables = ALLOCA_ARRAY(MTL::Drawable *, p_swap_chains.size());
+	memset(drawables, 0, sizeof(MTL::Drawable *) * p_swap_chains.size());
 	for (uint32_t i = 0; i < p_swap_chains.size(); i++) {
 		SwapChain *swap_chain = (SwapChain *)(p_swap_chains[i].id);
 		RenderingContextDriverMetal::Surface *metal_surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
-		id<MTLDrawable> drawable = (__bridge id<MTLDrawable>)metal_surface->next_drawable();
+		MTL::Drawable *drawable = metal_surface->next_drawable();
 		if (drawable) {
-			[queue waitForDrawable:drawable];
+			queue->wait(drawable);
 			drawables[i] = drawable;
 		}
 	}
 
-	id<MTL4CommandBuffer> cb = cmd_buffer->get_command_buffer();
-	[queue commit:&cb count:1];
+	MTL4::CommandBuffer *cb = cmd_buffer->get_command_buffer();
+	queue->commit(&cb, 1);
 
 	for (uint32_t i = 0; i < p_swap_chains.size(); i++) {
 		if (drawables[i]) {
 			SwapChain *swap_chain = (SwapChain *)(p_swap_chains[i].id);
 			RenderingContextDriverMetal::Surface *metal_surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
-			[queue signalDrawable:drawables[i]];
+			queue->signalDrawable(drawables[i]);
 			if (metal_surface->vsync_mode != DisplayServer::VSYNC_DISABLED && metal_surface->present_minimum_duration > 0) {
-				[drawables[i] presentAfterMinimumDuration:metal_surface->present_minimum_duration];
+				drawables[i]->presentAfterMinimumDuration(metal_surface->present_minimum_duration);
 			} else {
-				[drawables[i] present];
+				drawables[i]->present();
 			}
 		}
 	}
@@ -172,26 +165,36 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 	Fence *fence = (Fence *)(p_cmd_fence.id);
 	if (fence != nullptr) {
 		fence->value++;
-		[queue signalEvent:fence->event value:fence->value];
+		queue->signalEvent(fence->event.get(), fence->value);
 	}
 
 	for (uint32_t i = 0; i < p_cmd_sem.size(); i++) {
 		Semaphore *sem = (Semaphore *)p_cmd_sem[i].id;
 		sem->value++;
-		[queue signalEvent:sem->event value:sem->value];
+		queue->signalEvent(sem->event.get(), sem->value);
 	}
 
 	if (p_swap_chains.size() > 0) {
 		// Used as a signal that we're presenting, so this is the end of a frame.
-		id<MTLCaptureScope> scope = (__bridge id<MTLCaptureScope>)device_scope.get();
-		[scope endScope];
-		[scope beginScope];
+		MTL::CaptureScope *scope = device_scope.get();
+		scope->endScope();
+		scope->beginScope();
 	}
 
 	return OK;
 }
 
 void RenderingDeviceDriverMetal::command_queue_free(CommandQueueID p_cmd_queue) {
+}
+
+#pragma mark - Residency
+
+void RenderingDeviceDriverMetal::add_residency_set_to_main_queue(MTL::ResidencySet *p_set) {
+	device_queue->addResidencySet(p_set);
+}
+
+void RenderingDeviceDriverMetal::remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) {
+	device_queue->removeResidencySet(p_set);
 }
 
 #pragma mark - Command Buffers
@@ -241,31 +244,29 @@ RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 
 Error RenderingDeviceDriverMetal::_create_device() {
 	device = context_driver->get_metal_device();
-	id<MTLDevice> mtl_device = (__bridge id<MTLDevice>)device;
 
-	MTL4CommandQueueDescriptor *desc = [MTL4CommandQueueDescriptor new];
-	desc.label = @"Main Queue";
-	device_queue = [mtl_device newMTL4CommandQueueWithDescriptor:desc error:nil];
-	ERR_FAIL_NULL_V_MSG(device_queue, ERR_CANT_CREATE, "Failed to create main queue");
-	desc.label = @"Transfer Queue";
-	transfer_queue = [mtl_device newMTL4CommandQueueWithDescriptor:desc error:nil];
-	ERR_FAIL_NULL_V_MSG(transfer_queue, ERR_CANT_CREATE, "Failed to create transfer queue");
+	NS::SharedPtr<MTL4::CommandQueueDescriptor> desc = NS::TransferPtr(MTL4::CommandQueueDescriptor::alloc()->init());
+	NS::Error *err = nullptr;
+	desc->setLabel(MTLSTR("Main Queue"));
+	device_queue = NS::TransferPtr(device->newMTL4CommandQueue(desc.get(), &err));
+	ERR_FAIL_COND_V_MSG(!device_queue, ERR_CANT_CREATE, "Failed to create main queue");
+	desc->setLabel(MTLSTR("Transfer Queue"));
+	transfer_queue = NS::TransferPtr(device->newMTL4CommandQueue(desc.get(), &err));
+	ERR_FAIL_COND_V_MSG(!transfer_queue, ERR_CANT_CREATE, "Failed to create transfer queue");
 
-	id<MTLCaptureScope> scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithDevice:mtl_device];
-	device_scope = NS::TransferPtr((__bridge_retained MTL::CaptureScope *)scope);
-	scope.label = @"Godot Frame";
-	[scope beginScope]; // Allow Xcode to capture the first frame, if desired.
+	device_scope = NS::TransferPtr(MTL::CaptureManager::sharedCaptureManager()->newCaptureScope(device));
+	device_scope->setLabel(MTLSTR("Godot Frame"));
+	device_scope->beginScope(); // Allow Xcode to capture the first frame, if desired.
 
-	MTLResidencySetDescriptor *rs_desc = [MTLResidencySetDescriptor new];
-	[rs_desc setInitialCapacity:10];
-	rs_desc.label = @"Main Residency Set";
-	NSError *error;
-	id<MTLResidencySet> mrs = [mtl_device newResidencySetWithDescriptor:rs_desc error:&error];
-	main_residency_set = NS::TransferPtr((__bridge_retained MTL::ResidencySet *)mrs);
-	CRASH_COND_MSG(error != nil, vformat("Failed to create residency set: %s", String(error.localizedDescription.UTF8String)));
+	NS::SharedPtr<MTL::ResidencySetDescriptor> rs_desc = NS::TransferPtr(MTL::ResidencySetDescriptor::alloc()->init());
+	rs_desc->setInitialCapacity(10);
+	rs_desc->setLabel(MTLSTR("Main Residency Set"));
+	NS::Error *error = nullptr;
+	main_residency_set = NS::TransferPtr(device->newResidencySet(rs_desc.get(), &error));
+	CRASH_COND_MSG(error != nullptr, vformat("Failed to create residency set: %s", String(error->localizedDescription()->utf8String())));
 
-	[device_queue addResidencySet:mrs];
-	[transfer_queue addResidencySet:mrs];
+	device_queue->addResidencySet(main_residency_set.get());
+	transfer_queue->addResidencySet(main_residency_set.get());
 
 	return OK;
 }
@@ -276,12 +277,11 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 	ERR_FAIL_COND_V(err, err);
 
 	use_barriers = true;
-	base_hazard_tracking = MTLResourceHazardTrackingModeUntracked;
+	base_hazard_tracking = MTL::ResourceHazardTrackingModeUntracked;
 
 	{
-		MTL4CompilerDescriptor *desc = [MTL4CompilerDescriptor new];
-		NSError *error = nil;
-		compiler = [(__bridge id<MTLDevice>)device newCompilerWithDescriptor:desc error:&error];
+		NS::SharedPtr<MTL4::CompilerDescriptor> desc = NS::TransferPtr(MTL4::CompilerDescriptor::alloc()->init());
+		compiler = NS::TransferPtr(device->newCompiler(desc.get(), nullptr));
 	}
 
 	return OK;
@@ -292,6 +292,6 @@ RenderingDeviceDriver *create_rendering_device_driver(RenderingContextDriverMeta
 	return memnew(RenderingDeviceDriverMetal(p_context));
 }
 
-} //namespace API_AVAILABLE(macos(26.0),ios(26.0),tvos(26.0),visionos(26.0))MTL4
+} //namespace MTL4
 
 #endif // METAL4_ENABLED

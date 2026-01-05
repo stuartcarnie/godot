@@ -30,10 +30,10 @@
 
 #pragma once
 
-#import "metal4_objects.h"
-#import "rendering_device_driver_metal.h"
+#include "metal4_objects.h"
+#include "rendering_device_driver_metal.h"
 
-#import <Metal/Metal.h>
+#include <Metal/Metal.hpp>
 
 namespace MTL4 {
 
@@ -44,35 +44,30 @@ class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) Renderin
 
 #pragma mark - Generic
 
-	id<MTL4CommandQueue> device_queue = nil;
-	id<MTL4CommandQueue> transfer_queue = nil;
-	id<MTL4Compiler> compiler = nil;
+	NS::SharedPtr<MTL4::CommandQueue> device_queue;
+	NS::SharedPtr<MTL4::CommandQueue> transfer_queue;
+	NS::SharedPtr<MTL4::Compiler> compiler;
 
 	Error _create_device() override;
 
 protected:
-	MTL::CommandQueue *get_command_queue() const override { return (__bridge MTL::CommandQueue *)device_queue; }
-	void add_residency_set_to_main_queue(MTL::ResidencySet *p_set) override {
-		[device_queue addResidencySet:(__bridge id<MTLResidencySet>)p_set];
-	}
-	void remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) override {
-		[device_queue removeResidencySet:(__bridge id<MTLResidencySet>)p_set];
-	}
+	MTL::CommandQueue *get_command_queue() const override { return reinterpret_cast<MTL::CommandQueue *>(device_queue.get()); }
+	void add_residency_set_to_main_queue(MTL::ResidencySet *p_set) override;
+	void remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) override;
 
 public:
 	Error initialize(uint32_t p_device_index, uint32_t p_frame_count) override;
 
-	id<MTL4Compiler> get_compiler() const { return compiler; }
+	MTL4::Compiler *get_compiler() const { return compiler.get(); }
 
 #pragma mark - Fences
 
 private:
 	struct Fence {
-		id<MTLSharedEvent> event;
-		uint64_t value;
-		Fence(id<MTLSharedEvent> p_event) :
-				event(p_event),
-				value(0) {}
+		NS::SharedPtr<MTL::SharedEvent> event;
+		uint64_t value = 0;
+		Fence(NS::SharedPtr<MTL::SharedEvent> p_event) :
+				event(p_event) {}
 	};
 
 public:
@@ -84,10 +79,10 @@ public:
 
 private:
 	struct Semaphore {
-		id<MTLEvent> event;
-		uint64_t value;
-		Semaphore(id<MTLEvent> p_event) :
-				event(p_event), value(0) {}
+		NS::SharedPtr<MTL::Event> event;
+		uint64_t value = 0;
+		Semaphore(NS::SharedPtr<MTL::Event> p_event) :
+				event(p_event) {}
 	};
 
 public:
