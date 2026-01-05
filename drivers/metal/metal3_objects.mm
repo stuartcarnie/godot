@@ -1496,7 +1496,8 @@ MDRenderShader::MDRenderShader(CharString p_name,
 }
 
 void DirectEncoder::set(__unsafe_unretained id<MTLTexture> *p_textures, NSRange p_range) {
-	if (cache.update(p_range, p_textures)) {
+	NS::Range range = { p_range.location, p_range.length };
+	if (cache.update(range, (MTL::Texture *const *)(void *)p_textures)) {
 		switch (mode) {
 			case RENDER: {
 				id<MTLRenderCommandEncoder> __unsafe_unretained enc = (id<MTLRenderCommandEncoder>)encoder;
@@ -1512,7 +1513,8 @@ void DirectEncoder::set(__unsafe_unretained id<MTLTexture> *p_textures, NSRange 
 }
 
 void DirectEncoder::set(__unsafe_unretained id<MTLBuffer> *p_buffers, const NSUInteger *p_offsets, NSRange p_range) {
-	if (cache.update(p_range, p_buffers, p_offsets)) {
+	NS::Range range = { p_range.location, p_range.length };
+	if (cache.update(range, (MTL::Buffer *const *)(void *)p_buffers, p_offsets)) {
 		switch (mode) {
 			case RENDER: {
 				id<MTLRenderCommandEncoder> __unsafe_unretained enc = (id<MTLRenderCommandEncoder>)encoder;
@@ -1528,7 +1530,7 @@ void DirectEncoder::set(__unsafe_unretained id<MTLBuffer> *p_buffers, const NSUI
 }
 
 void DirectEncoder::set(id<MTLBuffer> __unsafe_unretained p_buffer, const NSUInteger p_offset, uint32_t p_index) {
-	if (cache.update(p_buffer, p_offset, p_index)) {
+	if (cache.update((__bridge MTL::Buffer *)p_buffer, p_offset, p_index)) {
 		switch (mode) {
 			case RENDER: {
 				id<MTLRenderCommandEncoder> __unsafe_unretained enc = (id<MTLRenderCommandEncoder>)encoder;
@@ -1544,7 +1546,8 @@ void DirectEncoder::set(id<MTLBuffer> __unsafe_unretained p_buffer, const NSUInt
 }
 
 void DirectEncoder::set(__unsafe_unretained id<MTLSamplerState> *p_samplers, NSRange p_range) {
-	if (cache.update(p_range, p_samplers)) {
+	NS::Range range = { p_range.location, p_range.length };
+	if (cache.update(range, (MTL::SamplerState *const *)(void *)p_samplers)) {
 		switch (mode) {
 			case RENDER: {
 				id<MTLRenderCommandEncoder> __unsafe_unretained enc = (id<MTLRenderCommandEncoder>)encoder;

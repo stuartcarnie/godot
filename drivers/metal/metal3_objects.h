@@ -144,16 +144,16 @@ struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) ResourceTracker {
 
 struct BindingCache {
 	struct BufferBinding {
-		id<MTLBuffer> __unsafe_unretained buffer = nil;
-		NSUInteger offset = 0;
+		MTL::Buffer *buffer = nullptr;
+		NS::UInteger offset = 0;
 
 		bool operator!=(const BufferBinding &p_other) const {
 			return buffer != p_other.buffer || offset != p_other.offset;
 		}
 	};
 
-	LocalVector<id<MTLTexture> __unsafe_unretained> textures;
-	LocalVector<id<MTLSamplerState> __unsafe_unretained> samplers;
+	LocalVector<MTL::Texture *> textures;
+	LocalVector<MTL::SamplerState *> samplers;
 	LocalVector<BufferBinding> buffers;
 
 	_FORCE_INLINE_ void clear() {
@@ -171,16 +171,16 @@ private:
 	}
 
 public:
-	_FORCE_INLINE_ bool update(NSRange p_range, id<MTLTexture> __unsafe_unretained const *p_values) {
+	_FORCE_INLINE_ bool update(NS::Range p_range, MTL::Texture *const *p_values) {
 		if (p_range.length == 0) {
 			return false;
 		}
 		uint32_t required = (uint32_t)(p_range.location + p_range.length);
 		ensure_size(textures, required);
 		bool changed = false;
-		for (NSUInteger i = 0; i < p_range.length; ++i) {
+		for (NS::UInteger i = 0; i < p_range.length; ++i) {
 			uint32_t slot = (uint32_t)(p_range.location + i);
-			id<MTLTexture> value = p_values[i];
+			MTL::Texture *value = p_values[i];
 			if (textures[slot] != value) {
 				textures[slot] = value;
 				changed = true;
@@ -189,16 +189,16 @@ public:
 		return changed;
 	}
 
-	_FORCE_INLINE_ bool update(NSRange p_range, id<MTLSamplerState> __unsafe_unretained const *p_values) {
+	_FORCE_INLINE_ bool update(NS::Range p_range, MTL::SamplerState *const *p_values) {
 		if (p_range.length == 0) {
 			return false;
 		}
 		uint32_t required = (uint32_t)(p_range.location + p_range.length);
 		ensure_size(samplers, required);
 		bool changed = false;
-		for (NSUInteger i = 0; i < p_range.length; ++i) {
+		for (NS::UInteger i = 0; i < p_range.length; ++i) {
 			uint32_t slot = (uint32_t)(p_range.location + i);
-			id<MTLSamplerState> __unsafe_unretained value = p_values[i];
+			MTL::SamplerState *value = p_values[i];
 			if (samplers[slot] != value) {
 				samplers[slot] = value;
 				changed = true;
@@ -207,7 +207,7 @@ public:
 		return changed;
 	}
 
-	_FORCE_INLINE_ bool update(NSRange p_range, id<MTLBuffer> __unsafe_unretained const *p_values, const NSUInteger *p_offsets) {
+	_FORCE_INLINE_ bool update(NS::Range p_range, MTL::Buffer *const *p_values, const NS::UInteger *p_offsets) {
 		if (p_range.length == 0) {
 			return false;
 		}
@@ -215,7 +215,7 @@ public:
 		ensure_size(buffers, required);
 		BufferBinding *buffers_ptr = buffers.ptr() + p_range.location;
 		bool changed = false;
-		for (NSUInteger i = 0; i < p_range.length; ++i) {
+		for (NS::UInteger i = 0; i < p_range.length; ++i) {
 			BufferBinding &binding = *buffers_ptr;
 			BufferBinding new_binding = {
 				.buffer = p_values[i],
@@ -230,7 +230,7 @@ public:
 		return changed;
 	}
 
-	_FORCE_INLINE_ bool update(id<MTLBuffer> __unsafe_unretained p_buffer, NSUInteger p_offset, uint32_t p_index) {
+	_FORCE_INLINE_ bool update(MTL::Buffer *p_buffer, NS::UInteger p_offset, uint32_t p_index) {
 		uint32_t required = p_index + 1;
 		ensure_size(buffers, required);
 		BufferBinding &binding = buffers.ptr()[p_index];
