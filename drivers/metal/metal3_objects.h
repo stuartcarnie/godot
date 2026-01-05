@@ -137,8 +137,8 @@ struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) ResourceTracker {
 	ResourceUsageMap _current;
 
 	void merge_from(const ResourceUsageMap &p_from);
-	void encode(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc);
-	void encode(id<MTLComputeCommandEncoder> __unsafe_unretained p_enc);
+	void encode(MTL::RenderCommandEncoder *p_enc);
+	void encode(MTL::ComputeCommandEncoder *p_enc);
 	void reset();
 };
 

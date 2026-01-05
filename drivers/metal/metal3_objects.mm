@@ -851,7 +851,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	}
 
 	if (!use_barriers) {
-		render.resource_tracker.encode(render.encoder);
+		render.resource_tracker.encode((__bridge MTL::RenderCommandEncoder *)render.encoder);
 	}
 
 	render.dirty.clear();
@@ -907,22 +907,24 @@ void ResourceTracker::merge_from(const ResourceUsageMap &p_from) {
 	}
 }
 
-void ResourceTracker::encode(id<MTLRenderCommandEncoder> __unsafe_unretained p_enc) {
+void ResourceTracker::encode(MTL::RenderCommandEncoder *p_enc) {
 	for (KeyValue<StageResourceUsage, ResourceVector> const &keyval : _current) {
 		if (keyval.value.is_empty()) {
 			continue;
 		}
 
-		MTLResourceUsage vert_usage = resource_usage_for_stage(keyval.key, RDD::ShaderStage::SHADER_STAGE_VERTEX);
-		MTLResourceUsage frag_usage = resource_usage_for_stage(keyval.key, RDD::ShaderStage::SHADER_STAGE_FRAGMENT);
+		MTL::ResourceUsage vert_usage = (MTL::ResourceUsage)resource_usage_for_stage(keyval.key, RDD::ShaderStage::SHADER_STAGE_VERTEX);
+		MTL::ResourceUsage frag_usage = (MTL::ResourceUsage)resource_usage_for_stage(keyval.key, RDD::ShaderStage::SHADER_STAGE_FRAGMENT);
+		const MTL::Resource **resources = (const MTL::Resource **)(void *)keyval.value.ptr();
+		NS::UInteger count = keyval.value.size();
 		if (vert_usage == frag_usage) {
-			[p_enc useResources:keyval.value.ptr() count:keyval.value.size() usage:vert_usage stages:MTLRenderStageVertex | MTLRenderStageFragment];
+			p_enc->useResources(resources, count, vert_usage, MTL::RenderStageVertex | MTL::RenderStageFragment);
 		} else {
 			if (vert_usage != 0) {
-				[p_enc useResources:keyval.value.ptr() count:keyval.value.size() usage:vert_usage stages:MTLRenderStageVertex];
+				p_enc->useResources(resources, count, vert_usage, MTL::RenderStageVertex);
 			}
 			if (frag_usage != 0) {
-				[p_enc useResources:keyval.value.ptr() count:keyval.value.size() usage:frag_usage stages:MTLRenderStageFragment];
+				p_enc->useResources(resources, count, frag_usage, MTL::RenderStageFragment);
 			}
 		}
 	}
@@ -933,14 +935,15 @@ void ResourceTracker::encode(id<MTLRenderCommandEncoder> __unsafe_unretained p_e
 	}
 }
 
-void ResourceTracker::encode(id<MTLComputeCommandEncoder> __unsafe_unretained p_enc) {
+void ResourceTracker::encode(MTL::ComputeCommandEncoder *p_enc) {
 	for (KeyValue<StageResourceUsage, ResourceVector> const &keyval : _current) {
 		if (keyval.value.is_empty()) {
 			continue;
 		}
-		MTLResourceUsage usage = resource_usage_for_stage(keyval.key, RDD::ShaderStage::SHADER_STAGE_COMPUTE);
+		MTL::ResourceUsage usage = (MTL::ResourceUsage)resource_usage_for_stage(keyval.key, RDD::ShaderStage::SHADER_STAGE_COMPUTE);
 		if (usage != 0) {
-			[p_enc useResources:keyval.value.ptr() count:keyval.value.size() usage:usage];
+			const MTL::Resource **resources = (const MTL::Resource **)(void *)keyval.value.ptr();
+			p_enc->useResources(resources, keyval.value.size(), usage);
 		}
 	}
 
@@ -1358,7 +1361,7 @@ void MDCommandBuffer::_compute_set_dirty_state() {
 	}
 
 	if (!use_barriers) {
-		compute.resource_tracker.encode(compute.encoder);
+		compute.resource_tracker.encode((__bridge MTL::ComputeCommandEncoder *)compute.encoder);
 	}
 
 	compute.dirty.clear();
