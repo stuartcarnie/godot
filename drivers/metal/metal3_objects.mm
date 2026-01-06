@@ -857,8 +857,8 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	render.dirty.clear();
 }
 
-void ResourceTracker::merge_from(const ResourceUsageMap &p_from) {
-	for (KeyValue<StageResourceUsage, ResourceVector> const &keyval : p_from) {
+void ResourceTracker::merge_from(const ::ResourceUsageMap &p_from) {
+	for (KeyValue<StageResourceUsage, ::ResourceVector> const &keyval : p_from) {
 		ResourceVector *resources = _current.getptr(keyval.key);
 		if (resources == nullptr) {
 			resources = &_current.insert(keyval.key, ResourceVector())->value;
@@ -867,8 +867,8 @@ void ResourceTracker::merge_from(const ResourceUsageMap &p_from) {
 		resources->reserve(resources->size() + keyval.value.size());
 
 		uint32_t i = 0, j = 0;
-		MTLResourceUnsafe *resources_ptr = resources->ptr();
-		const MTLResourceUnsafe *keyval_ptr = keyval.value.ptr();
+		MTL::Resource **resources_ptr = resources->ptr();
+		MTL::Resource *const *keyval_ptr = (MTL::Resource *const *)(void *)keyval.value.ptr();
 		// 2-way merge.
 		while (i < resources->size() && j < keyval.value.size()) {
 			if (resources_ptr[i] < keyval_ptr[j]) {
@@ -955,7 +955,7 @@ void ResourceTracker::encode(MTL::ComputeCommandEncoder *p_enc) {
 
 void ResourceTracker::reset() {
 	// Keep the keys for now, as they are likely to be used repeatedly.
-	for (KeyValue<MTLResourceUnsafe, ResourceUsageEntry> &v : _previous) {
+	for (KeyValue<MTL::Resource *, ResourceUsageEntry> &v : _previous) {
 		if (v.value.usage == ResourceUnused) {
 			v.value.unused++;
 			if (v.value.unused >= RESOURCE_UNUSED_CLEANUP_COUNT) {
@@ -968,7 +968,7 @@ void ResourceTracker::reset() {
 	}
 
 	// Clear up resources that weren't used for the last pass.
-	for (const MTLResourceUnsafe &res : _scratch) {
+	for (MTL::Resource *res : _scratch) {
 		_previous.erase(res);
 	}
 	_scratch.clear();

@@ -93,6 +93,11 @@ using ::UniformSet;
 
 using RDM = ::RenderingDeviceDriverMetal;
 
+// Local typedefs using explicit metal-cpp types for Metal 3 driver.
+// These shadow the shared definitions which use conditional MTLResourceUnsafe.
+typedef LocalVector<MTL::Resource *> ResourceVector;
+typedef HashMap<StageResourceUsage, ResourceVector> ResourceUsageMap;
+
 struct ResourceUsageEntry {
 	StageResourceUsage usage = ResourceUnused;
 	uint32_t unused = 0;
@@ -110,7 +115,7 @@ struct is_zero_constructible<MTL3::ResourceUsageEntry> : std::true_type {};
 namespace MTL3 {
 
 /*! Track the cumulative usage for a resource during a render or compute pass */
-typedef HashMap<MTLResourceUnsafe, ResourceUsageEntry> ResourceToStageUsage;
+typedef HashMap<MTL::Resource *, ResourceUsageEntry> ResourceToStageUsage;
 
 /*! Track resource and ensure they are resident prior to dispatch or draw commands.
  *
@@ -136,7 +141,7 @@ struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) ResourceTracker {
 	// Tracks resources for the current command that must be made resident
 	ResourceUsageMap _current;
 
-	void merge_from(const ResourceUsageMap &p_from);
+	void merge_from(const ::ResourceUsageMap &p_from);
 	void encode(MTL::RenderCommandEncoder *p_enc);
 	void encode(MTL::ComputeCommandEncoder *p_enc);
 	void reset();
