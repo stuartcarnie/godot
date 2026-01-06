@@ -19,8 +19,8 @@ target_sources(servers PRIVATE
         fsr2.h
         luminance.cpp
         luminance.h
+        metal_fx.cpp
         metal_fx.h
-        metal_fx.mm
         motion_vectors_store.cpp
         motion_vectors_store.h
         resolve.cpp
@@ -44,7 +44,7 @@ target_sources(servers PRIVATE
 # [[[end]]]
 
 set_property(
-        SOURCE metal_fx.mm
+        SOURCE metal_fx.cpp
         APPEND
         PROPERTY COMPILE_DEFINITIONS $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
 )

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  metal_fx.mm                                                           */
+/*  metal_fx.cpp                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,17 +28,16 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import "metal_fx.h"
+#include "metal_fx.h"
 
-#import "../storage_rd/render_scene_buffers_rd.h"
-#import "drivers/metal/pixel_formats.h"
-#import "drivers/metal/rendering_device_driver_metal3.h"
-#import "drivers/metal/rendering_device_driver_metal4.h"
+#include "../storage_rd/render_scene_buffers_rd.h"
+#include "drivers/metal/pixel_formats.h"
+#include "drivers/metal/rendering_device_driver_metal3.h"
+#include "drivers/metal/rendering_device_driver_metal4.h"
 
-#import <Metal/Metal.h>
-#import <MetalFX/MetalFX.h>
+#include <MetalFX/MetalFX.hpp>
 
-#import <objc/runtime.h>
+#include <objc/runtime.h>
 
 using namespace RendererRD;
 
@@ -59,22 +58,22 @@ void MFXSpatialEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_bu
 	MDCommandBufferBase *obj = (MDCommandBufferBase *)(p_command_buffer.id);
 	obj->end();
 
-	id<MTLTexture> src_texture = rid::get(p_userdata->src);
-	id<MTLTexture> dst_texture = rid::get(p_userdata->dst);
+	MTL::Texture *src_texture = reinterpret_cast<MTL::Texture *>(p_userdata->src.id);
+	MTL::Texture *dst_texture = reinterpret_cast<MTL::Texture *>(p_userdata->dst.id);
 
-	id<MTLFXSpatialScalerBase> scaler = (id<MTLFXSpatialScalerBase>)p_userdata->ctx.scaler;
-	scaler.colorTexture = src_texture;
-	scaler.outputTexture = dst_texture;
+	MTLFX::SpatialScalerBase *scaler = p_userdata->ctx.scaler.get();
+	scaler->setColorTexture(src_texture);
+	scaler->setOutputTexture(dst_texture);
 	if (p_userdata->ctx.is_metal_4) {
-		id<MTL4FXSpatialScaler> s = (id<MTL4FXSpatialScaler>)scaler;
-		MTL4::MDCommandBuffer *obj = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
-		[s encodeToCommandBuffer:(__bridge id<MTL4CommandBuffer>)obj->get_command_buffer()];
+		MTL4FX::SpatialScaler *s = static_cast<MTL4FX::SpatialScaler *>(scaler);
+		MTL4::MDCommandBuffer *cmd = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
+		s->encodeToCommandBuffer(cmd->get_command_buffer());
 	} else {
-		id<MTLFXSpatialScaler> s = (id<MTLFXSpatialScaler>)scaler;
-		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
-		[s encodeToCommandBuffer:(__bridge id<MTLCommandBuffer>)obj->get_command_buffer()];
+		MTLFX::SpatialScaler *s = static_cast<MTLFX::SpatialScaler *>(scaler);
+		MTL3::MDCommandBuffer *cmd = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
+		s->encodeToCommandBuffer(cmd->get_command_buffer());
 	}
-	obj->retain_resource((__bridge CFTypeRef)scaler);
+	obj->retain_resource(scaler);
 
 	CallbackArgs::free(&p_userdata);
 
@@ -108,31 +107,30 @@ MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const
 
 	RenderingDeviceDriverMetal *rdd = (RenderingDeviceDriverMetal *)RD::get_singleton()->get_device_driver();
 	PixelFormats &pf = rdd->get_pixel_formats();
-	id<MTLDevice> dev = (__bridge id<MTLDevice>)rdd->get_device();
+	MTL::Device *dev = rdd->get_device();
 
-	MTLFXSpatialScalerDescriptor *desc = [MTLFXSpatialScalerDescriptor new];
-	desc.inputWidth = (NSUInteger)p_params.input_size.width;
-	desc.inputHeight = (NSUInteger)p_params.input_size.height;
+	NS::SharedPtr<MTLFX::SpatialScalerDescriptor> desc = NS::TransferPtr(MTLFX::SpatialScalerDescriptor::alloc()->init());
+	desc->setInputWidth((NS::UInteger)p_params.input_size.width);
+	desc->setInputHeight((NS::UInteger)p_params.input_size.height);
 
-	desc.outputWidth = (NSUInteger)p_params.output_size.width;
-	desc.outputHeight = (NSUInteger)p_params.output_size.height;
+	desc->setOutputWidth((NS::UInteger)p_params.output_size.width);
+	desc->setOutputHeight((NS::UInteger)p_params.output_size.height);
 
-	desc.colorTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.input_format);
-	desc.outputTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.output_format);
-	desc.colorProcessingMode = MTLFXSpatialScalerColorProcessingModeLinear;
+	desc->setColorTextureFormat((MTL::PixelFormat)pf.getMTLPixelFormat(p_params.input_format));
+	desc->setOutputTextureFormat((MTL::PixelFormat)pf.getMTLPixelFormat(p_params.output_format));
+	desc->setColorProcessingMode(MTLFX::SpatialScalerColorProcessingModeLinear);
 
 	MFXSpatialContext *context = memnew(MFXSpatialContext);
 	if (MTL3::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL3::RenderingDeviceDriverMetal *>(rdd); dd) {
-		id<MTLFXSpatialScaler> scaler = [desc newSpatialScalerWithDevice:dev];
-		context->scaler = scaler;
+		context->scaler = NS::TransferPtr(desc->newSpatialScaler(dev));
 	} else if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
-		id<MTL4FXSpatialScaler> scaler = [desc newSpatialScalerWithDevice:dev compiler:(__bridge id<MTL4Compiler>)dd->get_compiler()];
-		Ivar ivar = class_getInstanceVariable([scaler class], "_outputTextureBarrierStages");
+		MTL4FX::SpatialScaler *scaler = desc->newSpatialScaler(dev, dd->get_compiler());
+		Ivar ivar = class_getInstanceVariable(object_getClass(scaler), "_outputTextureBarrierStages");
 		if (ivar) {
-			uint64_t *ptr = (uint64_t *)((char *)(__bridge void *)scaler + ivar_getOffset(ivar));
+			uint64_t *ptr = (uint64_t *)((char *)scaler + ivar_getOffset(ivar));
 			*ptr = MTLStageAll;
 		}
-		context->scaler = scaler;
+		context->scaler = NS::TransferPtr(static_cast<MTLFX::SpatialScalerBase *>(scaler));
 		context->is_metal_4 = true;
 	}
 
@@ -157,40 +155,41 @@ MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) con
 
 	RenderingDeviceDriverMetal *rdd = (RenderingDeviceDriverMetal *)RD::get_singleton()->get_device_driver();
 	PixelFormats &pf = rdd->get_pixel_formats();
-	id<MTLDevice> dev = (__bridge id<MTLDevice>)rdd->get_device();
+	MTL::Device *dev = rdd->get_device();
 
-	MTLFXTemporalScalerDescriptor *desc = [MTLFXTemporalScalerDescriptor new];
-	desc.inputWidth = (NSUInteger)p_params.input_size.width;
-	desc.inputHeight = (NSUInteger)p_params.input_size.height;
+	NS::SharedPtr<MTLFX::TemporalScalerDescriptor> desc = NS::TransferPtr(MTLFX::TemporalScalerDescriptor::alloc()->init());
+	desc->setInputWidth((NS::UInteger)p_params.input_size.width);
+	desc->setInputHeight((NS::UInteger)p_params.input_size.height);
 
-	desc.outputWidth = (NSUInteger)p_params.output_size.width;
-	desc.outputHeight = (NSUInteger)p_params.output_size.height;
+	desc->setOutputWidth((NS::UInteger)p_params.output_size.width);
+	desc->setOutputHeight((NS::UInteger)p_params.output_size.height);
 
-	desc.colorTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.input_format);
-	desc.depthTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.depth_format);
-	desc.motionTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.motion_format);
-	desc.autoExposureEnabled = NO;
+	desc->setColorTextureFormat((MTL::PixelFormat)pf.getMTLPixelFormat(p_params.input_format));
+	desc->setDepthTextureFormat((MTL::PixelFormat)pf.getMTLPixelFormat(p_params.depth_format));
+	desc->setMotionTextureFormat((MTL::PixelFormat)pf.getMTLPixelFormat(p_params.motion_format));
+	desc->setAutoExposureEnabled(false);
 
-	desc.outputTextureFormat = (MTLPixelFormat)pf.getMTLPixelFormat(p_params.output_format);
+	desc->setOutputTextureFormat((MTL::PixelFormat)pf.getMTLPixelFormat(p_params.output_format));
 
 	MFXTemporalContext *context = memnew(MFXTemporalContext);
 	if (MTL3::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL3::RenderingDeviceDriverMetal *>(rdd); dd) {
-		context->scaler = [desc newTemporalScalerWithDevice:dev];
+		context->scaler = NS::TransferPtr(desc->newTemporalScaler(dev));
 	} else if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
-		context->scaler = [desc newTemporalScalerWithDevice:dev compiler:(__bridge id<MTL4Compiler>)dd->get_compiler()];
-		Ivar ivar = class_getInstanceVariable([context->scaler class], "_outputTextureBarrierStages");
+		MTL4FX::TemporalScaler *scaler = desc->newTemporalScaler(dev, dd->get_compiler());
+		Ivar ivar = class_getInstanceVariable(object_getClass(scaler), "_outputTextureBarrierStages");
 		if (ivar) {
-			uint64_t *ptr = (uint64_t *)((char *)(__bridge void *)context->scaler + ivar_getOffset(ivar));
+			uint64_t *ptr = (uint64_t *)((char *)scaler + ivar_getOffset(ivar));
 			*ptr = MTLStageAll;
 		} else {
 			print_error("Failed to set _outputTextureBarrierStages on MTL4FXTemporalScaler.");
 		}
+		context->scaler = NS::TransferPtr(static_cast<MTLFX::TemporalScalerBase *>(scaler));
 		context->is_metal_4 = true;
 	}
 
-	context->scaler.motionVectorScaleX = p_params.motion_vector_scale.x;
-	context->scaler.motionVectorScaleY = p_params.motion_vector_scale.y;
-	context->scaler.depthReversed = true; // Godot uses reverse Z per https://github.com/godotengine/godot/pull/88328
+	context->scaler->setMotionVectorScaleX(p_params.motion_vector_scale.x);
+	context->scaler->setMotionVectorScaleY(p_params.motion_vector_scale.y);
+	context->scaler->setDepthReversed(true); // Godot uses reverse Z per https://github.com/godotengine/godot/pull/88328
 
 	GODOT_CLANG_WARNING_POP
 
@@ -222,32 +221,32 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 	MDCommandBufferBase *obj = (MDCommandBufferBase *)(p_command_buffer.id);
 	obj->end();
 
-	id<MTLTexture> src_texture = rid::get(p_userdata->src);
-	id<MTLTexture> depth = rid::get(p_userdata->depth);
-	id<MTLTexture> motion = rid::get(p_userdata->motion);
-	id<MTLTexture> exposure = rid::get(p_userdata->exposure);
+	MTL::Texture *src_texture = reinterpret_cast<MTL::Texture *>(p_userdata->src.id);
+	MTL::Texture *depth = reinterpret_cast<MTL::Texture *>(p_userdata->depth.id);
+	MTL::Texture *motion = reinterpret_cast<MTL::Texture *>(p_userdata->motion.id);
+	MTL::Texture *exposure = reinterpret_cast<MTL::Texture *>(p_userdata->exposure.id);
 
-	id<MTLTexture> dst_texture = rid::get(p_userdata->dst);
+	MTL::Texture *dst_texture = reinterpret_cast<MTL::Texture *>(p_userdata->dst.id);
 
-	id<MTLFXTemporalScalerBase> scaler = (id<MTLFXTemporalScalerBase>)p_userdata->ctx.scaler;
-	scaler.reset = p_userdata->reset;
-	scaler.colorTexture = src_texture;
-	scaler.depthTexture = depth;
-	scaler.motionTexture = motion;
-	scaler.exposureTexture = exposure;
-	scaler.jitterOffsetX = p_userdata->jitter_offset.x;
-	scaler.jitterOffsetY = p_userdata->jitter_offset.y;
-	scaler.outputTexture = dst_texture;
+	MTLFX::TemporalScalerBase *scaler = p_userdata->ctx.scaler.get();
+	scaler->setReset(p_userdata->reset);
+	scaler->setColorTexture(src_texture);
+	scaler->setDepthTexture(depth);
+	scaler->setMotionTexture(motion);
+	scaler->setExposureTexture(exposure);
+	scaler->setJitterOffsetX(p_userdata->jitter_offset.x);
+	scaler->setJitterOffsetY(p_userdata->jitter_offset.y);
+	scaler->setOutputTexture(dst_texture);
 	if (p_userdata->ctx.is_metal_4) {
-		id<MTL4FXTemporalScaler> s = (id<MTL4FXTemporalScaler>)scaler;
-		MTL4::MDCommandBuffer *obj = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
-		[s encodeToCommandBuffer:(__bridge id<MTL4CommandBuffer>)obj->get_command_buffer()];
+		MTL4FX::TemporalScaler *s = static_cast<MTL4FX::TemporalScaler *>(scaler);
+		MTL4::MDCommandBuffer *cmd = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
+		s->encodeToCommandBuffer(cmd->get_command_buffer());
 	} else {
-		id<MTLFXTemporalScaler> s = (id<MTLFXTemporalScaler>)scaler;
-		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
-		[s encodeToCommandBuffer:(__bridge id<MTLCommandBuffer>)obj->get_command_buffer()];
+		MTLFX::TemporalScaler *s = static_cast<MTLFX::TemporalScaler *>(scaler);
+		MTL3::MDCommandBuffer *cmd = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
+		s->encodeToCommandBuffer(cmd->get_command_buffer());
 	}
-	obj->retain_resource((__bridge CFTypeRef)scaler);
+	obj->retain_resource(scaler);
 
 	CallbackArgs::free(&p_userdata);
 

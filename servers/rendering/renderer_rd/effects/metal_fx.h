@@ -41,19 +41,14 @@
 #include "core/templates/paged_allocator.h"
 #include "servers/rendering/renderer_scene_render.h"
 
-#ifdef __OBJC__
-@protocol MTLFXSpatialScalerBase;
-@protocol MTLFXTemporalScalerBase;
-#endif
+#include <Foundation/NSSharedPtr.hpp>
+#include <MetalFX/MTL4FXSpatialScaler.hpp>
+#include <MetalFX/MTL4FXTemporalScaler.hpp>
 
 namespace RendererRD {
 
 struct MFXSpatialContext {
-#ifdef __OBJC__
-	id<MTLFXSpatialScalerBase> scaler = nullptr;
-#else
-	void *scaler = nullptr;
-#endif
+	NS::SharedPtr<MTLFX::SpatialScalerBase> scaler;
 	bool is_metal_4 = false;
 	MFXSpatialContext() = default;
 	~MFXSpatialContext();
@@ -99,11 +94,7 @@ public:
 #ifdef METAL_MFXTEMPORAL_ENABLED
 
 struct MFXTemporalContext {
-#ifdef __OBJC__
-	id<MTLFXTemporalScalerBase> scaler = nullptr;
-#else
-	void *scaler = nullptr;
-#endif
+	NS::SharedPtr<MTLFX::TemporalScalerBase> scaler;
 	bool is_metal_4 = false;
 	MFXTemporalContext() = default;
 	~MFXTemporalContext();
