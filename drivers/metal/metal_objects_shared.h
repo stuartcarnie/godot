@@ -59,26 +59,55 @@ using MTLSize = MTL::Size;
 using MTLOrigin = MTL::Origin;
 constexpr auto MTLPixelFormatInvalid = MTL::PixelFormatInvalid;
 constexpr auto MTLLoadActionDontCare = MTL::LoadActionDontCare;
+constexpr auto MTLLoadActionLoad = MTL::LoadActionLoad;
+constexpr auto MTLLoadActionClear = MTL::LoadActionClear;
 constexpr auto MTLStoreActionDontCare = MTL::StoreActionDontCare;
+constexpr auto MTLStoreActionStore = MTL::StoreActionStore;
+constexpr auto MTLStoreActionMultisampleResolve = MTL::StoreActionMultisampleResolve;
+constexpr auto MTLStoreActionStoreAndMultisampleResolve = MTL::StoreActionStoreAndMultisampleResolve;
+constexpr auto MTLTextureType1D = MTL::TextureType1D;
 constexpr auto MTLTextureType2D = MTL::TextureType2D;
 constexpr auto MTLTextureType3D = MTL::TextureType3D;
+constexpr auto MTLTextureType1DArray = MTL::TextureType1DArray;
 constexpr auto MTLTextureType2DArray = MTL::TextureType2DArray;
 constexpr auto MTLTextureType2DMultisampleArray = MTL::TextureType2DMultisampleArray;
-constexpr auto MTLTextureType1DArray = MTL::TextureType1DArray;
+constexpr auto MTLTextureTypeCube = MTL::TextureTypeCube;
+constexpr auto MTLTextureTypeCubeArray = MTL::TextureTypeCubeArray;
 constexpr auto MTLDataTypeNone = MTL::DataTypeNone;
 constexpr auto MTLCullModeNone = MTL::CullModeNone;
 constexpr auto MTLTriangleFillModeFill = MTL::TriangleFillModeFill;
 constexpr auto MTLDepthClipModeClip = MTL::DepthClipModeClip;
 constexpr auto MTLWindingClockwise = MTL::WindingClockwise;
 constexpr auto MTLPrimitiveTypePoint = MTL::PrimitiveTypePoint;
+// Compare functions
+constexpr auto MTLCompareFunctionNever = MTL::CompareFunctionNever;
+constexpr auto MTLCompareFunctionLess = MTL::CompareFunctionLess;
+constexpr auto MTLCompareFunctionEqual = MTL::CompareFunctionEqual;
+constexpr auto MTLCompareFunctionLessEqual = MTL::CompareFunctionLessEqual;
+constexpr auto MTLCompareFunctionGreater = MTL::CompareFunctionGreater;
+constexpr auto MTLCompareFunctionNotEqual = MTL::CompareFunctionNotEqual;
+constexpr auto MTLCompareFunctionGreaterEqual = MTL::CompareFunctionGreaterEqual;
+constexpr auto MTLCompareFunctionAlways = MTL::CompareFunctionAlways;
+// Resource options
+using MTLResourceOptions = MTL::ResourceOptions;
+constexpr auto MTLResourceStorageModeShared = MTL::ResourceStorageModeShared;
+constexpr auto MTLResourceStorageModePrivate = MTL::ResourceStorageModePrivate;
+constexpr auto MTLResourceStorageModeMemoryless = MTL::ResourceStorageModeMemoryless;
+constexpr auto MTLResourceCPUCacheModeWriteCombined = MTL::ResourceCPUCacheModeWriteCombined;
+constexpr auto MTLResourceHazardTrackingModeUntracked = MTL::ResourceHazardTrackingModeUntracked;
+constexpr auto MTLResourceHazardTrackingModeTracked = MTL::ResourceHazardTrackingModeTracked;
 using MTLStages = NS::UInteger;
 constexpr auto MTLStageVertex = MTL::StageVertex;
 constexpr auto MTLStageFragment = MTL::StageFragment;
 constexpr auto MTLStageDispatch = MTL::StageDispatch;
 constexpr auto MTLStageBlit = MTL::StageBlit;
 constexpr auto MTLStageAll = MTLStageVertex | MTLStageFragment | MTLStageDispatch | MTLStageBlit;
-inline MTLSize MTLSizeMake(NS::UInteger w, NS::UInteger h, NS::UInteger d) { return MTL::Size{w, h, d}; }
-inline MTLOrigin MTLOriginMake(NS::UInteger x, NS::UInteger y, NS::UInteger z) { return MTL::Origin{x, y, z}; }
+inline MTLSize MTLSizeMake(NS::UInteger w, NS::UInteger h, NS::UInteger d) {
+	return MTL::Size{ w, h, d };
+}
+inline MTLOrigin MTLOriginMake(NS::UInteger x, NS::UInteger y, NS::UInteger z) {
+	return MTL::Origin{ x, y, z };
+}
 using MTLBindingAccess = MTL::BindingAccess;
 constexpr auto MTLBindingAccessReadOnly = MTL::BindingAccessReadOnly;
 constexpr auto MTLBindingAccessReadWrite = MTL::BindingAccessReadWrite;
@@ -104,18 +133,20 @@ namespace GDMTL {
 		id<MTL##name> m_obj;                          \
 	};
 #else
-#define MTL_CLASS(name)                                       \
-	class name {                                              \
-	public:                                                   \
-		name(MTL::name *obj = nullptr) : m_obj(obj) {}        \
-		operator MTL::name *() const { return m_obj; }        \
-		bool operator==(std::nullptr_t) const {               \
-			return m_obj == nullptr;                          \
-		}                                                     \
-		bool operator!=(std::nullptr_t) const {               \
-			return m_obj != nullptr;                          \
-		}                                                     \
-		MTL::name *m_obj;                                     \
+#define MTL_CLASS(name)                                \
+	class name {                                       \
+	public:                                            \
+		name(MTL::name *obj = nullptr) : m_obj(obj) {} \
+		operator MTL::name *() const {                 \
+			return m_obj;                              \
+		}                                              \
+		bool operator==(std::nullptr_t) const {        \
+			return m_obj == nullptr;                   \
+		}                                              \
+		bool operator!=(std::nullptr_t) const {        \
+			return m_obj != nullptr;                   \
+		}                                              \
+		MTL::name *m_obj;                              \
 	};
 #endif
 
@@ -316,7 +347,7 @@ private:
 	NS::SharedPtr<MTL::Function> new_func(NS::String *p_source, NS::String *p_name, NS::Error **p_error);
 	NS::SharedPtr<MTL::Function> new_clear_vert_func(ClearAttKey &p_key);
 	NS::SharedPtr<MTL::Function> new_clear_frag_func(ClearAttKey &p_key);
-	NS::String *get_format_type_string(MTL::PixelFormat p_fmt);
+	const char *get_format_type_string(MTL::PixelFormat p_fmt) const;
 
 	_FORCE_INLINE_ uint32_t get_vertex_buffer_index(uint32_t p_binding) {
 		return (max_buffer_count - 1) - p_binding;
@@ -567,24 +598,12 @@ public:
 
 	void linkToSubpass(MDRenderPass const &p_pass);
 
-	MTLStoreAction getMTLStoreAction(MDSubpass const &p_subpass,
+	MTL::StoreAction getMTLStoreAction(MDSubpass const &p_subpass,
 			bool p_is_rendering_entire_area,
 			bool p_has_resolve,
 			bool p_can_resolve,
 			bool p_is_stencil) const;
-#ifdef __OBJC__
-	bool configureDescriptor(MTLRenderPassAttachmentDescriptor *p_desc,
-			PixelFormats &p_pf,
-			MDSubpass const &p_subpass,
-			id<MTLTexture> p_attachment,
-			bool p_is_rendering_entire_area,
-			bool p_has_resolve,
-			bool p_can_resolve,
-			bool p_is_stencil) const;
-#endif
-	// C++ template version of configureDescriptor for metal-cpp types.
-	template <typename AttachDesc>
-	bool configureDescriptor(AttachDesc *p_desc,
+	bool configureDescriptor(MTL::RenderPassAttachmentDescriptor *p_desc,
 			PixelFormats &p_pf,
 			MDSubpass const &p_subpass,
 			MTL::Texture *p_attachment,
@@ -609,7 +628,7 @@ public:
 		if (isStencilFormat && !p_is_stencil && !isDepthFormat) {
 			p_desc->setStoreAction(MTL::StoreActionDontCare);
 		} else {
-			p_desc->setStoreAction((MTL::StoreAction)getMTLStoreAction(p_subpass, p_is_rendering_entire_area, p_has_resolve, p_can_resolve, p_is_stencil));
+			p_desc->setStoreAction(getMTLStoreAction(p_subpass, p_is_rendering_entire_area, p_has_resolve, p_can_resolve, p_is_stencil));
 		}
 
 		return load == MTL::LoadActionClear;
@@ -1127,7 +1146,7 @@ public:
 #ifdef __OBJC__
 	id<MTLBuffer> arg_buffer = nil;
 #else
-	MTL::Buffer *arg_buffer = nullptr;
+	NS::SharedPtr<MTL::Buffer> arg_buffer;
 #endif
 	Vector<uint8_t> arg_buffer_data; // Stored for dynamic uniform sets.
 	ResourceUsageMap usage_to_resources; // Used by Metal 3 for resource tracking.
@@ -1153,23 +1172,18 @@ public:
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDRenderPipeline final : public MDPipeline {
 public:
-#ifdef __OBJC__
-	id<MTLRenderPipelineState> state = nil;
-	id<MTLDepthStencilState> depth_stencil = nil;
-#else
-	MTL::RenderPipelineState *state = nullptr;
-	MTL::DepthStencilState *depth_stencil = nullptr;
-#endif
+	NS::SharedPtr<MTL::RenderPipelineState> state;
+	NS::SharedPtr<MTL::DepthStencilState> depth_stencil;
 	uint32_t push_constant_size = 0;
 	uint32_t push_constant_stages_mask = 0;
 	SampleCount sample_count = SampleCount1;
 
 	struct {
-		MTLCullMode cull_mode = MTLCullModeNone;
-		MTLTriangleFillMode fill_mode = MTLTriangleFillModeFill;
-		MTLDepthClipMode clip_mode = MTLDepthClipModeClip;
-		MTLWinding winding = MTLWindingClockwise;
-		MTLPrimitiveType render_primitive = MTLPrimitiveTypePoint;
+		MTL::CullMode cull_mode = MTL::CullModeNone;
+		MTL::TriangleFillMode fill_mode = MTL::TriangleFillModeFill;
+		MTL::DepthClipMode clip_mode = MTL::DepthClipModeClip;
+		MTL::Winding winding = MTL::WindingClockwise;
+		MTL::PrimitiveType render_primitive = MTL::PrimitiveTypePoint;
 
 		struct {
 			bool enabled = false;
@@ -1241,10 +1255,10 @@ public:
 
 #ifdef __OBJC__
 		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> p_enc) const {
-			[p_enc setCullMode:cull_mode];
-			[p_enc setTriangleFillMode:fill_mode];
-			[p_enc setDepthClipMode:clip_mode];
-			[p_enc setFrontFacingWinding:winding];
+			[p_enc setCullMode:(MTLCullMode)cull_mode];
+			[p_enc setTriangleFillMode:(MTLTriangleFillMode)fill_mode];
+			[p_enc setDepthClipMode:(MTLDepthClipMode)clip_mode];
+			[p_enc setFrontFacingWinding:(MTLWinding)winding];
 			depth_bias.apply(p_enc);
 			stencil.apply(p_enc);
 			blend.apply(p_enc);
@@ -1273,23 +1287,14 @@ public:
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDComputePipeline final : public MDPipeline {
 public:
-#ifdef __OBJC__
-	id<MTLComputePipelineState> state = nil;
-#else
-	MTL::ComputePipelineState *state = nullptr;
-#endif
+	NS::SharedPtr<MTL::ComputePipelineState> state;
 	struct {
-		MTLSize local = {};
+		MTL::Size local = {};
 	} compute_state;
 
 	MDComputeShader *shader = nullptr;
 
-#ifdef __OBJC__
-	explicit MDComputePipeline(id<MTLComputePipelineState> p_state) :
-			MDPipeline(MDPipelineType::Compute), state(p_state) {}
-#else
-	explicit MDComputePipeline(MTL::ComputePipelineState *p_state) :
-			MDPipeline(MDPipelineType::Compute), state(p_state) {}
-#endif
+	explicit MDComputePipeline(NS::SharedPtr<MTL::ComputePipelineState> p_state) :
+			MDPipeline(MDPipelineType::Compute), state(std::move(p_state)) {}
 	~MDComputePipeline() final = default;
 };

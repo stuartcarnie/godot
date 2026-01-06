@@ -734,7 +734,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_PIPELINE)) {
-		render.encoder->setRenderPipelineState(render.pipeline->state);
+		render.encoder->setRenderPipelineState(render.pipeline->state.get());
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_VIEWPORT)) {
@@ -742,7 +742,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_DEPTH)) {
-		render.encoder->setDepthStencilState(render.pipeline->depth_stencil);
+		render.encoder->setDepthStencilState(render.pipeline->depth_stencil.get());
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_RASTER)) {
@@ -1246,7 +1246,7 @@ void MDCommandBuffer::_compute_set_dirty_state() {
 	if (compute.dirty.has_flag(ComputeState::DIRTY_PIPELINE)) {
 		compute.encoder = NS::RetainPtr(command_buffer()->computeCommandEncoder(MTL::DispatchTypeConcurrent));
 		_encode_barrier(compute.encoder.get());
-		compute.encoder->setComputePipelineState(compute.pipeline->state);
+		compute.encoder->setComputePipelineState(compute.pipeline->state.get());
 	}
 
 	_compute_bind_uniform_sets();
@@ -1501,8 +1501,8 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers(MDUniformSet *p_set, MDSha
 		enc->setVertexBuffer(alloc.buffer, alloc.offset, p_set_index);
 		enc->setFragmentBuffer(alloc.buffer, alloc.offset, p_set_index);
 	} else {
-		enc->setVertexBuffer(p_set->arg_buffer, 0, p_set_index);
-		enc->setFragmentBuffer(p_set->arg_buffer, 0, p_set_index);
+		enc->setVertexBuffer(p_set->arg_buffer.get(), 0, p_set_index);
+		enc->setFragmentBuffer(p_set->arg_buffer.get(), 0, p_set_index);
 	}
 }
 
@@ -1656,7 +1656,7 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers_compute(MDUniformSet *p_se
 
 		enc->setBuffer(alloc.buffer, alloc.offset, p_set_index);
 	} else {
-		enc->setBuffer(p_set->arg_buffer, 0, p_set_index);
+		enc->setBuffer(p_set->arg_buffer.get(), 0, p_set_index);
 	}
 }
 

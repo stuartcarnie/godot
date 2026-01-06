@@ -741,7 +741,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	MTL4::RenderCommandEncoder *enc = render.encoder.get();
 
 	if (render.dirty.has_flag(RenderState::DIRTY_PIPELINE)) {
-		enc->setRenderPipelineState(render.pipeline->state);
+		enc->setRenderPipelineState(render.pipeline->state.get());
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_VIEWPORT)) {
@@ -749,7 +749,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_DEPTH)) {
-		enc->setDepthStencilState(render.pipeline->depth_stencil);
+		enc->setDepthStencilState(render.pipeline->depth_stencil.get());
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_RASTER)) {
@@ -1144,7 +1144,7 @@ void MDCommandBuffer::_compute_set_dirty_state() {
 		DEV_ASSERT(!compute.encoder);
 		compute.encoder = NS::RetainPtr(command_buffer->computeCommandEncoder());
 		_encode_barrier(compute.encoder.get());
-		compute.encoder->setComputePipelineState(compute.pipeline->state);
+		compute.encoder->setComputePipelineState(compute.pipeline->state.get());
 	}
 
 	_compute_bind_uniform_sets();

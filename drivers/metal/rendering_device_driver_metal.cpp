@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_device_driver_metal.mm                                      */
+/*  rendering_device_driver_metal.cpp                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -48,23 +48,22 @@
 /* permissions and limitations under the License.                         */
 /**************************************************************************/
 
-#import "rendering_device_driver_metal.h"
+#include "rendering_device_driver_metal.h"
 
-#import "pixel_formats.h"
-#import "rendering_context_driver_metal.h"
-#import "rendering_shader_container_metal.h"
+#include "pixel_formats.h"
+#include "rendering_context_driver_metal.h"
+#include "rendering_shader_container_metal.h"
 
-#import "core/config/project_settings.h"
-#import "core/io/marshalls.h"
-#import "core/string/ustring.h"
-#import "core/templates/hash_map.h"
-#import "drivers/apple/foundation_helpers.h"
+#include "core/config/project_settings.h"
+#include "core/io/marshalls.h"
+#include "core/string/ustring.h"
+#include "core/templates/hash_map.h"
+#include "drivers/apple/foundation_helpers.h"
 
-#import <Metal/MTLTexture.h>
-#import <Metal/Metal.h>
-#import <os/log.h>
-#import <os/signpost.h>
-#import <algorithm>
+#include <os/log.h>
+#include <os/signpost.h>
+#include <Metal/Metal.hpp>
+#include <algorithm>
 
 #ifndef MTLGPUAddress
 typedef uint64_t MTLGPUAddress;
@@ -114,7 +113,7 @@ RDD::BufferID RenderingDeviceDriverMetal::buffer_create(uint64_t p_size, BitFiel
 			break;
 	}
 
-	id<MTLBuffer> obj = [(__bridge id<MTLDevice>)device newBufferWithLength:p_size options:options];
+	MTL::Buffer *obj = device->newBuffer(p_size, options);
 	ERR_FAIL_NULL_V_MSG(obj, BufferID(), "Can't create buffer of size: " + itos(p_size));
 
 	BufferInfo *buf_info;
@@ -129,7 +128,7 @@ RDD::BufferID RenderingDeviceDriverMetal::buffer_create(uint64_t p_size, BitFiel
 	} else {
 		buf_info = memnew(BufferInfo);
 	}
-	buf_info->metal_buffer = NS::TransferPtr((__bridge_retained MTL::Buffer *)obj);
+	buf_info->metal_buffer = NS::TransferPtr(obj);
 
 	_track_resource(buf_info->metal_buffer.get());
 
@@ -196,7 +195,7 @@ uint64_t RenderingDeviceDriverMetal::buffer_get_dynamic_offsets(Span<BufferID> p
 }
 
 uint64_t RenderingDeviceDriverMetal::buffer_get_device_address(BufferID p_buffer) {
-	if (@available(iOS 16.0, macOS 13.0, *)) {
+	if (__builtin_available(iOS 16.0, macOS 13.0, *)) {
 		const BufferInfo *buf_info = (const BufferInfo *)p_buffer.id;
 		return buf_info->metal_buffer.get()->gpuAddress();
 	} else {
@@ -232,28 +231,28 @@ bool RenderingDeviceDriverMetal::is_valid_linear(TextureFormat const &p_format) 
 }
 
 RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p_format, const TextureView &p_view) {
-	MTLTextureDescriptor *desc = [MTLTextureDescriptor new];
-	desc.textureType = TEXTURE_TYPE[p_format.texture_type];
+	NS::SharedPtr<MTL::TextureDescriptor> desc = NS::TransferPtr(MTL::TextureDescriptor::alloc()->init());
+	desc->setTextureType(TEXTURE_TYPE[p_format.texture_type]);
 
 	PixelFormats &formats = *pixel_formats;
-	desc.pixelFormat = (MTLPixelFormat)formats.getMTLPixelFormat(p_format.format);
-	MTLFmtCaps format_caps = formats.getCapabilities(desc.pixelFormat);
+	desc->setPixelFormat((MTL::PixelFormat)formats.getMTLPixelFormat(p_format.format));
+	MTLFmtCaps format_caps = formats.getCapabilities(desc->pixelFormat());
 
-	desc.width = p_format.width;
-	desc.height = p_format.height;
-	desc.depth = p_format.depth;
-	desc.mipmapLevelCount = p_format.mipmaps;
+	desc->setWidth(p_format.width);
+	desc->setHeight(p_format.height);
+	desc->setDepth(p_format.depth);
+	desc->setMipmapLevelCount(p_format.mipmaps);
 
 	if (p_format.texture_type == TEXTURE_TYPE_1D_ARRAY ||
 			p_format.texture_type == TEXTURE_TYPE_2D_ARRAY) {
-		desc.arrayLength = p_format.array_layers;
+		desc->setArrayLength(p_format.array_layers);
 	} else if (p_format.texture_type == TEXTURE_TYPE_CUBE_ARRAY) {
-		desc.arrayLength = p_format.array_layers / 6;
+		desc->setArrayLength(p_format.array_layers / 6);
 	}
 
 	// TODO(sgc): Evaluate lossy texture support (perhaps as a project option?)
 	//  https://developer.apple.com/videos/play/tech-talks/10876?time=459
-	// desc.compressionType = MTLTextureCompressionTypeLossy;
+	// desc->setCompressionType(MTL::TextureCompressionTypeLossy);
 
 	if (p_format.samples > TEXTURE_SAMPLES_1) {
 		SampleCount supported = (*device_properties).find_nearest_supported_sample_count(p_format.samples);
@@ -263,19 +262,19 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 			if (ok) {
 				switch (p_format.texture_type) {
 					case TEXTURE_TYPE_2D:
-						desc.textureType = MTLTextureType2DMultisample;
+						desc->setTextureType(MTL::TextureType2DMultisample);
 						break;
 					case TEXTURE_TYPE_2D_ARRAY:
-						desc.textureType = MTLTextureType2DMultisampleArray;
+						desc->setTextureType(MTL::TextureType2DMultisampleArray);
 						break;
 					default:
 						break;
 				}
-				desc.sampleCount = (NSUInteger)supported;
+				desc->setSampleCount((NS::UInteger)supported);
 				if (p_format.mipmaps > 1) {
 					// For a buffer-backed or multi-sample texture, the value must be 1.
 					WARN_PRINT("mipmaps == 1 for multi-sample textures");
-					desc.mipmapLevelCount = 1;
+					desc->setMipmapLevelCount(1);
 				}
 			} else {
 				WARN_PRINT("Unsupported multi-sample texture type; disabling multi-sample");
@@ -283,38 +282,33 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 		}
 	}
 
-	static const MTLTextureSwizzle COMPONENT_SWIZZLE[TEXTURE_SWIZZLE_MAX] = {
-		static_cast<MTLTextureSwizzle>(255), // IDENTITY
-		MTLTextureSwizzleZero,
-		MTLTextureSwizzleOne,
-		MTLTextureSwizzleRed,
-		MTLTextureSwizzleGreen,
-		MTLTextureSwizzleBlue,
-		MTLTextureSwizzleAlpha,
+	static const MTL::TextureSwizzle COMPONENT_SWIZZLE[TEXTURE_SWIZZLE_MAX] = {
+		static_cast<MTL::TextureSwizzle>(255), // IDENTITY
+		MTL::TextureSwizzleZero,
+		MTL::TextureSwizzleOne,
+		MTL::TextureSwizzleRed,
+		MTL::TextureSwizzleGreen,
+		MTL::TextureSwizzleBlue,
+		MTL::TextureSwizzleAlpha,
 	};
 
-	MTLTextureSwizzleChannels swizzle = MTLTextureSwizzleChannelsMake(
-			p_view.swizzle_r != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_r] : MTLTextureSwizzleRed,
-			p_view.swizzle_g != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_g] : MTLTextureSwizzleGreen,
-			p_view.swizzle_b != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_b] : MTLTextureSwizzleBlue,
-			p_view.swizzle_a != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_a] : MTLTextureSwizzleAlpha);
+	MTL::TextureSwizzleChannels swizzle = MTL::TextureSwizzleChannels::Make(
+			p_view.swizzle_r != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_r] : MTL::TextureSwizzleRed,
+			p_view.swizzle_g != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_g] : MTL::TextureSwizzleGreen,
+			p_view.swizzle_b != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_b] : MTL::TextureSwizzleBlue,
+			p_view.swizzle_a != TEXTURE_SWIZZLE_IDENTITY ? COMPONENT_SWIZZLE[p_view.swizzle_a] : MTL::TextureSwizzleAlpha);
 
 	// Represents a swizzle operation that is a no-op.
-	static MTLTextureSwizzleChannels IDENTITY_SWIZZLE = {
-		.red = MTLTextureSwizzleRed,
-		.green = MTLTextureSwizzleGreen,
-		.blue = MTLTextureSwizzleBlue,
-		.alpha = MTLTextureSwizzleAlpha,
-	};
+	static MTL::TextureSwizzleChannels IDENTITY_SWIZZLE = MTL::TextureSwizzleChannels::Default();
 
-	bool no_swizzle = memcmp(&IDENTITY_SWIZZLE, &swizzle, sizeof(MTLTextureSwizzleChannels)) == 0;
+	bool no_swizzle = memcmp(&IDENTITY_SWIZZLE, &swizzle, sizeof(MTL::TextureSwizzleChannels)) == 0;
 	if (!no_swizzle) {
-		desc.swizzle = swizzle;
+		desc->setSwizzle(swizzle);
 	}
 
 	// Usage.
 
-	MTLResourceOptions options = 0;
+	MTL::ResourceOptions options = 0;
 	bool is_linear = false;
 #if defined(VISIONOS_ENABLED)
 	const bool supports_memoryless = true;
@@ -324,48 +318,49 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 	GODOT_CLANG_WARNING_POP
 #endif
 	if (supports_memoryless && p_format.usage_bits & TEXTURE_USAGE_TRANSIENT_BIT) {
-		options = base_hazard_tracking | MTLResourceStorageModeMemoryless;
-		desc.storageMode = MTLStorageModeMemoryless;
+		options = base_hazard_tracking | MTL::ResourceStorageModeMemoryless;
+		desc->setStorageMode(MTL::StorageModeMemoryless);
 	} else {
-		options = base_hazard_tracking | MTLResourceCPUCacheModeDefaultCache;
+		options = base_hazard_tracking | MTL::ResourceCPUCacheModeDefaultCache;
 		if (p_format.usage_bits & TEXTURE_USAGE_CPU_READ_BIT) {
-			options |= MTLResourceStorageModeShared;
+			options |= MTL::ResourceStorageModeShared;
 			// The user has indicated they want to read from the texture on the CPU,
 			// so we'll see if we can use a linear format.
 			// A linear format is a texture that is backed by a buffer,
 			// which allows for CPU access to the texture data via a pointer.
 			is_linear = is_valid_linear(p_format);
 		} else {
-			options |= MTLResourceStorageModePrivate;
+			options |= MTL::ResourceStorageModePrivate;
 		}
 	}
-	desc.resourceOptions = options;
+	desc->setResourceOptions(options);
 
+	MTL::TextureUsage usage = desc->usage();
 	if (p_format.usage_bits & TEXTURE_USAGE_SAMPLING_BIT) {
-		desc.usage |= MTLTextureUsageShaderRead;
+		usage |= MTL::TextureUsageShaderRead;
 	}
 
 	if (p_format.usage_bits & TEXTURE_USAGE_STORAGE_BIT) {
-		desc.usage |= MTLTextureUsageShaderWrite;
+		usage |= MTL::TextureUsageShaderWrite;
 	}
 
 	bool can_be_attachment = flags::any(format_caps, (kMTLFmtCapsColorAtt | kMTLFmtCapsDSAtt));
 
 	if (flags::any(p_format.usage_bits, TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
 			can_be_attachment) {
-		desc.usage |= MTLTextureUsageRenderTarget;
+		usage |= MTL::TextureUsageRenderTarget;
 	}
 
 	if (p_format.usage_bits & TEXTURE_USAGE_INPUT_ATTACHMENT_BIT) {
-		desc.usage |= MTLTextureUsageShaderRead;
+		usage |= MTL::TextureUsageShaderRead;
 	}
 
 	if (p_format.usage_bits & TEXTURE_USAGE_STORAGE_ATOMIC_BIT) {
 		ERR_FAIL_COND_V_MSG((format_caps & kMTLFmtCapsAtomic) == 0, RDD::TextureID(), "Atomic operations on this texture format are not supported.");
 		ERR_FAIL_COND_V_MSG(!device_properties->features.supports_native_image_atomics, RDD::TextureID(), "Atomic operations on textures are not supported on this OS version. Check SUPPORTS_IMAGE_ATOMIC_32_BIT.");
 		// If supports_native_image_atomics is true, this condition should always succeed, as it is set the same.
-		if (@available(macOS 14.0, iOS 17.0, tvOS 17.0, *)) {
-			desc.usage |= MTLTextureUsageShaderAtomic;
+		if (__builtin_available(macOS 14.0, iOS 17.0, tvOS 17.0, *)) {
+			usage |= MTL::TextureUsageShaderAtomic;
 		}
 	}
 
@@ -376,7 +371,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 	if (flags::any(p_format.usage_bits, TEXTURE_USAGE_CAN_UPDATE_BIT | TEXTURE_USAGE_CAN_COPY_TO_BIT) &&
 			can_be_attachment && no_swizzle) {
 		// Per MoltenVK, can be cleared as a render attachment.
-		desc.usage |= MTLTextureUsageRenderTarget;
+		usage |= MTL::TextureUsageRenderTarget;
 	}
 	if (p_format.usage_bits & TEXTURE_USAGE_CAN_COPY_FROM_BIT) {
 		// Covered by blits.
@@ -384,189 +379,169 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 
 	// Create texture views with a different component layout.
 	if (!p_format.shareable_formats.is_empty()) {
-		desc.usage |= MTLTextureUsagePixelFormatView;
+		usage |= MTL::TextureUsagePixelFormatView;
 	}
+
+	desc->setUsage(usage);
 
 	// Allocate memory.
 
-	id<MTLTexture> obj = nil;
+	MTL::Texture *obj = nullptr;
 	if (is_linear) {
 		// Linear textures are restricted to 2D textures, a single mipmap level and a single array layer.
-		MTLPixelFormat pixel_format = desc.pixelFormat;
+		MTL::PixelFormat pixel_format = desc->pixelFormat();
 		size_t row_alignment = get_texel_buffer_alignment_for_format(p_format.format);
 		size_t bytes_per_row = formats.getBytesPerRow(pixel_format, p_format.width);
 		bytes_per_row = round_up_to_alignment(bytes_per_row, row_alignment);
 		size_t bytes_per_layer = formats.getBytesPerLayer(pixel_format, bytes_per_row, p_format.height);
 		size_t byte_count = bytes_per_layer * p_format.depth * p_format.array_layers;
 
-		id<MTLBuffer> buf = [(__bridge id<MTLDevice>)device newBufferWithLength:byte_count options:options];
-		obj = [buf newTextureWithDescriptor:desc offset:0 bytesPerRow:bytes_per_row];
+		MTL::Buffer *buf = device->newBuffer(byte_count, options);
+		obj = buf->newTexture(desc.get(), 0, bytes_per_row);
+		buf->release();
 
-		_track_resource((__bridge MTL::Resource *)buf);
+		_track_resource(buf);
 	} else {
-		obj = [(__bridge id<MTLDevice>)device newTextureWithDescriptor:desc];
+		obj = device->newTexture(desc.get());
 	}
 	ERR_FAIL_NULL_V_MSG(obj, TextureID(), "Unable to create texture.");
 
-	_track_resource((__bridge MTL::Resource *)obj);
+	_track_resource(obj);
 
-	return rid::make(obj);
+	return TextureID(reinterpret_cast<uint64_t>(obj));
 }
 
 RDD::TextureID RenderingDeviceDriverMetal::texture_create_from_extension(uint64_t p_native_texture, TextureType p_type, DataFormat p_format, uint32_t p_array_layers, bool p_depth_stencil, uint32_t p_mipmaps) {
-	id<MTLTexture> res = (__bridge id<MTLTexture>)(void *)(uintptr_t)p_native_texture;
+	MTL::Texture *res = reinterpret_cast<MTL::Texture *>(p_native_texture);
 
 	// If the requested format is different, we need to create a view.
-	MTLPixelFormat format = (MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_format);
-	if (res.pixelFormat != format) {
-		MTLTextureSwizzleChannels swizzle = MTLTextureSwizzleChannelsMake(
-				MTLTextureSwizzleRed,
-				MTLTextureSwizzleGreen,
-				MTLTextureSwizzleBlue,
-				MTLTextureSwizzleAlpha);
-		res = [res newTextureViewWithPixelFormat:format
-									 textureType:res.textureType
-										  levels:NSMakeRange(0, res.mipmapLevelCount)
-										  slices:NSMakeRange(0, p_array_layers)
-										 swizzle:swizzle];
+	MTL::PixelFormat format = (MTL::PixelFormat)pixel_formats->getMTLPixelFormat(p_format);
+	if (res->pixelFormat() != format) {
+		MTL::TextureSwizzleChannels swizzle = MTL::TextureSwizzleChannels::Default();
+		res = res->newTextureView(format, res->textureType(), NS::Range::Make(0, res->mipmapLevelCount()), NS::Range::Make(0, p_array_layers), swizzle);
 		ERR_FAIL_NULL_V_MSG(res, TextureID(), "Unable to create texture view.");
 	}
 
-	_track_resource((__bridge MTL::Resource *)res);
+	_track_resource(res);
 
-	return rid::make(res);
+	return TextureID(reinterpret_cast<uint64_t>(res));
 }
 
 RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared(TextureID p_original_texture, const TextureView &p_view) {
-	id<MTLTexture> src_texture = rid::get(p_original_texture);
+	MTL::Texture *src_texture = reinterpret_cast<MTL::Texture *>(p_original_texture.id);
 
-	NSUInteger slices = src_texture.arrayLength;
-	if (src_texture.textureType == MTLTextureTypeCube) {
+	NS::UInteger slices = src_texture->arrayLength();
+	if (src_texture->textureType() == MTL::TextureTypeCube) {
 		// Metal expects Cube textures to have a slice count of 6.
 		slices = 6;
-	} else if (src_texture.textureType == MTLTextureTypeCubeArray) {
+	} else if (src_texture->textureType() == MTL::TextureTypeCubeArray) {
 		// Metal expects Cube Array textures to have 6 slices per layer.
 		slices *= 6;
 	}
 
 #if DEV_ENABLED
-	if (src_texture.sampleCount > 1) {
+	if (src_texture->sampleCount() > 1) {
 		// TODO(sgc): is it ok to create a shared texture from a multi-sample texture?
 		WARN_PRINT("Is it safe to create a shared texture from multi-sample texture?");
 	}
 #endif
 
-	MTLPixelFormat format = (MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_view.format);
+	MTL::PixelFormat format = (MTL::PixelFormat)pixel_formats->getMTLPixelFormat(p_view.format);
 
-	static const MTLTextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
-		static_cast<MTLTextureSwizzle>(255), // IDENTITY
-		MTLTextureSwizzleZero,
-		MTLTextureSwizzleOne,
-		MTLTextureSwizzleRed,
-		MTLTextureSwizzleGreen,
-		MTLTextureSwizzleBlue,
-		MTLTextureSwizzleAlpha,
+	static const MTL::TextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
+		static_cast<MTL::TextureSwizzle>(255), // IDENTITY
+		MTL::TextureSwizzleZero,
+		MTL::TextureSwizzleOne,
+		MTL::TextureSwizzleRed,
+		MTL::TextureSwizzleGreen,
+		MTL::TextureSwizzleBlue,
+		MTL::TextureSwizzleAlpha,
 	};
 
-#define SWIZZLE(C, CHAN) (p_view.swizzle_##C != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_##C] : MTLTextureSwizzle##CHAN)
-	MTLTextureSwizzleChannels swizzle = MTLTextureSwizzleChannelsMake(
-			SWIZZLE(r, Red),
-			SWIZZLE(g, Green),
-			SWIZZLE(b, Blue),
-			SWIZZLE(a, Alpha));
+#define SWIZZLE(C, CHAN) (p_view.swizzle_##C != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_##C] : MTL::TextureSwizzle##CHAN)
+	MTL::TextureSwizzleChannels swizzle = MTL::TextureSwizzleChannels::Make(SWIZZLE(r, Red), SWIZZLE(g, Green), SWIZZLE(b, Blue), SWIZZLE(a, Alpha));
 #undef SWIZZLE
-	id<MTLTexture> obj = [src_texture newTextureViewWithPixelFormat:format
-														textureType:src_texture.textureType
-															 levels:NSMakeRange(0, src_texture.mipmapLevelCount)
-															 slices:NSMakeRange(0, slices)
-															swizzle:swizzle];
+	MTL::Texture *obj = src_texture->newTextureView(format, src_texture->textureType(), NS::Range::Make(0, src_texture->mipmapLevelCount()), NS::Range::Make(0, slices), swizzle);
 	ERR_FAIL_NULL_V_MSG(obj, TextureID(), "Unable to create shared texture");
-	_track_resource((__bridge MTL::Resource *)obj);
-	return rid::make(obj);
+	_track_resource(obj);
+	return TextureID(reinterpret_cast<uint64_t>(obj));
 }
 
 RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared_from_slice(TextureID p_original_texture, const TextureView &p_view, TextureSliceType p_slice_type, uint32_t p_layer, uint32_t p_layers, uint32_t p_mipmap, uint32_t p_mipmaps) {
-	id<MTLTexture> src_texture = rid::get(p_original_texture);
+	MTL::Texture *src_texture = reinterpret_cast<MTL::Texture *>(p_original_texture.id);
 
-	static const MTLTextureType VIEW_TYPES[] = {
-		MTLTextureType1D, // MTLTextureType1D
-		MTLTextureType1D, // MTLTextureType1DArray
-		MTLTextureType2D, // MTLTextureType2D
-		MTLTextureType2D, // MTLTextureType2DArray
-		MTLTextureType2D, // MTLTextureType2DMultisample
-		MTLTextureType2D, // MTLTextureTypeCube
-		MTLTextureType2D, // MTLTextureTypeCubeArray
-		MTLTextureType2D, // MTLTextureType3D
-		MTLTextureType2D, // MTLTextureType2DMultisampleArray
+	static const MTL::TextureType VIEW_TYPES[] = {
+		MTL::TextureType1D, // MTLTextureType1D
+		MTL::TextureType1D, // MTLTextureType1DArray
+		MTL::TextureType2D, // MTLTextureType2D
+		MTL::TextureType2D, // MTLTextureType2DArray
+		MTL::TextureType2D, // MTLTextureType2DMultisample
+		MTL::TextureType2D, // MTLTextureTypeCube
+		MTL::TextureType2D, // MTLTextureTypeCubeArray
+		MTL::TextureType2D, // MTLTextureType3D
+		MTL::TextureType2D, // MTLTextureType2DMultisampleArray
 	};
 
-	MTLTextureType textureType = VIEW_TYPES[src_texture.textureType];
+	MTL::TextureType textureType = VIEW_TYPES[src_texture->textureType()];
 	switch (p_slice_type) {
 		case TEXTURE_SLICE_2D: {
-			textureType = MTLTextureType2D;
+			textureType = MTL::TextureType2D;
 		} break;
 		case TEXTURE_SLICE_3D: {
-			textureType = MTLTextureType3D;
+			textureType = MTL::TextureType3D;
 		} break;
 		case TEXTURE_SLICE_CUBEMAP: {
-			textureType = MTLTextureTypeCube;
+			textureType = MTL::TextureTypeCube;
 		} break;
 		case TEXTURE_SLICE_2D_ARRAY: {
-			textureType = MTLTextureType2DArray;
+			textureType = MTL::TextureType2DArray;
 		} break;
 		case TEXTURE_SLICE_MAX: {
 			ERR_FAIL_V_MSG(TextureID(), "Invalid texture slice type");
 		} break;
 	}
 
-	MTLPixelFormat format = (MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_view.format);
+	MTL::PixelFormat format = (MTL::PixelFormat)pixel_formats->getMTLPixelFormat(p_view.format);
 
-	static const MTLTextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
-		static_cast<MTLTextureSwizzle>(255), // IDENTITY
-		MTLTextureSwizzleZero,
-		MTLTextureSwizzleOne,
-		MTLTextureSwizzleRed,
-		MTLTextureSwizzleGreen,
-		MTLTextureSwizzleBlue,
-		MTLTextureSwizzleAlpha,
+	static const MTL::TextureSwizzle component_swizzle[TEXTURE_SWIZZLE_MAX] = {
+		static_cast<MTL::TextureSwizzle>(255), // IDENTITY
+		MTL::TextureSwizzleZero,
+		MTL::TextureSwizzleOne,
+		MTL::TextureSwizzleRed,
+		MTL::TextureSwizzleGreen,
+		MTL::TextureSwizzleBlue,
+		MTL::TextureSwizzleAlpha,
 	};
 
-#define SWIZZLE(C, CHAN) (p_view.swizzle_##C != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_##C] : MTLTextureSwizzle##CHAN)
-	MTLTextureSwizzleChannels swizzle = MTLTextureSwizzleChannelsMake(
-			SWIZZLE(r, Red),
-			SWIZZLE(g, Green),
-			SWIZZLE(b, Blue),
-			SWIZZLE(a, Alpha));
+#define SWIZZLE(C, CHAN) (p_view.swizzle_##C != TEXTURE_SWIZZLE_IDENTITY ? component_swizzle[p_view.swizzle_##C] : MTL::TextureSwizzle##CHAN)
+	MTL::TextureSwizzleChannels swizzle = MTL::TextureSwizzleChannels::Make(SWIZZLE(r, Red), SWIZZLE(g, Green), SWIZZLE(b, Blue), SWIZZLE(a, Alpha));
 #undef SWIZZLE
-	id<MTLTexture> obj = [src_texture newTextureViewWithPixelFormat:format
-														textureType:textureType
-															 levels:NSMakeRange(p_mipmap, p_mipmaps)
-															 slices:NSMakeRange(p_layer, p_layers)
-															swizzle:swizzle];
+	MTL::Texture *obj = src_texture->newTextureView(format, textureType, NS::Range::Make(p_mipmap, p_mipmaps), NS::Range::Make(p_layer, p_layers), swizzle);
 	ERR_FAIL_NULL_V_MSG(obj, TextureID(), "Unable to create shared texture");
-	_track_resource((__bridge MTL::Resource *)obj);
-	return rid::make(obj);
+	_track_resource(obj);
+	return TextureID(reinterpret_cast<uint64_t>(obj));
 }
 
 void RenderingDeviceDriverMetal::texture_free(TextureID p_texture) {
-	id<MTLTexture> obj = rid::release(p_texture);
-	_untrack_resource((__bridge MTL::Resource *)obj);
+	MTL::Texture *obj = reinterpret_cast<MTL::Texture *>(p_texture.id);
+	_untrack_resource(obj);
+	obj->release();
 }
 
 uint64_t RenderingDeviceDriverMetal::texture_get_allocation_size(TextureID p_texture) {
-	id<MTLTexture> __unsafe_unretained obj = rid::get(p_texture);
-	return obj.allocatedSize;
+	MTL::Texture *obj = reinterpret_cast<MTL::Texture *>(p_texture.id);
+	return obj->allocatedSize();
 }
 
 void RenderingDeviceDriverMetal::texture_get_copyable_layout(TextureID p_texture, const TextureSubresource &p_subresource, TextureCopyableLayout *r_layout) {
-	id<MTLTexture> __unsafe_unretained obj = rid::get(p_texture);
+	MTL::Texture *obj = reinterpret_cast<MTL::Texture *>(p_texture.id);
 
 	PixelFormats &pf = *pixel_formats;
-	DataFormat format = pf.getDataFormat(obj.pixelFormat);
+	DataFormat format = pf.getDataFormat(obj->pixelFormat());
 
-	uint32_t w = MAX(1u, obj.width >> p_subresource.mipmap);
-	uint32_t h = MAX(1u, obj.height >> p_subresource.mipmap);
-	uint32_t d = MAX(1u, obj.depth >> p_subresource.mipmap);
+	uint32_t w = MAX(1u, obj->width() >> p_subresource.mipmap);
+	uint32_t h = MAX(1u, obj->height() >> p_subresource.mipmap);
+	uint32_t d = MAX(1u, obj->depth() >> p_subresource.mipmap);
 
 	uint32_t bw = 0, bh = 0;
 	get_compressed_image_format_block_dimensions(format, bw, bh);
@@ -578,42 +553,43 @@ void RenderingDeviceDriverMetal::texture_get_copyable_layout(TextureID p_texture
 }
 
 Vector<uint8_t> RenderingDeviceDriverMetal::texture_get_data(TextureID p_texture, uint32_t p_layer) {
-	id<MTLTexture> obj = rid::get(p_texture);
-	// ERR_FAIL_COND_V_MSG(obj.storageMode != MTLStorageModeShared, Vector<uint8_t>(), "Texture must be created with TEXTURE_USAGE_CPU_READ_BIT set.");
+	MTL::Texture *obj = reinterpret_cast<MTL::Texture *>(p_texture.id);
+	// ERR_FAIL_COND_V_MSG(obj->storageMode() != MTL::StorageModeShared, Vector<uint8_t>(), "Texture must be created with TEXTURE_USAGE_CPU_READ_BIT set.");
 
-	if (obj.buffer) {
+	MTL::Buffer *buf = obj->buffer();
+	if (buf) {
 		ERR_FAIL_COND_V_MSG(p_layer > 0, Vector<uint8_t>(), "A linear texture has a single layer.");
-		ERR_FAIL_COND_V_MSG(obj.mipmapLevelCount > 1, Vector<uint8_t>(), "A linear texture has a single mipmap level.");
+		ERR_FAIL_COND_V_MSG(obj->mipmapLevelCount() > 1, Vector<uint8_t>(), "A linear texture has a single mipmap level.");
 		Vector<uint8_t> image_data;
-		image_data.resize_uninitialized(obj.buffer.length);
-		memcpy(image_data.ptrw(), obj.buffer.contents, obj.buffer.length);
+		image_data.resize_uninitialized(buf->length());
+		memcpy(image_data.ptrw(), buf->contents(), buf->length());
 		return image_data;
 	}
 
-	if (obj.storageMode == MTLStorageModePrivate) {
+	NS::SharedPtr<MTL::Texture> temporary;
+	if (obj->storageMode() == MTL::StorageModePrivate) {
 		// Need to copy to a temporary texture instead.
-		id<MTLDevice> mtl_device = (__bridge id<MTLDevice>)device;
-		id<MTLCommandQueue> tmp = [mtl_device newCommandQueue];
-		id<MTLCommandBuffer> cmd = [tmp commandBuffer];
-		id<MTLBlitCommandEncoder> blit = [cmd blitCommandEncoder];
-		MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:obj.pixelFormat width:obj.width height:obj.height mipmapped:(obj.mipmapLevelCount > 1)];
-		desc.textureType = obj.textureType;
-		desc.depth = obj.depth;
-		desc.arrayLength = obj.arrayLength;
-		desc.storageMode = MTLStorageModeShared;
-		id<MTLTexture> temporary = [mtl_device newTextureWithDescriptor:desc];
-		[blit copyFromTexture:obj toTexture:temporary];
-		[blit endEncoding];
-		[cmd commit];
-		[cmd waitUntilCompleted];
-		obj = temporary;
+		NS::SharedPtr<MTL::CommandQueue> tmp = NS::TransferPtr(device->newCommandQueue());
+		MTL::CommandBuffer *cmd = tmp->commandBuffer();
+		MTL::BlitCommandEncoder *blit = cmd->blitCommandEncoder();
+		NS::SharedPtr<MTL::TextureDescriptor> desc = NS::TransferPtr(MTL::TextureDescriptor::texture2DDescriptor(obj->pixelFormat(), obj->width(), obj->height(), obj->mipmapLevelCount() > 1));
+		desc->setTextureType(obj->textureType());
+		desc->setDepth(obj->depth());
+		desc->setArrayLength(obj->arrayLength());
+		desc->setStorageMode(MTL::StorageModeShared);
+		temporary = NS::TransferPtr(device->newTexture(desc.get()));
+		blit->copyFromTexture(obj, temporary.get());
+		blit->endEncoding();
+		cmd->commit();
+		cmd->waitUntilCompleted();
+		obj = temporary.get();
 	}
 
-	DataFormat tex_format = pixel_formats->getDataFormat(obj.pixelFormat);
-	uint32_t tex_w = obj.width;
-	uint32_t tex_h = obj.height;
-	uint32_t tex_d = obj.depth;
-	uint32_t tex_mipmaps = obj.mipmapLevelCount;
+	DataFormat tex_format = pixel_formats->getDataFormat(obj->pixelFormat());
+	uint32_t tex_w = obj->width();
+	uint32_t tex_h = obj->height();
+	uint32_t tex_d = obj->depth();
+	uint32_t tex_mipmaps = obj->mipmapLevelCount();
 
 	// Must iteratively copy the texture data to a buffer.
 
@@ -630,8 +606,8 @@ Vector<uint8_t> RenderingDeviceDriverMetal::texture_get_data(TextureID p_texture
 	uint8_t *dest_ptr = image_data.ptrw();
 
 	for (uint32_t mm_i = 0; mm_i < tex_mipmaps; mm_i++) {
-		size_t rowPitch = pixel_formats->getBytesPerRow(obj.pixelFormat, tex_w);
-		size_t depthPitch = pixel_formats->getBytesPerLayer(obj.pixelFormat, rowPitch, tex_w);
+		size_t rowPitch = pixel_formats->getBytesPerRow(obj->pixelFormat(), tex_w);
+		size_t depthPitch = pixel_formats->getBytesPerLayer(obj->pixelFormat(), rowPitch, tex_w);
 		size_t arrayPitch = depthPitch * tex_d;
 
 		uint32_t bw = STEPIFY(tex_w, blockw);
@@ -641,12 +617,7 @@ Vector<uint8_t> RenderingDeviceDriverMetal::texture_get_data(TextureID p_texture
 		uint32_t bytes_per_img = bytes_per_row * bh;
 		uint32_t mip_size = bytes_per_img * tex_d;
 
-		[obj getBytes:(void *)dest_ptr
-				  bytesPerRow:bytes_per_row
-				bytesPerImage:bytes_per_img
-				   fromRegion:MTLRegionMake3D(0, 0, 0, bw, bh, tex_d)
-				  mipmapLevel:mm_i
-						slice:p_layer];
+		obj->getBytes(dest_ptr, bytes_per_row, bytes_per_img, MTL::Region(0, 0, 0, bw, bh, tex_d), mm_i, p_layer);
 
 		dest_ptr += mip_size;
 
@@ -697,114 +668,115 @@ bool RenderingDeviceDriverMetal::texture_can_make_shared_with_format(TextureID p
 
 #pragma mark - Sampler
 
-static const MTLCompareFunction COMPARE_OPERATORS[RD::COMPARE_OP_MAX] = {
-	MTLCompareFunctionNever,
-	MTLCompareFunctionLess,
-	MTLCompareFunctionEqual,
-	MTLCompareFunctionLessEqual,
-	MTLCompareFunctionGreater,
-	MTLCompareFunctionNotEqual,
-	MTLCompareFunctionGreaterEqual,
-	MTLCompareFunctionAlways,
+static const MTL::CompareFunction COMPARE_OPERATORS[RD::COMPARE_OP_MAX] = {
+	MTL::CompareFunctionNever,
+	MTL::CompareFunctionLess,
+	MTL::CompareFunctionEqual,
+	MTL::CompareFunctionLessEqual,
+	MTL::CompareFunctionGreater,
+	MTL::CompareFunctionNotEqual,
+	MTL::CompareFunctionGreaterEqual,
+	MTL::CompareFunctionAlways,
 };
 
-static const MTLStencilOperation STENCIL_OPERATIONS[RD::STENCIL_OP_MAX] = {
-	MTLStencilOperationKeep,
-	MTLStencilOperationZero,
-	MTLStencilOperationReplace,
-	MTLStencilOperationIncrementClamp,
-	MTLStencilOperationDecrementClamp,
-	MTLStencilOperationInvert,
-	MTLStencilOperationIncrementWrap,
-	MTLStencilOperationDecrementWrap,
+static const MTL::StencilOperation STENCIL_OPERATIONS[RD::STENCIL_OP_MAX] = {
+	MTL::StencilOperationKeep,
+	MTL::StencilOperationZero,
+	MTL::StencilOperationReplace,
+	MTL::StencilOperationIncrementClamp,
+	MTL::StencilOperationDecrementClamp,
+	MTL::StencilOperationInvert,
+	MTL::StencilOperationIncrementWrap,
+	MTL::StencilOperationDecrementWrap,
 };
 
-static const MTLBlendFactor BLEND_FACTORS[RD::BLEND_FACTOR_MAX] = {
-	MTLBlendFactorZero,
-	MTLBlendFactorOne,
-	MTLBlendFactorSourceColor,
-	MTLBlendFactorOneMinusSourceColor,
-	MTLBlendFactorDestinationColor,
-	MTLBlendFactorOneMinusDestinationColor,
-	MTLBlendFactorSourceAlpha,
-	MTLBlendFactorOneMinusSourceAlpha,
-	MTLBlendFactorDestinationAlpha,
-	MTLBlendFactorOneMinusDestinationAlpha,
-	MTLBlendFactorBlendColor,
-	MTLBlendFactorOneMinusBlendColor,
-	MTLBlendFactorBlendAlpha,
-	MTLBlendFactorOneMinusBlendAlpha,
-	MTLBlendFactorSourceAlphaSaturated,
-	MTLBlendFactorSource1Color,
-	MTLBlendFactorOneMinusSource1Color,
-	MTLBlendFactorSource1Alpha,
-	MTLBlendFactorOneMinusSource1Alpha,
+static const MTL::BlendFactor BLEND_FACTORS[RD::BLEND_FACTOR_MAX] = {
+	MTL::BlendFactorZero,
+	MTL::BlendFactorOne,
+	MTL::BlendFactorSourceColor,
+	MTL::BlendFactorOneMinusSourceColor,
+	MTL::BlendFactorDestinationColor,
+	MTL::BlendFactorOneMinusDestinationColor,
+	MTL::BlendFactorSourceAlpha,
+	MTL::BlendFactorOneMinusSourceAlpha,
+	MTL::BlendFactorDestinationAlpha,
+	MTL::BlendFactorOneMinusDestinationAlpha,
+	MTL::BlendFactorBlendColor,
+	MTL::BlendFactorOneMinusBlendColor,
+	MTL::BlendFactorBlendAlpha,
+	MTL::BlendFactorOneMinusBlendAlpha,
+	MTL::BlendFactorSourceAlphaSaturated,
+	MTL::BlendFactorSource1Color,
+	MTL::BlendFactorOneMinusSource1Color,
+	MTL::BlendFactorSource1Alpha,
+	MTL::BlendFactorOneMinusSource1Alpha,
 };
-static const MTLBlendOperation BLEND_OPERATIONS[RD::BLEND_OP_MAX] = {
-	MTLBlendOperationAdd,
-	MTLBlendOperationSubtract,
-	MTLBlendOperationReverseSubtract,
-	MTLBlendOperationMin,
-	MTLBlendOperationMax,
-};
-
-static const API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MTLSamplerAddressMode ADDRESS_MODES[RD::SAMPLER_REPEAT_MODE_MAX] = {
-	MTLSamplerAddressModeRepeat,
-	MTLSamplerAddressModeMirrorRepeat,
-	MTLSamplerAddressModeClampToEdge,
-	MTLSamplerAddressModeClampToBorderColor,
-	MTLSamplerAddressModeMirrorClampToEdge,
+static const MTL::BlendOperation BLEND_OPERATIONS[RD::BLEND_OP_MAX] = {
+	MTL::BlendOperationAdd,
+	MTL::BlendOperationSubtract,
+	MTL::BlendOperationReverseSubtract,
+	MTL::BlendOperationMin,
+	MTL::BlendOperationMax,
 };
 
-static const API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MTLSamplerBorderColor SAMPLER_BORDER_COLORS[RD::SAMPLER_BORDER_COLOR_MAX] = {
-	MTLSamplerBorderColorTransparentBlack,
-	MTLSamplerBorderColorTransparentBlack,
-	MTLSamplerBorderColorOpaqueBlack,
-	MTLSamplerBorderColorOpaqueBlack,
-	MTLSamplerBorderColorOpaqueWhite,
-	MTLSamplerBorderColorOpaqueWhite,
+static const MTL::SamplerAddressMode ADDRESS_MODES[RD::SAMPLER_REPEAT_MODE_MAX] = {
+	MTL::SamplerAddressModeRepeat,
+	MTL::SamplerAddressModeMirrorRepeat,
+	MTL::SamplerAddressModeClampToEdge,
+	MTL::SamplerAddressModeClampToBorderColor,
+	MTL::SamplerAddressModeMirrorClampToEdge,
+};
+
+static const MTL::SamplerBorderColor SAMPLER_BORDER_COLORS[RD::SAMPLER_BORDER_COLOR_MAX] = {
+	MTL::SamplerBorderColorTransparentBlack,
+	MTL::SamplerBorderColorTransparentBlack,
+	MTL::SamplerBorderColorOpaqueBlack,
+	MTL::SamplerBorderColorOpaqueBlack,
+	MTL::SamplerBorderColorOpaqueWhite,
+	MTL::SamplerBorderColorOpaqueWhite,
 };
 
 RDD::SamplerID RenderingDeviceDriverMetal::sampler_create(const SamplerState &p_state) {
-	MTLSamplerDescriptor *desc = [MTLSamplerDescriptor new];
-	desc.supportArgumentBuffers = YES;
+	NS::SharedPtr<MTL::SamplerDescriptor> desc = NS::TransferPtr(MTL::SamplerDescriptor::alloc()->init());
+	desc->setSupportArgumentBuffers(true);
 
-	desc.magFilter = p_state.mag_filter == SAMPLER_FILTER_LINEAR ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
-	desc.minFilter = p_state.min_filter == SAMPLER_FILTER_LINEAR ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
-	desc.mipFilter = p_state.mip_filter == SAMPLER_FILTER_LINEAR ? MTLSamplerMipFilterLinear : MTLSamplerMipFilterNearest;
+	desc->setMagFilter(p_state.mag_filter == SAMPLER_FILTER_LINEAR ? MTL::SamplerMinMagFilterLinear : MTL::SamplerMinMagFilterNearest);
+	desc->setMinFilter(p_state.min_filter == SAMPLER_FILTER_LINEAR ? MTL::SamplerMinMagFilterLinear : MTL::SamplerMinMagFilterNearest);
+	desc->setMipFilter(p_state.mip_filter == SAMPLER_FILTER_LINEAR ? MTL::SamplerMipFilterLinear : MTL::SamplerMipFilterNearest);
 
-	desc.sAddressMode = ADDRESS_MODES[p_state.repeat_u];
-	desc.tAddressMode = ADDRESS_MODES[p_state.repeat_v];
-	desc.rAddressMode = ADDRESS_MODES[p_state.repeat_w];
+	desc->setSAddressMode(ADDRESS_MODES[p_state.repeat_u]);
+	desc->setTAddressMode(ADDRESS_MODES[p_state.repeat_v]);
+	desc->setRAddressMode(ADDRESS_MODES[p_state.repeat_w]);
 
 	if (p_state.use_anisotropy) {
-		desc.maxAnisotropy = p_state.anisotropy_max;
+		desc->setMaxAnisotropy(p_state.anisotropy_max);
 	}
 
-	desc.compareFunction = COMPARE_OPERATORS[p_state.compare_op];
+	desc->setCompareFunction(COMPARE_OPERATORS[p_state.compare_op]);
 
-	desc.lodMinClamp = p_state.min_lod;
-	desc.lodMaxClamp = p_state.max_lod;
+	desc->setLodMinClamp(p_state.min_lod);
+	desc->setLodMaxClamp(p_state.max_lod);
 
-	desc.borderColor = SAMPLER_BORDER_COLORS[p_state.border_color];
+	desc->setBorderColor(SAMPLER_BORDER_COLORS[p_state.border_color]);
 
-	desc.normalizedCoordinates = !p_state.unnormalized_uvw;
+	desc->setNormalizedCoordinates(!p_state.unnormalized_uvw);
 
 #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 260000 || __IPHONE_OS_VERSION_MAX_ALLOWED >= 260000 || __TV_OS_VERSION_MAX_ALLOWED >= 260000 || __VISION_OS_VERSION_MAX_ALLOWED >= 260000
 	if (p_state.lod_bias != 0.0) {
-		if (@available(macOS 26.0, iOS 26.0, tvOS 26.0, visionOS 26.0, *)) {
-			desc.lodBias = p_state.lod_bias;
+		if (__builtin_available(macOS 26.0, iOS 26.0, tvOS 26.0, visionOS 26.0, *)) {
+			desc->setLodBias(p_state.lod_bias);
 		}
 	}
 #endif
 
-	id<MTLSamplerState> obj = [(__bridge id<MTLDevice>)device newSamplerStateWithDescriptor:desc];
-	ERR_FAIL_NULL_V_MSG(obj, SamplerID(), "newSamplerStateWithDescriptor failed");
-	return rid::make(obj);
+	MTL::SamplerState *obj = device->newSamplerState(desc.get());
+	ERR_FAIL_NULL_V_MSG(obj, SamplerID(), "newSamplerState failed");
+	return SamplerID(reinterpret_cast<uint64_t>(obj));
 }
 
 void RenderingDeviceDriverMetal::sampler_free(SamplerID p_sampler) {
-	rid::release(p_sampler);
+	MTL::SamplerState *obj = reinterpret_cast<MTL::SamplerState *>(p_sampler.id);
+	obj->release();
 }
 
 bool RenderingDeviceDriverMetal::sampler_is_format_supported_for_filter(DataFormat p_format, SamplerFilter p_filter) {
@@ -821,40 +793,43 @@ bool RenderingDeviceDriverMetal::sampler_is_format_supported_for_filter(DataForm
 #pragma mark - Vertex Array
 
 RDD::VertexFormatID RenderingDeviceDriverMetal::vertex_format_create(Span<VertexAttribute> p_vertex_attribs, const VertexAttributeBindingsMap &p_vertex_bindings) {
-	MTLVertexDescriptor *desc = MTLVertexDescriptor.vertexDescriptor;
+	MTL::VertexDescriptor *desc = MTL::VertexDescriptor::vertexDescriptor();
 
 	for (const VertexAttributeBindingsMap::KV &kv : p_vertex_bindings) {
 		uint32_t idx = get_metal_buffer_index_for_vertex_attribute_binding(kv.key);
-		MTLVertexBufferLayoutDescriptor *ld = desc.layouts[idx];
+		MTL::VertexBufferLayoutDescriptor *ld = desc->layouts()->object(idx);
 		if (kv.value.stride != 0) {
-			ld.stepFunction = kv.value.frequency == VERTEX_FREQUENCY_VERTEX ? MTLVertexStepFunctionPerVertex : MTLVertexStepFunctionPerInstance;
-			ld.stepRate = 1;
-			ld.stride = kv.value.stride;
+			ld->setStepFunction(kv.value.frequency == VERTEX_FREQUENCY_VERTEX ? MTL::VertexStepFunctionPerVertex : MTL::VertexStepFunctionPerInstance);
+			ld->setStepRate(1);
+			ld->setStride(kv.value.stride);
 		} else {
-			ld.stepFunction = MTLVertexStepFunctionConstant;
-			ld.stepRate = 0;
-			ld.stride = 0;
+			ld->setStepFunction(MTL::VertexStepFunctionConstant);
+			ld->setStepRate(0);
+			ld->setStride(0);
 		}
-		DEV_ASSERT(ld.stride == desc.layouts[idx].stride);
+		DEV_ASSERT(ld->stride() == desc->layouts()->object(idx)->stride());
 	}
 
 	for (const VertexAttribute &vf : p_vertex_attribs) {
-		desc.attributes[vf.location].format = (MTLVertexFormat)pixel_formats->getMTLVertexFormat(vf.format);
-		desc.attributes[vf.location].offset = vf.offset;
+		MTL::VertexAttributeDescriptor *attr = desc->attributes()->object(vf.location);
+		attr->setFormat((MTL::VertexFormat)pixel_formats->getMTLVertexFormat(vf.format));
+		attr->setOffset(vf.offset);
 		uint32_t idx = get_metal_buffer_index_for_vertex_attribute_binding(vf.binding);
-		desc.attributes[vf.location].bufferIndex = idx;
+		attr->setBufferIndex(idx);
 		if (vf.stride == 0) {
 			// Constant attribute, so we must determine the stride to satisfy Metal API.
-			uint32_t stride = desc.layouts[idx].stride;
-			desc.layouts[idx].stride = std::max(stride, vf.offset + pixel_formats->getBytesPerBlock(vf.format));
+			uint32_t stride = desc->layouts()->object(idx)->stride();
+			desc->layouts()->object(idx)->setStride(std::max(stride, vf.offset + pixel_formats->getBytesPerBlock(vf.format)));
 		}
 	}
 
-	return rid::make(desc);
+	desc->retain();
+	return VertexFormatID(reinterpret_cast<uint64_t>(desc));
 }
 
 void RenderingDeviceDriverMetal::vertex_format_free(VertexFormatID p_vertex_format) {
-	rid::release(p_vertex_format);
+	MTL::VertexDescriptor *obj = reinterpret_cast<MTL::VertexDescriptor *>(p_vertex_format.id);
+	obj->release();
 }
 
 #pragma mark - Barriers
@@ -1013,16 +988,16 @@ RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p
 
 	for (uint32_t i = 0; i < p_attachments.size(); i += 1) {
 		MDAttachment const &a = pass->attachments[i];
-		id<MTLTexture> tex = rid::get(p_attachments[i]);
-		if (tex == nil) {
+		MTL::Texture *tex = reinterpret_cast<MTL::Texture *>(p_attachments[i].id);
+		if (tex == nullptr) {
 #if DEV_ENABLED
 			WARN_PRINT("Invalid texture for attachment " + itos(i));
 #endif
 		}
 		if (a.samples > 1) {
-			if (tex.sampleCount != a.samples) {
+			if (tex->sampleCount() != a.samples) {
 #if DEV_ENABLED
-				WARN_PRINT("Mismatched sample count for attachment " + itos(i) + "; expected " + itos(a.samples) + ", got " + itos(tex.sampleCount));
+				WARN_PRINT("Mismatched sample count for attachment " + itos(i) + "; expected " + itos(a.samples) + ", got " + itos(tex->sampleCount()));
 #endif
 			}
 		}
@@ -1095,12 +1070,12 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 			RDD::ShaderID(),
 			"Shader was generated for a newer Apple GPU");
 
-	MTLCompileOptions *options = [MTLCompileOptions new];
+	NS::SharedPtr<MTL::CompileOptions> options = NS::TransferPtr(MTL::CompileOptions::alloc()->init());
 	uint32_t major = mtl_reflection_data.msl_version / 10000;
 	uint32_t minor = (mtl_reflection_data.msl_version / 100) % 100;
-	options.languageVersion = MTLLanguageVersion((major << 0x10) + minor);
-	if (@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, *)) {
-		options.enableLogging = mtl_reflection_data.needs_debug_logging();
+	options->setLanguageVersion(MTL::LanguageVersion((major << 0x10) + minor));
+	if (__builtin_available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, *)) {
+		options->setEnableLogging(mtl_reflection_data.needs_debug_logging());
 	}
 
 	HashMap<RD::ShaderStage, std::shared_ptr<MDLibrary>> libraries;
@@ -1136,9 +1111,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 		cd->name = shader_name;
 		cd->stage = shader.shader_stage;
 
-		NSString *source = [[NSString alloc] initWithBytes:(void *)decompressed_code.ptr()
-													length:shader_data.source_size
-												  encoding:NSUTF8StringEncoding];
+		NS::SharedPtr<NS::String> source = NS::TransferPtr(NS::String::alloc()->init((void *)decompressed_code.ptr(), shader_data.source_size, NS::UTF8StringEncoding, false));
 
 		std::shared_ptr<MDLibrary> library;
 		if (shader_data.library_size > 0) {
@@ -1148,17 +1121,17 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 			dispatch_data_t binary = dispatch_data_create(decompressed_code.ptr() + shader_data.source_size, shader_data.library_size, dispatch_get_main_queue(), DISPATCH_DATA_DESTRUCTOR_DEFAULT);
 			library = MDLibrary::create(cd, device,
 #if DEV_ENABLED
-					(__bridge NS::String *)source,
+					source.get(),
 #endif
 					binary);
 		} else {
-			options.preserveInvariance = shader_data.is_position_invariant;
+			options->setPreserveInvariance(shader_data.is_position_invariant);
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 150000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 180000 || __TV_OS_VERSION_MIN_REQUIRED >= 180000 || defined(VISIONOS_ENABLED)
-			options.mathMode = MTLMathModeFast;
+			options->setMathMode(MTL::MathModeFast);
 #else
-			options.fastMathEnabled = YES;
+			options->setFastMathEnabled(true);
 #endif
-			library = MDLibrary::create(cd, device, (__bridge NS::String *)source, (__bridge MTL::CompileOptions *)options, _shader_load_strategy);
+			library = MDLibrary::create(cd, device, source.get(), options.get(), _shader_load_strategy);
 		}
 
 		_shader_cache[shader_data.hash] = cd;
@@ -1230,7 +1203,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 				mtl_reflection_data.uses_argument_buffers(),
 				libraries[RD::ShaderStage::SHADER_STAGE_COMPUTE]);
 
-		cs->local = MTLSizeMake(refl.compute_local_size[0], refl.compute_local_size[1], refl.compute_local_size[2]);
+		cs->local = MTL::Size(refl.compute_local_size[0], refl.compute_local_size[1], refl.compute_local_size[2]);
 		shader = cs;
 	} else {
 		MDRenderShader *rs = new MDRenderShader(
@@ -1315,17 +1288,17 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 				case UNIFORM_TYPE_SAMPLER: {
 					size_t count = uniform.ids.size();
 					for (size_t j = 0; j < count; j += 1) {
-						id<MTLSamplerState> sampler = rid::get(uniform.ids[j]);
-						*(MTLResourceID *)(ptr + idx.sampler + j) = sampler.gpuResourceID;
+						MTL::SamplerState *sampler = reinterpret_cast<MTL::SamplerState *>(uniform.ids[j].id);
+						*(MTL::ResourceID *)(ptr + idx.sampler + j) = sampler->gpuResourceID();
 					}
 				} break;
 				case UNIFORM_TYPE_SAMPLER_WITH_TEXTURE: {
 					uint32_t count = uniform.ids.size() / 2;
 					for (uint32_t j = 0; j < count; j += 1) {
-						id<MTLSamplerState> sampler = rid::get(uniform.ids[j * 2 + 0]);
-						id<MTLTexture> texture = rid::get(uniform.ids[j * 2 + 1]);
-						*(MTLResourceID *)(ptr + idx.texture + j) = texture.gpuResourceID;
-						*(MTLResourceID *)(ptr + idx.sampler + j) = sampler.gpuResourceID;
+						MTL::SamplerState *sampler = reinterpret_cast<MTL::SamplerState *>(uniform.ids[j * 2 + 0].id);
+						MTL::Texture *texture = reinterpret_cast<MTL::Texture *>(uniform.ids[j * 2 + 1].id);
+						*(MTL::ResourceID *)(ptr + idx.texture + j) = texture->gpuResourceID();
+						*(MTL::ResourceID *)(ptr + idx.sampler + j) = sampler->gpuResourceID();
 
 						ADD_USAGE(texture, ui.active_stages, ui.usage);
 					}
@@ -1333,8 +1306,8 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 				case UNIFORM_TYPE_TEXTURE: {
 					size_t count = uniform.ids.size();
 					for (size_t j = 0; j < count; j += 1) {
-						id<MTLTexture> texture = rid::get(uniform.ids[j]);
-						*(MTLResourceID *)(ptr + idx.texture + j) = texture.gpuResourceID;
+						MTL::Texture *texture = reinterpret_cast<MTL::Texture *>(uniform.ids[j].id);
+						*(MTL::ResourceID *)(ptr + idx.texture + j) = texture->gpuResourceID();
 
 						ADD_USAGE(texture, ui.active_stages, ui.usage);
 					}
@@ -1342,14 +1315,15 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 				case UNIFORM_TYPE_IMAGE: {
 					size_t count = uniform.ids.size();
 					for (size_t j = 0; j < count; j += 1) {
-						id<MTLTexture> texture = rid::get(uniform.ids[j]);
-						*(MTLResourceID *)(ptr + idx.texture + j) = texture.gpuResourceID;
+						MTL::Texture *texture = reinterpret_cast<MTL::Texture *>(uniform.ids[j].id);
+						*(MTL::ResourceID *)(ptr + idx.texture + j) = texture->gpuResourceID();
 						ADD_USAGE(texture, ui.active_stages, ui.usage);
 
 						if (idx.buffer != UINT32_MAX) {
 							// Emulated atomic image access.
-							id<MTLBuffer> buffer = (texture.parentTexture ? texture.parentTexture : texture).buffer;
-							*(MTLGPUAddress *)(ptr + idx.buffer + j) = buffer.gpuAddress;
+							MTL::Texture *parent = texture->parentTexture();
+							MTL::Buffer *buffer = (parent ? parent : texture)->buffer();
+							*(MTLGPUAddress *)(ptr + idx.buffer + j) = buffer->gpuAddress();
 
 							ADD_USAGE(buffer, ui.active_stages, ui.usage);
 						}
@@ -1369,13 +1343,13 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 					const BufferInfo *buffer = (const BufferInfo *)uniform.ids[0].id;
 					*(MTLGPUAddress *)(ptr + idx.buffer) = buffer->metal_buffer.get()->gpuAddress();
 
-					ADD_USAGE((__bridge id<MTLResource>)buffer->metal_buffer.get(), ui.active_stages, ui.usage);
+					ADD_USAGE(buffer->metal_buffer.get(), ui.active_stages, ui.usage);
 				} break;
 				case UNIFORM_TYPE_INPUT_ATTACHMENT: {
 					size_t count = uniform.ids.size();
 					for (size_t j = 0; j < count; j += 1) {
-						id<MTLTexture> texture = rid::get(uniform.ids[j]);
-						*(MTLResourceID *)(ptr + idx.texture + j) = texture.gpuResourceID;
+						MTL::Texture *texture = reinterpret_cast<MTL::Texture *>(uniform.ids[j].id);
+						*(MTL::ResourceID *)(ptr + idx.texture + j) = texture->gpuResourceID();
 
 						ADD_USAGE(texture, ui.active_stages, ui.usage);
 					}
@@ -1386,7 +1360,7 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 					const MetalBufferDynamicInfo *buffer = (const MetalBufferDynamicInfo *)uniform.ids[0].id;
 					*(MTLGPUAddress *)(ptr + idx.buffer) = buffer->metal_buffer.get()->gpuAddress();
 
-					ADD_USAGE((__bridge id<MTLResource>)buffer->metal_buffer.get(), ui.active_stages, ui.usage);
+					ADD_USAGE(buffer->metal_buffer.get(), ui.active_stages, ui.usage);
 				} break;
 				default: {
 					DEV_ASSERT(false);
@@ -1410,12 +1384,14 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 		}
 
 		if (!is_dynamic) {
-			set->arg_buffer = [(__bridge id<MTLDevice>)device newBufferWithLength:shader_set.buffer_size options:base_hazard_tracking | MTLResourceStorageModePrivate];
+			set->arg_buffer = NS::TransferPtr(device->newBuffer(shader_set.buffer_size, base_hazard_tracking | MTL::ResourceStorageModePrivate));
 #if DEV_ENABLED
-			[set->arg_buffer setLabel:[NSString stringWithFormat:@"Uniform Set %u", p_set_index]];
+			char label[64];
+			snprintf(label, sizeof(label), "Uniform Set %u", p_set_index);
+			set->arg_buffer->setLabel(NS::String::string(label, NS::UTF8StringEncoding));
 #endif
-			_track_resource((__bridge MTL::Resource *)set->arg_buffer);
-			_copy_queue_copy_to_buffer(arg_buffer_data, (__bridge MTL::Buffer *)set->arg_buffer);
+			_track_resource(set->arg_buffer.get());
+			_copy_queue_copy_to_buffer(arg_buffer_data, set->arg_buffer.get());
 		} else {
 			// Store the arg buffer data for dynamic uniform sets.
 			// It will be copied and updated at bind time.
@@ -1437,7 +1413,7 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 void RenderingDeviceDriverMetal::uniform_set_free(UniformSetID p_uniform_set) {
 	MDUniformSet *obj = (MDUniformSet *)p_uniform_set.id;
 	if (obj->arg_buffer) {
-		_untrack_resource((__bridge MTL::Resource *)obj->arg_buffer);
+		_untrack_resource(obj->arg_buffer.get());
 	}
 	memdelete(obj);
 }
@@ -1543,19 +1519,12 @@ String RenderingDeviceDriverMetal::_pipeline_get_cache_path() const {
 
 bool RenderingDeviceDriverMetal::pipeline_cache_create(const Vector<uint8_t> &p_data) {
 	return false;
-	CharString path = _pipeline_get_cache_path().utf8();
-	NSString *nPath = [[NSString alloc] initWithBytesNoCopy:path.ptrw()
-													 length:path.length()
-												   encoding:NSUTF8StringEncoding
-											   freeWhenDone:NO];
-	MTLBinaryArchiveDescriptor *desc = [MTLBinaryArchiveDescriptor new];
-	if ([[NSFileManager defaultManager] fileExistsAtPath:nPath]) {
-		desc.url = [NSURL fileURLWithPath:nPath];
-	}
-	NSError *error = nil;
-	id<MTLBinaryArchive> objc_archive = [(__bridge id<MTLDevice>)device newBinaryArchiveWithDescriptor:desc error:&error];
-	archive = NS::TransferPtr((__bridge_retained MTL::BinaryArchive *)objc_archive);
-	return true;
+	// TODO: Convert to metal-cpp when pipeline caching is re-enabled
+	// CharString path = _pipeline_get_cache_path().utf8();
+	// NS::SharedPtr<MTL::BinaryArchiveDescriptor> desc = NS::TransferPtr(MTL::BinaryArchiveDescriptor::alloc()->init());
+	// NS::Error *error = nullptr;
+	// archive = NS::TransferPtr(device->newBinaryArchive(desc.get(), &error));
+	// return true;
 }
 
 void RenderingDeviceDriverMetal::pipeline_cache_free() {
@@ -1571,24 +1540,17 @@ Vector<uint8_t> RenderingDeviceDriverMetal::pipeline_cache_serialize() {
 		return Vector<uint8_t>();
 	}
 
-	CharString path = _pipeline_get_cache_path().utf8();
-
-	NSString *nPath = [[NSString alloc] initWithBytesNoCopy:path.ptrw()
-													 length:path.length()
-												   encoding:NSUTF8StringEncoding
-											   freeWhenDone:NO];
-	NSURL *target = [NSURL fileURLWithPath:nPath];
-	[NSFileManager.defaultManager createDirectoryAtURL:target.URLByDeletingLastPathComponent
-						   withIntermediateDirectories:YES
-											attributes:nil
-												 error:nil];
-	NSError *error = nil;
-	if ([(__bridge id<MTLBinaryArchive>)archive.get() serializeToURL:target error:&error]) {
-		return Vector<uint8_t>();
-	} else {
-		print_line(error.localizedDescription.UTF8String);
-		return Vector<uint8_t>();
-	}
+	// TODO: Convert to metal-cpp when pipeline caching is re-enabled
+	// CharString path = _pipeline_get_cache_path().utf8();
+	// NS::URL *target = NS::URL::fileURLWithPath(NS::String::string(path.get_data(), NS::UTF8StringEncoding));
+	// NS::Error *error = nullptr;
+	// if (archive->serializeToURL(target, &error)) {
+	//     return Vector<uint8_t>();
+	// } else {
+	//     print_line(error->localizedDescription()->utf8String());
+	//     return Vector<uint8_t>();
+	// }
+	return Vector<uint8_t>();
 }
 
 #pragma mark - Rendering
@@ -1612,15 +1574,15 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 		subpass.resolve_references = p_subpasses[i].resolve_references;
 	}
 
-	static const MTLLoadAction LOAD_ACTIONS[] = {
-		[ATTACHMENT_LOAD_OP_LOAD] = MTLLoadActionLoad,
-		[ATTACHMENT_LOAD_OP_CLEAR] = MTLLoadActionClear,
-		[ATTACHMENT_LOAD_OP_DONT_CARE] = MTLLoadActionDontCare,
+	static const MTL::LoadAction LOAD_ACTIONS[] = {
+		[ATTACHMENT_LOAD_OP_LOAD] = MTL::LoadActionLoad,
+		[ATTACHMENT_LOAD_OP_CLEAR] = MTL::LoadActionClear,
+		[ATTACHMENT_LOAD_OP_DONT_CARE] = MTL::LoadActionDontCare,
 	};
 
-	static const MTLStoreAction STORE_ACTIONS[] = {
-		[ATTACHMENT_STORE_OP_STORE] = MTLStoreActionStore,
-		[ATTACHMENT_STORE_OP_DONT_CARE] = MTLStoreActionDontCare,
+	static const MTL::StoreAction STORE_ACTIONS[] = {
+		[ATTACHMENT_STORE_OP_STORE] = MTL::StoreActionStore,
+		[ATTACHMENT_STORE_OP_DONT_CARE] = MTL::StoreActionDontCare,
 	};
 
 	Vector<MDAttachment> attachments;
@@ -1755,119 +1717,122 @@ void RenderingDeviceDriverMetal::command_render_set_line_width(CommandBufferID p
 // ----- PIPELINE -----
 
 RenderingDeviceDriverMetal::Result<NS::SharedPtr<MTL::Function>> RenderingDeviceDriverMetal::_create_function(MDLibrary *p_library, NS::String *p_name, VectorView<PipelineSpecializationConstant> &p_specialization_constants) {
-	id<MTLLibrary> library = (__bridge id<MTLLibrary>)p_library->get_library();
+	MTL::Library *library = p_library->get_library();
 	if (!library) {
 		ERR_FAIL_V_MSG(ERR_CANT_CREATE, "Failed to compile Metal library");
 	}
 
-	NSString *objc_name = (__bridge NSString *)p_name;
-	id<MTLFunction> function = [library newFunctionWithName:objc_name];
+	MTL::Function *function = library->newFunction(p_name);
 	ERR_FAIL_NULL_V_MSG(function, ERR_CANT_CREATE, "No function named main0");
 
-	if (function.functionConstantsDictionary.count == 0) {
-		return NS::TransferPtr((__bridge_retained MTL::Function *)function);
+	NS::Dictionary *constants_dict = function->functionConstantsDictionary();
+	if (constants_dict->count() == 0) {
+		return NS::TransferPtr(function);
 	}
 
-	NSArray<MTLFunctionConstant *> *constants = function.functionConstantsDictionary.allValues;
+	LocalVector<MTL::FunctionConstant *> constants;
+	NS::Enumerator<NS::String> *keys = constants_dict->keyEnumerator<NS::String>();
+	while (NS::String *key = keys->nextObject()) {
+		constants.push_back(constants_dict->object<MTL::FunctionConstant>(key));
+	}
+
+	// Check if already sorted by index.
 	bool is_sorted = true;
-	for (uint32_t i = 1; i < constants.count; i++) {
-		if (constants[i - 1].index > constants[i].index) {
+	for (NS::UInteger i = 1; i < constants.size(); i++) {
+		MTL::FunctionConstant *prev = constants[i - 1];
+		MTL::FunctionConstant *curr = constants[i];
+		if (prev->index() > curr->index()) {
 			is_sorted = false;
 			break;
 		}
 	}
 
 	if (!is_sorted) {
-		constants = [constants sortedArrayUsingComparator:^NSComparisonResult(MTLFunctionConstant *a, MTLFunctionConstant *b) {
-			if (a.index < b.index) {
-				return NSOrderedAscending;
-			} else if (a.index > b.index) {
-				return NSOrderedDescending;
-			} else {
-				return NSOrderedSame;
+		struct Comparator {
+			bool operator()(const MTL::FunctionConstant *p, const MTL::FunctionConstant *q) const {
+				return p->index() < q->index();
 			}
-		}];
+		};
+
+		constants.sort_custom<Comparator>();
 	}
 
-	// Initialize an array of integers representing the indexes of p_specialization_constants
+	// Build a sorted list of specialization constants by constant_id.
 	uint32_t *indexes = (uint32_t *)alloca(p_specialization_constants.size() * sizeof(uint32_t));
 	for (uint32_t i = 0; i < p_specialization_constants.size(); i++) {
 		indexes[i] = i;
 	}
-	// Sort the array of integers based on the values in p_specialization_constants
 	std::sort(indexes, &indexes[p_specialization_constants.size()], [&](int a, int b) {
 		return p_specialization_constants[a].constant_id < p_specialization_constants[b].constant_id;
 	});
 
-	MTLFunctionConstantValues *constantValues = [MTLFunctionConstantValues new];
-	uint32_t i = 0;
+	NS::SharedPtr<MTL::FunctionConstantValues> constantValues = NS::TransferPtr(MTL::FunctionConstantValues::alloc()->init());
+
+	// Merge the sorted constants from the function with the sorted user constants.
+	NS::UInteger i = 0;
 	uint32_t j = 0;
-	while (i < constants.count && j < p_specialization_constants.size()) {
-		MTLFunctionConstant *curr = constants[i];
+	while (i < constants.size() && j < p_specialization_constants.size()) {
+		MTL::FunctionConstant *curr = (MTL::FunctionConstant *)constants[i];
 		PipelineSpecializationConstant const &sc = p_specialization_constants[indexes[j]];
-		if (curr.index == sc.constant_id) {
-			switch (curr.type) {
-				case MTLDataTypeBool:
-				case MTLDataTypeFloat:
-				case MTLDataTypeInt:
-				case MTLDataTypeUInt: {
-					[constantValues setConstantValue:&sc.int_value
-												type:curr.type
-											 atIndex:sc.constant_id];
+		if (curr->index() == sc.constant_id) {
+			switch (curr->type()) {
+				case MTL::DataTypeBool:
+				case MTL::DataTypeFloat:
+				case MTL::DataTypeInt:
+				case MTL::DataTypeUInt: {
+					constantValues->setConstantValue(&sc.int_value, curr->type(), sc.constant_id);
 				} break;
 				default:
-					ERR_FAIL_V_MSG(NS::TransferPtr((__bridge_retained MTL::Function *)function), "Invalid specialization constant type");
+					ERR_FAIL_V_MSG(NS::TransferPtr(function), "Invalid specialization constant type");
 			}
 			i++;
 			j++;
-		} else if (curr.index < sc.constant_id) {
+		} else if (curr->index() < sc.constant_id) {
 			i++;
 		} else {
 			j++;
 		}
 	}
 
-	if (i != constants.count) {
-		MTLFunctionConstant *curr = constants[i];
-		if (curr.index == R32UI_ALIGNMENT_CONSTANT_ID) {
+	// Handle R32UI_ALIGNMENT_CONSTANT_ID if present.
+	if (i < constants.size()) {
+		MTL::FunctionConstant *curr = constants[i];
+		if (curr->index() == R32UI_ALIGNMENT_CONSTANT_ID) {
 			uint32_t alignment = 16; // TODO(sgc): is this always correct?
-			[constantValues setConstantValue:&alignment
-										type:curr.type
-									 atIndex:curr.index];
+			constantValues->setConstantValue(&alignment, curr->type(), curr->index());
 			i++;
 		}
 	}
 
-	NSError *err = nil;
-	function = [library newFunctionWithName:objc_name
-							 constantValues:constantValues
-									  error:&err];
-	ERR_FAIL_NULL_V_MSG(function, ERR_CANT_CREATE, String("specialized function failed: ") + err.localizedDescription.UTF8String);
+	NS::Error *err = nullptr;
+	function->release();
+	function = library->newFunction(p_name, constantValues.get(), &err);
+	ERR_FAIL_NULL_V_MSG(function, ERR_CANT_CREATE, String("specialized function failed: ") + (err ? err->localizedDescription()->utf8String() : "unknown error"));
 
-	return NS::TransferPtr((__bridge_retained MTL::Function *)function);
+	return NS::TransferPtr(function);
 }
 
-// RDD::PolygonCullMode == MTLCullMode.
-static_assert(ENUM_MEMBERS_EQUAL(RDD::POLYGON_CULL_DISABLED, MTLCullModeNone));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::POLYGON_CULL_FRONT, MTLCullModeFront));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::POLYGON_CULL_BACK, MTLCullModeBack));
+// RDD::PolygonCullMode == MTL::CullMode.
+static_assert(ENUM_MEMBERS_EQUAL(RDD::POLYGON_CULL_DISABLED, MTL::CullModeNone));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::POLYGON_CULL_FRONT, MTL::CullModeFront));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::POLYGON_CULL_BACK, MTL::CullModeBack));
 
-// RDD::StencilOperation == MTLStencilOperation.
-static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_KEEP, MTLStencilOperationKeep));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_ZERO, MTLStencilOperationZero));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_REPLACE, MTLStencilOperationReplace));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_INCREMENT_AND_CLAMP, MTLStencilOperationIncrementClamp));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_DECREMENT_AND_CLAMP, MTLStencilOperationDecrementClamp));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_INVERT, MTLStencilOperationInvert));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_INCREMENT_AND_WRAP, MTLStencilOperationIncrementWrap));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_DECREMENT_AND_WRAP, MTLStencilOperationDecrementWrap));
+// RDD::StencilOperation == MTL::StencilOperation.
+static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_KEEP, MTL::StencilOperationKeep));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_ZERO, MTL::StencilOperationZero));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_REPLACE, MTL::StencilOperationReplace));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_INCREMENT_AND_CLAMP, MTL::StencilOperationIncrementClamp));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_DECREMENT_AND_CLAMP, MTL::StencilOperationDecrementClamp));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_INVERT, MTL::StencilOperationInvert));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_INCREMENT_AND_WRAP, MTL::StencilOperationIncrementWrap));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::STENCIL_OP_DECREMENT_AND_WRAP, MTL::StencilOperationDecrementWrap));
 
-// RDD::BlendOperation == MTLBlendOperation.
-static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_ADD, MTLBlendOperationAdd));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_SUBTRACT, MTLBlendOperationSubtract));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_REVERSE_SUBTRACT, MTLBlendOperationReverseSubtract));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_MINIMUM, MTLBlendOperationMin));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_MAXIMUM, MTLBlendOperationMax));
+// RDD::BlendOperation == MTL::BlendOperation.
+static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_ADD, MTL::BlendOperationAdd));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_SUBTRACT, MTL::BlendOperationSubtract));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_REVERSE_SUBTRACT, MTL::BlendOperationReverseSubtract));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_MINIMUM, MTL::BlendOperationMin));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::BLEND_OP_MAXIMUM, MTL::BlendOperationMax));
 
 RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 		ShaderID p_shader,
@@ -1883,7 +1848,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 		uint32_t p_render_subpass,
 		VectorView<PipelineSpecializationConstant> p_specialization_constants) {
 	MDRenderShader *shader = (MDRenderShader *)(p_shader.id);
-	MTLVertexDescriptor *vert_desc = rid::get(p_vertex_format);
+	MTL::VertexDescriptor *vert_desc = reinterpret_cast<MTL::VertexDescriptor *>(p_vertex_format.id);
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
 
 	os_signpost_id_t reflect_id = os_signpost_id_make_with_pointer(LOG_INTERVALS, shader);
@@ -1894,7 +1859,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 
 	os_signpost_event_emit(LOG_DRIVER, OS_SIGNPOST_ID_EXCLUSIVE, "create_pipeline");
 
-	MTLRenderPipelineDescriptor *desc = [MTLRenderPipelineDescriptor new];
+	NS::SharedPtr<MTL::RenderPipelineDescriptor> desc = NS::TransferPtr(MTL::RenderPipelineDescriptor::alloc()->init());
 
 	{
 		MDSubpass const &subpass = pass->subpasses[p_render_subpass];
@@ -1902,7 +1867,7 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 			uint32_t attachment = subpass.color_references[i].attachment;
 			if (attachment != AttachmentReference::UNUSED) {
 				MDAttachment const &a = pass->attachments[attachment];
-				desc.colorAttachments[i].pixelFormat = a.format;
+				desc->colorAttachments()->object(i)->setPixelFormat(a.format);
 			}
 		}
 
@@ -1911,25 +1876,25 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 			MDAttachment const &a = pass->attachments[attachment];
 
 			if (a.type & MDAttachmentType::Depth) {
-				desc.depthAttachmentPixelFormat = a.format;
+				desc->setDepthAttachmentPixelFormat(a.format);
 			}
 
 			if (a.type & MDAttachmentType::Stencil) {
-				desc.stencilAttachmentPixelFormat = a.format;
+				desc->setStencilAttachmentPixelFormat(a.format);
 			}
 		}
 	}
 
-	desc.vertexDescriptor = vert_desc;
-	desc.label = conv::to_nsstring(shader->name);
+	desc->setVertexDescriptor(vert_desc);
+	desc->setLabel(conv::to_nsstring(shader->name));
 
 	if (shader->uses_argument_buffers) {
 		// Set mutability of argument buffers.
 		for (uint32_t i = 0; i < shader->sets.size(); i++) {
 			const UniformSet &set = shader->sets[i];
-			const MTLMutability mutability = set.dynamic_uniforms.is_empty() ? MTLMutabilityImmutable : MTLMutabilityMutable;
-			desc.vertexBuffers[i].mutability = mutability;
-			desc.fragmentBuffers[i].mutability = mutability;
+			const MTL::Mutability mutability = set.dynamic_uniforms.is_empty() ? MTL::MutabilityImmutable : MTL::MutabilityMutable;
+			desc->vertexBuffers()->object(i)->setMutability(mutability);
+			desc->fragmentBuffers()->object(i)->setMutability(mutability);
 		}
 	}
 
@@ -1939,69 +1904,69 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 
 	switch (p_render_primitive) {
 		case RENDER_PRIMITIVE_POINTS:
-			desc.inputPrimitiveTopology = MTLPrimitiveTopologyClassPoint;
+			desc->setInputPrimitiveTopology(MTL::PrimitiveTopologyClassPoint);
 			break;
 		case RENDER_PRIMITIVE_LINES:
 		case RENDER_PRIMITIVE_LINES_WITH_ADJACENCY:
 		case RENDER_PRIMITIVE_LINESTRIPS_WITH_ADJACENCY:
 		case RENDER_PRIMITIVE_LINESTRIPS:
-			desc.inputPrimitiveTopology = MTLPrimitiveTopologyClassLine;
+			desc->setInputPrimitiveTopology(MTL::PrimitiveTopologyClassLine);
 			break;
 		case RENDER_PRIMITIVE_TRIANGLES:
 		case RENDER_PRIMITIVE_TRIANGLE_STRIPS:
 		case RENDER_PRIMITIVE_TRIANGLES_WITH_ADJACENCY:
 		case RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_AJACENCY:
 		case RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_RESTART_INDEX:
-			desc.inputPrimitiveTopology = MTLPrimitiveTopologyClassTriangle;
+			desc->setInputPrimitiveTopology(MTL::PrimitiveTopologyClassTriangle);
 			break;
 		case RENDER_PRIMITIVE_TESSELATION_PATCH:
-			desc.maxTessellationFactor = p_rasterization_state.patch_control_points;
-			desc.tessellationPartitionMode = MTLTessellationPartitionModeInteger;
+			desc->setMaxTessellationFactor(p_rasterization_state.patch_control_points);
+			desc->setTessellationPartitionMode(MTL::TessellationPartitionModeInteger);
 			ERR_FAIL_V_MSG(PipelineID(), "tessellation not implemented");
 			break;
 		case RENDER_PRIMITIVE_MAX:
 		default:
-			desc.inputPrimitiveTopology = MTLPrimitiveTopologyClassUnspecified;
+			desc->setInputPrimitiveTopology(MTL::PrimitiveTopologyClassUnspecified);
 			break;
 	}
 
 	switch (p_render_primitive) {
 		case RENDER_PRIMITIVE_POINTS:
-			pipeline->raster_state.render_primitive = MTLPrimitiveTypePoint;
+			pipeline->raster_state.render_primitive = MTL::PrimitiveTypePoint;
 			break;
 		case RENDER_PRIMITIVE_LINES:
 		case RENDER_PRIMITIVE_LINES_WITH_ADJACENCY:
-			pipeline->raster_state.render_primitive = MTLPrimitiveTypeLine;
+			pipeline->raster_state.render_primitive = MTL::PrimitiveTypeLine;
 			break;
 		case RENDER_PRIMITIVE_LINESTRIPS:
 		case RENDER_PRIMITIVE_LINESTRIPS_WITH_ADJACENCY:
-			pipeline->raster_state.render_primitive = MTLPrimitiveTypeLineStrip;
+			pipeline->raster_state.render_primitive = MTL::PrimitiveTypeLineStrip;
 			break;
 		case RENDER_PRIMITIVE_TRIANGLES:
 		case RENDER_PRIMITIVE_TRIANGLES_WITH_ADJACENCY:
-			pipeline->raster_state.render_primitive = MTLPrimitiveTypeTriangle;
+			pipeline->raster_state.render_primitive = MTL::PrimitiveTypeTriangle;
 			break;
 		case RENDER_PRIMITIVE_TRIANGLE_STRIPS:
 		case RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_AJACENCY:
 		case RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_RESTART_INDEX:
-			pipeline->raster_state.render_primitive = MTLPrimitiveTypeTriangleStrip;
+			pipeline->raster_state.render_primitive = MTL::PrimitiveTypeTriangleStrip;
 			break;
 		default:
 			break;
 	}
 
 	// Rasterization.
-	desc.rasterizationEnabled = !p_rasterization_state.discard_primitives;
-	pipeline->raster_state.clip_mode = p_rasterization_state.enable_depth_clamp ? MTLDepthClipModeClamp : MTLDepthClipModeClip;
-	pipeline->raster_state.fill_mode = p_rasterization_state.wireframe ? MTLTriangleFillModeLines : MTLTriangleFillModeFill;
+	desc->setRasterizationEnabled(!p_rasterization_state.discard_primitives);
+	pipeline->raster_state.clip_mode = p_rasterization_state.enable_depth_clamp ? MTL::DepthClipModeClamp : MTL::DepthClipModeClip;
+	pipeline->raster_state.fill_mode = p_rasterization_state.wireframe ? MTL::TriangleFillModeLines : MTL::TriangleFillModeFill;
 
-	static const MTLCullMode CULL_MODE[3] = {
-		MTLCullModeNone,
-		MTLCullModeFront,
-		MTLCullModeBack,
+	static const MTL::CullMode CULL_MODE[3] = {
+		MTL::CullModeNone,
+		MTL::CullModeFront,
+		MTL::CullModeBack,
 	};
 	pipeline->raster_state.cull_mode = CULL_MODE[p_rasterization_state.cull_mode];
-	pipeline->raster_state.winding = (p_rasterization_state.front_face == POLYGON_FRONT_FACE_CLOCKWISE) ? MTLWindingClockwise : MTLWindingCounterClockwise;
+	pipeline->raster_state.winding = (p_rasterization_state.front_face == POLYGON_FRONT_FACE_CLOCKWISE) ? MTL::WindingClockwise : MTL::WindingCounterClockwise;
 	pipeline->raster_state.depth_bias.enabled = p_rasterization_state.depth_bias_enabled;
 	pipeline->raster_state.depth_bias.depth_bias = p_rasterization_state.depth_bias_constant_factor;
 	pipeline->raster_state.depth_bias.slope_scale = p_rasterization_state.depth_bias_slope_factor;
@@ -2019,20 +1984,20 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	if (p_multisample_state.sample_count > TEXTURE_SAMPLES_1) {
 		pipeline->sample_count = (*device_properties).find_nearest_supported_sample_count(p_multisample_state.sample_count);
 	}
-	desc.rasterSampleCount = static_cast<NSUInteger>(pipeline->sample_count);
-	desc.alphaToCoverageEnabled = p_multisample_state.enable_alpha_to_coverage;
-	desc.alphaToOneEnabled = p_multisample_state.enable_alpha_to_one;
+	desc->setRasterSampleCount(static_cast<NS::UInteger>(pipeline->sample_count));
+	desc->setAlphaToCoverageEnabled(p_multisample_state.enable_alpha_to_coverage);
+	desc->setAlphaToOneEnabled(p_multisample_state.enable_alpha_to_one);
 
 	// Depth buffer.
-	bool depth_enabled = p_depth_stencil_state.enable_depth_test && desc.depthAttachmentPixelFormat != MTLPixelFormatInvalid;
-	bool stencil_enabled = p_depth_stencil_state.enable_stencil && desc.stencilAttachmentPixelFormat != MTLPixelFormatInvalid;
+	bool depth_enabled = p_depth_stencil_state.enable_depth_test && desc->depthAttachmentPixelFormat() != MTL::PixelFormatInvalid;
+	bool stencil_enabled = p_depth_stencil_state.enable_stencil && desc->stencilAttachmentPixelFormat() != MTL::PixelFormatInvalid;
 
 	if (depth_enabled || stencil_enabled) {
-		MTLDepthStencilDescriptor *ds_desc = [MTLDepthStencilDescriptor new];
+		NS::SharedPtr<MTL::DepthStencilDescriptor> ds_desc = NS::TransferPtr(MTL::DepthStencilDescriptor::alloc()->init());
 
 		pipeline->raster_state.depth_test.enabled = depth_enabled;
-		ds_desc.depthWriteEnabled = p_depth_stencil_state.enable_depth_write;
-		ds_desc.depthCompareFunction = COMPARE_OPERATORS[p_depth_stencil_state.depth_compare_operator];
+		ds_desc->setDepthWriteEnabled(p_depth_stencil_state.enable_depth_write);
+		ds_desc->setDepthCompareFunction(COMPARE_OPERATORS[p_depth_stencil_state.depth_compare_operator]);
 		if (p_depth_stencil_state.enable_depth_range) {
 			WARN_PRINT("unsupported: depth range");
 		}
@@ -2044,33 +2009,33 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 
 			{
 				// Front.
-				MTLStencilDescriptor *sd = [MTLStencilDescriptor new];
-				sd.stencilFailureOperation = STENCIL_OPERATIONS[p_depth_stencil_state.front_op.fail];
-				sd.depthStencilPassOperation = STENCIL_OPERATIONS[p_depth_stencil_state.front_op.pass];
-				sd.depthFailureOperation = STENCIL_OPERATIONS[p_depth_stencil_state.front_op.depth_fail];
-				sd.stencilCompareFunction = COMPARE_OPERATORS[p_depth_stencil_state.front_op.compare];
-				sd.readMask = p_depth_stencil_state.front_op.compare_mask;
-				sd.writeMask = p_depth_stencil_state.front_op.write_mask;
-				ds_desc.frontFaceStencil = sd;
+				NS::SharedPtr<MTL::StencilDescriptor> sd = NS::TransferPtr(MTL::StencilDescriptor::alloc()->init());
+				sd->setStencilFailureOperation(STENCIL_OPERATIONS[p_depth_stencil_state.front_op.fail]);
+				sd->setDepthStencilPassOperation(STENCIL_OPERATIONS[p_depth_stencil_state.front_op.pass]);
+				sd->setDepthFailureOperation(STENCIL_OPERATIONS[p_depth_stencil_state.front_op.depth_fail]);
+				sd->setStencilCompareFunction(COMPARE_OPERATORS[p_depth_stencil_state.front_op.compare]);
+				sd->setReadMask(p_depth_stencil_state.front_op.compare_mask);
+				sd->setWriteMask(p_depth_stencil_state.front_op.write_mask);
+				ds_desc->setFrontFaceStencil(sd.get());
 			}
 			{
 				// Back.
-				MTLStencilDescriptor *sd = [MTLStencilDescriptor new];
-				sd.stencilFailureOperation = STENCIL_OPERATIONS[p_depth_stencil_state.back_op.fail];
-				sd.depthStencilPassOperation = STENCIL_OPERATIONS[p_depth_stencil_state.back_op.pass];
-				sd.depthFailureOperation = STENCIL_OPERATIONS[p_depth_stencil_state.back_op.depth_fail];
-				sd.stencilCompareFunction = COMPARE_OPERATORS[p_depth_stencil_state.back_op.compare];
-				sd.readMask = p_depth_stencil_state.back_op.compare_mask;
-				sd.writeMask = p_depth_stencil_state.back_op.write_mask;
-				ds_desc.backFaceStencil = sd;
+				NS::SharedPtr<MTL::StencilDescriptor> sd = NS::TransferPtr(MTL::StencilDescriptor::alloc()->init());
+				sd->setStencilFailureOperation(STENCIL_OPERATIONS[p_depth_stencil_state.back_op.fail]);
+				sd->setDepthStencilPassOperation(STENCIL_OPERATIONS[p_depth_stencil_state.back_op.pass]);
+				sd->setDepthFailureOperation(STENCIL_OPERATIONS[p_depth_stencil_state.back_op.depth_fail]);
+				sd->setStencilCompareFunction(COMPARE_OPERATORS[p_depth_stencil_state.back_op.compare]);
+				sd->setReadMask(p_depth_stencil_state.back_op.compare_mask);
+				sd->setWriteMask(p_depth_stencil_state.back_op.write_mask);
+				ds_desc->setBackFaceStencil(sd.get());
 			}
 		}
 
-		pipeline->depth_stencil = [(__bridge id<MTLDevice>)device newDepthStencilStateWithDescriptor:ds_desc];
-		ERR_FAIL_NULL_V_MSG(pipeline->depth_stencil, PipelineID(), "Failed to create depth stencil state");
+		pipeline->depth_stencil = NS::TransferPtr(device->newDepthStencilState(ds_desc.get()));
+		ERR_FAIL_COND_V_MSG(!pipeline->depth_stencil, PipelineID(), "Failed to create depth stencil state");
 	} else {
 		// TODO(sgc): FB13671991 raised as Apple docs state calling setDepthStencilState:nil is valid, but currently generates an exception
-		pipeline->depth_stencil = (__bridge id<MTLDepthStencilState>)get_resource_cache().get_depth_stencil_state(false, false);
+		pipeline->depth_stencil = NS::RetainPtr(get_resource_cache().get_depth_stencil_state(false, false));
 	}
 
 	// Blend state.
@@ -2082,30 +2047,31 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 
 			const PipelineColorBlendState::Attachment &bs = p_blend_state.attachments[i];
 
-			MTLRenderPipelineColorAttachmentDescriptor *ca_desc = desc.colorAttachments[p_color_attachments[i]];
-			ca_desc.blendingEnabled = bs.enable_blend;
+			MTL::RenderPipelineColorAttachmentDescriptor *ca_desc = desc->colorAttachments()->object(p_color_attachments[i]);
+			ca_desc->setBlendingEnabled(bs.enable_blend);
 
-			ca_desc.sourceRGBBlendFactor = BLEND_FACTORS[bs.src_color_blend_factor];
-			ca_desc.destinationRGBBlendFactor = BLEND_FACTORS[bs.dst_color_blend_factor];
-			ca_desc.rgbBlendOperation = BLEND_OPERATIONS[bs.color_blend_op];
+			ca_desc->setSourceRGBBlendFactor(BLEND_FACTORS[bs.src_color_blend_factor]);
+			ca_desc->setDestinationRGBBlendFactor(BLEND_FACTORS[bs.dst_color_blend_factor]);
+			ca_desc->setRgbBlendOperation(BLEND_OPERATIONS[bs.color_blend_op]);
 
-			ca_desc.sourceAlphaBlendFactor = BLEND_FACTORS[bs.src_alpha_blend_factor];
-			ca_desc.destinationAlphaBlendFactor = BLEND_FACTORS[bs.dst_alpha_blend_factor];
-			ca_desc.alphaBlendOperation = BLEND_OPERATIONS[bs.alpha_blend_op];
+			ca_desc->setSourceAlphaBlendFactor(BLEND_FACTORS[bs.src_alpha_blend_factor]);
+			ca_desc->setDestinationAlphaBlendFactor(BLEND_FACTORS[bs.dst_alpha_blend_factor]);
+			ca_desc->setAlphaBlendOperation(BLEND_OPERATIONS[bs.alpha_blend_op]);
 
-			ca_desc.writeMask = MTLColorWriteMaskNone;
+			MTL::ColorWriteMask writeMask = MTL::ColorWriteMaskNone;
 			if (bs.write_r) {
-				ca_desc.writeMask |= MTLColorWriteMaskRed;
+				writeMask |= MTL::ColorWriteMaskRed;
 			}
 			if (bs.write_g) {
-				ca_desc.writeMask |= MTLColorWriteMaskGreen;
+				writeMask |= MTL::ColorWriteMaskGreen;
 			}
 			if (bs.write_b) {
-				ca_desc.writeMask |= MTLColorWriteMaskBlue;
+				writeMask |= MTL::ColorWriteMaskBlue;
 			}
 			if (bs.write_a) {
-				ca_desc.writeMask |= MTLColorWriteMaskAlpha;
+				writeMask |= MTL::ColorWriteMaskAlpha;
 			}
+			ca_desc->setWriteMask(writeMask);
 		}
 
 		pipeline->raster_state.blend.r = p_blend_state.blend_constant.r;
@@ -2143,38 +2109,37 @@ RDD::PipelineID RenderingDeviceDriverMetal::render_pipeline_create(
 	if (shader->vert) {
 		Result<NS::SharedPtr<MTL::Function>> function_or_err = _create_function(shader->vert.get(), MTLSTR("main0"), p_specialization_constants);
 		ERR_FAIL_COND_V(std::holds_alternative<Error>(function_or_err), PipelineID());
-		desc.vertexFunction = (__bridge id<MTLFunction>)std::get<NS::SharedPtr<MTL::Function>>(function_or_err).get();
+		desc->setVertexFunction(std::get<NS::SharedPtr<MTL::Function>>(function_or_err).get());
 	}
 
 	if (shader->frag) {
 		Result<NS::SharedPtr<MTL::Function>> function_or_err = _create_function(shader->frag.get(), MTLSTR("main0"), p_specialization_constants);
 		ERR_FAIL_COND_V(std::holds_alternative<Error>(function_or_err), PipelineID());
-		desc.fragmentFunction = (__bridge id<MTLFunction>)std::get<NS::SharedPtr<MTL::Function>>(function_or_err).get();
+		desc->setFragmentFunction(std::get<NS::SharedPtr<MTL::Function>>(function_or_err).get());
 	}
 
-	MTLPipelineOption options = MTLPipelineOptionNone;
-	id<MTLBinaryArchive> arc = (__bridge id<MTLBinaryArchive>)archive.get();
+	MTL::PipelineOption options = MTL::PipelineOptionNone;
+	MTL::BinaryArchive *arc = archive.get();
 	if (arc) {
-		desc.binaryArchives = @[ arc ];
+		NS::SharedPtr<NS::Array> archives = NS::TransferPtr(NS::Array::array(reinterpret_cast<NS::Object *const *>(&arc), 1)->retain());
+		desc->setBinaryArchives(archives.get());
 		if (archive_fail_on_miss) {
-			options |= MTLPipelineOptionFailOnBinaryArchiveMiss;
+			options |= MTL::PipelineOptionFailOnBinaryArchiveMiss;
 		}
 	}
 
-	NSError *error = nil;
-	pipeline->state = [(__bridge id<MTLDevice>)device newRenderPipelineStateWithDescriptor:desc
-														   options:options
-														reflection:nil
-															 error:&error];
+	NS::Error *error = nullptr;
+	pipeline->state = NS::TransferPtr(device->newRenderPipelineState(desc.get(), options, nullptr, &error));
 	pipeline->shader = shader;
 
-	ERR_FAIL_COND_V_MSG(error != nil, PipelineID(), ([NSString stringWithFormat:@"error creating pipeline: %@", error.localizedDescription].UTF8String));
+	ERR_FAIL_COND_V_MSG(error != nullptr, PipelineID(), String("error creating pipeline: ") + error->localizedDescription()->utf8String());
+	ERR_FAIL_COND_V_MSG(!pipeline->state, PipelineID(), "Failed to create render pipeline state");
 
 	if (arc) {
-		if ([arc addRenderPipelineFunctionsWithDescriptor:desc error:&error]) {
+		if (arc->addRenderPipelineFunctions(desc.get(), &error)) {
 			archive_count += 1;
 		} else {
-			print_error(error.localizedDescription.UTF8String);
+			print_error(error->localizedDescription()->utf8String());
 		}
 	}
 
@@ -2220,46 +2185,45 @@ RDD::PipelineID RenderingDeviceDriverMetal::compute_pipeline_create(ShaderID p_s
 
 	Result<NS::SharedPtr<MTL::Function>> function_or_err = _create_function(shader->kernel.get(), MTLSTR("main0"), p_specialization_constants);
 	ERR_FAIL_COND_V(std::holds_alternative<Error>(function_or_err), PipelineID());
-	id<MTLFunction> function = (__bridge id<MTLFunction>)std::get<NS::SharedPtr<MTL::Function>>(function_or_err).get();
+	NS::SharedPtr<MTL::Function> function = std::get<NS::SharedPtr<MTL::Function>>(function_or_err);
 
-	MTLComputePipelineDescriptor *desc = [MTLComputePipelineDescriptor new];
-	desc.computeFunction = function;
-	desc.label = conv::to_nsstring(shader->name);
+	NS::SharedPtr<MTL::ComputePipelineDescriptor> desc = NS::TransferPtr(MTL::ComputePipelineDescriptor::alloc()->init());
+	desc->setComputeFunction(function.get());
+	desc->setLabel(conv::to_nsstring(shader->name));
 
 	if (shader->uses_argument_buffers) {
 		// Set mutability of argument buffers.
 		for (uint32_t i = 0; i < shader->sets.size(); i++) {
 			const UniformSet &set = shader->sets[i];
-			const MTLMutability mutability = set.dynamic_uniforms.is_empty() ? MTLMutabilityImmutable : MTLMutabilityMutable;
-			desc.buffers[i].mutability = mutability;
+			const MTL::Mutability mutability = set.dynamic_uniforms.is_empty() ? MTL::MutabilityImmutable : MTL::MutabilityMutable;
+			desc->buffers()->object(i)->setMutability(mutability);
 		}
 	}
 
-	MTLPipelineOption options = MTLPipelineOptionNone;
-	id<MTLBinaryArchive> arc = (__bridge id<MTLBinaryArchive>)archive.get();
+	MTL::PipelineOption options = MTL::PipelineOptionNone;
+	MTL::BinaryArchive *arc = archive.get();
 	if (arc) {
-		desc.binaryArchives = @[ arc ];
+		NS::SharedPtr<NS::Array> archives = NS::TransferPtr(NS::Array::array(reinterpret_cast<NS::Object *const *>(&arc), 1)->retain());
+		desc->setBinaryArchives(archives.get());
 		if (archive_fail_on_miss) {
-			options |= MTLPipelineOptionFailOnBinaryArchiveMiss;
+			options |= MTL::PipelineOptionFailOnBinaryArchiveMiss;
 		}
 	}
 
-	NSError *error;
-	id<MTLComputePipelineState> state = [(__bridge id<MTLDevice>)device newComputePipelineStateWithDescriptor:desc
-																			  options:options
-																		   reflection:nil
-																				error:&error];
-	ERR_FAIL_COND_V_MSG(error != nil, PipelineID(), ([NSString stringWithFormat:@"error creating pipeline: %@", error.localizedDescription].UTF8String));
+	NS::Error *error = nullptr;
+	NS::SharedPtr<MTL::ComputePipelineState> state = NS::TransferPtr(device->newComputePipelineState(desc.get(), options, nullptr, &error));
+	ERR_FAIL_COND_V_MSG(error != nullptr, PipelineID(), String("error creating pipeline: ") + error->localizedDescription()->utf8String());
+	ERR_FAIL_COND_V_MSG(!state, PipelineID(), "Failed to create compute pipeline state");
 
 	MDComputePipeline *pipeline = new MDComputePipeline(state);
 	pipeline->compute_state.local = shader->local;
 	pipeline->shader = shader;
 
 	if (arc) {
-		if ([arc addComputePipelineFunctionsWithDescriptor:desc error:&error]) {
+		if (arc->addComputePipelineFunctions(desc.get(), &error)) {
 			archive_count += 1;
 		} else {
-			print_error(error.localizedDescription.UTF8String);
+			print_error(error->localizedDescription()->utf8String());
 		}
 	}
 
@@ -2313,25 +2277,29 @@ void RenderingDeviceDriverMetal::command_insert_breadcrumb(CommandBufferID p_cmd
 Error RenderingDeviceDriverMetal::gpu_capture_begin() {
 	ERR_FAIL_COND_V_MSG(capture_active, ERR_ALREADY_IN_USE, "GPU capture already active");
 
-	// Determine target
-	MTLCaptureDescriptor *desc = [MTLCaptureDescriptor new];
-	desc.captureObject = (__bridge id<MTLDevice>)device;
-	if ([MTLCaptureManager.sharedCaptureManager supportsDestination:MTLCaptureDestinationDeveloperTools]) {
-		desc.destination = MTLCaptureDestinationDeveloperTools;
+	MTL::CaptureManager *capture_manager = MTL::CaptureManager::sharedCaptureManager();
+	NS::SharedPtr<MTL::CaptureDescriptor> desc = NS::TransferPtr(MTL::CaptureDescriptor::alloc()->init());
+	desc->setCaptureObject(device);
+	if (capture_manager->supportsDestination(MTL::CaptureDestinationDeveloperTools)) {
+		desc->setDestination(MTL::CaptureDestinationDeveloperTools);
 	} else {
-		desc.destination = MTLCaptureDestinationGPUTraceDocument;
+		desc->setDestination(MTL::CaptureDestinationGPUTraceDocument);
 		String project_name = ((String)GLOBAL_GET("application/config/name")).to_snake_case();
 		project_name.append_ascii(".");
 		project_name.append_utf32(get_api_name().span());
 		project_name.append_ascii(".gputrace");
-		NSURL *tmp_dir = [NSURL fileURLWithPath:NSProcessInfo.processInfo.environment[@"TMPDIR"]];
-		desc.outputURL = [tmp_dir URLByAppendingPathComponent:conv::to_nsstring(project_name)];
-		print_line(vformat("Xcode not detected, capturing to file: %s", conv::to_string(desc.outputURL.absoluteURL.absoluteString)));
+		NS::Dictionary *env = NS::ProcessInfo::processInfo()->environment();
+		NS::String *tmpdir = static_cast<NS::String *>(env->object(MTLSTR("TMPDIR")));
+		NS::SharedPtr<NS::URL> tmp_dir = NS::TransferPtr(NS::URL::alloc()->initFileURLWithPath(tmpdir));
+		NS::SharedPtr<NS::String> output_path = NS::TransferPtr(NS::String::alloc()->init(vformat("%s/%s", tmp_dir->fileSystemRepresentation(), project_name).utf8().get_data(), NS::UTF8StringEncoding));
+		NS::SharedPtr<NS::URL> output_url = NS::TransferPtr(NS::URL::alloc()->initFileURLWithPath(output_path.get()));
+		desc->setOutputURL(output_url.get());
+		print_line(vformat("Xcode not detected, capturing to file: %s", output_url->fileSystemRepresentation()));
 	}
-	NSError *error = nil;
-	capture_active = [MTLCaptureManager.sharedCaptureManager startCaptureWithDescriptor:desc error:&error];
+	NS::Error *error = nullptr;
+	capture_active = capture_manager->startCapture(desc.get(), &error);
 	if (!capture_active) {
-		ERR_FAIL_V_MSG(FAILED, vformat("Failed to start GPU capture: %s", conv::to_string(error.localizedDescription)));
+		ERR_FAIL_V_MSG(FAILED, vformat("Failed to start GPU capture: %s", error->localizedDescription()->utf8String()));
 	}
 
 	return OK;
@@ -2340,7 +2308,7 @@ Error RenderingDeviceDriverMetal::gpu_capture_begin() {
 void RenderingDeviceDriverMetal::gpu_capture_end() {
 	ERR_FAIL_COND_MSG(!capture_active, "GPU capture not active");
 
-	[MTLCaptureManager.sharedCaptureManager stopCapture];
+	MTL::CaptureManager::sharedCaptureManager()->stopCapture();
 	capture_active = false;
 }
 
@@ -2358,34 +2326,34 @@ void RenderingDeviceDriverMetal::end_segment() {
 #pragma mark - Misc
 
 void RenderingDeviceDriverMetal::set_object_name(ObjectType p_type, ID p_driver_id, const String &p_name) {
-	NSString *label = conv::to_nsstring(p_name);
+	NS::String *label = conv::to_nsstring(p_name);
 
 	switch (p_type) {
 		case OBJECT_TYPE_TEXTURE: {
-			id<MTLTexture> tex = rid::get(p_driver_id);
-			tex.label = label;
+			MTL::Texture *tex = reinterpret_cast<MTL::Texture *>(p_driver_id.id);
+			tex->setLabel(label);
 		} break;
 		case OBJECT_TYPE_SAMPLER: {
 			// Can't set label after creation.
 		} break;
 		case OBJECT_TYPE_BUFFER: {
 			const BufferInfo *buf_info = (const BufferInfo *)p_driver_id.id;
-			buf_info->metal_buffer.get()->setLabel((__bridge NS::String *)label);
+			buf_info->metal_buffer.get()->setLabel(label);
 		} break;
 		case OBJECT_TYPE_SHADER: {
 			MDShader *shader = (MDShader *)(p_driver_id.id);
 			if (MDRenderShader *rs = dynamic_cast<MDRenderShader *>(shader); rs != nullptr) {
-				rs->vert->set_label((__bridge NS::String *)label);
-				rs->frag->set_label((__bridge NS::String *)label);
+				rs->vert->set_label(label);
+				rs->frag->set_label(label);
 			} else if (MDComputeShader *cs = dynamic_cast<MDComputeShader *>(shader); cs != nullptr) {
-				cs->kernel->set_label((__bridge NS::String *)label);
+				cs->kernel->set_label(label);
 			} else {
 				DEV_ASSERT(false);
 			}
 		} break;
 		case OBJECT_TYPE_UNIFORM_SET: {
 			MDUniformSet *set = (MDUniformSet *)(p_driver_id.id);
-			set->arg_buffer.label = label;
+			set->arg_buffer->setLabel(label);
 		} break;
 		case OBJECT_TYPE_PIPELINE: {
 			// Can't set label after creation.
@@ -2433,11 +2401,11 @@ uint64_t RenderingDeviceDriverMetal::get_resource_native_handle(DriverResource p
 		}
 		case DRIVER_RESOURCE_COMPUTE_PIPELINE: {
 			MDComputePipeline *pipeline = (MDComputePipeline *)(p_driver_id.id);
-			return (uint64_t)(uintptr_t)(__bridge void *)pipeline->state;
+			return (uint64_t)(uintptr_t)pipeline->state.get();
 		}
 		case DRIVER_RESOURCE_RENDER_PIPELINE: {
 			MDRenderPipeline *pipeline = (MDRenderPipeline *)(p_driver_id.id);
-			return (uint64_t)(uintptr_t)(__bridge void *)pipeline->state;
+			return (uint64_t)(uintptr_t)pipeline->state.get();
 		}
 		default: {
 			return 0;
@@ -2488,7 +2456,7 @@ Error RenderingDeviceDriverMetal::_copy_queue_initialize() {
 	copy_queue_buffer = NS::TransferPtr(device->newBuffer(64 * 1024, MTL::ResourceStorageModeShared | MTL::ResourceHazardTrackingModeUntracked));
 	copy_queue_buffer.get()->setLabel(MTLSTR("Copy Command Scratch Buffer"));
 
-	if (@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 1.0, *)) {
+	if (__builtin_available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 1.0, *)) {
 		MTL::ResidencySetDescriptor *rs_desc = MTL::ResidencySetDescriptor::alloc()->init();
 		rs_desc->setInitialCapacity(2);
 		rs_desc->setLabel(MTLSTR("Copy Queue Residency Set"));
@@ -2692,11 +2660,11 @@ bool RenderingDeviceDriverMetal::is_composite_alpha_supported(CommandQueueID p_q
 }
 
 size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const {
-	return [(__bridge id<MTLDevice>)device minimumLinearTextureAlignmentForPixelFormat:(MTLPixelFormat)pixel_formats->getMTLPixelFormat(p_format)];
+	return device->minimumLinearTextureAlignmentForPixelFormat(pixel_formats->getMTLPixelFormat(p_format));
 }
 
-size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(MTLPixelFormat p_format) const {
-	return [(__bridge id<MTLDevice>)device minimumLinearTextureAlignmentForPixelFormat:p_format];
+size_t RenderingDeviceDriverMetal::get_texel_buffer_alignment_for_format(MTL::PixelFormat p_format) const {
+	return device->minimumLinearTextureAlignmentForPixelFormat(p_format);
 }
 
 /******************/
@@ -2741,23 +2709,22 @@ RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 Error RenderingDeviceDriverMetal::_create_device() {
 	device = context_driver->get_metal_device();
 
-	id<MTLCaptureScope> scope = [MTLCaptureManager.sharedCaptureManager newCaptureScopeWithDevice:(__bridge id<MTLDevice>)device];
-	device_scope = NS::TransferPtr((__bridge_retained MTL::CaptureScope *)scope);
-	scope.label = @"Godot Frame";
-	[scope beginScope]; // Allow Xcode to capture the first frame, if desired.
+	device_scope = NS::TransferPtr(MTL::CaptureManager::sharedCaptureManager()->newCaptureScope(device));
+	device_scope->setLabel(MTLSTR("Godot Frame"));
+	device_scope->beginScope(); // Allow Xcode to capture the first frame, if desired.
 
 	return OK;
 }
 
 void RenderingDeviceDriverMetal::_track_resource(MTL::Resource *p_resource) {
 	if (use_barriers) {
-		_residency_add.push_back((__bridge MTLResourceUnsafe)p_resource);
+		_residency_add.push_back(p_resource);
 	}
 }
 
 void RenderingDeviceDriverMetal::_untrack_resource(MTL::Resource *p_resource) {
 	if (use_barriers) {
-		_residency_del.push_back((__bridge MTLResourceUnsafe)p_resource);
+		_residency_del.push_back(p_resource);
 	}
 }
 
@@ -2769,7 +2736,7 @@ void RenderingDeviceDriverMetal::_check_capabilities() {
 API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0))
 static MetalDeviceProfile device_profile_from_properties(MetalDeviceProperties *p_device_properties) {
 	using DP = MetalDeviceProfile;
-	NSOperatingSystemVersion os_version = NSProcessInfo.processInfo.operatingSystemVersion;
+	NS::OperatingSystemVersion os_version = NS::ProcessInfo::processInfo()->operatingSystemVersion();
 	MetalDeviceProfile res;
 	res.min_os_version = MinOsVersion(os_version.majorVersion, os_version.minorVersion, os_version.patchVersion);
 #if TARGET_OS_OSX

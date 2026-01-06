@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  metal_objects_shared.mm                                               */
+/*  metal_objects_shared.cpp                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,35 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import "metal_objects_shared.h"
+#include "metal_objects_shared.h"
 
-#import "rendering_device_driver_metal.h"
+#include "rendering_device_driver_metal.h"
 
-#import <os/signpost.h>
-#import <simd/simd.h>
+#include <os/signpost.h>
+#include <simd/simd.h>
 
 #pragma mark - Resource Factory
 
 NS::SharedPtr<MTL::Function> MDResourceFactory::new_func(NS::String *p_source, NS::String *p_name, NS::Error **p_error) {
-	@autoreleasepool {
-		NSError *err = nil;
-		MTLCompileOptions *options = [MTLCompileOptions new];
-		id<MTLDevice> objcDevice = (__bridge id<MTLDevice>)device;
-		id<MTLLibrary> mtlLib = [objcDevice newLibraryWithSource:(__bridge NSString *)p_source
-														 options:options
-														   error:&err];
-		if (err) {
-			if (p_error != nullptr) {
-				*p_error = (__bridge_retained NS::Error *)err;
-			}
+	NS::SharedPtr<NS::AutoreleasePool> pool = NS::TransferPtr(NS::AutoreleasePool::alloc()->init());
+	NS::SharedPtr<MTL::CompileOptions> options = NS::TransferPtr(MTL::CompileOptions::alloc()->init());
+	NS::Error *err = nullptr;
+	NS::SharedPtr<MTL::Library> mtlLib = NS::TransferPtr(device->newLibrary(p_source, options.get(), &err));
+	if (err) {
+		if (p_error != nullptr) {
+			*p_error = err;
 		}
-		return NS::TransferPtr((__bridge_retained MTL::Function *)[mtlLib newFunctionWithName:(__bridge NSString *)p_name]);
 	}
+	return NS::TransferPtr(mtlLib->newFunction(p_name));
 }
 
 NS::SharedPtr<MTL::Function> MDResourceFactory::new_clear_vert_func(ClearAttKey &p_key) {
-	@autoreleasepool {
-		NSString *msl = [NSString stringWithFormat:@R"(
+	NS::SharedPtr<NS::AutoreleasePool> pool = NS::TransferPtr(NS::AutoreleasePool::alloc()->init());
+	char msl[1024];
+	snprintf(msl, sizeof(msl), R"(
 #include <metal_stdlib>
 using namespace metal;
 
@@ -79,17 +76,18 @@ vertex VaryingsPos vertClear(AttributesPos attributes [[stage_in]], constant Cle
     varyings.layer = uint(attributes.a_position.w);
     return varyings;
 }
-)", p_key.is_layered_rendering_enabled() ? " [[render_target_array_index]]" : "", ClearAttKey::DEPTH_INDEX];
+)",
+			p_key.is_layered_rendering_enabled() ? " [[render_target_array_index]]" : "", ClearAttKey::DEPTH_INDEX);
 
-		return new_func((__bridge NS::String *)msl, MTLSTR("vertClear"), nullptr);
-	}
+	return new_func(NS::String::string(msl, NS::UTF8StringEncoding), MTLSTR("vertClear"), nullptr);
 }
 
 NS::SharedPtr<MTL::Function> MDResourceFactory::new_clear_frag_func(ClearAttKey &p_key) {
-	@autoreleasepool {
-		NSMutableString *msl = [NSMutableString stringWithCapacity:2048];
+	NS::SharedPtr<NS::AutoreleasePool> pool = NS::TransferPtr(NS::AutoreleasePool::alloc()->init());
+	std::string msl;
+	msl.reserve(2048);
 
-		[msl appendFormat:@R"(
+	msl += R"(
 #include <metal_stdlib>
 using namespace metal;
 
@@ -102,134 +100,132 @@ typedef struct {
 } ClearColorsIn;
 
 typedef struct {
-)"];
+)";
 
-		for (uint32_t caIdx = 0; caIdx < ClearAttKey::COLOR_COUNT; caIdx++) {
-			if (p_key.is_enabled(caIdx)) {
-				NSString *typeStr = (__bridge NSString *)get_format_type_string((MTL::PixelFormat)p_key.pixel_formats[caIdx]);
-				[msl appendFormat:@"    %@4 color%u [[color(%u)]];\n", typeStr, caIdx, caIdx];
-			}
+	char line[128];
+	for (uint32_t caIdx = 0; caIdx < ClearAttKey::COLOR_COUNT; caIdx++) {
+		if (p_key.is_enabled(caIdx)) {
+			const char *typeStr = get_format_type_string((MTL::PixelFormat)p_key.pixel_formats[caIdx]);
+			snprintf(line, sizeof(line), "    %s4 color%u [[color(%u)]];\n", typeStr, caIdx, caIdx);
+			msl += line;
 		}
-		[msl appendFormat:@R"(} ClearColorsOut;
+	}
+	msl += R"(} ClearColorsOut;
 
 fragment ClearColorsOut fragClear(VaryingsPos varyings [[stage_in]], constant ClearColorsIn& ccIn [[buffer(0)]]) {
 
     ClearColorsOut ccOut;
-)"];
-		for (uint32_t caIdx = 0; caIdx < ClearAttKey::COLOR_COUNT; caIdx++) {
-			if (p_key.is_enabled(caIdx)) {
-				NSString *typeStr = (__bridge NSString *)get_format_type_string((MTL::PixelFormat)p_key.pixel_formats[caIdx]);
-				[msl appendFormat:@"    ccOut.color%u = %@4(ccIn.colors[%u]);\n", caIdx, typeStr, caIdx];
-			}
+)";
+	for (uint32_t caIdx = 0; caIdx < ClearAttKey::COLOR_COUNT; caIdx++) {
+		if (p_key.is_enabled(caIdx)) {
+			const char *typeStr = get_format_type_string((MTL::PixelFormat)p_key.pixel_formats[caIdx]);
+			snprintf(line, sizeof(line), "    ccOut.color%u = %s4(ccIn.colors[%u]);\n", caIdx, typeStr, caIdx);
+			msl += line;
 		}
-		[msl appendString:@R"(    return ccOut;
-})"];
-
-		return new_func((__bridge NS::String *)msl, MTLSTR("fragClear"), nullptr);
 	}
+	msl += R"(    return ccOut;
+})";
+
+	return new_func(NS::String::string(msl.c_str(), NS::UTF8StringEncoding), MTLSTR("fragClear"), nullptr);
 }
 
-NS::String *MDResourceFactory::get_format_type_string(MTL::PixelFormat p_fmt) {
+const char *MDResourceFactory::get_format_type_string(MTL::PixelFormat p_fmt) const {
 	switch (pixel_formats.getFormatType(p_fmt)) {
 		case MTLFormatType::ColorInt8:
 		case MTLFormatType::ColorInt16:
-			return MTLSTR("short");
+			return "short";
 		case MTLFormatType::ColorUInt8:
 		case MTLFormatType::ColorUInt16:
-			return MTLSTR("ushort");
+			return "ushort";
 		case MTLFormatType::ColorInt32:
-			return MTLSTR("int");
+			return "int";
 		case MTLFormatType::ColorUInt32:
-			return MTLSTR("uint");
+			return "uint";
 		case MTLFormatType::ColorHalf:
-			return MTLSTR("half");
+			return "half";
 		case MTLFormatType::ColorFloat:
 		case MTLFormatType::DepthStencil:
 		case MTLFormatType::Compressed:
-			return MTLSTR("float");
+			return "float";
 		case MTLFormatType::None:
-			return MTLSTR("unexpected_MTLPixelFormatInvalid");
+		default:
+			return "unexpected_MTLPixelFormatInvalid";
 	}
 }
 
 NS::SharedPtr<MTL::DepthStencilState> MDResourceFactory::new_depth_stencil_state(bool p_use_depth, bool p_use_stencil) {
-	MTLDepthStencilDescriptor *dsDesc = [MTLDepthStencilDescriptor new];
-	dsDesc.depthCompareFunction = MTLCompareFunctionAlways;
-	dsDesc.depthWriteEnabled = p_use_depth;
+	NS::SharedPtr<MTL::DepthStencilDescriptor> dsDesc = NS::TransferPtr(MTL::DepthStencilDescriptor::alloc()->init());
+	dsDesc->setDepthCompareFunction(MTL::CompareFunctionAlways);
+	dsDesc->setDepthWriteEnabled(p_use_depth);
 
 	if (p_use_stencil) {
-		MTLStencilDescriptor *sDesc = [MTLStencilDescriptor new];
-		sDesc.stencilCompareFunction = MTLCompareFunctionAlways;
-		sDesc.stencilFailureOperation = MTLStencilOperationReplace;
-		sDesc.depthFailureOperation = MTLStencilOperationReplace;
-		sDesc.depthStencilPassOperation = MTLStencilOperationReplace;
+		NS::SharedPtr<MTL::StencilDescriptor> sDesc = NS::TransferPtr(MTL::StencilDescriptor::alloc()->init());
+		sDesc->setStencilCompareFunction(MTL::CompareFunctionAlways);
+		sDesc->setStencilFailureOperation(MTL::StencilOperationReplace);
+		sDesc->setDepthFailureOperation(MTL::StencilOperationReplace);
+		sDesc->setDepthStencilPassOperation(MTL::StencilOperationReplace);
 
-		dsDesc.frontFaceStencil = sDesc;
-		dsDesc.backFaceStencil = sDesc;
+		dsDesc->setFrontFaceStencil(sDesc.get());
+		dsDesc->setBackFaceStencil(sDesc.get());
 	} else {
-		dsDesc.frontFaceStencil = nil;
-		dsDesc.backFaceStencil = nil;
+		dsDesc->setFrontFaceStencil(nullptr);
+		dsDesc->setBackFaceStencil(nullptr);
 	}
 
-	id<MTLDevice> objcDevice = (__bridge id<MTLDevice>)device;
-	return NS::TransferPtr((__bridge_retained MTL::DepthStencilState *)[objcDevice newDepthStencilStateWithDescriptor:dsDesc]);
+	return NS::TransferPtr(device->newDepthStencilState(dsDesc.get()));
 }
 
 NS::SharedPtr<MTL::RenderPipelineState> MDResourceFactory::new_clear_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
 	NS::SharedPtr<MTL::Function> vtxFunc = new_clear_vert_func(p_key);
 	NS::SharedPtr<MTL::Function> fragFunc = new_clear_frag_func(p_key);
-	MTLRenderPipelineDescriptor *plDesc = [MTLRenderPipelineDescriptor new];
-	plDesc.label = @"ClearRenderAttachments";
-	plDesc.vertexFunction = (__bridge id<MTLFunction>)vtxFunc.get();
-	plDesc.fragmentFunction = (__bridge id<MTLFunction>)fragFunc.get();
-	plDesc.rasterSampleCount = p_key.sample_count;
-	plDesc.inputPrimitiveTopology = MTLPrimitiveTopologyClassTriangle;
+	NS::SharedPtr<MTL::RenderPipelineDescriptor> plDesc = NS::TransferPtr(MTL::RenderPipelineDescriptor::alloc()->init());
+	plDesc->setLabel(MTLSTR("ClearRenderAttachments"));
+	plDesc->setVertexFunction(vtxFunc.get());
+	plDesc->setFragmentFunction(fragFunc.get());
+	plDesc->setRasterSampleCount(p_key.sample_count);
+	plDesc->setInputPrimitiveTopology(MTL::PrimitiveTopologyClassTriangle);
 
 	for (uint32_t caIdx = 0; caIdx < ClearAttKey::COLOR_COUNT; caIdx++) {
-		MTLRenderPipelineColorAttachmentDescriptor *colorDesc = plDesc.colorAttachments[caIdx];
-		colorDesc.pixelFormat = (MTLPixelFormat)p_key.pixel_formats[caIdx];
-		colorDesc.writeMask = p_key.is_enabled(caIdx) ? MTLColorWriteMaskAll : MTLColorWriteMaskNone;
+		MTL::RenderPipelineColorAttachmentDescriptor *colorDesc = plDesc->colorAttachments()->object(caIdx);
+		colorDesc->setPixelFormat((MTL::PixelFormat)p_key.pixel_formats[caIdx]);
+		colorDesc->setWriteMask(p_key.is_enabled(caIdx) ? MTL::ColorWriteMaskAll : MTL::ColorWriteMaskNone);
 	}
 
-	MTLPixelFormat mtlDepthFormat = p_key.depth_format();
+	MTL::PixelFormat mtlDepthFormat = (MTL::PixelFormat)p_key.depth_format();
 	if (pixel_formats.isDepthFormat(mtlDepthFormat)) {
-		plDesc.depthAttachmentPixelFormat = mtlDepthFormat;
+		plDesc->setDepthAttachmentPixelFormat(mtlDepthFormat);
 	}
 
-	MTLPixelFormat mtlStencilFormat = p_key.stencil_format();
+	MTL::PixelFormat mtlStencilFormat = (MTL::PixelFormat)p_key.stencil_format();
 	if (pixel_formats.isStencilFormat(mtlStencilFormat)) {
-		plDesc.stencilAttachmentPixelFormat = mtlStencilFormat;
+		plDesc->setStencilAttachmentPixelFormat(mtlStencilFormat);
 	}
 
-	MTLVertexDescriptor *vtxDesc = plDesc.vertexDescriptor;
+	MTL::VertexDescriptor *vtxDesc = plDesc->vertexDescriptor();
 
 	// Vertex attribute descriptors.
-	MTLVertexAttributeDescriptorArray *vaDescArray = vtxDesc.attributes;
-	MTLVertexAttributeDescriptor *vaDesc;
-	NSUInteger vtxBuffIdx = get_vertex_buffer_index(VERT_CONTENT_BUFFER_INDEX);
-	NSUInteger vtxStride = 0;
+	NS::UInteger vtxBuffIdx = get_vertex_buffer_index(VERT_CONTENT_BUFFER_INDEX);
+	NS::UInteger vtxStride = 0;
 
 	// Vertex location.
-	vaDesc = vaDescArray[0];
-	vaDesc.format = MTLVertexFormatFloat4;
-	vaDesc.bufferIndex = vtxBuffIdx;
-	vaDesc.offset = vtxStride;
+	MTL::VertexAttributeDescriptor *vaDesc = vtxDesc->attributes()->object(0);
+	vaDesc->setFormat(MTL::VertexFormatFloat4);
+	vaDesc->setBufferIndex(vtxBuffIdx);
+	vaDesc->setOffset(vtxStride);
 	vtxStride += sizeof(simd::float4);
 
 	// Vertex attribute buffer.
-	MTLVertexBufferLayoutDescriptorArray *vbDescArray = vtxDesc.layouts;
-	MTLVertexBufferLayoutDescriptor *vbDesc = vbDescArray[vtxBuffIdx];
-	vbDesc.stepFunction = MTLVertexStepFunctionPerVertex;
-	vbDesc.stepRate = 1;
-	vbDesc.stride = vtxStride;
+	MTL::VertexBufferLayoutDescriptor *vbDesc = vtxDesc->layouts()->object(vtxBuffIdx);
+	vbDesc->setStepFunction(MTL::VertexStepFunctionPerVertex);
+	vbDesc->setStepRate(1);
+	vbDesc->setStride(vtxStride);
 
-	id<MTLDevice> objcDevice = (__bridge id<MTLDevice>)device;
-	NSError *err = nil;
-	id<MTLRenderPipelineState> state = [objcDevice newRenderPipelineStateWithDescriptor:plDesc error:&err];
+	NS::Error *err = nullptr;
+	NS::SharedPtr<MTL::RenderPipelineState> state = NS::TransferPtr(device->newRenderPipelineState(plDesc.get(), &err));
 	if (p_error != nullptr) {
-		*p_error = (__bridge_retained NS::Error *)err;
+		*p_error = err;
 	}
-	return NS::TransferPtr((__bridge_retained MTL::RenderPipelineState *)state);
+	return state;
 }
 
 NS::SharedPtr<MTL::RenderPipelineState> MDResourceFactory::new_empty_draw_pipeline_state(ClearAttKey &p_key, NS::Error **p_error) {
@@ -238,51 +234,58 @@ NS::SharedPtr<MTL::RenderPipelineState> MDResourceFactory::new_empty_draw_pipeli
 	DEV_ASSERT(!p_key.is_depth_enabled());
 	DEV_ASSERT(!p_key.is_stencil_enabled());
 
-	@autoreleasepool {
-		NSMutableString *msl = [NSMutableString stringWithCapacity:512];
-		[msl appendString:@"#include <metal_stdlib>\nusing namespace metal;\n\n"];
-		[msl appendString:@"struct FullscreenNoopOut {\n    float4 position [[position]];\n};\n\n"];
-		[msl appendString:@"vertex FullscreenNoopOut fullscreenNoopVert(uint vid [[vertex_id]]) {\n"];
-		[msl appendString:@"    float2 positions[3] = { float2(-1.0, -1.0), float2(3.0, -1.0), float2(-1.0, 3.0) };\n"];
-		[msl appendString:@"    float2 pos = positions[vid];\n\n"];
-		[msl appendString:@"    FullscreenNoopOut out;\n"];
-		[msl appendString:@"    out.position = float4(pos, 0.0, 1.0);\n"];
-		[msl appendString:@"    return out;\n"];
-		[msl appendString:@"}\n\nfragment void fullscreenNoopFrag(float4 gl_FragCoord [[position]]) {\n}\n"];
+	NS::SharedPtr<NS::AutoreleasePool> pool = NS::TransferPtr(NS::AutoreleasePool::alloc()->init());
+	static const char *msl = R"(#include <metal_stdlib>
+using namespace metal;
 
-		NSError *err = nil;
-		MTLCompileOptions *options = [MTLCompileOptions new];
-		id<MTLDevice> objcDevice = (__bridge id<MTLDevice>)device;
-		id<MTLLibrary> mtlLib = [objcDevice newLibraryWithSource:msl options:options error:&err];
-		if (err && p_error != nullptr) {
-			*p_error = (__bridge_retained NS::Error *)err;
-		}
+struct FullscreenNoopOut {
+    float4 position [[position]];
+};
 
-		if (mtlLib == nil) {
-			return {};
-		}
+vertex FullscreenNoopOut fullscreenNoopVert(uint vid [[vertex_id]]) {
+    float2 positions[3] = { float2(-1.0, -1.0), float2(3.0, -1.0), float2(-1.0, 3.0) };
+    float2 pos = positions[vid];
 
-		id<MTLFunction> vtxFunc = [mtlLib newFunctionWithName:@"fullscreenNoopVert"];
-		id<MTLFunction> fragFunc = [mtlLib newFunctionWithName:@"fullscreenNoopFrag"];
+    FullscreenNoopOut out;
+    out.position = float4(pos, 0.0, 1.0);
+    return out;
+}
 
-		MTLRenderPipelineDescriptor *plDesc = [MTLRenderPipelineDescriptor new];
-		plDesc.label = @"EmptyDrawFullscreenTriangle";
-		plDesc.vertexFunction = vtxFunc;
-		plDesc.fragmentFunction = fragFunc;
-		plDesc.rasterSampleCount = p_key.sample_count ? p_key.sample_count : 1;
-		plDesc.inputPrimitiveTopology = MTLPrimitiveTopologyClassTriangle;
+fragment void fullscreenNoopFrag(float4 gl_FragCoord [[position]]) {
+}
+)";
 
-		MTLRenderPipelineColorAttachmentDescriptor *colorDesc = plDesc.colorAttachments[0];
-		colorDesc.pixelFormat = (MTLPixelFormat)p_key.pixel_formats[0];
-		colorDesc.writeMask = MTLColorWriteMaskNone;
-
-		err = nil;
-		id<MTLRenderPipelineState> state = [objcDevice newRenderPipelineStateWithDescriptor:plDesc error:&err];
-		if (p_error != nullptr && err != nil) {
-			*p_error = (__bridge_retained NS::Error *)err;
-		}
-		return NS::TransferPtr((__bridge_retained MTL::RenderPipelineState *)state);
+	NS::Error *err = nullptr;
+	NS::SharedPtr<MTL::CompileOptions> options = NS::TransferPtr(MTL::CompileOptions::alloc()->init());
+	NS::SharedPtr<MTL::Library> mtlLib = NS::TransferPtr(device->newLibrary(NS::String::string(msl, NS::UTF8StringEncoding), options.get(), &err));
+	if (err && p_error != nullptr) {
+		*p_error = err;
 	}
+
+	if (mtlLib.get() == nullptr) {
+		return {};
+	}
+
+	NS::SharedPtr<MTL::Function> vtxFunc = NS::TransferPtr(mtlLib->newFunction(MTLSTR("fullscreenNoopVert")));
+	NS::SharedPtr<MTL::Function> fragFunc = NS::TransferPtr(mtlLib->newFunction(MTLSTR("fullscreenNoopFrag")));
+
+	NS::SharedPtr<MTL::RenderPipelineDescriptor> plDesc = NS::TransferPtr(MTL::RenderPipelineDescriptor::alloc()->init());
+	plDesc->setLabel(MTLSTR("EmptyDrawFullscreenTriangle"));
+	plDesc->setVertexFunction(vtxFunc.get());
+	plDesc->setFragmentFunction(fragFunc.get());
+	plDesc->setRasterSampleCount(p_key.sample_count ? p_key.sample_count : 1);
+	plDesc->setInputPrimitiveTopology(MTL::PrimitiveTopologyClassTriangle);
+
+	MTL::RenderPipelineColorAttachmentDescriptor *colorDesc = plDesc->colorAttachments()->object(0);
+	colorDesc->setPixelFormat((MTL::PixelFormat)p_key.pixel_formats[0]);
+	colorDesc->setWriteMask(MTL::ColorWriteMaskNone);
+
+	err = nullptr;
+	NS::SharedPtr<MTL::RenderPipelineState> state = NS::TransferPtr(device->newRenderPipelineState(plDesc.get(), &err));
+	if (p_error != nullptr && err != nullptr) {
+		*p_error = err;
+	}
+	return state;
 }
 
 #pragma mark - Resource Cache
@@ -381,55 +384,24 @@ void MDAttachment::linkToSubpass(const MDRenderPass &p_pass) {
 	}
 }
 
-MTLStoreAction MDAttachment::getMTLStoreAction(MDSubpass const &p_subpass,
+MTL::StoreAction MDAttachment::getMTLStoreAction(MDSubpass const &p_subpass,
 		bool p_is_rendering_entire_area,
 		bool p_has_resolve,
 		bool p_can_resolve,
 		bool p_is_stencil) const {
 	if (!p_is_rendering_entire_area || !isLastUseOf(p_subpass)) {
-		return p_has_resolve && p_can_resolve ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
+		return p_has_resolve && p_can_resolve ? MTL::StoreActionStoreAndMultisampleResolve : MTL::StoreActionStore;
 	}
 
 	switch (p_is_stencil ? stencilStoreAction : storeAction) {
-		case MTLStoreActionStore:
-			return p_has_resolve && p_can_resolve ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
-		case MTLStoreActionDontCare:
-			return p_has_resolve ? (p_can_resolve ? MTLStoreActionMultisampleResolve : MTLStoreActionStore) : MTLStoreActionDontCare;
+		case MTL::StoreActionStore:
+			return p_has_resolve && p_can_resolve ? MTL::StoreActionStoreAndMultisampleResolve : MTL::StoreActionStore;
+		case MTL::StoreActionDontCare:
+			return p_has_resolve ? (p_can_resolve ? MTL::StoreActionMultisampleResolve : MTL::StoreActionStore) : MTL::StoreActionDontCare;
 
 		default:
-			return MTLStoreActionStore;
+			return MTL::StoreActionStore;
 	}
-}
-
-bool MDAttachment::configureDescriptor(MTLRenderPassAttachmentDescriptor *p_desc,
-		PixelFormats &p_pf,
-		MDSubpass const &p_subpass,
-		id<MTLTexture> p_attachment,
-		bool p_is_rendering_entire_area,
-		bool p_has_resolve,
-		bool p_can_resolve,
-		bool p_is_stencil) const {
-	p_desc.texture = p_attachment;
-
-	MTLLoadAction load;
-	if (!p_is_rendering_entire_area || !isFirstUseOf(p_subpass)) {
-		load = MTLLoadActionLoad;
-	} else {
-		load = p_is_stencil ? stencilLoadAction : loadAction;
-	}
-
-	p_desc.loadAction = load;
-
-	MTLPixelFormat mtlFmt = p_attachment.pixelFormat;
-	bool isDepthFormat = p_pf.isDepthFormat(mtlFmt);
-	bool isStencilFormat = p_pf.isStencilFormat(mtlFmt);
-	if (isStencilFormat && !p_is_stencil && !isDepthFormat) {
-		p_desc.storeAction = MTLStoreActionDontCare;
-	} else {
-		p_desc.storeAction = getMTLStoreAction(p_subpass, p_is_rendering_entire_area, p_has_resolve, p_can_resolve, p_is_stencil);
-	}
-
-	return load == MTLLoadActionClear;
 }
 
 bool MDAttachment::shouldClear(const MDSubpass &p_subpass, bool p_is_stencil) const {
@@ -484,10 +456,10 @@ void MDCommandBufferBase::render_set_scissor(VectorView<Rect2i> p_scissors) {
 	for (uint32_t i = 0; i < p_scissors.size(); i += 1) {
 		Rect2i const &vp = p_scissors[i];
 		state.scissors[i] = {
-			.x = static_cast<NSUInteger>(vp.position.x),
-			.y = static_cast<NSUInteger>(vp.position.y),
-			.width = static_cast<NSUInteger>(vp.size.width),
-			.height = static_cast<NSUInteger>(vp.size.height),
+			.x = static_cast<NS::UInteger>(vp.position.x),
+			.y = static_cast<NS::UInteger>(vp.position.y),
+			.width = static_cast<NS::UInteger>(vp.size.width),
+			.height = static_cast<NS::UInteger>(vp.size.height),
 		};
 	}
 	state.dirty.set_flag(RenderStateBase::DIRTY_SCISSOR);
@@ -579,9 +551,9 @@ void MDCommandBufferBase::_end_render_pass() {
 			continue;
 		}
 
-		id<MTLTexture> resolve_tex = fb_info.get_texture(resolve_index);
+		MTL::Texture *resolve_tex = fb_info.get_texture(resolve_index);
 
-		CRASH_COND_MSG(!flags::all(pf.getCapabilities(resolve_tex.pixelFormat), kMTLFmtCapsResolve), "not implemented: unresolvable texture types");
+		CRASH_COND_MSG(!flags::all(pf.getCapabilities(resolve_tex->pixelFormat()), kMTLFmtCapsResolve), "not implemented: unresolvable texture types");
 		// see: https://github.com/KhronosGroup/MoltenVK/blob/d20d13fe2735adb845636a81522df1b9d89c0fba/MoltenVK/MoltenVK/GPUObjects/MVKRenderPass.mm#L407
 	}
 
@@ -695,39 +667,39 @@ void MDLibrary::set_label(NS::String *p_label) {
 
 /// Loads the MTLLibrary when the library is first accessed.
 class MDLazyLibrary final : public MDLibrary {
-	id<MTLLibrary> _library = nil;
-	NSError *_error = nil;
+	NS::SharedPtr<MTL::Library> _library;
+	NS::Error *_error = nullptr;
 	std::shared_mutex _mu;
 	bool _loaded = false;
-	id<MTLDevice> _device = nil;
-	NSString *_source = nil;
-	MTLCompileOptions *_options = nil;
+	MTL::Device *_device = nullptr;
+	NS::SharedPtr<NS::String> _source;
+	NS::SharedPtr<MTL::CompileOptions> _options;
 
 	void _load();
 
 public:
 	MDLazyLibrary(ShaderCacheEntry *p_entry,
-			id<MTLDevice> p_device,
-			NSString *p_source,
-			MTLCompileOptions *p_options);
+			MTL::Device *p_device,
+			NS::String *p_source,
+			MTL::CompileOptions *p_options);
 
 	MTL::Library *get_library() override;
 	NS::Error *get_error() override;
 };
 
 MDLazyLibrary::MDLazyLibrary(ShaderCacheEntry *p_entry,
-		id<MTLDevice> p_device,
-		NSString *p_source,
-		MTLCompileOptions *p_options) :
+		MTL::Device *p_device,
+		NS::String *p_source,
+		MTL::CompileOptions *p_options) :
 		MDLibrary(p_entry
 #ifdef DEV_ENABLED
 				,
-				(__bridge NS::String *)p_source
+				p_source
 #endif
 				),
 		_device(p_device),
-		_source(p_source),
-		_options(p_options) {
+		_source(NS::RetainPtr(p_source)),
+		_options(NS::RetainPtr(p_options)) {
 }
 
 void MDLazyLibrary::_load() {
@@ -747,32 +719,32 @@ void MDLazyLibrary::_load() {
 	os_signpost_interval_begin(LOG_INTERVALS, compile_id, "shader_compile",
 			"shader_name=%{public}s stage=%{public}s hash=%X",
 			_entry->name.get_data(), SHADER_STAGE_NAMES[_entry->stage], _entry->key.short_sha());
-	NSError *error = nil;
-	_library = [_device newLibraryWithSource:_source options:_options error:&error];
+	NS::Error *error = nullptr;
+	_library = NS::TransferPtr(_device->newLibrary(_source.get(), _options.get(), &error));
 	os_signpost_interval_end(LOG_INTERVALS, compile_id, "shader_compile");
 	_error = error;
-	_device = nil;
-	_source = nil;
-	_options = nil;
+	_device = nullptr;
+	_source.reset();
+	_options.reset();
 	_loaded = true;
 }
 
 MTL::Library *MDLazyLibrary::get_library() {
 	_load();
-	return (__bridge MTL::Library *)_library;
+	return _library.get();
 }
 
 NS::Error *MDLazyLibrary::get_error() {
 	_load();
-	return (__bridge NS::Error *)_error;
+	return _error;
 }
 
 #pragma mark - MDImmediateLibrary
 
-/// Loads the MTLLibrary immediately on initialization, using an asynchronous API.
+/// Loads the MTLLibrary immediately on initialization, using Metal's async compilation API.
 class MDImmediateLibrary final : public MDLibrary {
-	id<MTLLibrary> _library = nil;
-	NSError *_error = nil;
+	NS::SharedPtr<MTL::Library> _library;
+	NS::Error *_error = nullptr;
 	std::mutex _cv_mutex;
 	std::condition_variable _cv;
 	std::atomic<bool> _complete{ false };
@@ -780,22 +752,22 @@ class MDImmediateLibrary final : public MDLibrary {
 
 public:
 	MDImmediateLibrary(ShaderCacheEntry *p_entry,
-			id<MTLDevice> p_device,
-			NSString *p_source,
-			MTLCompileOptions *p_options);
+			MTL::Device *p_device,
+			NS::String *p_source,
+			MTL::CompileOptions *p_options);
 
 	MTL::Library *get_library() override;
 	NS::Error *get_error() override;
 };
 
 MDImmediateLibrary::MDImmediateLibrary(ShaderCacheEntry *p_entry,
-		id<MTLDevice> p_device,
-		NSString *p_source,
-		MTLCompileOptions *p_options) :
+		MTL::Device *p_device,
+		NS::String *p_source,
+		MTL::CompileOptions *p_options) :
 		MDLibrary(p_entry
 #ifdef DEV_ENABLED
 				,
-				(__bridge NS::String *)p_source
+				p_source
 #endif
 		) {
 	os_signpost_id_t compile_id = (os_signpost_id_t)(uintptr_t)this;
@@ -803,23 +775,24 @@ MDImmediateLibrary::MDImmediateLibrary(ShaderCacheEntry *p_entry,
 			"shader_name=%{public}s stage=%{public}s hash=%X",
 			p_entry->name.get_data(), SHADER_STAGE_NAMES[p_entry->stage], p_entry->key.short_sha());
 
-	[p_device newLibraryWithSource:p_source
-						   options:p_options
-				 completionHandler:^(id<MTLLibrary> library, NSError *error) {
-					 os_signpost_interval_end(LOG_INTERVALS, compile_id, "shader_compile");
-					 _library = library;
-					 _error = error;
-					 if (error) {
-						 ERR_PRINT(vformat(U"Error compiling shader %s: %s", p_entry->name.get_data(), error.localizedDescription.UTF8String));
-					 }
+	// Use Metal's async compilation API with std::function callback.
+	p_device->newLibrary(p_source, p_options, [this, compile_id, p_entry](MTL::Library *library, NS::Error *error) {
+		os_signpost_interval_end(LOG_INTERVALS, compile_id, "shader_compile");
+		if (library) {
+			_library = NS::RetainPtr(library);
+		}
+		_error = error;
+		if (error) {
+			ERR_PRINT(vformat(U"Error compiling shader %s: %s", p_entry->name.get_data(), error->localizedDescription()->utf8String()));
+		}
 
-					 {
-						 std::lock_guard<std::mutex> lock(_cv_mutex);
-						 _ready = true;
-					 }
-					 _cv.notify_all();
-					 _complete = true;
-				 }];
+		{
+			std::lock_guard<std::mutex> lock(_cv_mutex);
+			_ready = true;
+		}
+		_cv.notify_all();
+		_complete = true;
+	});
 }
 
 MTL::Library *MDImmediateLibrary::get_library() {
@@ -827,7 +800,7 @@ MTL::Library *MDImmediateLibrary::get_library() {
 		std::unique_lock<std::mutex> lock(_cv_mutex);
 		_cv.wait(lock, [this] { return _ready; });
 	}
-	return (__bridge MTL::Library *)_library;
+	return _library.get();
 }
 
 NS::Error *MDImmediateLibrary::get_error() {
@@ -835,21 +808,21 @@ NS::Error *MDImmediateLibrary::get_error() {
 		std::unique_lock<std::mutex> lock(_cv_mutex);
 		_cv.wait(lock, [this] { return _ready; });
 	}
-	return (__bridge NS::Error *)_error;
+	return _error;
 }
 
 #pragma mark - MDBinaryLibrary
 
 /// Loads the MTLLibrary from pre-compiled binary data.
 class MDBinaryLibrary final : public MDLibrary {
-	id<MTLLibrary> _library = nil;
-	NSError *_error = nil;
+	NS::SharedPtr<MTL::Library> _library;
+	NS::Error *_error = nullptr;
 
 public:
 	MDBinaryLibrary(ShaderCacheEntry *p_entry,
-			id<MTLDevice> p_device,
+			MTL::Device *p_device,
 #ifdef DEV_ENABLED
-			NSString *p_source,
+			NS::String *p_source,
 #endif
 			dispatch_data_t p_data);
 
@@ -858,32 +831,31 @@ public:
 };
 
 MDBinaryLibrary::MDBinaryLibrary(ShaderCacheEntry *p_entry,
-		id<MTLDevice> p_device,
+		MTL::Device *p_device,
 #ifdef DEV_ENABLED
-		NSString *p_source,
+		NS::String *p_source,
 #endif
 		dispatch_data_t p_data) :
 		MDLibrary(p_entry
 #ifdef DEV_ENABLED
 				,
-				(__bridge NS::String *)p_source
+				p_source
 #endif
 		) {
-	NSError *error = nil;
-	_library = [p_device newLibraryWithData:p_data error:&error];
-	if (error != nil) {
+	NS::Error *error = nullptr;
+	_library = NS::TransferPtr(p_device->newLibrary(p_data, &error));
+	if (error != nullptr) {
 		_error = error;
-		NSString *desc = [error description];
-		ERR_PRINT(vformat("Unable to load shader library: %s", desc.UTF8String));
+		ERR_PRINT(vformat("Unable to load shader library: %s", error->localizedDescription()->utf8String()));
 	}
 }
 
 MTL::Library *MDBinaryLibrary::get_library() {
-	return (__bridge MTL::Library *)_library;
+	return _library.get();
 }
 
 NS::Error *MDBinaryLibrary::get_error() {
-	return (__bridge NS::Error *)_error;
+	return _error;
 }
 
 #pragma mark - MDLibrary Factory Methods
@@ -898,10 +870,10 @@ std::shared_ptr<MDLibrary> MDLibrary::create(ShaderCacheEntry *p_entry,
 		case ShaderLoadStrategy::IMMEDIATE:
 			[[fallthrough]];
 		default:
-			lib = std::make_shared<MDImmediateLibrary>(p_entry, (__bridge id<MTLDevice>)p_device, (__bridge NSString *)p_source, (__bridge MTLCompileOptions *)p_options);
+			lib = std::make_shared<MDImmediateLibrary>(p_entry, p_device, p_source, p_options);
 			break;
 		case ShaderLoadStrategy::LAZY:
-			lib = std::make_shared<MDLazyLibrary>(p_entry, (__bridge id<MTLDevice>)p_device, (__bridge NSString *)p_source, (__bridge MTLCompileOptions *)p_options);
+			lib = std::make_shared<MDLazyLibrary>(p_entry, p_device, p_source, p_options);
 			break;
 	}
 	p_entry->library = lib;
@@ -914,9 +886,9 @@ std::shared_ptr<MDLibrary> MDLibrary::create(ShaderCacheEntry *p_entry,
 		NS::String *p_source,
 #endif
 		dispatch_data_t p_data) {
-	std::shared_ptr<MDLibrary> lib = std::make_shared<MDBinaryLibrary>(p_entry, (__bridge id<MTLDevice>)p_device,
+	std::shared_ptr<MDLibrary> lib = std::make_shared<MDBinaryLibrary>(p_entry, p_device,
 #ifdef DEV_ENABLED
-			(__bridge NSString *)p_source,
+			p_source,
 #endif
 			p_data);
 	p_entry->library = lib;

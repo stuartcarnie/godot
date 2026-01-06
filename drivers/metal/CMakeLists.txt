@@ -9,29 +9,30 @@ godot_add_library(metal FOLDER drivers STATIC)
 # ]]]
 target_sources(metal PRIVATE
         inflection_map.h
-        metal3_objects.h
         metal3_objects.cpp
-        metal4_objects.h
+        metal3_objects.h
         metal4_objects.cpp
+        metal4_objects.h
         metal_device_profile.cpp
         metal_device_profile.h
         metal_device_properties.cpp
         metal_device_properties.h
+        metal_fwd.h
         metal_objects_shared.h
-        metal_objects_shared.mm
+        metal_objects_shared.cpp
         metal_utils.h
-        pixel_formats.h
         pixel_formats.cpp
-        rendering_context_driver_metal.h
+        pixel_formats.h
         rendering_context_driver_metal.cpp
+        rendering_context_driver_metal.h
         rendering_device_driver_metal.h
-        rendering_device_driver_metal.mm
-        rendering_device_driver_metal3.h
+        rendering_device_driver_metal.cpp
         rendering_device_driver_metal3.cpp
-        rendering_device_driver_metal4.h
+        rendering_device_driver_metal3.h
         rendering_device_driver_metal4.cpp
-        rendering_shader_container_metal.h
+        rendering_device_driver_metal4.h
         rendering_shader_container_metal.cpp
+        rendering_shader_container_metal.h
         sha256_digest.h
         test.cpp
 )

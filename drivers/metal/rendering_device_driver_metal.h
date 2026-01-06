@@ -512,7 +512,7 @@ public:
 	}
 
 	size_t get_texel_buffer_alignment_for_format(RDD::DataFormat p_format) const;
-	size_t get_texel_buffer_alignment_for_format(MTLPixelFormat p_format) const;
+	size_t get_texel_buffer_alignment_for_format(MTL::PixelFormat p_format) const;
 
 	_FORCE_INLINE_ uint32_t frame_count() const { return _frame_count; }
 	_FORCE_INLINE_ uint32_t frame_index() const { return _frame_index; }
