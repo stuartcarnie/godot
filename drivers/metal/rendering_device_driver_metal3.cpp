@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_device_driver_metal3.mm                                     */
+/*  rendering_device_driver_metal3.cpp                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,37 +28,27 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import "rendering_device_driver_metal3.h"
+#include "rendering_device_driver_metal3.h"
 
-#import "pixel_formats.h"
-#import "rendering_context_driver_metal.h"
+#include "pixel_formats.h"
+#include "rendering_context_driver_metal.h"
 
-#import "core/config/project_settings.h"
-#import "core/string/ustring.h"
-#import "drivers/apple/foundation_helpers.h"
-
-#import <Metal/Metal.h>
-#import <os/log.h>
-
-#pragma mark - Logging
-
-extern os_log_t LOG_DRIVER;
+#include "core/config/project_settings.h"
+#include "core/string/ustring.h"
 
 namespace MTL3 {
 
 #pragma mark - FenceEvent / FenceSemaphore
 
-void RenderingDeviceDriverMetal::FenceEvent::signal(id<MTLCommandBuffer> p_cb) {
+void RenderingDeviceDriverMetal::FenceEvent::signal(MTL::CommandBuffer *p_cb) {
 	if (p_cb) {
 		value++;
-		[p_cb encodeSignalEvent:event value:value];
+		p_cb->encodeSignalEvent(event.get(), value);
 	}
 }
 
 Error RenderingDeviceDriverMetal::FenceEvent::wait(uint32_t p_timeout_ms) {
-	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-	BOOL signaled = [event waitUntilSignaledValue:value timeoutMS:p_timeout_ms];
-	GODOT_CLANG_WARNING_POP
+	bool signaled = event->waitUntilSignaledValue(value, p_timeout_ms);
 	if (!signaled) {
 #ifdef DEBUG_ENABLED
 		ERR_PRINT("timeout waiting for fence");
@@ -68,11 +58,11 @@ Error RenderingDeviceDriverMetal::FenceEvent::wait(uint32_t p_timeout_ms) {
 	return OK;
 }
 
-void RenderingDeviceDriverMetal::FenceSemaphore::signal(id<MTLCommandBuffer> p_cb) {
+void RenderingDeviceDriverMetal::FenceSemaphore::signal(MTL::CommandBuffer *p_cb) {
 	if (p_cb) {
-		[p_cb addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
+		p_cb->addCompletedHandler([this](MTL::CommandBuffer *) {
 			dispatch_semaphore_signal(semaphore);
-		}];
+		});
 	} else {
 		dispatch_semaphore_signal(semaphore);
 	}
@@ -105,9 +95,9 @@ Error RenderingDeviceDriverMetal::_create_device() {
 	Error err = ::RenderingDeviceDriverMetal::_create_device();
 	ERR_FAIL_COND_V(err, err);
 
-	device_queue = [(__bridge id<MTLDevice>)device newCommandQueue];
-	device_queue.label = @"Godot Main Command Queue";
-	ERR_FAIL_NULL_V(device_queue, ERR_CANT_CREATE);
+	device_queue = NS::TransferPtr(device->newCommandQueue());
+	ERR_FAIL_NULL_V(device_queue.get(), ERR_CANT_CREATE);
+	device_queue->setLabel(MTLSTR("Godot Main Command Queue"));
 
 	return OK;
 }
@@ -116,47 +106,47 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 	Error err = _initialize(p_device_index, p_frame_count);
 	ERR_FAIL_COND_V(err, err);
 
-	if (@available(macOS 26.0, iOS 26.0, tvOS 26.0, *)) {
-		// Check if the user has explicitly enabled resource barriers.
-		bool barriers_enabled = GLOBAL_GET("rendering/rendering_device/metal3/enable_pipeline_barriers");
-		barriers_enabled |= OS::get_singleton()->get_environment("GODOT_MTL_FORCE_BARRIERS") == "1";
-		if (barriers_enabled) {
-			print_line("Metal3: Resource barriers enabled.");
-			GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-			MTLResidencySetDescriptor *rs_desc = [MTLResidencySetDescriptor new];
-			[rs_desc setInitialCapacity:250];
-			rs_desc.label = @"Main Residency Set";
-			NSError *error;
-			id<MTLResidencySet> mrs = [(__bridge id<MTLDevice>)device newResidencySetWithDescriptor:rs_desc error:&error];
-			if (mrs) {
-				main_residency_set = NS::TransferPtr((__bridge_retained MTL::ResidencySet *)mrs);
-			}
-			if (mrs == nil) {
-				String error_msg = conv::to_string(error.localizedDescription);
-				print_error(vformat("Resource barriers unavailable. Failed to create main residency set for explicit resource barriers: %s", error_msg));
-			} else {
-				use_barriers = true;
-				base_hazard_tracking = MTL::ResourceHazardTrackingModeUntracked;
-				[device_queue addResidencySet:mrs];
-			}
-			GODOT_CLANG_WARNING_POP;
+	// Check if the user has explicitly enabled resource barriers.
+	// This requires macOS 26.0+ / iOS 26.0+.
+	bool barriers_enabled = GLOBAL_GET("rendering/rendering_device/metal3/enable_pipeline_barriers");
+	barriers_enabled |= OS::get_singleton()->get_environment("GODOT_MTL_FORCE_BARRIERS") == "1";
+	if (barriers_enabled) {
+		print_line("Metal3: Resource barriers enabled.");
+		NS::SharedPtr<MTL::ResidencySetDescriptor> rs_desc = NS::TransferPtr(MTL::ResidencySetDescriptor::alloc()->init());
+		rs_desc->setInitialCapacity(250);
+		rs_desc->setLabel(MTLSTR("Main Residency Set"));
+		NS::Error *error = nullptr;
+		NS::SharedPtr<MTL::ResidencySet> mrs = NS::TransferPtr(device->newResidencySet(rs_desc.get(), &error));
+		if (!mrs) {
+			String error_msg = error ? String(error->localizedDescription()->utf8String()) : "Unknown error";
+			print_error(vformat("Resource barriers unavailable. Failed to create main residency set for explicit resource barriers: %s", error_msg));
 		} else {
-			print_verbose("Metal3: Resource barriers are disabled.");
+			use_barriers = true;
+			base_hazard_tracking = MTL::ResourceHazardTrackingModeUntracked;
+			main_residency_set = mrs;
+			device_queue->addResidencySet(mrs.get());
 		}
+	} else {
+		print_verbose("Metal3: Resource barriers are disabled.");
 	}
 
 	return OK;
 }
 
+#pragma mark - Residency
+
+void RenderingDeviceDriverMetal::add_residency_set_to_main_queue(MTL::ResidencySet *p_set) {
+	device_queue->addResidencySet(p_set);
+}
+
+void RenderingDeviceDriverMetal::remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) {
+	device_queue->removeResidencySet(p_set);
+}
+
 #pragma mark - Fences
 
 RDD::FenceID RenderingDeviceDriverMetal::fence_create() {
-	Fence *fence = nullptr;
-	if (@available(macOS 10.14, iOS 12.0, tvOS 12.0, visionOS 1.0, *)) {
-		fence = memnew(FenceEvent([(__bridge id<MTLDevice>)device newSharedEvent]));
-	} else {
-		fence = memnew(FenceSemaphore());
-	}
+	Fence *fence = memnew(FenceEvent(NS::TransferPtr(device->newSharedEvent())));
 	return FenceID(fence);
 }
 
@@ -174,7 +164,7 @@ void RenderingDeviceDriverMetal::fence_free(FenceID p_fence) {
 
 RDD::SemaphoreID RenderingDeviceDriverMetal::semaphore_create() {
 	if (use_barriers) {
-		Semaphore *sem = memnew(Semaphore((__bridge id<MTLEvent>)device->newEvent()));
+		Semaphore *sem = memnew(Semaphore(NS::TransferPtr(device->newEvent())));
 		return SemaphoreID(sem);
 	}
 	return SemaphoreID(1);
@@ -200,31 +190,31 @@ Error RenderingDeviceDriverMetal::_execute_and_present_barriers(CommandQueueID p
 	}
 
 	bool changed = false;
-	id<MTLResidencySet> mrs = (__bridge id<MTLResidencySet>)main_residency_set.get();
+	MTL::ResidencySet *mrs = main_residency_set.get();
 	if (!_residency_add.is_empty()) {
-		[mrs addAllocations:(id<MTLAllocation> *)_residency_add.ptr() count:_residency_add.size()];
+		mrs->addAllocations(reinterpret_cast<const MTL::Allocation *const *>(_residency_add.ptr()), _residency_add.size());
 		_residency_add.clear();
 		changed = true;
 	}
 	if (!_residency_del.is_empty()) {
-		[mrs removeAllocations:(id<MTLAllocation> *)_residency_del.ptr() count:_residency_del.size()];
+		mrs->removeAllocations(reinterpret_cast<const MTL::Allocation *const *>(_residency_del.ptr()), _residency_del.size());
 		_residency_del.clear();
 		changed = true;
 	}
 	if (changed) {
-		[mrs commit];
+		mrs->commit();
 	}
 
 	if (p_wait_sem.size() > 0) {
-		id<MTLCommandBuffer> cb = [device_queue commandBuffer];
+		MTL::CommandBuffer *cb = device_queue->commandBuffer();
 #ifdef DEV_ENABLED
-		cb.label = @"Wait Command Buffer";
+		cb->setLabel(MTLSTR("Wait Command Buffer"));
 #endif
 		for (uint32_t i = 0; i < p_wait_sem.size(); i++) {
 			Semaphore *sem = (Semaphore *)p_wait_sem[i].id;
-			[cb encodeWaitForEvent:sem->event value:sem->value];
+			cb->encodeWait(sem->event.get(), sem->value);
 		}
-		[cb commit];
+		cb->commit();
 	}
 
 	for (uint32_t i = 0; i < size - 1; i++) {
@@ -237,17 +227,15 @@ Error RenderingDeviceDriverMetal::_execute_and_present_barriers(CommandQueueID p
 	Fence *fence = (Fence *)(p_cmd_fence.id);
 	if (fence != nullptr) {
 		cmd_buffer->end();
-		id<MTLCommandBuffer> cb = cmd_buffer->get_command_buffer();
+		MTL::CommandBuffer *cb = cmd_buffer->get_command_buffer();
 		fence->signal(cb);
 	}
 
 	struct DrawRequest {
-		id<MTLDrawable> drawable;
+		NS::SharedPtr<MTL::Drawable> drawable;
 		DisplayServer::VSyncMode vsync_mode;
 		double duration;
 	};
-
-	id<MTLCommandBuffer> cb = nil;
 
 	if (p_swap_chains.size() > 0) {
 		Vector<DrawRequest> drawables;
@@ -256,41 +244,41 @@ Error RenderingDeviceDriverMetal::_execute_and_present_barriers(CommandQueueID p
 		for (uint32_t i = 0; i < p_swap_chains.size(); i++) {
 			SwapChain *swap_chain = (SwapChain *)(p_swap_chains[i].id);
 			RenderingContextDriverMetal::Surface *metal_surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
-			id<MTLDrawable> drawable = (__bridge id<MTLDrawable>)metal_surface->next_drawable();
+			MTL::Drawable *drawable = metal_surface->next_drawable();
 			if (drawable) {
 				drawables.push_back(DrawRequest{
-						.drawable = drawable,
+						.drawable = NS::RetainPtr(drawable),
 						.vsync_mode = metal_surface->vsync_mode,
 						.duration = metal_surface->present_minimum_duration,
 				});
 			}
 		}
 
-		cb = cmd_buffer->get_command_buffer();
-		[cb addCompletedHandler:^(id<MTLCommandBuffer>) {
+		MTL::CommandBuffer *cb = cmd_buffer->get_command_buffer();
+		cb->addCompletedHandler([drawables = std::move(drawables)](MTL::CommandBuffer *) {
 			for (const DrawRequest &dr : drawables) {
 				switch (dr.vsync_mode) {
 					case DisplayServer::VSYNC_DISABLED: {
-						[dr.drawable present];
+						dr.drawable->present();
 					} break;
 					default: {
-						[dr.drawable presentAfterMinimumDuration:dr.duration];
+						dr.drawable->presentAfterMinimumDuration(dr.duration);
 					} break;
 				}
 			}
-		}];
+		});
 	}
 
 	cmd_buffer->commit();
 
 	if (p_cmd_sem.size() > 0) {
-		id<MTLCommandBuffer> cb = [device_queue commandBuffer];
+		MTL::CommandBuffer *cb = device_queue->commandBuffer();
 		for (uint32_t i = 0; i < p_cmd_sem.size(); i++) {
 			Semaphore *sem = (Semaphore *)p_cmd_sem[i].id;
 			sem->value++;
-			[cb encodeSignalEvent:sem->event value:sem->value];
+			cb->encodeSignalEvent(sem->event.get(), sem->value);
 		}
-		[cb commit];
+		cb->commit();
 	}
 
 	return OK;
@@ -312,7 +300,7 @@ Error RenderingDeviceDriverMetal::_execute_and_present(CommandQueueID p_cmd_queu
 	Fence *fence = (Fence *)(p_cmd_fence.id);
 	if (fence != nullptr) {
 		cmd_buffer->end();
-		id<MTLCommandBuffer> cb = cmd_buffer->get_command_buffer();
+		MTL::CommandBuffer *cb = cmd_buffer->get_command_buffer();
 		fence->signal(cb);
 	}
 
@@ -338,9 +326,9 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 
 	if (p_swap_chains.size() > 0) {
 		// Used as a signal that we're presenting, so this is the end of a frame.
-		id<MTLCaptureScope> scope = (__bridge id<MTLCaptureScope>)device_scope.get();
-		[scope endScope];
-		[scope beginScope];
+		MTL::CaptureScope *scope = device_scope.get();
+		scope->endScope();
+		scope->beginScope();
 	}
 
 	return OK;
@@ -353,7 +341,7 @@ void RenderingDeviceDriverMetal::command_queue_free(CommandQueueID p_cmd_queue) 
 
 RDD::CommandPoolID RenderingDeviceDriverMetal::command_pool_create(CommandQueueFamilyID p_cmd_queue_family, CommandBufferType p_cmd_buffer_type) {
 	DEV_ASSERT(p_cmd_buffer_type == COMMAND_BUFFER_TYPE_PRIMARY);
-	return rid::make(device_queue);
+	return CommandPoolID(reinterpret_cast<uint64_t>(device_queue.get()));
 }
 
 bool RenderingDeviceDriverMetal::command_pool_reset(CommandPoolID p_cmd_pool) {
@@ -361,13 +349,13 @@ bool RenderingDeviceDriverMetal::command_pool_reset(CommandPoolID p_cmd_pool) {
 }
 
 void RenderingDeviceDriverMetal::command_pool_free(CommandPoolID p_cmd_pool) {
-	rid::release(p_cmd_pool);
+	// Nothing to free - the device_queue is managed by SharedPtr.
 }
 
 #pragma mark - Command Buffers
 
 RDD::CommandBufferID RenderingDeviceDriverMetal::command_buffer_create(CommandPoolID p_cmd_pool) {
-	id<MTLCommandQueue> queue = rid::get(p_cmd_pool);
+	MTL::CommandQueue *queue = reinterpret_cast<MTL::CommandQueue *>(p_cmd_pool.id);
 	MDCommandBuffer *obj = memnew(MDCommandBuffer(queue, this));
 	command_buffers.push_back(obj);
 	return CommandBufferID(obj);

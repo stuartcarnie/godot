@@ -72,7 +72,7 @@ void MFXSpatialEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_bu
 	} else {
 		id<MTLFXSpatialScaler> s = (id<MTLFXSpatialScaler>)scaler;
 		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
-		[s encodeToCommandBuffer:obj->get_command_buffer()];
+		[s encodeToCommandBuffer:(__bridge id<MTLCommandBuffer>)obj->get_command_buffer()];
 	}
 	obj->retain_resource((__bridge CFTypeRef)scaler);
 
@@ -245,7 +245,7 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 	} else {
 		id<MTLFXTemporalScaler> s = (id<MTLFXTemporalScaler>)scaler;
 		MTL3::MDCommandBuffer *obj = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
-		[s encodeToCommandBuffer:obj->get_command_buffer()];
+		[s encodeToCommandBuffer:(__bridge id<MTLCommandBuffer>)obj->get_command_buffer()];
 	}
 	obj->retain_resource((__bridge CFTypeRef)scaler);
 

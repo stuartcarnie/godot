@@ -50,18 +50,14 @@
 /* permissions and limitations under the License.                         */
 /**************************************************************************/
 
-#import "metal_objects_shared.h"
+#include "metal_objects_shared.h"
 
 #include "servers/rendering/rendering_device_driver.h"
 
-#import <CommonCrypto/CommonDigest.h>
-#import <Foundation/Foundation.h>
-#import <Metal/Metal.h>
-#import <QuartzCore/CAMetalLayer.h>
-#import <simd/simd.h>
-#import <zlib.h>
-#import <initializer_list>
-#import <optional>
+#include <Metal/Metal.hpp>
+
+#include <initializer_list>
+#include <optional>
 
 namespace MTL3 {
 
@@ -289,7 +285,7 @@ private:
 	Alloc allocate_arg_buffer(uint32_t p_size);
 
 	struct {
-		id rs = nil; // id<MTLResidencySet>, but untyped for API availability.
+		NS::SharedPtr<MTL::ResidencySet> rs;
 	} _frame_state;
 
 #pragma mark - Synchronization
@@ -303,30 +299,19 @@ private:
 	bool use_barriers = false;
 	MTLStages pending_after_stages[STAGE_MAX] = { 0, 0, 0 };
 	MTLStages pending_before_queue_stages[STAGE_MAX] = { 0, 0, 0 };
-	void _encode_barrier(id<MTLCommandEncoder> p_enc);
+	void _encode_barrier(MTL::CommandEncoder *p_enc);
 
 	void reset();
 
-	id<MTLCommandQueue> queue = nil;
-	id<MTLCommandBuffer> commandBuffer = nil;
+	MTL::CommandQueue *queue = nullptr;
+	NS::SharedPtr<MTL::CommandBuffer> commandBuffer;
 	bool state_begin = false;
 
-	_FORCE_INLINE_ id<MTLCommandBuffer> command_buffer() {
-		DEV_ASSERT(state_begin);
-		if (commandBuffer == nil) {
-			commandBuffer = queue.commandBuffer;
-			if (use_barriers) {
-				GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability");
-				[commandBuffer useResidencySet:_frame_state.rs];
-				GODOT_CLANG_WARNING_POP;
-			}
-		}
-		return commandBuffer;
-	}
+	MTL::CommandBuffer *command_buffer();
 
 	void _end_compute_dispatch();
 	void _end_blit();
-	id<MTLBlitCommandEncoder> _ensure_blit_encoder();
+	MTL::BlitCommandEncoder *_ensure_blit_encoder();
 
 	enum class CopySource {
 		Buffer,
@@ -370,13 +355,13 @@ public:
 		uint32_t current_subpass = UINT32_MAX;
 		Rect2i render_area = {};
 		bool is_rendering_entire_area = false;
-		MTLRenderPassDescriptor *desc = nil;
-		id<MTLRenderCommandEncoder> encoder = nil;
-		id<MTLBuffer> __unsafe_unretained index_buffer = nil; // Buffer is owned by RDD.
-		MTLIndexType index_type = MTLIndexTypeUInt16;
+		NS::SharedPtr<MTL::RenderPassDescriptor> desc;
+		NS::SharedPtr<MTL::RenderCommandEncoder> encoder;
+		MTL::Buffer *index_buffer = nullptr; // Buffer is owned by RDD.
+		MTL::IndexType index_type = MTL::IndexTypeUInt16;
 		uint32_t index_offset = 0;
-		LocalVector<id<MTLBuffer> __unsafe_unretained> vertex_buffers;
-		LocalVector<NSUInteger> vertex_offsets;
+		LocalVector<MTL::Buffer *> vertex_buffers;
+		LocalVector<NS::UInteger> vertex_offsets;
 		ResourceTracker resource_tracker;
 
 		LocalVector<MDUniformSet *> uniform_sets;
@@ -477,7 +462,7 @@ public:
 	// State specific for a compute pass.
 	struct ComputeState {
 		MDComputePipeline *pipeline = nullptr;
-		id<MTLComputeCommandEncoder> encoder = nil;
+		NS::SharedPtr<MTL::ComputeCommandEncoder> encoder;
 		ResourceTracker resource_tracker;
 		// clang-format off
 		enum DirtyFlag: uint16_t {
@@ -513,17 +498,15 @@ public:
 
 	// State specific to a blit pass.
 	struct {
-		id<MTLBlitCommandEncoder> encoder = nil;
+		NS::SharedPtr<MTL::BlitCommandEncoder> encoder;
 		_FORCE_INLINE_ void reset() {
-			encoder = nil;
+			encoder.reset();
 		}
 	} blit;
 
-	_FORCE_INLINE_ id<MTLCommandBuffer> get_command_buffer() const {
-		return commandBuffer;
+	_FORCE_INLINE_ MTL::CommandBuffer *get_command_buffer() const {
+		return commandBuffer.get();
 	}
-
-	MTL::CommandBuffer *get_command_buffer_cpp() const;
 
 	void begin() override;
 	void commit() override;
@@ -570,7 +553,7 @@ public:
 #pragma mark - Transfer
 
 private:
-	id<MTLRenderCommandEncoder> get_new_render_encoder_with_descriptor(MTLRenderPassDescriptor *p_desc);
+	MTL::RenderCommandEncoder *get_new_render_encoder_with_descriptor(MTL::RenderPassDescriptor *p_desc);
 
 public:
 	void resolve_texture(RDD::TextureID p_src_texture, RDD::TextureLayout p_src_texture_layout, uint32_t p_src_layer, uint32_t p_src_mipmap, RDD::TextureID p_dst_texture, RDD::TextureLayout p_dst_texture_layout, uint32_t p_dst_layer, uint32_t p_dst_mipmap) override;
@@ -594,19 +577,17 @@ public:
 	void begin_label(const char *p_label_name, const Color &p_color) override;
 	void end_label() override;
 
-	MDCommandBuffer(id<MTLCommandQueue> p_queue, ::RenderingDeviceDriverMetal *p_device_driver);
+	MDCommandBuffer(MTL::CommandQueue *p_queue, ::RenderingDeviceDriverMetal *p_device_driver);
 	MDCommandBuffer() = default;
 };
 
 } // namespace MTL3
 
-namespace rid {
-#define MAKE_ID(FROM, TO)                \
-	_FORCE_INLINE_ TO make(FROM p_obj) { \
-		return TO(owned(p_obj));         \
-	}
-
-MAKE_ID(id<MTLCommandQueue>, RDD::CommandPoolID)
-
-#undef MAKE_ID
-} //namespace rid
+// C++ helper to get mipmap level size from texture
+_FORCE_INLINE_ static MTL::Size mipmapLevelSizeFromTexture(MTL::Texture *p_tex, NS::UInteger p_level) {
+	MTL::Size lvlSize;
+	lvlSize.width = MAX(p_tex->width() >> p_level, 1UL);
+	lvlSize.height = MAX(p_tex->height() >> p_level, 1UL);
+	lvlSize.depth = MAX(p_tex->depth() >> p_level, 1UL);
+	return lvlSize;
+}

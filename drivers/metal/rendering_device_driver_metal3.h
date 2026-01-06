@@ -30,10 +30,10 @@
 
 #pragma once
 
-#import "metal3_objects.h"
-#import "rendering_device_driver_metal.h"
+#include "metal3_objects.h"
+#include "rendering_device_driver_metal.h"
 
-#import <Metal/Metal.h>
+#include <Metal/Metal.hpp>
 
 namespace MTL3 {
 
@@ -41,20 +41,20 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 	friend class MDCommandBuffer;
 #pragma mark - Generic
 
-	id<MTLCommandQueue> device_queue = nil;
+	NS::SharedPtr<MTL::CommandQueue> device_queue;
 
 	struct Fence {
-		virtual void signal(id<MTLCommandBuffer> p_cmd_buffer) = 0;
+		virtual void signal(MTL::CommandBuffer *p_cmd_buffer) = 0;
 		virtual Error wait(uint32_t p_timeout_ms) = 0;
 		virtual ~Fence() = default;
 	};
 
 	struct FenceEvent : Fence {
-		id<MTLSharedEvent> event;
-		uint64_t value;
-		FenceEvent(id<MTLSharedEvent> p_event) :
-				event(p_event), value(0) {}
-		void signal(id<MTLCommandBuffer> p_cb) override;
+		NS::SharedPtr<MTL::SharedEvent> event;
+		uint64_t value = 0;
+		FenceEvent(NS::SharedPtr<MTL::SharedEvent> p_event) :
+				event(p_event) {}
+		void signal(MTL::CommandBuffer *p_cb) override;
 		Error wait(uint32_t p_timeout_ms) override;
 	};
 
@@ -62,15 +62,15 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 		dispatch_semaphore_t semaphore;
 		FenceSemaphore() :
 				semaphore(dispatch_semaphore_create(0)) {}
-		void signal(id<MTLCommandBuffer> p_cb) override;
+		void signal(MTL::CommandBuffer *p_cb) override;
 		Error wait(uint32_t p_timeout_ms) override;
 	};
 
 	struct Semaphore {
-		id<MTLEvent> event;
-		uint64_t value;
-		Semaphore(id<MTLEvent> p_event) :
-				event(p_event), value(0) {}
+		NS::SharedPtr<MTL::Event> event;
+		uint64_t value = 0;
+		Semaphore(NS::SharedPtr<MTL::Event> p_event) :
+				event(p_event) {}
 	};
 
 	Vector<MDCommandBuffer *> command_buffers;
@@ -80,15 +80,10 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 	Error _execute_and_present(CommandQueueID p_cmd_queue, VectorView<SemaphoreID> p_wait_semaphores, VectorView<CommandBufferID> p_cmd_buffers, VectorView<SemaphoreID> p_cmd_semaphores, FenceID p_cmd_fence, VectorView<SwapChainID> p_swap_chains);
 
 protected:
-	MTL::CommandQueue *get_command_queue() const override { return (__bridge MTL::CommandQueue *)device_queue; }
-	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-	void add_residency_set_to_main_queue(MTL::ResidencySet *p_set) override {
-		[device_queue addResidencySet:(__bridge id<MTLResidencySet>)p_set];
-	}
-	void remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) override {
-		[device_queue removeResidencySet:(__bridge id<MTLResidencySet>)p_set];
-	}
-	GODOT_CLANG_WARNING_POP
+	MTL::CommandQueue *get_command_queue() const override { return device_queue.get(); }
+	void add_residency_set_to_main_queue(MTL::ResidencySet *p_set) override;
+	void remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) override;
+
 public:
 	Error initialize(uint32_t p_device_index, uint32_t p_frame_count) override;
 

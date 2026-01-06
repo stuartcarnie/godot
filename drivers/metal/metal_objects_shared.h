@@ -483,6 +483,24 @@ _FORCE_INLINE_ auto release(RDD::ID p_id) {
 } // namespace rid
 #endif // __OBJC__
 
+// C++ helpers for accessing Metal objects from IDs (pure C++, no ObjC)
+#ifndef __OBJC__
+namespace rid {
+
+// C++ template to get a Metal C++ pointer from an ID.
+template <typename T>
+_FORCE_INLINE_ T *get(RDD::ID p_id) {
+	return reinterpret_cast<T *>(p_id.id);
+}
+
+template <typename T>
+_FORCE_INLINE_ T *get(uint64_t p_id) {
+	return reinterpret_cast<T *>(p_id);
+}
+
+} // namespace rid
+#endif // !__OBJC__
+
 #pragma mark - Render Pass Types
 
 class MDRenderPass;

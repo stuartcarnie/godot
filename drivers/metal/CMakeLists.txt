@@ -10,7 +10,7 @@ godot_add_library(metal FOLDER drivers STATIC)
 target_sources(metal PRIVATE
         inflection_map.h
         metal3_objects.h
-        metal3_objects.mm
+        metal3_objects.cpp
         metal4_objects.h
         metal4_objects.cpp
         metal_device_profile.cpp
@@ -27,7 +27,7 @@ target_sources(metal PRIVATE
         rendering_device_driver_metal.h
         rendering_device_driver_metal.mm
         rendering_device_driver_metal3.h
-        rendering_device_driver_metal3.mm
+        rendering_device_driver_metal3.cpp
         rendering_device_driver_metal4.h
         rendering_device_driver_metal4.cpp
         rendering_shader_container_metal.h
