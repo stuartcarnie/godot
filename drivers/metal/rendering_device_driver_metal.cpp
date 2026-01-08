@@ -80,14 +80,14 @@ extern os_log_t LOG_INTERVALS;
 /*****************/
 
 // RDD::CompareOperator == VkCompareOp.
-static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_NEVER, MTLCompareFunctionNever));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_LESS, MTLCompareFunctionLess));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_EQUAL, MTLCompareFunctionEqual));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_LESS_OR_EQUAL, MTLCompareFunctionLessEqual));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_GREATER, MTLCompareFunctionGreater));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_NOT_EQUAL, MTLCompareFunctionNotEqual));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_GREATER_OR_EQUAL, MTLCompareFunctionGreaterEqual));
-static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_ALWAYS, MTLCompareFunctionAlways));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_NEVER, MTL::CompareFunctionNever));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_LESS, MTL::CompareFunctionLess));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_EQUAL, MTL::CompareFunctionEqual));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_LESS_OR_EQUAL, MTL::CompareFunctionLessEqual));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_GREATER, MTL::CompareFunctionGreater));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_NOT_EQUAL, MTL::CompareFunctionNotEqual));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_GREATER_OR_EQUAL, MTL::CompareFunctionGreaterEqual));
+static_assert(ENUM_MEMBERS_EQUAL(RDD::COMPARE_OP_ALWAYS, MTL::CompareFunctionAlways));
 
 /*****************/
 /**** BUFFERS ****/
@@ -99,16 +99,16 @@ RDD::BufferID RenderingDeviceDriverMetal::buffer_create(uint64_t p_size, BitFiel
 		p_size = round_up_to_alignment(p_size, 16u) * _frame_count;
 	}
 
-	MTLResourceOptions options = 0;
+	MTL::ResourceOptions options = 0;
 	switch (p_allocation_type) {
 		case MEMORY_ALLOCATION_TYPE_CPU:
-			options = base_hazard_tracking | MTLResourceStorageModeShared;
+			options = base_hazard_tracking | MTL::ResourceStorageModeShared;
 			break;
 		case MEMORY_ALLOCATION_TYPE_GPU:
 			if (p_usage.has_flag(BUFFER_USAGE_DYNAMIC_PERSISTENT_BIT)) {
-				options = MTLResourceHazardTrackingModeUntracked | MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined;
+				options = MTL::ResourceHazardTrackingModeUntracked | MTL::ResourceStorageModeShared | MTL::ResourceCPUCacheModeWriteCombined;
 			} else {
-				options = base_hazard_tracking | MTLResourceStorageModePrivate;
+				options = base_hazard_tracking | MTL::ResourceStorageModePrivate;
 			}
 			break;
 	}
@@ -210,14 +210,14 @@ uint64_t RenderingDeviceDriverMetal::buffer_get_device_address(BufferID p_buffer
 
 #pragma mark - Format Conversions
 
-static const MTLTextureType TEXTURE_TYPE[RD::TEXTURE_TYPE_MAX] = {
-	MTLTextureType1D,
-	MTLTextureType2D,
-	MTLTextureType3D,
-	MTLTextureTypeCube,
-	MTLTextureType1DArray,
-	MTLTextureType2DArray,
-	MTLTextureTypeCubeArray,
+static const MTL::TextureType TEXTURE_TYPE[RD::TEXTURE_TYPE_MAX] = {
+	MTL::TextureType1D,
+	MTL::TextureType2D,
+	MTL::TextureType3D,
+	MTL::TextureTypeCube,
+	MTL::TextureType1DArray,
+	MTL::TextureType2DArray,
+	MTL::TextureTypeCubeArray,
 };
 
 bool RenderingDeviceDriverMetal::is_valid_linear(TextureFormat const &p_format) const {
@@ -1036,12 +1036,12 @@ static_assert(is_layout_compatible<UniformInfo::Indexes, RenderingShaderContaine
 API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0))
 static void update_uniform_info(const RenderingShaderContainerMetal::UniformData &p_data, UniformInfo &r_ui) {
 	r_ui.active_stages = p_data.active_stages;
-	r_ui.dataType = static_cast<MTLDataType>(p_data.data_type);
+	r_ui.dataType = static_cast<MTL::DataType>(p_data.data_type);
 	memcpy(&r_ui.slot, &p_data.slot, sizeof(UniformInfo::Indexes));
 	memcpy(&r_ui.arg_buffer, &p_data.arg_buffer, sizeof(UniformInfo::Indexes));
-	r_ui.access = static_cast<MTLBindingAccess>(p_data.access);
-	r_ui.usage = static_cast<MTLResourceUsage>(p_data.usage);
-	r_ui.textureType = static_cast<MTLTextureType>(p_data.texture_type);
+	r_ui.access = static_cast<MTL::BindingAccess>(p_data.access);
+	r_ui.usage = static_cast<MTL::ResourceUsage>(p_data.usage);
+	r_ui.textureType = static_cast<MTL::TextureType>(p_data.texture_type);
 	r_ui.imageFormat = p_data.image_format;
 	r_ui.arrayLength = p_data.array_length;
 	r_ui.isMultisampled = p_data.is_multisampled;
@@ -1257,7 +1257,7 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 		uint64_t *ptr = (uint64_t *)arg_buffer_data.ptrw();
 
 		HashMap<MTLResourceUnsafe, StageResourceUsage, HashMapHasherDefault> bound_resources;
-		auto add_usage = [&bound_resources](MTLResourceUnsafe res, BitField<RDD::ShaderStage> stage, MTLResourceUsage usage) {
+		auto add_usage = [&bound_resources](MTLResourceUnsafe res, BitField<RDD::ShaderStage> stage, MTL::ResourceUsage usage) {
 			StageResourceUsage *sru = bound_resources.getptr(res);
 			if (sru == nullptr) {
 				sru = &bound_resources.insert(res, ResourceUnused)->value;
@@ -1591,7 +1591,7 @@ RDD::RenderPassID RenderingDeviceDriverMetal::render_pass_create(VectorView<Atta
 	for (uint32_t i = 0; i < p_attachments.size(); i++) {
 		Attachment const &a = p_attachments[i];
 		MDAttachment &mda = attachments.write[i];
-		MTLPixelFormat format = (MTLPixelFormat)pf.getMTLPixelFormat(a.format);
+		MTL::PixelFormat format = pf.getMTLPixelFormat(a.format);
 		mda.format = format;
 		if (a.samples > TEXTURE_SAMPLES_1) {
 			mda.samples = (*device_properties).find_nearest_supported_sample_count(a.samples);

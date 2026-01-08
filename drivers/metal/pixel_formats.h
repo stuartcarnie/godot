@@ -60,9 +60,9 @@ GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wdeprecated-declarations")
 #include "servers/rendering/rendering_device.h"
 
 #ifdef __OBJC__
-#include <Metal/Metal.h>   // ObjC types for backward compat with .mm files
+#include <Metal/Metal.h>
 #endif
-#include <Metal/Metal.hpp> // C++ types for converted .cpp files
+#include <Metal/Metal.hpp>
 #include <iterator>
 
 #pragma mark -
@@ -385,42 +385,6 @@ public:
 	 * DataFormat as used as a vertex attribute format.
 	 */
 	MTL::VertexFormat getMTLVertexFormat(DataFormat p_format);
-
-#ifdef __OBJC__
-#pragma mark ObjC Compatibility
-
-	// Overloads for incremental migration - accept ObjC types, delegate to C++ versions
-	_FORCE_INLINE_ bool isDepthFormat(MTLPixelFormat p_format) {
-		return isDepthFormat(static_cast<MTL::PixelFormat>(p_format));
-	}
-	_FORCE_INLINE_ bool isStencilFormat(MTLPixelFormat p_format) {
-		return isStencilFormat(static_cast<MTL::PixelFormat>(p_format));
-	}
-	_FORCE_INLINE_ bool isPVRTCFormat(MTLPixelFormat p_format) {
-		return isPVRTCFormat(static_cast<MTL::PixelFormat>(p_format));
-	}
-	_FORCE_INLINE_ MTLFormatType getFormatType(MTLPixelFormat p_format) {
-		return getFormatType(static_cast<MTL::PixelFormat>(p_format));
-	}
-	_FORCE_INLINE_ DataFormat getDataFormat(MTLPixelFormat p_format) {
-		return getDataFormat(static_cast<MTL::PixelFormat>(p_format));
-	}
-	_FORCE_INLINE_ uint32_t getBytesPerBlock(MTLPixelFormat p_format) {
-		return getBytesPerBlock(static_cast<MTL::PixelFormat>(p_format));
-	}
-	_FORCE_INLINE_ float getBytesPerTexel(MTLPixelFormat p_format) {
-		return getBytesPerTexel(static_cast<MTL::PixelFormat>(p_format));
-	}
-	_FORCE_INLINE_ size_t getBytesPerRow(MTLPixelFormat p_format, uint32_t p_texels_per_row) {
-		return getBytesPerRow(static_cast<MTL::PixelFormat>(p_format), p_texels_per_row);
-	}
-	_FORCE_INLINE_ size_t getBytesPerLayer(MTLPixelFormat p_format, size_t p_bytes_per_row, uint32_t p_texel_rows_per_layer) {
-		return getBytesPerLayer(static_cast<MTL::PixelFormat>(p_format), p_bytes_per_row, p_texel_rows_per_layer);
-	}
-	_FORCE_INLINE_ MTLFmtCaps getCapabilities(MTLPixelFormat p_format, bool p_extended = false) {
-		return getCapabilities(static_cast<MTL::PixelFormat>(p_format), p_extended);
-	}
-#endif
 
 #pragma mark Construction
 

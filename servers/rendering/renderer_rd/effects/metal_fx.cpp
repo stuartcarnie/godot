@@ -36,7 +36,6 @@
 #include "drivers/metal/rendering_device_driver_metal4.h"
 
 #include <MetalFX/MetalFX.hpp>
-
 #include <objc/runtime.h>
 
 using namespace RendererRD;
@@ -128,7 +127,7 @@ MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const
 		Ivar ivar = class_getInstanceVariable(object_getClass(scaler), "_outputTextureBarrierStages");
 		if (ivar) {
 			uint64_t *ptr = (uint64_t *)((char *)scaler + ivar_getOffset(ivar));
-			*ptr = MTLStageAll;
+			*ptr = MTL::StageAll;
 		}
 		context->scaler = NS::TransferPtr(static_cast<MTLFX::SpatialScalerBase *>(scaler));
 		context->is_metal_4 = true;
@@ -179,7 +178,7 @@ MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) con
 		Ivar ivar = class_getInstanceVariable(object_getClass(scaler), "_outputTextureBarrierStages");
 		if (ivar) {
 			uint64_t *ptr = (uint64_t *)((char *)scaler + ivar_getOffset(ivar));
-			*ptr = MTLStageAll;
+			*ptr = MTL::StageAll;
 		} else {
 			print_error("Failed to set _outputTextureBarrierStages on MTL4FXTemporalScaler.");
 		}

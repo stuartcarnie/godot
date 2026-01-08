@@ -98,8 +98,8 @@ private:
 		STAGE_COMPUTE,
 		STAGE_MAX,
 	};
-	MTLStages pending_after_stages[STAGE_MAX] = { 0, 0 };
-	MTLStages pending_before_queue_stages[STAGE_MAX] = { 0, 0 };
+	MTL::Stages pending_after_stages[STAGE_MAX] = { 0, 0 };
+	MTL::Stages pending_before_queue_stages[STAGE_MAX] = { 0, 0 };
 	void _encode_barrier(MTL4::CommandEncoder *p_enc);
 
 	void reset();
@@ -109,8 +109,8 @@ private:
 	bool state_begin = false;
 
 	struct PendingBarrier {
-		MTLStages src_stages;
-		MTLStages dst_stages;
+		MTL::Stages src_stages;
+		MTL::Stages dst_stages;
 		MTL4::VisibilityOptions visibility;
 	};
 

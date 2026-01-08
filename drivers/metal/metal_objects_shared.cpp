@@ -409,7 +409,7 @@ bool MDAttachment::shouldClear(const MDSubpass &p_subpass, bool p_is_stencil) co
 	if (p_subpass.subpass_index != firstUseSubpassIndex) {
 		return false;
 	}
-	return (p_is_stencil ? stencilLoadAction : loadAction) == MTLLoadActionClear;
+	return (p_is_stencil ? stencilLoadAction : loadAction) == MTL::LoadActionClear;
 }
 
 MDRenderPass::MDRenderPass(Vector<MDAttachment> &p_attachments, Vector<MDSubpass> &p_subpasses) :

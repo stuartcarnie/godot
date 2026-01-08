@@ -34,7 +34,6 @@ target_sources(metal PRIVATE
         rendering_shader_container_metal.cpp
         rendering_shader_container_metal.h
         sha256_digest.h
-        test.cpp
 )
 # [[[end]]]
 target_compile_features(metal PRIVATE cxx_std_20)

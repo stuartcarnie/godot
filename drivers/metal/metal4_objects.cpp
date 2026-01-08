@@ -143,7 +143,7 @@ void MDCommandBuffer::commit() {
 void MDCommandBuffer::_encode_barrier(MTL4::CommandEncoder *p_enc) {
 	DEV_ASSERT(p_enc);
 
-	static const MTLStages empty_stages[STAGE_MAX] = { 0, 0 };
+	static const MTL::Stages empty_stages[STAGE_MAX] = { 0, 0 };
 	if (memcmp(&pending_before_queue_stages, empty_stages, sizeof(pending_before_queue_stages)) == 0) {
 		return;
 	}
@@ -170,38 +170,38 @@ void MDCommandBuffer::pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_st
 		VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
 		VectorView<RDD::BufferBarrier> p_buffer_barriers,
 		VectorView<RDD::TextureBarrier> p_texture_barriers) {
-	MTLStages after_stages = convert_src_pipeline_stages_to_metal(p_src_stages);
+	MTL::Stages after_stages = convert_src_pipeline_stages_to_metal(p_src_stages);
 	if (after_stages == 0) {
 		return;
 	}
 
-	MTLStages before_stages = convert_dst_pipeline_stages_to_metal(p_dst_stages);
+	MTL::Stages before_stages = convert_dst_pipeline_stages_to_metal(p_dst_stages);
 	if (before_stages == 0) {
 		return;
 	}
 
 	// Encode intra-pass barrier if an encoder is active for matching stages.
 	if (render.encoder) {
-		MTLStages render_after = after_stages & (MTLStageVertex | MTLStageFragment);
-		MTLStages render_before = before_stages & (MTLStageVertex | MTLStageFragment);
+		MTL::Stages render_after = after_stages & (MTL::StageVertex | MTL::StageFragment);
+		MTL::Stages render_before = before_stages & (MTL::StageVertex | MTL::StageFragment);
 		if (render_after != 0 && render_before != 0) {
 			render.encoder->barrierAfterEncoderStages(render_after, render_before, MTL4::VisibilityOptionDevice);
 		}
 	} else if (compute.encoder) {
-		MTLStages compute_after = after_stages & (MTLStageDispatch | MTLStageBlit);
-		MTLStages compute_before = before_stages & (MTLStageDispatch | MTLStageBlit);
+		MTL::Stages compute_after = after_stages & (MTL::StageDispatch | MTL::StageBlit);
+		MTL::Stages compute_before = before_stages & (MTL::StageDispatch | MTL::StageBlit);
 		if (compute_after != 0 && compute_before != 0) {
 			compute.encoder->barrierAfterEncoderStages(compute_after, compute_before, MTL4::VisibilityOptionDevice);
 		}
 	}
 
 	// Also cache for inter-pass barriers.
-	if (after_stages & (MTLStageVertex | MTLStageFragment)) {
+	if (after_stages & (MTL::StageVertex | MTL::StageFragment)) {
 		pending_after_stages[STAGE_RENDER] |= after_stages;
 		pending_before_queue_stages[STAGE_RENDER] |= before_stages;
 	}
 
-	if (after_stages & (MTLStageDispatch | MTLStageBlit)) {
+	if (after_stages & (MTL::StageDispatch | MTL::StageBlit)) {
 		pending_after_stages[STAGE_COMPUTE] |= after_stages;
 		pending_before_queue_stages[STAGE_COMPUTE] |= before_stages;
 	}

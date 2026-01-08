@@ -42,123 +42,29 @@ class RenderingDeviceDriverMetal;
 
 using RDC = RenderingDeviceCommons;
 
-// Provide Metal type aliases for pure C++ compilation
-#ifndef __OBJC__
-using MTLPixelFormat = MTL::PixelFormat;
-using MTLLoadAction = MTL::LoadAction;
-using MTLStoreAction = MTL::StoreAction;
-using MTLTextureType = MTL::TextureType;
-using MTLDataType = MTL::DataType;
-using MTLResourceUsage = MTL::ResourceUsage;
-using MTLCullMode = MTL::CullMode;
-using MTLTriangleFillMode = MTL::TriangleFillMode;
-using MTLDepthClipMode = MTL::DepthClipMode;
-using MTLWinding = MTL::Winding;
-using MTLPrimitiveType = MTL::PrimitiveType;
-using MTLSize = MTL::Size;
-using MTLOrigin = MTL::Origin;
-constexpr auto MTLPixelFormatInvalid = MTL::PixelFormatInvalid;
-constexpr auto MTLLoadActionDontCare = MTL::LoadActionDontCare;
-constexpr auto MTLLoadActionLoad = MTL::LoadActionLoad;
-constexpr auto MTLLoadActionClear = MTL::LoadActionClear;
-constexpr auto MTLStoreActionDontCare = MTL::StoreActionDontCare;
-constexpr auto MTLStoreActionStore = MTL::StoreActionStore;
-constexpr auto MTLStoreActionMultisampleResolve = MTL::StoreActionMultisampleResolve;
-constexpr auto MTLStoreActionStoreAndMultisampleResolve = MTL::StoreActionStoreAndMultisampleResolve;
-constexpr auto MTLTextureType1D = MTL::TextureType1D;
-constexpr auto MTLTextureType2D = MTL::TextureType2D;
-constexpr auto MTLTextureType3D = MTL::TextureType3D;
-constexpr auto MTLTextureType1DArray = MTL::TextureType1DArray;
-constexpr auto MTLTextureType2DArray = MTL::TextureType2DArray;
-constexpr auto MTLTextureType2DMultisampleArray = MTL::TextureType2DMultisampleArray;
-constexpr auto MTLTextureTypeCube = MTL::TextureTypeCube;
-constexpr auto MTLTextureTypeCubeArray = MTL::TextureTypeCubeArray;
-constexpr auto MTLDataTypeNone = MTL::DataTypeNone;
-constexpr auto MTLCullModeNone = MTL::CullModeNone;
-constexpr auto MTLTriangleFillModeFill = MTL::TriangleFillModeFill;
-constexpr auto MTLDepthClipModeClip = MTL::DepthClipModeClip;
-constexpr auto MTLWindingClockwise = MTL::WindingClockwise;
-constexpr auto MTLPrimitiveTypePoint = MTL::PrimitiveTypePoint;
-// Compare functions
-constexpr auto MTLCompareFunctionNever = MTL::CompareFunctionNever;
-constexpr auto MTLCompareFunctionLess = MTL::CompareFunctionLess;
-constexpr auto MTLCompareFunctionEqual = MTL::CompareFunctionEqual;
-constexpr auto MTLCompareFunctionLessEqual = MTL::CompareFunctionLessEqual;
-constexpr auto MTLCompareFunctionGreater = MTL::CompareFunctionGreater;
-constexpr auto MTLCompareFunctionNotEqual = MTL::CompareFunctionNotEqual;
-constexpr auto MTLCompareFunctionGreaterEqual = MTL::CompareFunctionGreaterEqual;
-constexpr auto MTLCompareFunctionAlways = MTL::CompareFunctionAlways;
-// Resource options
-using MTLResourceOptions = MTL::ResourceOptions;
-constexpr auto MTLResourceStorageModeShared = MTL::ResourceStorageModeShared;
-constexpr auto MTLResourceStorageModePrivate = MTL::ResourceStorageModePrivate;
-constexpr auto MTLResourceStorageModeMemoryless = MTL::ResourceStorageModeMemoryless;
-constexpr auto MTLResourceCPUCacheModeWriteCombined = MTL::ResourceCPUCacheModeWriteCombined;
-constexpr auto MTLResourceHazardTrackingModeUntracked = MTL::ResourceHazardTrackingModeUntracked;
-constexpr auto MTLResourceHazardTrackingModeTracked = MTL::ResourceHazardTrackingModeTracked;
-using MTLStages = NS::UInteger;
-constexpr auto MTLStageVertex = MTL::StageVertex;
-constexpr auto MTLStageFragment = MTL::StageFragment;
-constexpr auto MTLStageDispatch = MTL::StageDispatch;
-constexpr auto MTLStageBlit = MTL::StageBlit;
-constexpr auto MTLStageAll = MTLStageVertex | MTLStageFragment | MTLStageDispatch | MTLStageBlit;
-inline MTLSize MTLSizeMake(NS::UInteger w, NS::UInteger h, NS::UInteger d) {
-	return MTL::Size{ w, h, d };
-}
-inline MTLOrigin MTLOriginMake(NS::UInteger x, NS::UInteger y, NS::UInteger z) {
-	return MTL::Origin{ x, y, z };
-}
-using MTLBindingAccess = MTL::BindingAccess;
-constexpr auto MTLBindingAccessReadOnly = MTL::BindingAccessReadOnly;
-constexpr auto MTLBindingAccessReadWrite = MTL::BindingAccessReadWrite;
-constexpr auto MTLBindingAccessWriteOnly = MTL::BindingAccessWriteOnly;
-constexpr auto MTLResourceUsageRead = MTL::ResourceUsageRead;
-constexpr auto MTLResourceUsageWrite = MTL::ResourceUsageWrite;
-using MTLIndexType = MTL::IndexType;
-constexpr auto MTLIndexTypeUInt16 = MTL::IndexTypeUInt16;
-constexpr auto MTLIndexTypeUInt32 = MTL::IndexTypeUInt32;
-#endif
-
 // These types can be used in Vector and other containers that use
 // pointer operations not supported by ARC.
 namespace GDMTL {
-#ifdef __OBJC__
-#define MTL_CLASS(name)                               \
-	class name {                                      \
-	public:                                           \
-		name(id<MTL##name> obj = nil) : m_obj(obj) {} \
-		operator id<MTL##name>() const {              \
-			return m_obj;                             \
-		}                                             \
-		id<MTL##name> m_obj;                          \
-	};
-#else
-#define MTL_CLASS(name)                                \
-	class name {                                       \
-	public:                                            \
-		name(MTL::name *obj = nullptr) : m_obj(obj) {} \
-		operator MTL::name *() const {                 \
-			return m_obj;                              \
-		}                                              \
-		bool operator==(std::nullptr_t) const {        \
-			return m_obj == nullptr;                   \
-		}                                              \
-		bool operator!=(std::nullptr_t) const {        \
-			return m_obj != nullptr;                   \
-		}                                              \
-		MTL::name *m_obj;                              \
-	};
-#endif
 
-MTL_CLASS(Texture)
+class Texture {
+public:
+	Texture(MTL::Texture *obj = nullptr) :
+			m_obj(obj) {}
+	operator MTL::Texture *() const {
+		return m_obj;
+	}
+	bool operator==(std::nullptr_t) const {
+		return m_obj == nullptr;
+	}
+	bool operator!=(std::nullptr_t) const {
+		return m_obj != nullptr;
+	}
+	MTL::Texture *m_obj;
+};
 
 } //namespace GDMTL
 
-#ifdef __OBJC__
-typedef id<MTLResource> __unsafe_unretained MTLResourceUnsafe;
-#else
 typedef MTL::Resource *MTLResourceUnsafe;
-#endif
 
 template <>
 struct HashMapHasherDefaultImpl<MTLResourceUnsafe> {
@@ -194,11 +100,11 @@ struct ClearAttKey {
 	uint16_t sample_count = 0;
 	uint16_t pixel_formats[ATTACHMENT_COUNT] = { 0 };
 
-	_FORCE_INLINE_ void set_color_format(uint32_t p_idx, MTLPixelFormat p_fmt) { pixel_formats[p_idx] = p_fmt; }
-	_FORCE_INLINE_ void set_depth_format(MTLPixelFormat p_fmt) { pixel_formats[DEPTH_INDEX] = p_fmt; }
-	_FORCE_INLINE_ void set_stencil_format(MTLPixelFormat p_fmt) { pixel_formats[STENCIL_INDEX] = p_fmt; }
-	_FORCE_INLINE_ MTLPixelFormat depth_format() const { return (MTLPixelFormat)pixel_formats[DEPTH_INDEX]; }
-	_FORCE_INLINE_ MTLPixelFormat stencil_format() const { return (MTLPixelFormat)pixel_formats[STENCIL_INDEX]; }
+	_FORCE_INLINE_ void set_color_format(uint32_t p_idx, MTL::PixelFormat p_fmt) { pixel_formats[p_idx] = p_fmt; }
+	_FORCE_INLINE_ void set_depth_format(MTL::PixelFormat p_fmt) { pixel_formats[DEPTH_INDEX] = p_fmt; }
+	_FORCE_INLINE_ void set_stencil_format(MTL::PixelFormat p_fmt) { pixel_formats[STENCIL_INDEX] = p_fmt; }
+	_FORCE_INLINE_ MTL::PixelFormat depth_format() const { return (MTL::PixelFormat)pixel_formats[DEPTH_INDEX]; }
+	_FORCE_INLINE_ MTL::PixelFormat stencil_format() const { return (MTL::PixelFormat)pixel_formats[STENCIL_INDEX]; }
 	_FORCE_INLINE_ void enable_layered_rendering() { flags::set(flags, CLEAR_FLAGS_LAYERED); }
 
 	_FORCE_INLINE_ bool is_enabled(uint32_t p_idx) const { return pixel_formats[p_idx] != 0; }
@@ -476,49 +382,8 @@ struct HashMapHasherDefaultImpl<RDD::TextureID> {
 	}
 };
 
-#ifdef __OBJC__
-// These functions are used to convert between Objective-C objects and
-// the RIDs used by Godot, respecting automatic reference counting.
 namespace rid {
 
-// Converts an Objective-C object to a pointer, and incrementing the
-// reference count.
-_FORCE_INLINE_ void *owned(id p_id) {
-	return (__bridge_retained void *)p_id;
-}
-
-#define MAKE_ID(FROM, TO)                \
-	_FORCE_INLINE_ TO make(FROM p_obj) { \
-		return TO(owned(p_obj));         \
-	}
-
-// These are shared for Metal and Metal 4 drivers
-
-MAKE_ID(id<MTLTexture>, RDD::TextureID)
-MAKE_ID(id<MTLBuffer>, RDD::BufferID)
-MAKE_ID(id<MTLSamplerState>, RDD::SamplerID)
-MAKE_ID(MTLVertexDescriptor *, RDD::VertexFormatID)
-
-#undef MAKE_ID
-
-// Converts a pointer to an Objective-C object without changing the reference count.
-_FORCE_INLINE_ auto get(RDD::ID p_id) {
-	return (p_id.id) ? (__bridge ::id)(void *)p_id.id : nil;
-}
-
-// Converts a pointer to an Objective-C object, and decrements the reference count.
-_FORCE_INLINE_ auto release(RDD::ID p_id) {
-	return (__bridge_transfer ::id)(void *)p_id.id;
-}
-
-} // namespace rid
-#endif // __OBJC__
-
-// C++ helpers for accessing Metal objects from IDs (pure C++, no ObjC)
-#ifndef __OBJC__
-namespace rid {
-
-// C++ template to get a Metal C++ pointer from an ID.
 template <typename T>
 _FORCE_INLINE_ T *get(RDD::ID p_id) {
 	return reinterpret_cast<T *>(p_id.id);
@@ -530,7 +395,6 @@ _FORCE_INLINE_ T *get(uint64_t p_id) {
 }
 
 } // namespace rid
-#endif // !__OBJC__
 
 #pragma mark - Render Pass Types
 
@@ -570,12 +434,12 @@ private:
 	uint32_t lastUseSubpassIndex = 0;
 
 public:
-	MTLPixelFormat format = MTLPixelFormatInvalid;
+	MTL::PixelFormat format = MTL::PixelFormatInvalid;
 	MDAttachmentType type = MDAttachmentType::None;
-	MTLLoadAction loadAction = MTLLoadActionDontCare;
-	MTLStoreAction storeAction = MTLStoreActionDontCare;
-	MTLLoadAction stencilLoadAction = MTLLoadActionDontCare;
-	MTLStoreAction stencilStoreAction = MTLStoreActionDontCare;
+	MTL::LoadAction loadAction = MTL::LoadActionDontCare;
+	MTL::StoreAction storeAction = MTL::StoreActionDontCare;
+	MTL::LoadAction stencilLoadAction = MTL::LoadActionDontCare;
+	MTL::StoreAction stencilStoreAction = MTL::StoreActionDontCare;
 	uint32_t samples = 1;
 
 	/*!
@@ -652,27 +516,17 @@ public:
 
 #pragma mark - Command Buffer Helpers
 
-#ifdef __OBJC__
-_FORCE_INLINE_ static MTLSize mipmapLevelSizeFromTexture(id<MTLTexture> p_tex, NSUInteger p_level) {
-	MTLSize lvlSize;
-	lvlSize.width = MAX(p_tex.width >> p_level, 1UL);
-	lvlSize.height = MAX(p_tex.height >> p_level, 1UL);
-	lvlSize.depth = MAX(p_tex.depth >> p_level, 1UL);
-	return lvlSize;
-}
-#endif
-
-_FORCE_INLINE_ static MTLSize MTLSizeFromVector3i(Vector3i p_size) {
-	return MTLSizeMake(p_size.x, p_size.y, p_size.z);
+_FORCE_INLINE_ static MTL::Size MTLSizeFromVector3i(Vector3i p_size) {
+	return MTL::Size{ (NS::UInteger)p_size.x, (NS::UInteger)p_size.y, (NS::UInteger)p_size.z };
 }
 
-_FORCE_INLINE_ static MTLOrigin MTLOriginFromVector3i(Vector3i p_origin) {
-	return MTLOriginMake(p_origin.x, p_origin.y, p_origin.z);
+_FORCE_INLINE_ static MTL::Origin MTLOriginFromVector3i(Vector3i p_origin) {
+	return MTL::Origin{ (NS::UInteger)p_origin.x, (NS::UInteger)p_origin.y, (NS::UInteger)p_origin.z };
 }
 
 // Clamps the size so that the sum of the origin and size do not exceed the maximum size.
-_FORCE_INLINE_ static MTLSize clampMTLSize(MTLSize p_size, MTLOrigin p_origin, MTLSize p_max_size) {
-	MTLSize clamped;
+_FORCE_INLINE_ static MTL::Size clampMTLSize(MTL::Size p_size, MTL::Origin p_origin, MTL::Size p_max_size) {
+	MTL::Size clamped;
 	clamped.width = MIN(p_size.width, p_max_size.width - p_origin.x);
 	clamped.height = MIN(p_size.height, p_max_size.height - p_origin.y);
 	clamped.depth = MIN(p_size.depth, p_max_size.depth - p_origin.z);
@@ -680,14 +534,14 @@ _FORCE_INLINE_ static MTLSize clampMTLSize(MTLSize p_size, MTLOrigin p_origin, M
 }
 
 API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0))
-_FORCE_INLINE_ static bool isArrayTexture(MTLTextureType p_type) {
-	return (p_type == MTLTextureType3D ||
-			p_type == MTLTextureType2DArray ||
-			p_type == MTLTextureType2DMultisampleArray ||
-			p_type == MTLTextureType1DArray);
+_FORCE_INLINE_ static bool isArrayTexture(MTL::TextureType p_type) {
+	return (p_type == MTL::TextureType3D ||
+			p_type == MTL::TextureType2DArray ||
+			p_type == MTL::TextureType2DMultisampleArray ||
+			p_type == MTL::TextureType1DArray);
 }
 
-_FORCE_INLINE_ static bool operator==(MTLSize p_a, MTLSize p_b) {
+_FORCE_INLINE_ static bool operator==(MTL::Size p_a, MTL::Size p_b) {
 	return p_a.width == p_b.width && p_a.height == p_b.height && p_a.depth == p_b.depth;
 }
 
@@ -695,70 +549,70 @@ _FORCE_INLINE_ static bool operator==(MTLSize p_a, MTLSize p_b) {
 
 GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 
-_FORCE_INLINE_ static MTLStages convert_src_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
+_FORCE_INLINE_ static MTL::Stages convert_src_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
 	p_stages.clear_flag(RDD::PIPELINE_STAGE_TOP_OF_PIPE_BIT);
 
 	if (p_stages.has_flag(RDD::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT | RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
-		return MTLStageAll;
+		return MTL::StageAll;
 	}
 
-	MTLStages mtlStages = 0;
+	MTL::Stages mtlStages = 0;
 
 	// Vertex stage mappings
 	if (p_stages & (RDD::PIPELINE_STAGE_DRAW_INDIRECT_BIT | RDD::PIPELINE_STAGE_VERTEX_INPUT_BIT | RDD::PIPELINE_STAGE_VERTEX_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | RDD::PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
-		mtlStages |= MTLStageVertex;
+		mtlStages |= MTL::StageVertex;
 	}
 
 	// Fragment stage mappings (includes resolve, which on Metal is handled in the render pipeline)
 	if (p_stages & (RDD::PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RDD::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT | RDD::PIPELINE_STAGE_RESOLVE_BIT | RDD::PIPELINE_STAGE_CLEAR_STORAGE_BIT)) {
-		mtlStages |= MTLStageFragment;
+		mtlStages |= MTL::StageFragment;
 	}
 
 	// Compute stage
 	if (p_stages & RDD::PIPELINE_STAGE_COMPUTE_SHADER_BIT) {
-		mtlStages |= MTLStageDispatch;
+		mtlStages |= MTL::StageDispatch;
 	}
 
 	// Blit stage (transfer operations)
 	if (p_stages & (RDD::PIPELINE_STAGE_COPY_BIT)) {
-		mtlStages |= MTLStageBlit;
+		mtlStages |= MTL::StageBlit;
 	}
 
 	// ALL_GRAPHICS_BIT special case
 	if (p_stages & RDD::PIPELINE_STAGE_ALL_GRAPHICS_BIT) {
-		mtlStages |= (MTLStageVertex | MTLStageFragment);
+		mtlStages |= (MTL::StageVertex | MTL::StageFragment);
 	}
 
 	return mtlStages;
 }
 
-_FORCE_INLINE_ static MTLStages convert_dst_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
+_FORCE_INLINE_ static MTL::Stages convert_dst_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
 	p_stages.clear_flag(RDD::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
 	if (p_stages.has_flag(RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT | RDD::PIPELINE_STAGE_TOP_OF_PIPE_BIT)) {
-		return MTLStageAll;
+		return MTL::StageAll;
 	}
 
-	MTLStages mtlStages = 0;
+	MTL::Stages mtlStages = 0;
 
 	if (p_stages & (RDD::PIPELINE_STAGE_DRAW_INDIRECT_BIT | RDD::PIPELINE_STAGE_VERTEX_INPUT_BIT | RDD::PIPELINE_STAGE_VERTEX_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | RDD::PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
-		mtlStages |= MTLStageVertex;
+		mtlStages |= MTL::StageVertex;
 	}
 
 	if (p_stages & (RDD::PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RDD::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT | RDD::PIPELINE_STAGE_RESOLVE_BIT)) {
-		mtlStages |= MTLStageFragment;
+		mtlStages |= MTL::StageFragment;
 	}
 
 	if (p_stages & RDD::PIPELINE_STAGE_COMPUTE_SHADER_BIT) {
-		mtlStages |= MTLStageDispatch;
+		mtlStages |= MTL::StageDispatch;
 	}
 
 	if (p_stages & (RDD::PIPELINE_STAGE_COPY_BIT | RDD::PIPELINE_STAGE_CLEAR_STORAGE_BIT)) {
-		mtlStages |= MTLStageBlit;
+		mtlStages |= MTL::StageBlit;
 	}
 
 	if (p_stages & RDD::PIPELINE_STAGE_ALL_GRAPHICS_BIT) {
-		mtlStages |= (MTLStageVertex | MTLStageFragment);
+		mtlStages |= (MTL::StageVertex | MTL::StageFragment);
 	}
 
 	return mtlStages;
@@ -914,25 +768,15 @@ public:
 	virtual void end_label() = 0;
 };
 
-#ifdef __OBJC__
-// SDK compatibility for older macOS/iOS SDKs
-#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 140000) || (TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 170000)
-#define MTLBindingAccess MTLArgumentAccess
-#define MTLBindingAccessReadOnly MTLArgumentAccessReadOnly
-#define MTLBindingAccessReadWrite MTLArgumentAccessReadWrite
-#define MTLBindingAccessWriteOnly MTLArgumentAccessWriteOnly
-#endif
-#endif // __OBJC__
-
 #pragma mark - Uniform Types
 
 struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) UniformInfo {
 	uint32_t binding;
 	BitField<RDD::ShaderStage> active_stages;
-	MTLDataType dataType = MTLDataTypeNone;
-	MTLBindingAccess access = MTLBindingAccessReadOnly;
-	MTLResourceUsage usage = 0;
-	MTLTextureType textureType = MTLTextureType2D;
+	MTL::DataType dataType = MTL::DataTypeNone;
+	MTL::BindingAccess access = MTL::BindingAccessReadOnly;
+	MTL::ResourceUsage usage = 0;
+	MTL::TextureType textureType = MTL::TextureType2D;
 	uint32_t imageFormat = 0;
 	uint32_t arrayLength = 0;
 	bool isMultisampled = 0;
@@ -1088,7 +932,7 @@ public:
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDComputeShader final : public MDShader {
 public:
-	MTLSize local = {};
+	MTL::Size local = {};
 
 	std::shared_ptr<MDLibrary> kernel;
 
@@ -1113,16 +957,16 @@ public:
 
 enum StageResourceUsage : uint32_t {
 	ResourceUnused = 0,
-	VertexRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_VERTEX * 2),
-	VertexWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_VERTEX * 2),
-	FragmentRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_FRAGMENT * 2),
-	FragmentWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_FRAGMENT * 2),
-	TesselationControlRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_TESSELATION_CONTROL * 2),
-	TesselationControlWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_TESSELATION_CONTROL * 2),
-	TesselationEvaluationRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_TESSELATION_EVALUATION * 2),
-	TesselationEvaluationWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_TESSELATION_EVALUATION * 2),
-	ComputeRead = (MTLResourceUsageRead << RDD::SHADER_STAGE_COMPUTE * 2),
-	ComputeWrite = (MTLResourceUsageWrite << RDD::SHADER_STAGE_COMPUTE * 2),
+	VertexRead = (MTL::ResourceUsageRead << RDD::SHADER_STAGE_VERTEX * 2),
+	VertexWrite = (MTL::ResourceUsageWrite << RDD::SHADER_STAGE_VERTEX * 2),
+	FragmentRead = (MTL::ResourceUsageRead << RDD::SHADER_STAGE_FRAGMENT * 2),
+	FragmentWrite = (MTL::ResourceUsageWrite << RDD::SHADER_STAGE_FRAGMENT * 2),
+	TesselationControlRead = (MTL::ResourceUsageRead << RDD::SHADER_STAGE_TESSELATION_CONTROL * 2),
+	TesselationControlWrite = (MTL::ResourceUsageWrite << RDD::SHADER_STAGE_TESSELATION_CONTROL * 2),
+	TesselationEvaluationRead = (MTL::ResourceUsageRead << RDD::SHADER_STAGE_TESSELATION_EVALUATION * 2),
+	TesselationEvaluationWrite = (MTL::ResourceUsageWrite << RDD::SHADER_STAGE_TESSELATION_EVALUATION * 2),
+	ComputeRead = (MTL::ResourceUsageRead << RDD::SHADER_STAGE_COMPUTE * 2),
+	ComputeWrite = (MTL::ResourceUsageWrite << RDD::SHADER_STAGE_COMPUTE * 2),
 };
 
 typedef LocalVector<MTLResourceUnsafe> ResourceVector;
@@ -1133,21 +977,17 @@ _FORCE_INLINE_ StageResourceUsage &operator|=(StageResourceUsage &p_a, uint32_t 
 	return p_a;
 }
 
-_FORCE_INLINE_ StageResourceUsage stage_resource_usage(RDC::ShaderStage p_stage, MTLResourceUsage p_usage) {
+_FORCE_INLINE_ StageResourceUsage stage_resource_usage(RDC::ShaderStage p_stage, MTL::ResourceUsage p_usage) {
 	return StageResourceUsage(p_usage << (p_stage * 2));
 }
 
-_FORCE_INLINE_ MTLResourceUsage resource_usage_for_stage(StageResourceUsage p_usage, RDC::ShaderStage p_stage) {
-	return MTLResourceUsage((p_usage >> (p_stage * 2)) & 0b11);
+_FORCE_INLINE_ MTL::ResourceUsage resource_usage_for_stage(StageResourceUsage p_usage, RDC::ShaderStage p_stage) {
+	return MTL::ResourceUsage((p_usage >> (p_stage * 2)) & 0b11);
 }
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDUniformSet {
 public:
-#ifdef __OBJC__
-	id<MTLBuffer> arg_buffer = nil;
-#else
 	NS::SharedPtr<MTL::Buffer> arg_buffer;
-#endif
 	Vector<uint8_t> arg_buffer_data; // Stored for dynamic uniform sets.
 	ResourceUsageMap usage_to_resources; // Used by Metal 3 for resource tracking.
 	Vector<RDD::BoundUniform> uniforms;
@@ -1194,14 +1034,7 @@ public:
 			float depth_bias = 0.0;
 			float slope_scale = 0.0;
 			float clamp = 0.0;
-#ifdef __OBJC__
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> p_enc) const {
-				if (!enabled) {
-					return;
-				}
-				[p_enc setDepthBias:depth_bias slopeScale:slope_scale clamp:clamp];
-			}
-#else
+
 			template <typename T>
 			_FORCE_INLINE_ void apply(T *p_enc) const {
 				if (!enabled) {
@@ -1209,21 +1042,13 @@ public:
 				}
 				p_enc->setDepthBias(depth_bias, slope_scale, clamp);
 			}
-#endif
 		} depth_bias;
 
 		struct {
 			bool enabled = false;
 			uint32_t front_reference = 0;
 			uint32_t back_reference = 0;
-#ifdef __OBJC__
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> p_enc) const {
-				if (!enabled) {
-					return;
-				}
-				[p_enc setStencilFrontReferenceValue:front_reference backReferenceValue:back_reference];
-			}
-#else
+
 			template <typename T>
 			_FORCE_INLINE_ void apply(T *p_enc) const {
 				if (!enabled) {
@@ -1231,7 +1056,6 @@ public:
 				}
 				p_enc->setStencilReferenceValues(front_reference, back_reference);
 			}
-#endif
 		} stencil;
 
 		struct {
@@ -1241,29 +1065,12 @@ public:
 			float b = 0.0;
 			float a = 0.0;
 
-#ifdef __OBJC__
-			_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> p_enc) const {
-				[p_enc setBlendColorRed:r green:g blue:b alpha:a];
-			}
-#else
 			template <typename T>
 			_FORCE_INLINE_ void apply(T *p_enc) const {
 				p_enc->setBlendColor(r, g, b, a);
 			}
-#endif
 		} blend;
 
-#ifdef __OBJC__
-		_FORCE_INLINE_ void apply(id<MTLRenderCommandEncoder> p_enc) const {
-			[p_enc setCullMode:(MTLCullMode)cull_mode];
-			[p_enc setTriangleFillMode:(MTLTriangleFillMode)fill_mode];
-			[p_enc setDepthClipMode:(MTLDepthClipMode)clip_mode];
-			[p_enc setFrontFacingWinding:(MTLWinding)winding];
-			depth_bias.apply(p_enc);
-			stencil.apply(p_enc);
-			blend.apply(p_enc);
-		}
-#else
 		template <typename T>
 		_FORCE_INLINE_ void apply(T *p_enc) const {
 			p_enc->setCullMode(cull_mode);
@@ -1274,7 +1081,6 @@ public:
 			stencil.apply(p_enc);
 			blend.apply(p_enc);
 		}
-#endif
 
 	} raster_state;
 

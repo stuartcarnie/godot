@@ -141,7 +141,7 @@ MTL::CommandBuffer *MDCommandBuffer::command_buffer() {
 void MDCommandBuffer::_encode_barrier(MTL::CommandEncoder *p_enc) {
 	DEV_ASSERT(p_enc);
 
-	static const MTLStages empty_stages[STAGE_MAX] = { 0, 0, 0 };
+	static const MTL::Stages empty_stages[STAGE_MAX] = { 0, 0, 0 };
 	if (memcmp(&pending_before_queue_stages, empty_stages, sizeof(pending_before_queue_stages)) == 0) {
 		return;
 	}
@@ -170,42 +170,42 @@ void MDCommandBuffer::pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_st
 		VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
 		VectorView<RDD::BufferBarrier> p_buffer_barriers,
 		VectorView<RDD::TextureBarrier> p_texture_barriers) {
-	MTLStages after_stages = convert_src_pipeline_stages_to_metal(p_src_stages);
+	MTL::Stages after_stages = convert_src_pipeline_stages_to_metal(p_src_stages);
 	if (after_stages == 0) {
 		return;
 	}
 
-	MTLStages before_stages = convert_dst_pipeline_stages_to_metal(p_dst_stages);
+	MTL::Stages before_stages = convert_dst_pipeline_stages_to_metal(p_dst_stages);
 	if (before_stages == 0) {
 		return;
 	}
 
 	// Encode intra-encoder memory barrier if an encoder is active for matching stages.
 	if (render.encoder.get() != nullptr) {
-		MTL::RenderStages render_after = static_cast<MTL::RenderStages>(after_stages & (MTLStageVertex | MTLStageFragment));
-		MTL::RenderStages render_before = static_cast<MTL::RenderStages>(before_stages & (MTLStageVertex | MTLStageFragment));
+		MTL::RenderStages render_after = static_cast<MTL::RenderStages>(after_stages & (MTL::StageVertex | MTL::StageFragment));
+		MTL::RenderStages render_before = static_cast<MTL::RenderStages>(before_stages & (MTL::StageVertex | MTL::StageFragment));
 		if (render_after != 0 && render_before != 0) {
 			render.encoder->memoryBarrier(MTL::BarrierScopeBuffers | MTL::BarrierScopeTextures, render_after, render_before);
 		}
 	} else if (compute.encoder.get() != nullptr) {
-		if (after_stages & MTLStageDispatch) {
+		if (after_stages & MTL::StageDispatch) {
 			compute.encoder->memoryBarrier(MTL::BarrierScopeBuffers | MTL::BarrierScopeTextures);
 		}
 	}
 	// Blit encoder has no memory barrier API.
 
 	// Also cache for inter-pass barriers.
-	if (after_stages & (MTLStageVertex | MTLStageFragment)) {
+	if (after_stages & (MTL::StageVertex | MTL::StageFragment)) {
 		pending_after_stages[STAGE_RENDER] |= after_stages;
 		pending_before_queue_stages[STAGE_RENDER] |= before_stages;
 	}
 
-	if (after_stages & MTLStageDispatch) {
+	if (after_stages & MTL::StageDispatch) {
 		pending_after_stages[STAGE_COMPUTE] |= after_stages;
 		pending_before_queue_stages[STAGE_COMPUTE] |= before_stages;
 	}
 
-	if (after_stages & MTLStageBlit) {
+	if (after_stages & MTL::StageBlit) {
 		pending_after_stages[STAGE_BLIT] |= after_stages;
 		pending_before_queue_stages[STAGE_BLIT] |= before_stages;
 	}

@@ -297,8 +297,8 @@ private:
 		STAGE_MAX,
 	};
 	bool use_barriers = false;
-	MTLStages pending_after_stages[STAGE_MAX] = { 0, 0, 0 };
-	MTLStages pending_before_queue_stages[STAGE_MAX] = { 0, 0, 0 };
+	MTL::Stages pending_after_stages[STAGE_MAX] = { 0, 0, 0 };
+	MTL::Stages pending_before_queue_stages[STAGE_MAX] = { 0, 0, 0 };
 	void _encode_barrier(MTL::CommandEncoder *p_enc);
 
 	void reset();

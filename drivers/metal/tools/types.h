@@ -6,8 +6,8 @@
 #define GODOT_TYPES_H
 
 #include "../../../thirdparty/spirv-cross/spirv.hpp"
-#import "core/io/marshalls.h"
-#import <Metal/Metal.h>
+#include "core/io/marshalls.h"
+#include <Metal/Metal.hpp>
 
 int decompress(uint8_t *p_dst, int p_dst_max_size, const uint8_t *p_src, int p_src_size);
 
@@ -65,11 +65,11 @@ inline ShaderStageUsage &operator|=(ShaderStageUsage &a, int b) {
 }
 
 struct BindingInfo {
-	MTLDataType dataType = MTLDataTypeNone;
+	MTL::DataType dataType = MTL::DataTypeNone;
 	uint32_t index = 0;
-	MTLBindingAccess access = MTLBindingAccessReadOnly;
-	MTLResourceUsage usage = 0;
-	MTLTextureType textureType = MTLTextureType2D;
+	MTL::BindingAccess access = MTL::BindingAccessReadOnly;
+	MTL::ResourceUsage usage = 0;
+	MTL::TextureType textureType = MTL::TextureType2D;
 	spv::ImageFormat imageFormat = spv::ImageFormatUnknown;
 	uint32_t arrayLength = 0;
 	bool isMultisampled = false;
@@ -88,8 +88,9 @@ class BufReader {
 	uint64_t pos = 0;
 
 	bool check_length(size_t p_size) {
-		if (status != Status::OK)
+		if (status != Status::OK) {
 			return false;
+		}
 
 		if (pos + p_size > length) {
 			status = Status::SHORT_BUFFER;
