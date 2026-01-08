@@ -983,7 +983,7 @@ void RenderingDeviceDriverMetal::swap_chain_free(SwapChainID p_swap_chain) {
 RDD::FramebufferID RenderingDeviceDriverMetal::framebuffer_create(RenderPassID p_render_pass, VectorView<TextureID> p_attachments, uint32_t p_width, uint32_t p_height) {
 	MDRenderPass *pass = (MDRenderPass *)(p_render_pass.id);
 
-	Vector<GDMTL::Texture> textures;
+	Vector<MTL::Texture *> textures;
 	textures.resize(p_attachments.size());
 
 	for (uint32_t i = 0; i < p_attachments.size(); i += 1) {
@@ -1256,8 +1256,8 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability-new")
 		uint64_t *ptr = (uint64_t *)arg_buffer_data.ptrw();
 
-		HashMap<MTLResourceUnsafe, StageResourceUsage, HashMapHasherDefault> bound_resources;
-		auto add_usage = [&bound_resources](MTLResourceUnsafe res, BitField<RDD::ShaderStage> stage, MTL::ResourceUsage usage) {
+		HashMap<MTL::Resource *, StageResourceUsage, HashMapHasherDefault> bound_resources;
+		auto add_usage = [&bound_resources](MTL::Resource *res, BitField<RDD::ShaderStage> stage, MTL::ResourceUsage usage) {
 			StageResourceUsage *sru = bound_resources.getptr(res);
 			if (sru == nullptr) {
 				sru = &bound_resources.insert(res, ResourceUnused)->value;
@@ -1371,7 +1371,7 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 #undef ADD_USAGE
 
 		if (!use_barriers) {
-			for (KeyValue<MTLResourceUnsafe, StageResourceUsage> const &keyval : bound_resources) {
+			for (KeyValue<MTL::Resource *, StageResourceUsage> const &keyval : bound_resources) {
 				ResourceVector *resources = set->usage_to_resources.getptr(keyval.value);
 				if (resources == nullptr) {
 					resources = &set->usage_to_resources.insert(keyval.value, ResourceVector())->value;

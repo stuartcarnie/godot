@@ -89,11 +89,6 @@ using ::UniformSet;
 
 using RDM = ::RenderingDeviceDriverMetal;
 
-// Local typedefs using explicit metal-cpp types for Metal 3 driver.
-// These shadow the shared definitions which use conditional MTLResourceUnsafe.
-typedef LocalVector<MTL::Resource *> ResourceVector;
-typedef HashMap<StageResourceUsage, ResourceVector> ResourceUsageMap;
-
 struct ResourceUsageEntry {
 	StageResourceUsage usage = ResourceUnused;
 	uint32_t unused = 0;

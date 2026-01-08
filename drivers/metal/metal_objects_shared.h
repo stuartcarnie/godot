@@ -42,35 +42,6 @@ class RenderingDeviceDriverMetal;
 
 using RDC = RenderingDeviceCommons;
 
-// These types can be used in Vector and other containers that use
-// pointer operations not supported by ARC.
-namespace GDMTL {
-
-class Texture {
-public:
-	Texture(MTL::Texture *obj = nullptr) :
-			m_obj(obj) {}
-	operator MTL::Texture *() const {
-		return m_obj;
-	}
-	bool operator==(std::nullptr_t) const {
-		return m_obj == nullptr;
-	}
-	bool operator!=(std::nullptr_t) const {
-		return m_obj != nullptr;
-	}
-	MTL::Texture *m_obj;
-};
-
-} //namespace GDMTL
-
-typedef MTL::Resource *MTLResourceUnsafe;
-
-template <>
-struct HashMapHasherDefaultImpl<MTLResourceUnsafe> {
-	static _FORCE_INLINE_ uint32_t hash(const MTLResourceUnsafe p_pointer) { return hash_one_uint64((uint64_t)p_pointer); }
-};
-
 enum ShaderStageUsage : uint32_t {
 	None = 0,
 	Vertex = RDD::SHADER_STAGE_VERTEX_BIT,
@@ -311,16 +282,16 @@ _FORCE_INLINE_ static uint32_t to_index(RDD::ShaderStage p_s) {
 }
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) MDFrameBuffer {
-	Vector<GDMTL::Texture> textures;
+	Vector<MTL::Texture *> textures;
 
 public:
 	Size2i size;
-	MDFrameBuffer(Vector<GDMTL::Texture> p_textures, Size2i p_size) :
+	MDFrameBuffer(Vector<MTL::Texture *> p_textures, Size2i p_size) :
 			textures(p_textures), size(p_size) {}
 	MDFrameBuffer() {}
 
 	/// Returns the texture at the given index.
-	_ALWAYS_INLINE_ GDMTL::Texture get_texture(uint32_t p_idx) const {
+	_ALWAYS_INLINE_ MTL::Texture *get_texture(uint32_t p_idx) const {
 		return textures[p_idx];
 	}
 
@@ -330,7 +301,7 @@ public:
 	}
 
 	/// Set the texture at the given index.
-	_ALWAYS_INLINE_ void set_texture(uint32_t p_idx, GDMTL::Texture p_texture) {
+	_ALWAYS_INLINE_ void set_texture(uint32_t p_idx, MTL::Texture *p_texture) {
 		textures.write[p_idx] = p_texture;
 	}
 
@@ -969,7 +940,7 @@ enum StageResourceUsage : uint32_t {
 	ComputeWrite = (MTL::ResourceUsageWrite << RDD::SHADER_STAGE_COMPUTE * 2),
 };
 
-typedef LocalVector<MTLResourceUnsafe> ResourceVector;
+typedef LocalVector<MTL::Resource *> ResourceVector;
 typedef HashMap<StageResourceUsage, ResourceVector> ResourceUsageMap;
 
 _FORCE_INLINE_ StageResourceUsage &operator|=(StageResourceUsage &p_a, uint32_t p_b) {

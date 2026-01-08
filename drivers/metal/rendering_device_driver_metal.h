@@ -94,9 +94,9 @@ protected:
 	bool archive_fail_on_miss = false;
 
 	/// Resources to be added to the `main_residency_set`.
-	LocalVector<MTLResourceUnsafe> _residency_add;
+	LocalVector<MTL::Resource *> _residency_add;
 	/// Resources to be removed from the `main_residency_set`.
-	LocalVector<MTLResourceUnsafe> _residency_del;
+	LocalVector<MTL::Resource *> _residency_del;
 
 #pragma mark - Copy Queue
 
