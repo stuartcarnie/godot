@@ -591,8 +591,6 @@ MTL4::RenderCommandEncoder *MDCommandBuffer::get_new_render_encoder_with_descrip
 void MDCommandBuffer::render_bind_uniform_sets(VectorView<RDD::UniformSetID> p_uniform_sets, RDD::ShaderID p_shader, uint32_t p_first_set_index, uint32_t p_set_count, uint32_t p_dynamic_offsets) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Render);
 
-	render.dynamic_offsets |= p_dynamic_offsets;
-
 	if (uint32_t new_size = p_first_set_index + p_set_count; render.uniform_sets.size() < new_size) {
 		uint32_t s = render.uniform_sets.size();
 		render.uniform_sets.resize(new_size);
@@ -602,6 +600,18 @@ void MDCommandBuffer::render_bind_uniform_sets(VectorView<RDD::UniformSetID> p_u
 
 	const MDShader *shader = (const MDShader *)p_shader.id;
 	DynamicOffsetLayout layout = shader->dynamic_offset_layout;
+
+	// Clear bits for sets being bound, then OR new values.
+	for (uint32_t i = 0; i < p_set_count && render.dynamic_offsets != 0; i++) {
+		uint32_t set_index = p_first_set_index + i;
+		uint32_t count = layout.get_count(set_index);
+		if (count > 0) {
+			uint32_t shift = layout.get_offset_index_shift(set_index);
+			uint32_t mask = ((1u << (count * 4u)) - 1u) << shift;
+			render.dynamic_offsets &= ~mask; // Clear this set's bits
+		}
+	}
+	render.dynamic_offsets |= p_dynamic_offsets;
 
 	for (size_t i = 0; i < p_set_count; ++i) {
 		MDUniformSet *set = (MDUniformSet *)(p_uniform_sets[i].id);
@@ -1204,8 +1214,6 @@ void MDCommandBuffer::ComputeState::reset() {
 void MDCommandBuffer::compute_bind_uniform_sets(VectorView<RDD::UniformSetID> p_uniform_sets, RDD::ShaderID p_shader, uint32_t p_first_set_index, uint32_t p_set_count, uint32_t p_dynamic_offsets) {
 	DEV_ASSERT(type == MDCommandBufferStateType::Compute);
 
-	compute.dynamic_offsets |= p_dynamic_offsets;
-
 	if (uint32_t new_size = p_first_set_index + p_set_count; compute.uniform_sets.size() < new_size) {
 		uint32_t s = compute.uniform_sets.size();
 		compute.uniform_sets.resize(new_size);
@@ -1215,6 +1223,18 @@ void MDCommandBuffer::compute_bind_uniform_sets(VectorView<RDD::UniformSetID> p_
 
 	const MDShader *shader = (const MDShader *)p_shader.id;
 	DynamicOffsetLayout layout = shader->dynamic_offset_layout;
+
+	// Clear bits for sets being bound, then OR new values.
+	for (uint32_t i = 0; i < p_set_count && compute.dynamic_offsets != 0; i++) {
+		uint32_t set_index = p_first_set_index + i;
+		uint32_t count = layout.get_count(set_index);
+		if (count > 0) {
+			uint32_t shift = layout.get_offset_index_shift(set_index);
+			uint32_t mask = ((1u << (count * 4u)) - 1u) << shift;
+			compute.dynamic_offsets &= ~mask; // Clear this set's bits
+		}
+	}
+	compute.dynamic_offsets |= p_dynamic_offsets;
 
 	for (size_t i = 0; i < p_set_count; ++i) {
 		MDUniformSet *set = (MDUniformSet *)(p_uniform_sets[i].id);
