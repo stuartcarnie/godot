@@ -1481,7 +1481,7 @@ void RenderingDeviceDriverMetal::command_clear_color_texture(CommandBufferID p_c
 }
 
 void RenderingDeviceDriverMetal::command_clear_depth_stencil_texture(CommandBufferID p_cmd_buffer, TextureID p_texture, TextureLayout p_texture_layout, float p_depth, uint8_t p_stencil, const TextureSubresourceRange &p_subresources) {
-	MDCommandBuffer *cb = (MDCommandBuffer *)(p_cmd_buffer.id);
+	MDCommandBufferBase *cb = (MDCommandBufferBase *)(p_cmd_buffer.id);
 	cb->clear_depth_stencil_texture(p_texture, p_texture_layout, p_depth, p_stencil, p_subresources);
 }
 

@@ -408,6 +408,124 @@ void MDCommandBuffer::clear_buffer(RDD::BufferID p_buffer, uint64_t p_offset, ui
 	blit_enc->fillBuffer(buffer->metal_buffer.get(), NS::Range(p_offset, p_size), 0);
 }
 
+void MDCommandBuffer::clear_depth_stencil_texture(RDD::TextureID p_texture, RDD::TextureLayout p_texture_layout, float p_depth, uint8_t p_stencil, const RDD::TextureSubresourceRange &p_subresources) {
+	MTL::Texture *src_tex = rid::get<MTL::Texture>(p_texture);
+
+	if (src_tex->parentTexture()) {
+		// Clear via the parent texture rather than the view.
+		src_tex = src_tex->parentTexture();
+	}
+
+	PixelFormats &pf = device_driver->get_pixel_formats();
+
+	bool is_depth_format = pf.isDepthFormat(src_tex->pixelFormat());
+	bool is_stencil_format = pf.isStencilFormat(src_tex->pixelFormat());
+
+	if (!is_depth_format && !is_stencil_format) {
+		ERR_FAIL_MSG("invalid: color texture format");
+	}
+
+	bool clear_depth = is_depth_format && p_subresources.aspect.has_flag(RDD::TEXTURE_ASPECT_DEPTH_BIT);
+	bool clear_stencil = is_stencil_format && p_subresources.aspect.has_flag(RDD::TEXTURE_ASPECT_STENCIL_BIT);
+
+	if (clear_depth || clear_stencil) {
+		NS::SharedPtr<MTL::RenderPassDescriptor> desc = NS::TransferPtr(MTL::RenderPassDescriptor::alloc()->init());
+
+		MTL::RenderPassDepthAttachmentDescriptor *daDesc = desc->depthAttachment();
+		if (clear_depth) {
+			daDesc->setTexture(src_tex);
+			daDesc->setLoadAction(MTL::LoadActionClear);
+			daDesc->setStoreAction(MTL::StoreActionStore);
+			daDesc->setClearDepth(p_depth);
+		}
+
+		MTL::RenderPassStencilAttachmentDescriptor *saDesc = desc->stencilAttachment();
+		if (clear_stencil) {
+			saDesc->setTexture(src_tex);
+			saDesc->setLoadAction(MTL::LoadActionClear);
+			saDesc->setStoreAction(MTL::StoreActionStore);
+			saDesc->setClearStencil(p_stencil);
+		}
+
+		// Extract the mipmap levels that are to be updated.
+		uint32_t mipLvlStart = p_subresources.base_mipmap;
+		uint32_t mipLvlCnt = p_subresources.mipmap_count;
+		uint32_t mipLvlEnd = mipLvlStart + mipLvlCnt;
+
+		uint32_t levelCount = src_tex->mipmapLevelCount();
+
+		// Extract the cube or array layers (slices) that are to be updated.
+		bool is3D = src_tex->textureType() == MTL::TextureType3D;
+		uint32_t layerStart = is3D ? 0 : p_subresources.base_layer;
+		uint32_t layerCnt = p_subresources.layer_count;
+		uint32_t layerEnd = layerStart + layerCnt;
+
+		MetalFeatures const &features = device_driver->get_device_properties().features;
+
+		// Iterate across mipmap levels and layers, and perform and empty render to clear each.
+		for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {
+			ERR_FAIL_INDEX_MSG(mipLvl, levelCount, "mip level out of range");
+
+			if (clear_depth) {
+				daDesc->setLevel(mipLvl);
+			}
+			if (clear_stencil) {
+				saDesc->setLevel(mipLvl);
+			}
+
+			// If a 3D image, we need to get the depth for each level.
+			if (is3D) {
+				layerCnt = mipmapLevelSizeFromTexture(src_tex, mipLvl).depth;
+				layerEnd = layerStart + layerCnt;
+			}
+
+			if ((features.layeredRendering && src_tex->sampleCount() == 1) || features.multisampleLayeredRendering) {
+				// We can clear all layers at once.
+				if (is3D) {
+					if (clear_depth) {
+						daDesc->setDepthPlane(layerStart);
+					}
+					if (clear_stencil) {
+						saDesc->setDepthPlane(layerStart);
+					}
+				} else {
+					if (clear_depth) {
+						daDesc->setSlice(layerStart);
+					}
+					if (clear_stencil) {
+						saDesc->setSlice(layerStart);
+					}
+				}
+				desc->setRenderTargetArrayLength(layerCnt);
+				MTL::RenderCommandEncoder *enc = get_new_render_encoder_with_descriptor(desc.get());
+				enc->setLabel(MTLSTR("Clear Image"));
+				enc->endEncoding();
+			} else {
+				for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
+					if (is3D) {
+						if (clear_depth) {
+							daDesc->setDepthPlane(layer);
+						}
+						if (clear_stencil) {
+							saDesc->setDepthPlane(layer);
+						}
+					} else {
+						if (clear_depth) {
+							daDesc->setSlice(layer);
+						}
+						if (clear_stencil) {
+							saDesc->setSlice(layer);
+						}
+					}
+					MTL::RenderCommandEncoder *enc = get_new_render_encoder_with_descriptor(desc.get());
+					enc->setLabel(MTLSTR("Clear Image"));
+					enc->endEncoding();
+				}
+			}
+		}
+	}
+}
+
 void MDCommandBuffer::copy_buffer(RDD::BufferID p_src_buffer, RDD::BufferID p_dst_buffer, VectorView<RDD::BufferCopyRegion> p_regions) {
 	const RDM::BufferInfo *src = (const RDM::BufferInfo *)p_src_buffer.id;
 	const RDM::BufferInfo *dst = (const RDM::BufferInfo *)p_dst_buffer.id;

@@ -18,15 +18,15 @@ target_sources(metal PRIVATE
         metal_device_properties.cpp
         metal_device_properties.h
         metal_fwd.h
-        metal_objects_shared.h
         metal_objects_shared.cpp
+        metal_objects_shared.h
         metal_utils.h
         pixel_formats.cpp
         pixel_formats.h
         rendering_context_driver_metal.cpp
         rendering_context_driver_metal.h
-        rendering_device_driver_metal.h
         rendering_device_driver_metal.cpp
+        rendering_device_driver_metal.h
         rendering_device_driver_metal3.cpp
         rendering_device_driver_metal3.h
         rendering_device_driver_metal4.cpp
