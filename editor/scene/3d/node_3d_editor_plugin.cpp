@@ -2204,8 +2204,10 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 						if (_edit.original_mouse_pos != _edit.mouse_pos || _edit.gizmo->get_plugin()->can_commit_handle_on_click()) {
 							_edit.gizmo->commit_handle(_edit.gizmo_handle, _edit.gizmo_handle_secondary, _edit.gizmo_initial_value, false);
 						}
-
-						spatial_editor->get_single_selected_node()->update_gizmos();
+						Node3D *selected_node = spatial_editor->get_single_selected_node();
+						if (selected_node) {
+							selected_node->update_gizmos();
+						}
 						_edit.gizmo = Ref<EditorNode3DGizmo>();
 						break;
 					}
@@ -5877,7 +5879,13 @@ void Node3DEditorViewport::update_transform(bool p_shift) {
 			Vector3 current_rotation_vector = (intersection - _edit.center).normalized();
 
 			if (_edit.initial_click_vector == Vector3()) {
-				_edit.initial_click_vector = (click - _edit.center).normalized();
+				Plane rotation_plane(global_axis, _edit.center);
+				Vector3 click_on_rotation_plane;
+				if (rotation_plane.intersects_ray(_edit.click_ray_pos, _edit.click_ray, &click_on_rotation_plane)) {
+					_edit.initial_click_vector = (click_on_rotation_plane - _edit.center).normalized();
+				} else {
+					_edit.initial_click_vector = (click - _edit.center).normalized();
+				}
 				_edit.previous_rotation_vector = current_rotation_vector;
 				_edit.accumulated_rotation_angle = 0.0;
 				_edit.display_rotation_angle = 0.0;

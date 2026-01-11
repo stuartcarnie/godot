@@ -640,6 +640,14 @@ void EditorNode::_update_theme(bool p_skip_creation) {
 	if (!p_skip_creation) {
 		theme = EditorThemeManager::generate_theme(theme);
 		DisplayServer::set_early_window_clear_color_override(true, theme->get_color(SNAME("background"), EditorStringName(Editor)));
+
+#if defined(MODULE_GDSCRIPT_ENABLED) || defined(MODULE_MONO_ENABLED)
+		if (EditorHelpHighlighter::get_singleton()) {
+			// Update syntax colors.
+			EditorHelpHighlighter::free_singleton();
+			EditorHelpHighlighter::create_singleton();
+		}
+#endif
 	}
 
 	Vector<Ref<Theme>> editor_themes;
@@ -3507,15 +3515,7 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 		} break;
 
 		case SCENE_RELOAD_SAVED_SCENE: {
-			Node *scene = get_edited_scene();
-
-			if (!scene) {
-				break;
-			}
-
-			String scene_filename = scene->get_scene_file_path();
-			String unsaved_message;
-
+			const String scene_filename = editor_data.get_scene_path(editor_data.get_edited_scene());
 			if (scene_filename.is_empty()) {
 				show_warning(TTR("Can't reload a scene that was never saved."));
 				break;
@@ -3524,7 +3524,7 @@ void EditorNode::_menu_option_confirm(int p_option, bool p_confirmed) {
 			if (unsaved_cache) {
 				if (!p_confirmed) {
 					confirmation->set_ok_button_text(TTRC("Save & Reload"));
-					unsaved_message = _get_unsaved_scene_dialog_text(scene_filename, started_timestamp);
+					const String unsaved_message = _get_unsaved_scene_dialog_text(scene_filename, started_timestamp);
 					confirmation->set_text(unsaved_message + "\n\n" + TTR("Save before reloading the scene?"));
 					confirmation->popup_centered();
 					confirmation_button->show();
@@ -4060,9 +4060,9 @@ void EditorNode::_discard_changes(const String &p_str) {
 	switch (current_menu_option) {
 		case SCENE_CLOSE:
 		case SCENE_TAB_CLOSE: {
-			Node *scene = editor_data.get_edited_scene_root(tab_closing_idx);
-			if (scene != nullptr) {
-				_update_prev_closed_scenes(scene->get_scene_file_path(), true);
+			const String path = editor_data.get_scene_path(tab_closing_idx);
+			if (!path.is_empty()) {
+				_update_prev_closed_scenes(path, true);
 			}
 
 			// Don't close tabs when exiting the editor (required for "restore_scenes_on_load" setting).
@@ -4073,11 +4073,8 @@ void EditorNode::_discard_changes(const String &p_str) {
 			_proceed_closing_scene_tabs();
 		} break;
 		case SCENE_RELOAD_SAVED_SCENE: {
-			Node *scene = get_edited_scene();
-
-			String scene_filename = scene->get_scene_file_path();
-
 			int cur_idx = editor_data.get_edited_scene();
+			const String scene_filename = editor_data.get_scene_path(cur_idx);
 
 			_remove_edited_scene();
 
@@ -7509,13 +7506,13 @@ Vector<Ref<EditorResourceConversionPlugin>> EditorNode::find_resource_conversion
 void EditorNode::_update_renderer_color() {
 	String rendering_method = renderer->get_selected_metadata();
 
-	if (rendering_method == "forward_plus") {
-		renderer->add_theme_color_override(SceneStringName(font_color), theme->get_color(SNAME("forward_plus_color"), EditorStringName(Editor)));
-	} else if (rendering_method == "mobile") {
-		renderer->add_theme_color_override(SceneStringName(font_color), theme->get_color(SNAME("mobile_color"), EditorStringName(Editor)));
-	} else if (rendering_method == "gl_compatibility") {
-		renderer->add_theme_color_override(SceneStringName(font_color), theme->get_color(SNAME("gl_compatibility_color"), EditorStringName(Editor)));
-	}
+	const Color renderer_normal_color = theme->get_color(rendering_method + "_color", EditorStringName(Editor));
+	const Color mono_color = theme->get_color(SNAME("mono_color"), EditorStringName(Editor));
+
+	renderer->add_theme_color_override(SceneStringName(font_color), renderer_normal_color);
+	renderer->add_theme_color_override("font_hover_color", renderer_normal_color.lerp(mono_color, 0.3));
+	renderer->add_theme_color_override("font_pressed_color", renderer_normal_color.lerp(mono_color, 0.4));
+	renderer->add_theme_color_override("font_hover_pressed_color", renderer_normal_color.lerp(mono_color, 0.5));
 }
 
 void EditorNode::_renderer_selected(int p_index) {

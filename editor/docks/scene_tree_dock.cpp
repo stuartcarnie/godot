@@ -610,7 +610,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 				if (!_validate_no_foreign()) {
 					break;
 				}
-				tree->grab_focus();
+				tree->grab_focus(!tree->has_focus(true));
 				tree->edit_selected();
 			}
 		} break;
@@ -3836,6 +3836,8 @@ void SceneTreeDock::_tree_rmb(const Vector2 &p_menu_pos) {
 	const List<Node *> selection = editor_selection->get_top_selected_node_list();
 	List<Node *> full_selection = editor_selection->get_full_selected_node_list(); // Above method only returns nodes with common parent.
 
+	scene_tree->get_scene_tree()->grab_focus(true);
+
 	if (selection.is_empty()) {
 		if (!profile_allow_editing) {
 			return;
@@ -4777,7 +4779,7 @@ SceneTreeDock::SceneTreeDock(Node *p_scene_root, EditorSelection *p_editor_selec
 	set_name(TTRC("Scene"));
 	set_icon_name("PackedScene");
 	set_dock_shortcut(ED_SHORTCUT_AND_COMMAND("docks/open_scene", TTRC("Open Scene Dock")));
-	set_default_slot(DockConstants::DOCK_SLOT_LEFT_UR);
+	set_default_slot(EditorDock::DOCK_SLOT_LEFT_UR);
 
 	singleton = this;
 	editor_data = &p_editor_data;
