@@ -911,26 +911,35 @@ void ResourceTracker::merge_from(const ::ResourceUsageMap &p_from) {
 		if (resources == nullptr) {
 			resources = &_current.insert(keyval.key, ResourceVector())->value;
 		}
-		// Reserve space for the new resources, assuming they are all added.
 		resources->reserve(resources->size() + keyval.value.size());
 
-		uint32_t i = 0, j = 0;
-		MTL::Resource **resources_ptr = resources->ptr();
 		MTL::Resource *const *keyval_ptr = (MTL::Resource *const *)(void *)keyval.value.ptr();
-		// 2-way merge.
+
+		// Helper to check if a resource needs to be added based on previous usage.
+		auto should_add_resource = [this, usage = keyval.key](MTL::Resource *res) -> bool {
+			ResourceUsageEntry *existing = _previous.getptr(res);
+			if (existing == nullptr) {
+				_previous.insert(res, usage);
+				return true;
+			}
+			if (existing->usage != usage) {
+				existing->usage |= usage;
+				return true;
+			}
+			return false;
+		};
+
+		// 2-way merge of sorted resource lists.
+		uint32_t i = 0, j = 0;
 		while (i < resources->size() && j < keyval.value.size()) {
-			if (resources_ptr[i] < keyval_ptr[j]) {
+			MTL::Resource *current_res = resources->ptr()[i];
+			MTL::Resource *new_res = keyval_ptr[j];
+
+			if (current_res < new_res) {
 				i++;
-			} else if (resources_ptr[i] > keyval_ptr[j]) {
-				ResourceUsageEntry *existing = nullptr;
-				if ((existing = _previous.getptr(keyval_ptr[j])) == nullptr) {
-					existing = &_previous.insert(keyval_ptr[j], keyval.key)->value;
-					resources->insert(i, keyval_ptr[j]);
-				} else {
-					if (existing->usage != keyval.key) {
-						existing->usage |= keyval.key;
-						resources->insert(i, keyval_ptr[j]);
-					}
+			} else if (current_res > new_res) {
+				if (should_add_resource(new_res)) {
+					resources->insert(i, new_res);
 				}
 				i++;
 				j++;
@@ -939,17 +948,11 @@ void ResourceTracker::merge_from(const ::ResourceUsageMap &p_from) {
 				j++;
 			}
 		}
-		// Append the remaining resources.
+
+		// Append any remaining resources from the input.
 		for (; j < keyval.value.size(); j++) {
-			ResourceUsageEntry *existing = nullptr;
-			if ((existing = _previous.getptr(keyval_ptr[j])) == nullptr) {
-				existing = &_previous.insert(keyval_ptr[j], keyval.key)->value;
+			if (should_add_resource(keyval_ptr[j])) {
 				resources->push_back(keyval_ptr[j]);
-			} else {
-				if (existing->usage != keyval.key) {
-					existing->usage |= keyval.key;
-					resources->push_back(keyval_ptr[j]);
-				}
 			}
 		}
 	}
@@ -1799,10 +1802,3 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers_compute(MDUniformSet *p_se
 }
 
 GODOT_CLANG_WARNING_POP
-
-// Free function for C++ compatibility (must be in namespace MTL3)
-namespace MTL3 {
-MTL::CommandBuffer *get_command_buffer_cpp(MDCommandBuffer *p_cmd_buffer) {
-	return p_cmd_buffer->get_command_buffer();
-}
-} // namespace MTL3

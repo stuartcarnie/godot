@@ -107,27 +107,32 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 	ERR_FAIL_COND_V(err, err);
 
 	// Check if the user has explicitly enabled resource barriers.
-	// This requires macOS 26.0+ / iOS 26.0+.
 	bool barriers_enabled = GLOBAL_GET("rendering/rendering_device/metal3/enable_pipeline_barriers");
 	barriers_enabled |= OS::get_singleton()->get_environment("GODOT_MTL_FORCE_BARRIERS") == "1";
-	if (barriers_enabled) {
-		print_line("Metal3: Resource barriers enabled.");
-		NS::SharedPtr<MTL::ResidencySetDescriptor> rs_desc = NS::TransferPtr(MTL::ResidencySetDescriptor::alloc()->init());
-		rs_desc->setInitialCapacity(250);
-		rs_desc->setLabel(MTLSTR("Main Residency Set"));
-		NS::Error *error = nullptr;
-		NS::SharedPtr<MTL::ResidencySet> mrs = NS::TransferPtr(device->newResidencySet(rs_desc.get(), &error));
-		if (!mrs) {
-			String error_msg = error ? String(error->localizedDescription()->utf8String()) : "Unknown error";
-			print_error(vformat("Resource barriers unavailable. Failed to create main residency set for explicit resource barriers: %s", error_msg));
-		} else {
-			use_barriers = true;
-			base_hazard_tracking = MTL::ResourceHazardTrackingModeUntracked;
-			main_residency_set = mrs;
-			device_queue->addResidencySet(mrs.get());
+	if (__builtin_available(macos 26.0, ios 26.0, tvos 26.0, visionos 26.0, *)) {
+		if (barriers_enabled) {
+			print_line("Metal 3: Resource barriers enabled.");
+			NS::SharedPtr<MTL::ResidencySetDescriptor> rs_desc = NS::TransferPtr(MTL::ResidencySetDescriptor::alloc()->init());
+			rs_desc->setInitialCapacity(250);
+			rs_desc->setLabel(MTLSTR("Main Residency Set"));
+			NS::Error *error = nullptr;
+			NS::SharedPtr<MTL::ResidencySet> mrs = NS::TransferPtr(device->newResidencySet(rs_desc.get(), &error));
+			if (!mrs) {
+				String error_msg = error ? String(error->localizedDescription()->utf8String()) : "Unknown error";
+				print_error(vformat("Resource barriers unavailable. Failed to create main residency set for explicit resource barriers: %s", error_msg));
+			} else {
+				use_barriers = true;
+				base_hazard_tracking = MTL::ResourceHazardTrackingModeUntracked;
+				main_residency_set = mrs;
+				device_queue->addResidencySet(mrs.get());
+			}
 		}
 	} else {
-		print_verbose("Metal3: Resource barriers are disabled.");
+		if (barriers_enabled) {
+			// Application or user has requested barriers, but the OS doesn't support them.
+			print_verbose("Metal 3: Resource barriers are not supported on this OS version.");
+			barriers_enabled = false;
+		}
 	}
 
 	return OK;
@@ -359,11 +364,6 @@ RDD::CommandBufferID RenderingDeviceDriverMetal::command_buffer_create(CommandPo
 	MDCommandBuffer *obj = memnew(MDCommandBuffer(queue, this));
 	command_buffers.push_back(obj);
 	return CommandBufferID(obj);
-}
-
-// Factory function for C++ compatibility
-RenderingDeviceDriver *create_rendering_device_driver(RenderingContextDriverMetal *p_context) {
-	return memnew(RenderingDeviceDriverMetal(p_context));
 }
 
 } // namespace MTL3

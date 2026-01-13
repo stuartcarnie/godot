@@ -50,9 +50,10 @@
 /* permissions and limitations under the License.                         */
 /**************************************************************************/
 
-#include <Metal/Metal.hpp>
-
 #include "servers/rendering/rendering_device.h"
+
+#include <Metal/Metal.hpp>
+#include <cstddef>
 
 /** The buffer index to use for vertex content. */
 const static uint32_t VERT_CONTENT_BUFFER_INDEX = 0;

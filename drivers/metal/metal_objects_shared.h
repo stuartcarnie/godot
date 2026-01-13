@@ -37,6 +37,7 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <memory>
+#include <optional>
 
 class RenderingDeviceDriverMetal;
 

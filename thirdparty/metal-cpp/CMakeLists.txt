@@ -12,4 +12,3 @@ target_sources(metal-cpp PRIVATE
 )
 # [[[end]]]
 target_include_directories(metal-cpp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_definitions(metal-cpp PUBLIC FFX_GCC)

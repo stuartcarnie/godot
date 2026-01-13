@@ -41,14 +41,15 @@
 #include "core/templates/paged_allocator.h"
 #include "servers/rendering/renderer_scene_render.h"
 
-#include <Foundation/NSSharedPtr.hpp>
-#include <MetalFX/MTL4FXSpatialScaler.hpp>
-#include <MetalFX/MTL4FXTemporalScaler.hpp>
+namespace MTLFX {
+class SpatialScalerBase;
+class TemporalScalerBase;
+} //namespace MTLFX
 
 namespace RendererRD {
 
 struct MFXSpatialContext {
-	NS::SharedPtr<MTLFX::SpatialScalerBase> scaler;
+	MTLFX::SpatialScalerBase *scaler = nullptr;
 	bool is_metal_4 = false;
 	MFXSpatialContext() = default;
 	~MFXSpatialContext();
@@ -56,13 +57,14 @@ struct MFXSpatialContext {
 
 class MFXSpatialEffect : public SpatialUpscaler {
 	struct CallbackArgs {
-		MFXSpatialEffect *owner;
+		MFXSpatialEffect *owner = nullptr;
+		MTLFX::SpatialScalerBase *scaler = nullptr;
 		RDD::TextureID src;
 		RDD::TextureID dst;
-		MFXSpatialContext ctx;
+		bool is_metal_4 = false;
 
-		CallbackArgs(MFXSpatialEffect *p_owner, RDD::TextureID p_src, RDD::TextureID p_dst, MFXSpatialContext p_ctx) :
-				owner(p_owner), src(p_src), dst(p_dst), ctx(p_ctx) {}
+		CallbackArgs(MFXSpatialEffect *p_owner, RDD::TextureID p_src, RDD::TextureID p_dst, const MFXSpatialContext &p_ctx) :
+				owner(p_owner), scaler(p_ctx.scaler), src(p_src), dst(p_dst), is_metal_4(p_ctx.is_metal_4) {}
 
 		static void free(CallbackArgs **p_args) {
 			(*p_args)->owner->args_allocator.free(*p_args);
@@ -94,7 +96,7 @@ public:
 #ifdef METAL_MFXTEMPORAL_ENABLED
 
 struct MFXTemporalContext {
-	NS::SharedPtr<MTLFX::TemporalScalerBase> scaler;
+	MTLFX::TemporalScalerBase *scaler = nullptr;
 	bool is_metal_4 = false;
 	MFXTemporalContext() = default;
 	~MFXTemporalContext();
@@ -102,15 +104,16 @@ struct MFXTemporalContext {
 
 class MFXTemporalEffect {
 	struct CallbackArgs {
-		MFXTemporalEffect *owner;
+		MFXTemporalEffect *owner = nullptr;
+		MTLFX::TemporalScalerBase *scaler = nullptr;
 		RDD::TextureID src;
 		RDD::TextureID depth;
 		RDD::TextureID motion;
 		RDD::TextureID exposure;
 		Vector2 jitter_offset;
 		RDD::TextureID dst;
-		MFXTemporalContext ctx;
 		bool reset = false;
+		bool is_metal_4 = false;
 
 		CallbackArgs(
 				MFXTemporalEffect *p_owner,
@@ -120,17 +123,18 @@ class MFXTemporalEffect {
 				RDD::TextureID p_exposure,
 				Vector2 p_jitter_offset,
 				RDD::TextureID p_dst,
-				MFXTemporalContext p_ctx,
+				const MFXTemporalContext &p_ctx,
 				bool p_reset) :
 				owner(p_owner),
+				scaler(p_ctx.scaler),
 				src(p_src),
 				depth(p_depth),
 				motion(p_motion),
 				exposure(p_exposure),
 				jitter_offset(p_jitter_offset),
 				dst(p_dst),
-				ctx(p_ctx),
-				reset(p_reset) {}
+				reset(p_reset),
+				is_metal_4(p_ctx.is_metal_4) {}
 
 		static void free(CallbackArgs **p_args) {
 			(*p_args)->owner->args_allocator.free(*p_args);

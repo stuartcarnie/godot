@@ -30,8 +30,10 @@
 
 #include "rendering_context_driver_metal.h"
 
-#include "metal_fwd.h"
+#include "metal3_objects.h"
 #include "metal_objects_shared.h"
+#include "rendering_device_driver_metal3.h"
+#include "rendering_device_driver_metal4.h"
 
 #include "core/templates/sort_array.h"
 
@@ -125,13 +127,13 @@ uint32_t RenderingContextDriverMetal::device_get_count() const {
 RenderingDeviceDriver *RenderingContextDriverMetal::driver_create() {
 	switch (driver_version) {
 		case DriverVersion::Metal:
-			return MTL3::create_rendering_device_driver(this);
+			return memnew(MTL3::RenderingDeviceDriverMetal(this));
 		case DriverVersion::Metal4: {
 #ifdef METAL4_ENABLED
-			// We've already validated Metal4 is available
+			// We've already validated Metal4 is available.
 			GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 
-			return MTL4::create_rendering_device_driver(this);
+			return memnew(MTL4::RenderingDeviceDriverMetal(this));
 
 			GODOT_CLANG_WARNING_POP
 #else
@@ -240,9 +242,9 @@ public:
 		front = (front + 1) % frame_buffers.size();
 
 		if (vsync_mode != DisplayServer::VSYNC_DISABLED) {
-			MTL3::get_command_buffer_cpp(p_cmd_buffer)->presentDrawableAfterMinimumDuration(drawable, present_minimum_duration);
+			p_cmd_buffer->get_command_buffer()->presentDrawableAfterMinimumDuration(drawable, present_minimum_duration);
 		} else {
-			MTL3::get_command_buffer_cpp(p_cmd_buffer)->presentDrawable(drawable);
+			p_cmd_buffer->get_command_buffer()->presentDrawable(drawable);
 		}
 	}
 
@@ -358,11 +360,11 @@ public:
 		MDFrameBuffer *frame_buffer = &frame_buffers[rear];
 
 		if (drawables[rear] != nullptr) {
-			MTL3::get_command_buffer_cpp(p_cmd_buffer)->presentDrawable(drawables[rear]);
+			p_cmd_buffer->get_command_buffer()->presentDrawable(drawables[rear]);
 			drawables[rear] = nullptr;
 		}
 
-		MTL3::get_command_buffer_cpp(p_cmd_buffer)->addScheduledHandler([frame_buffer, this](MTL::CommandBuffer *) {
+		p_cmd_buffer->get_command_buffer()->addScheduledHandler([frame_buffer, this](MTL::CommandBuffer *) {
 			frame_buffer->unset_texture(0);
 			count.fetch_add(-1, std::memory_order_relaxed);
 		});

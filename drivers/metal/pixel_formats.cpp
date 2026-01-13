@@ -54,47 +54,47 @@
 
 #if TARGET_OS_IPHONE || TARGET_OS_TV
 #if !(__IPHONE_OS_VERSION_MAX_ALLOWED >= 160400) // iOS/tvOS 16.4
-#define MTL::PixelFormatBC1_RGBA MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC1_RGBA_sRGB MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC2_RGBA MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC2_RGBA_sRGB MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC3_RGBA MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC3_RGBA_sRGB MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC4_RUnorm MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC4_RSnorm MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC5_RGUnorm MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC5_RGSnorm MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC6H_RGBUfloat MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC6H_RGBFloat MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC7_RGBAUnorm MTL::PixelFormatInvalid
-#define MTL::PixelFormatBC7_RGBAUnorm_sRGB MTL::PixelFormatInvalid
+#define PixelFormatBC1_RGBA PixelFormatInvalid
+#define PixelFormatBC1_RGBA_sRGB PixelFormatInvalid
+#define PixelFormatBC2_RGBA PixelFormatInvalid
+#define PixelFormatBC2_RGBA_sRGB PixelFormatInvalid
+#define PixelFormatBC3_RGBA PixelFormatInvalid
+#define PixelFormatBC3_RGBA_sRGB PixelFormatInvalid
+#define PixelFormatBC4_RUnorm PixelFormatInvalid
+#define PixelFormatBC4_RSnorm PixelFormatInvalid
+#define PixelFormatBC5_RGUnorm PixelFormatInvalid
+#define PixelFormatBC5_RGSnorm PixelFormatInvalid
+#define PixelFormatBC6H_RGBUfloat PixelFormatInvalid
+#define PixelFormatBC6H_RGBFloat PixelFormatInvalid
+#define PixelFormatBC7_RGBAUnorm PixelFormatInvalid
+#define PixelFormatBC7_RGBAUnorm_sRGB PixelFormatInvalid
 #endif
 
-#define MTL::PixelFormatDepth16Unorm_Stencil8 MTL::PixelFormatDepth32Float_Stencil8
-#define MTL::PixelFormatDepth24Unorm_Stencil8 MTL::PixelFormatInvalid
-#define MTL::PixelFormatX24_Stencil8 MTL::PixelFormatInvalid
+#define PixelFormatDepth16Unorm_Stencil8 PixelFormatDepth32Float_Stencil8
+#define PixelFormatDepth24Unorm_Stencil8 PixelFormatInvalid
+#define PixelFormatX24_Stencil8 PixelFormatInvalid
 #endif
 
 #if TARGET_OS_TV
-#define MTL::PixelFormatASTC_4x4_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_5x4_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_5x5_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_6x5_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_6x6_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_8x5_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_8x6_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_8x8_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_10x5_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_10x6_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_10x8_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_10x10_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_12x10_HDR MTL::PixelFormatInvalid
-#define MTL::PixelFormatASTC_12x12_HDR MTL::PixelFormatInvalid
+#define PixelFormatASTC_4x4_HDR PixelFormatInvalid
+#define PixelFormatASTC_5x4_HDR PixelFormatInvalid
+#define PixelFormatASTC_5x5_HDR PixelFormatInvalid
+#define PixelFormatASTC_6x5_HDR PixelFormatInvalid
+#define PixelFormatASTC_6x6_HDR PixelFormatInvalid
+#define PixelFormatASTC_8x5_HDR PixelFormatInvalid
+#define PixelFormatASTC_8x6_HDR PixelFormatInvalid
+#define PixelFormatASTC_8x8_HDR PixelFormatInvalid
+#define PixelFormatASTC_10x5_HDR PixelFormatInvalid
+#define PixelFormatASTC_10x6_HDR PixelFormatInvalid
+#define PixelFormatASTC_10x8_HDR PixelFormatInvalid
+#define PixelFormatASTC_10x10_HDR PixelFormatInvalid
+#define PixelFormatASTC_12x10_HDR PixelFormatInvalid
+#define PixelFormatASTC_12x12_HDR PixelFormatInvalid
 #endif
 
 #if !((__MAC_OS_X_VERSION_MAX_ALLOWED >= 140000) || (__IPHONE_OS_VERSION_MAX_ALLOWED >= 170000)) // Xcode 15
-#define MTL::VertexFormatFloatRG11B10 MTL::VertexFormatInvalid
-#define MTL::VertexFormatFloatRGB9E5 MTL::VertexFormatInvalid
+#define VertexFormatFloatRG11B10 VertexFormatInvalid
+#define VertexFormatFloatRGB9E5 VertexFormatInvalid
 #endif
 
 template <typename T>
@@ -284,7 +284,7 @@ PixelFormats::~PixelFormats() {
 
 #define addDataFormatDescFull(DATA_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A) \
 	dfFmt = RD::DATA_FORMAT_##DATA_FMT;                                                                                                                                           \
-	_data_format_descs[dfFmt] = { dfFmt, MTL::PixelFormat##MTL_FMT, MTL::PixelFormat##MTL_FMT_ALT, MTL::VertexFormat##MTL_VTX_FMT, MTL::VertexFormat##MTL_VTX_FMT_ALT,                    \
+	_data_format_descs[dfFmt] = { dfFmt, MTL::PixelFormat##MTL_FMT, MTL::PixelFormat##MTL_FMT_ALT, MTL::VertexFormat##MTL_VTX_FMT, MTL::VertexFormat##MTL_VTX_FMT_ALT,            \
 		CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, MTLFormatType::MVK_FMT_TYPE,                                                                                                  \
 		{ RD::TEXTURE_SWIZZLE_##SWIZ_R, RD::TEXTURE_SWIZZLE_##SWIZ_G, RD::TEXTURE_SWIZZLE_##SWIZ_B, RD::TEXTURE_SWIZZLE_##SWIZ_A },                                               \
 		"DATA_FORMAT_" #DATA_FMT, false }
@@ -586,7 +586,7 @@ void PixelFormats::addMTLPixelFormatDescImpl(MTL::PixelFormat p_pix_fmt, MTL::Pi
 	_mtl_pixel_format_descs[p_pix_fmt] = { .mtlPixelFormat = p_pix_fmt, DataFormat::DATA_FORMAT_MAX, p_fmt_caps, p_view_class, p_pix_fmt_linear, p_name };
 }
 
-#define addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleGPUCaps)                             \
+#define addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleGPUCaps)                                 \
 	addMTLPixelFormatDescImpl(MTL::PixelFormat##mtlFmt, MTL::PixelFormat##mtlFmtLinear, MTLViewClass::viewClass, \
 			appleGPUCaps, "MTL::PixelFormat" #mtlFmt)
 
@@ -791,8 +791,8 @@ void PixelFormats::addMTLVertexFormatDescImpl(MTL::VertexFormat mtlVtxFmt, MTLFm
 }
 
 // Check mtlVtx exists on platform, to avoid overwriting the MTL::VertexFormatInvalid entry.
-#define addMTLVertexFormatDesc(mtlVtx)                                                                     \
-	if (MTL::VertexFormat##mtlVtx) {                                                                         \
+#define addMTLVertexFormatDesc(mtlVtx)                                                                         \
+	if (MTL::VertexFormat##mtlVtx) {                                                                           \
 		addMTLVertexFormatDescImpl(MTL::VertexFormat##mtlVtx, kMTLFmtCapsVertex, "MTL::VertexFormat" #mtlVtx); \
 	}
 

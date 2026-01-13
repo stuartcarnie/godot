@@ -28,6 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#ifdef METAL_ENABLED
+
 #include "metal_fx.h"
 
 #include "../storage_rd/render_scene_buffers_rd.h"
@@ -35,14 +37,17 @@
 #include "drivers/metal/rendering_device_driver_metal3.h"
 #include "drivers/metal/rendering_device_driver_metal4.h"
 
-#include <MetalFX/MetalFX.hpp>
 #include <objc/runtime.h>
+#include <MetalFX/MetalFX.hpp>
 
 using namespace RendererRD;
 
 #pragma mark - Spatial Scaler
 
 MFXSpatialContext::~MFXSpatialContext() {
+	if (scaler) {
+		scaler->release();
+	}
 }
 
 MFXSpatialEffect::MFXSpatialEffect() {
@@ -52,21 +57,22 @@ MFXSpatialEffect::~MFXSpatialEffect() {
 }
 
 void MFXSpatialEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_buffer, CallbackArgs *p_userdata) {
-	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-
 	MDCommandBufferBase *obj = (MDCommandBufferBase *)(p_command_buffer.id);
 	obj->end();
 
 	MTL::Texture *src_texture = reinterpret_cast<MTL::Texture *>(p_userdata->src.id);
 	MTL::Texture *dst_texture = reinterpret_cast<MTL::Texture *>(p_userdata->dst.id);
 
-	MTLFX::SpatialScalerBase *scaler = p_userdata->ctx.scaler.get();
+	MTLFX::SpatialScalerBase *scaler = p_userdata->scaler;
 	scaler->setColorTexture(src_texture);
 	scaler->setOutputTexture(dst_texture);
-	if (p_userdata->ctx.is_metal_4) {
+	if (p_userdata->is_metal_4) {
 		MTL4FX::SpatialScaler *s = static_cast<MTL4FX::SpatialScaler *>(scaler);
+		// We've already validated Metal4 is available.
+		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 		MTL4::MDCommandBuffer *cmd = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
 		s->encodeToCommandBuffer(cmd->get_command_buffer());
+		GODOT_CLANG_WARNING_POP
 	} else {
 		MTLFX::SpatialScaler *s = static_cast<MTLFX::SpatialScaler *>(scaler);
 		MTL3::MDCommandBuffer *cmd = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
@@ -75,8 +81,6 @@ void MFXSpatialEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_bu
 	obj->retain_resource(scaler);
 
 	CallbackArgs::free(&p_userdata);
-
-	GODOT_CLANG_WARNING_POP
 }
 
 void MFXSpatialEffect::ensure_context(Ref<RenderSceneBuffersRD> p_render_buffers) {
@@ -102,8 +106,6 @@ void MFXSpatialEffect::process(Ref<RenderSceneBuffersRD> p_render_buffers, RID p
 MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const {
 	DEV_ASSERT(RD::get_singleton()->has_feature(RD::SUPPORTS_METALFX_SPATIAL));
 
-	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-
 	RenderingDeviceDriverMetal *rdd = (RenderingDeviceDriverMetal *)RD::get_singleton()->get_device_driver();
 	PixelFormats &pf = rdd->get_pixel_formats();
 	MTL::Device *dev = rdd->get_device();
@@ -119,18 +121,21 @@ MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const
 	desc->setOutputTextureFormat((MTL::PixelFormat)pf.getMTLPixelFormat(p_params.output_format));
 	desc->setColorProcessingMode(MTLFX::SpatialScalerColorProcessingModeLinear);
 
+	// We've already validated Metal4 is available.
+	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
+
 	MFXSpatialContext *context = memnew(MFXSpatialContext);
-	if (MTL3::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL3::RenderingDeviceDriverMetal *>(rdd); dd) {
-		context->scaler = NS::TransferPtr(desc->newSpatialScaler(dev));
-	} else if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
+	if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
 		MTL4FX::SpatialScaler *scaler = desc->newSpatialScaler(dev, dd->get_compiler());
 		Ivar ivar = class_getInstanceVariable(object_getClass(scaler), "_outputTextureBarrierStages");
 		if (ivar) {
 			uint64_t *ptr = (uint64_t *)((char *)scaler + ivar_getOffset(ivar));
 			*ptr = MTL::StageAll;
 		}
-		context->scaler = NS::TransferPtr(static_cast<MTLFX::SpatialScalerBase *>(scaler));
+		context->scaler = static_cast<MTLFX::SpatialScalerBase *>(scaler);
 		context->is_metal_4 = true;
+	} else {
+		context->scaler = desc->newSpatialScaler(dev);
 	}
 
 	GODOT_CLANG_WARNING_POP
@@ -142,15 +147,17 @@ MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const
 
 #pragma mark - Temporal Scaler
 
-MFXTemporalContext::~MFXTemporalContext() {}
+MFXTemporalContext::~MFXTemporalContext() {
+	if (scaler) {
+		scaler->release();
+	}
+}
 
 MFXTemporalEffect::MFXTemporalEffect() {}
 MFXTemporalEffect::~MFXTemporalEffect() {}
 
 MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) const {
 	DEV_ASSERT(RD::get_singleton()->has_feature(RD::SUPPORTS_METALFX_TEMPORAL));
-
-	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 
 	RenderingDeviceDriverMetal *rdd = (RenderingDeviceDriverMetal *)RD::get_singleton()->get_device_driver();
 	PixelFormats &pf = rdd->get_pixel_formats();
@@ -170,11 +177,12 @@ MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) con
 
 	desc->setOutputTextureFormat((MTL::PixelFormat)pf.getMTLPixelFormat(p_params.output_format));
 
+	// We've already validated Metal4 is available.
+	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
+
 	MFXTemporalContext *context = memnew(MFXTemporalContext);
-	if (MTL3::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL3::RenderingDeviceDriverMetal *>(rdd); dd) {
-		context->scaler = NS::TransferPtr(desc->newTemporalScaler(dev));
-	} else if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
-		MTL4FX::TemporalScaler *scaler = desc->newTemporalScaler(dev, dd->get_compiler());
+	if (MTL4::RenderingDeviceDriverMetal *mtl4 = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); mtl4) {
+		MTL4FX::TemporalScaler *scaler = desc->newTemporalScaler(dev, mtl4->get_compiler());
 		Ivar ivar = class_getInstanceVariable(object_getClass(scaler), "_outputTextureBarrierStages");
 		if (ivar) {
 			uint64_t *ptr = (uint64_t *)((char *)scaler + ivar_getOffset(ivar));
@@ -182,15 +190,17 @@ MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) con
 		} else {
 			print_error("Failed to set _outputTextureBarrierStages on MTL4FXTemporalScaler.");
 		}
-		context->scaler = NS::TransferPtr(static_cast<MTLFX::TemporalScalerBase *>(scaler));
+		context->scaler = static_cast<MTLFX::TemporalScalerBase *>(scaler);
 		context->is_metal_4 = true;
+	} else {
+		context->scaler = desc->newTemporalScaler(dev);
 	}
+
+	GODOT_CLANG_WARNING_POP
 
 	context->scaler->setMotionVectorScaleX(p_params.motion_vector_scale.x);
 	context->scaler->setMotionVectorScaleY(p_params.motion_vector_scale.y);
 	context->scaler->setDepthReversed(true); // Godot uses reverse Z per https://github.com/godotengine/godot/pull/88328
-
-	GODOT_CLANG_WARNING_POP
 
 	return context;
 }
@@ -215,8 +225,6 @@ void MFXTemporalEffect::process(RendererRD::MFXTemporalContext *p_ctx, RendererR
 }
 
 void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_buffer, CallbackArgs *p_userdata) {
-	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
-
 	MDCommandBufferBase *obj = (MDCommandBufferBase *)(p_command_buffer.id);
 	obj->end();
 
@@ -227,7 +235,7 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 
 	MTL::Texture *dst_texture = reinterpret_cast<MTL::Texture *>(p_userdata->dst.id);
 
-	MTLFX::TemporalScalerBase *scaler = p_userdata->ctx.scaler.get();
+	MTLFX::TemporalScalerBase *scaler = p_userdata->scaler;
 	scaler->setReset(p_userdata->reset);
 	scaler->setColorTexture(src_texture);
 	scaler->setDepthTexture(depth);
@@ -236,10 +244,13 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 	scaler->setJitterOffsetX(p_userdata->jitter_offset.x);
 	scaler->setJitterOffsetY(p_userdata->jitter_offset.y);
 	scaler->setOutputTexture(dst_texture);
-	if (p_userdata->ctx.is_metal_4) {
+	if (p_userdata->is_metal_4) {
+		// We've already validated Metal4 is available.
+		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 		MTL4FX::TemporalScaler *s = static_cast<MTL4FX::TemporalScaler *>(scaler);
 		MTL4::MDCommandBuffer *cmd = (MTL4::MDCommandBuffer *)(p_command_buffer.id);
 		s->encodeToCommandBuffer(cmd->get_command_buffer());
+		GODOT_CLANG_WARNING_POP
 	} else {
 		MTLFX::TemporalScaler *s = static_cast<MTLFX::TemporalScaler *>(scaler);
 		MTL3::MDCommandBuffer *cmd = (MTL3::MDCommandBuffer *)(p_command_buffer.id);
@@ -248,8 +259,8 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 	obj->retain_resource(scaler);
 
 	CallbackArgs::free(&p_userdata);
-
-	GODOT_CLANG_WARNING_POP
 }
+
+#endif
 
 #endif

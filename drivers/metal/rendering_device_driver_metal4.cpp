@@ -287,11 +287,6 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 	return OK;
 }
 
-// Factory function for C++ compatibility
-RenderingDeviceDriver *create_rendering_device_driver(RenderingContextDriverMetal *p_context) {
-	return memnew(RenderingDeviceDriverMetal(p_context));
-}
-
-} //namespace MTL4
+} //namespace API_AVAILABLE(macos(26.0),ios(26.0),tvos(26.0),visionos(26.0))MTL4
 
 #endif // METAL4_ENABLED
