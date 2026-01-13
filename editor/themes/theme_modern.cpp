@@ -1821,9 +1821,15 @@ void ThemeModern::populate_editor_styles(const Ref<EditorTheme> &p_theme, Editor
 		editor_spin_label_bg->set_content_margin_all(p_config.base_margin * EDSCALE);
 		p_theme->set_stylebox("label_bg", "EditorSpinSlider", editor_spin_label_bg);
 
-		// TODO Use separate arrows instead like on SpinBox. Planned for a different PR.
+		// TODO: Use separate arrows instead like on SpinBox. Planned for a different PR.
 		p_theme->set_icon("updown", "EditorSpinSlider", p_theme->get_icon(SNAME("GuiSpinboxUpdown"), EditorStringName(EditorIcons)));
 		p_theme->set_icon("updown_disabled", "EditorSpinSlider", p_theme->get_icon(SNAME("GuiSpinboxUpdownDisabled"), EditorStringName(EditorIcons)));
+
+		// EditorSpinSliders with a label have more space on the left, so add an
+		// higher margin to match the location where the text begins.
+		// The margin values below were determined by empirical testing.
+		p_theme->set_constant("line_edit_margin", "EditorSpinSlider", 28 * EDSCALE);
+		p_theme->set_constant("line_edit_margin_empty", "EditorSpinSlider", 20 * EDSCALE);
 
 		// Launch Pad and Play buttons.
 		Ref<StyleBoxFlat> style_launch_pad_movie = p_config.base_style->duplicate();
@@ -2102,7 +2108,7 @@ void ThemeModern::populate_editor_styles(const Ref<EditorTheme> &p_theme, Editor
 
 			Ref<StyleBoxFlat> style_tabbar_background_inner = p_theme->get_stylebox(SNAME("tabbar_background"), SNAME("TabContainer"))->duplicate();
 			style_tabbar_background_inner->set_content_margin_all(p_config.base_margin * EDSCALE);
-			style_tabbar_background_inner->set_corner_radius_all(p_config.corner_radius * EDSCALE + p_config.base_margin * EDSCALE);
+			style_tabbar_background_inner->set_corner_radius_all(p_config.corner_radius > 0 ? (p_config.corner_radius + p_config.base_margin) * EDSCALE : 0);
 			style_tabbar_background_inner->set_bg_color(background_color);
 
 			p_theme->set_stylebox("tabbar_background", "TabContainerInner", style_tabbar_background_inner);
