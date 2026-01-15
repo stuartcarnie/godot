@@ -228,6 +228,20 @@ Metal overlaps execution across encoders when fences allow. Since each draw/comp
 | Barrier vectors | Replaced by fence ops |
 | Adjacency lists | No edges needed |
 
+## Known Issues & Assumptions
+
+### Recording Order Correctness
+
+The fence model assumes recording order is a valid execution order — writers are recorded before readers. This is the same assumption the barrier model makes; edges only flow from earlier-recorded to later-recorded commands.
+
+### Non-Reordering Barrier Path
+
+There are reported artifacts when `GODOT_RG_DISABLE_REORDERING=1` is set with the existing barrier implementation. This needs investigation but is considered a bug in the barrier path, not a fundamental issue with recording-order execution. The fence model should work correctly if recording order is correct.
+
+### Prerequisite Investigation
+
+Before or during implementation, investigate why the non-reordering barrier path produces artifacts. Understanding this will validate the fence model's assumptions.
+
 ## Implementation Steps
 
 1. Add `API_TRAIT_EXPLICIT_DEPENDENCIES` to driver traits
