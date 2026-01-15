@@ -44,7 +44,8 @@
 // Helper.
 static Color _get_base_color(EditorThemeManager::ThemeConfiguration &p_config, float p_dimness_ofs = 0.0, float p_saturation_mult = 1.0) {
 	Color color = p_config.base_color;
-	color.set_v(CLAMP(Math::lerp(color.get_v(), 0, p_config.contrast * p_dimness_ofs), 0, 1));
+	const float final_contrast = (p_dimness_ofs < 0) ? CLAMP(p_config.contrast, -0.1, 0.5) : p_config.contrast;
+	color.set_v(CLAMP(Math::lerp(color.get_v(), 0, final_contrast * p_dimness_ofs), 0, 1));
 	color.set_s(color.get_s() * p_saturation_mult);
 	return color;
 }
@@ -1547,6 +1548,9 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 		p_theme->set_stylebox("picker_focus_circle", "ColorPicker", circle_style_focus);
 		p_theme->set_color("focused_not_editing_cursor_color", "ColorPicker", p_config.highlight_color);
 
+		p_theme->set_icon("menu_option", "ColorPicker", p_theme->get_icon(SNAME("GuiTabMenuHl"), EditorStringName(EditorIcons)));
+		p_theme->set_icon("expanded_arrow", "ColorPicker", p_theme->get_icon(SNAME("GuiTreeArrowDown"), EditorStringName(EditorIcons)));
+		p_theme->set_icon("folded_arrow", "ColorPicker", p_theme->get_icon(SNAME("GuiTreeArrowRight"), EditorStringName(EditorIcons)));
 		p_theme->set_icon("screen_picker", "ColorPicker", p_theme->get_icon(SNAME("ColorPick"), EditorStringName(EditorIcons)));
 		p_theme->set_icon("shape_circle", "ColorPicker", p_theme->get_icon(SNAME("PickerShapeCircle"), EditorStringName(EditorIcons)));
 		p_theme->set_icon("shape_rect", "ColorPicker", p_theme->get_icon(SNAME("PickerShapeRectangle"), EditorStringName(EditorIcons)));
@@ -1945,6 +1949,14 @@ void ThemeModern::populate_editor_styles(const Ref<EditorTheme> &p_theme, Editor
 			p_theme->set_stylebox(SceneStringName(hover), "EditorLogFilterButton", p_config.flat_button_hover);
 			p_theme->set_stylebox(SceneStringName(pressed), "EditorLogFilterButton", p_config.flat_button_pressed);
 			p_theme->set_stylebox("hover_pressed", "EditorLogFilterButton", p_config.flat_button_hover_pressed);
+		}
+
+		// Checkbox.
+		{
+			p_theme->set_type_variation("CheckBoxNoIconTint", "CheckBox");
+			p_theme->set_color("icon_pressed_color", "CheckBoxNoIconTint", p_config.icon_normal_color);
+			p_theme->set_color("icon_hover_color", "CheckBoxNoIconTint", p_config.mono_color);
+			p_theme->set_color("icon_hover_pressed_color", "CheckBoxNoIconTint", p_config.mono_color);
 		}
 
 		// Buttons styles that stand out against the panel background (e.g. AssetLib).
