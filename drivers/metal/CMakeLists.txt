@@ -17,7 +17,6 @@ target_sources(metal PRIVATE
         metal_device_profile.h
         metal_device_properties.cpp
         metal_device_properties.h
-        metal_fwd.h
         metal_objects_shared.cpp
         metal_objects_shared.h
         metal_utils.h

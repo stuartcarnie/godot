@@ -524,33 +524,35 @@ GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
 _FORCE_INLINE_ static MTL::Stages convert_src_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
 	p_stages.clear_flag(RDD::PIPELINE_STAGE_TOP_OF_PIPE_BIT);
 
-	if (p_stages.has_flag(RDD::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT | RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
+	// BOTTOM_OF_PIPE or ALL_COMMANDS means "all prior work must complete".
+	if (p_stages & (RDD::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT | RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
 		return MTL::StageAll;
 	}
 
 	MTL::Stages mtlStages = 0;
 
-	// Vertex stage mappings
+	// Vertex stage mappings.
 	if (p_stages & (RDD::PIPELINE_STAGE_DRAW_INDIRECT_BIT | RDD::PIPELINE_STAGE_VERTEX_INPUT_BIT | RDD::PIPELINE_STAGE_VERTEX_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | RDD::PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
 		mtlStages |= MTL::StageVertex;
 	}
 
-	// Fragment stage mappings (includes resolve, which on Metal is handled in the render pipeline)
+	// Fragment stage mappings.
+	// Includes resolve and clear_storage, which on Metal use the render pipeline.
 	if (p_stages & (RDD::PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RDD::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT | RDD::PIPELINE_STAGE_RESOLVE_BIT | RDD::PIPELINE_STAGE_CLEAR_STORAGE_BIT)) {
 		mtlStages |= MTL::StageFragment;
 	}
 
-	// Compute stage
+	// Compute stage.
 	if (p_stages & RDD::PIPELINE_STAGE_COMPUTE_SHADER_BIT) {
 		mtlStages |= MTL::StageDispatch;
 	}
 
-	// Blit stage (transfer operations)
-	if (p_stages & (RDD::PIPELINE_STAGE_COPY_BIT)) {
+	// Blit stage (transfer operations).
+	if (p_stages & RDD::PIPELINE_STAGE_COPY_BIT) {
 		mtlStages |= MTL::StageBlit;
 	}
 
-	// ALL_GRAPHICS_BIT special case
+	// ALL_GRAPHICS_BIT special case.
 	if (p_stages & RDD::PIPELINE_STAGE_ALL_GRAPHICS_BIT) {
 		mtlStages |= (MTL::StageVertex | MTL::StageFragment);
 	}
@@ -561,28 +563,35 @@ _FORCE_INLINE_ static MTL::Stages convert_src_pipeline_stages_to_metal(BitField<
 _FORCE_INLINE_ static MTL::Stages convert_dst_pipeline_stages_to_metal(BitField<RDD::PipelineStageBits> p_stages) {
 	p_stages.clear_flag(RDD::PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
-	if (p_stages.has_flag(RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT | RDD::PIPELINE_STAGE_TOP_OF_PIPE_BIT)) {
+	// TOP_OF_PIPE or ALL_COMMANDS means "wait before any work starts".
+	if (p_stages & (RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT | RDD::PIPELINE_STAGE_TOP_OF_PIPE_BIT)) {
 		return MTL::StageAll;
 	}
 
 	MTL::Stages mtlStages = 0;
 
+	// Vertex stage mappings.
 	if (p_stages & (RDD::PIPELINE_STAGE_DRAW_INDIRECT_BIT | RDD::PIPELINE_STAGE_VERTEX_INPUT_BIT | RDD::PIPELINE_STAGE_VERTEX_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | RDD::PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT | RDD::PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
 		mtlStages |= MTL::StageVertex;
 	}
 
-	if (p_stages & (RDD::PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RDD::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT | RDD::PIPELINE_STAGE_RESOLVE_BIT)) {
+	// Fragment stage mappings.
+	// Includes resolve and clear_storage, which on Metal use the render pipeline.
+	if (p_stages & (RDD::PIPELINE_STAGE_FRAGMENT_SHADER_BIT | RDD::PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | RDD::PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT | RDD::PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT | RDD::PIPELINE_STAGE_RESOLVE_BIT | RDD::PIPELINE_STAGE_CLEAR_STORAGE_BIT)) {
 		mtlStages |= MTL::StageFragment;
 	}
 
+	// Compute stage.
 	if (p_stages & RDD::PIPELINE_STAGE_COMPUTE_SHADER_BIT) {
 		mtlStages |= MTL::StageDispatch;
 	}
 
-	if (p_stages & (RDD::PIPELINE_STAGE_COPY_BIT | RDD::PIPELINE_STAGE_CLEAR_STORAGE_BIT)) {
+	// Blit stage (transfer operations).
+	if (p_stages & RDD::PIPELINE_STAGE_COPY_BIT) {
 		mtlStages |= MTL::StageBlit;
 	}
 
+	// ALL_GRAPHICS_BIT special case.
 	if (p_stages & RDD::PIPELINE_STAGE_ALL_GRAPHICS_BIT) {
 		mtlStages |= (MTL::StageVertex | MTL::StageFragment);
 	}

@@ -195,13 +195,14 @@ void MDCommandBuffer::pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_st
 		}
 	}
 
-	// Also cache for inter-pass barriers.
-	if (after_stages & (MTL::StageVertex | MTL::StageFragment)) {
+	// Also cache for inter-pass barriers based on DESTINATION stages,
+	// since barrierAfterQueueStages is called on the encoder that must wait.
+	if (before_stages & (MTL::StageVertex | MTL::StageFragment)) {
 		pending_after_stages[STAGE_RENDER] |= after_stages;
 		pending_before_queue_stages[STAGE_RENDER] |= before_stages;
 	}
 
-	if (after_stages & (MTL::StageDispatch | MTL::StageBlit)) {
+	if (before_stages & (MTL::StageDispatch | MTL::StageBlit)) {
 		pending_after_stages[STAGE_COMPUTE] |= after_stages;
 		pending_before_queue_stages[STAGE_COMPUTE] |= before_stages;
 	}

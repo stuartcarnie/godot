@@ -21,6 +21,7 @@ target_sources(tests PRIVATE
         core/io/test_http_client.h
         core/io/test_image.h
         core/io/test_ip.h
+        core/io/test_ip_address.h
         core/io/test_json.h
         core/io/test_json_native.h
         core/io/test_logger.h
