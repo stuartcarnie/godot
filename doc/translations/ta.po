@@ -45708,9 +45708,6 @@ msgstr ""
 "[method etigmetorexportplugin._begin_customize_scenes] மற்றும் [முறை "
 "EDITIOREXPORTPLUGIN._BEGIN_CUSTOMIZE_RESOURCES] ஐப் பார்க்கவும்."
 
-msgid "Console support in Godot"
-msgstr "கோடோட்டில் கன்சோல் உதவி"
-
 msgid ""
 "Adds a message to the export log that will be displayed when exporting ends."
 msgstr ""

@@ -44582,9 +44582,6 @@ msgstr ""
 "信息，请参阅 [method EditorExportPlugin._begin_customize_scenes] 和 [method "
 "EditorExportPlugin._begin_customize_resources]。"
 
-msgid "Console support in Godot"
-msgstr "Godot 中的控制台支持"
-
 msgid ""
 "Adds a message to the export log that will be displayed when exporting ends."
 msgstr "在导出日志中添加一条消息，会在导出结束时显示。"

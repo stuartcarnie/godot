@@ -33593,9 +33593,6 @@ msgstr ""
 "EditorExportPlugin._begin_customize_scenes] agus [method "
 "EditorExportPlugin._begin_customize_resources] le haghaidh tuilleadh sonraí."
 
-msgid "Console support in Godot"
-msgstr "Tacaíocht console i Godot"
-
 msgid ""
 "Returns the name of the export operating system handled by this "
 "[EditorExportPlatform] class, as a friendly string. Possible return values "
