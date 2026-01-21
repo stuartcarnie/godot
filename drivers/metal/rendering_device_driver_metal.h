@@ -100,6 +100,7 @@ protected:
 
 #pragma mark - Copy Queue
 
+	Mutex copy_queue_mutex;
 	/// A command queue used for internal copy operations.
 	NS::SharedPtr<MTL::CommandQueue> copy_queue;
 	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")

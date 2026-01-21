@@ -2325,6 +2325,7 @@ void RenderingDeviceDriverMetal::begin_segment(uint32_t p_frame_index, uint32_t 
 }
 
 void RenderingDeviceDriverMetal::end_segment() {
+	MutexLock lock(copy_queue_mutex);
 	_copy_queue_flush();
 }
 
@@ -2419,6 +2420,7 @@ uint64_t RenderingDeviceDriverMetal::get_resource_native_handle(DriverResource p
 }
 
 void RenderingDeviceDriverMetal::_copy_queue_copy_to_buffer(Span<uint8_t> p_src_data, MTL::Buffer *p_dst_buffer, uint64_t p_dst_offset) {
+	MutexLock lock(copy_queue_mutex);
 	if (_copy_queue_buffer_available() < p_src_data.size()) {
 		_copy_queue_flush();
 	}
