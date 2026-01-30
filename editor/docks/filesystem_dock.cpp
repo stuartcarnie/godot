@@ -31,6 +31,7 @@
 #include "filesystem_dock.h"
 
 #include "core/config/project_settings.h"
+#include "core/input/input.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
@@ -523,11 +524,11 @@ void FileSystemDock::_update_display_mode(bool p_force) {
 				if (is_vertical) {
 					tree->set_theme_type_variation("");
 					tree->set_scroll_hint_mode(Tree::SCROLL_HINT_MODE_BOTH);
-					tree_mc->set_theme_type_variation("NoBorderBottomPanel");
+					tree_mc->set_theme_type_variation(horizontal ? "NoBorderBottomPanel" : "NoBorderHorizontal");
 
-					files->set_theme_type_variation("");
-					files->set_scroll_hint_mode(horizontal ? ItemList::SCROLL_HINT_MODE_BOTH : ItemList::SCROLL_HINT_MODE_TOP);
-					files_mc->set_theme_type_variation(horizontal ? "NoBorderBottomPanel" : "NoBorderHorizontalBottom");
+					files->set_theme_type_variation(horizontal ? "ItemListSecondary" : "");
+					files->set_scroll_hint_mode(horizontal ? ItemList::SCROLL_HINT_MODE_DISABLED : ItemList::SCROLL_HINT_MODE_TOP);
+					files_mc->set_theme_type_variation(horizontal ? "" : "NoBorderHorizontalBottom");
 				} else {
 					tree->set_theme_type_variation("TreeSecondary");
 					tree->set_scroll_hint_mode(Tree::SCROLL_HINT_MODE_DISABLED);
@@ -862,12 +863,16 @@ void FileSystemDock::navigate_to_path(const String &p_path) {
 void FileSystemDock::_file_list_thumbnail_done(const String &p_path, const Ref<Texture2D> &p_preview, const Ref<Texture2D> &p_small_preview, int p_index, const String &p_filename) {
 	if (p_preview.is_valid()) {
 		if (p_index < files->get_item_count() && files->get_item_text(p_index) == p_filename && files->get_item_metadata(p_index) == p_path) {
+			Ref<Texture2D> thumbnail;
+
 			if (file_list_display_mode == FILE_LIST_DISPLAY_LIST) {
-				if (p_small_preview.is_valid()) {
-					files->set_item_icon(p_index, p_small_preview);
-				}
+				thumbnail = p_small_preview;
 			} else {
-				files->set_item_icon(p_index, p_preview);
+				thumbnail = p_preview;
+			}
+
+			if (thumbnail.is_valid()) {
+				files->set_item_icon(p_index, _apply_thumbnail_filter(thumbnail, p_path));
 			}
 		}
 	}
@@ -876,8 +881,35 @@ void FileSystemDock::_file_list_thumbnail_done(const String &p_path, const Ref<T
 void FileSystemDock::_tree_thumbnail_done(const String &p_path, const Ref<Texture2D> &p_preview, const Ref<Texture2D> &p_small_preview, int p_update_id, ObjectID p_item) {
 	TreeItem *item = ObjectDB::get_instance<TreeItem>(p_item);
 	if (item && tree_update_id == p_update_id && p_small_preview.is_valid()) {
-		item->set_icon(0, p_small_preview);
+		item->set_icon(0, _apply_thumbnail_filter(p_small_preview, p_path));
 	}
+}
+
+Ref<Texture2D> FileSystemDock::_apply_thumbnail_filter(const Ref<Texture2D> &p_thumbnail, const String &p_file_path) const {
+	if (!p_file_path.is_empty()) {
+		int index;
+		EditorFileSystemDirectory *dir = EditorFileSystem::get_singleton()->find_file(p_file_path, &index);
+
+		if (dir) {
+			if (dir->get_file_import_is_valid(index)) {
+				const StringName &file_type = dir->get_file_type(index);
+
+				if (file_type == SNAME("CompressedTexture2D") || file_type == SNAME("Image")) {
+					const String extension = p_file_path.get_extension();
+
+					if (extension != "svg" && extension != "svgz") {
+						Ref<CanvasTexture> thumbnail_wrapped;
+						thumbnail_wrapped.instantiate();
+						thumbnail_wrapped->set_diffuse_texture(p_thumbnail);
+						thumbnail_wrapped->set_texture_filter(CanvasItem::TextureFilter::TEXTURE_FILTER_NEAREST_WITH_MIPMAPS);
+						return thumbnail_wrapped;
+					}
+				}
+			}
+		}
+	}
+
+	return p_thumbnail;
 }
 
 void FileSystemDock::_toggle_file_display() {
@@ -4154,7 +4186,7 @@ void FileSystemDock::update_layout(EditorDock::DockLayout p_layout) {
 	horizontal = new_horizontal;
 
 	if (horizontal) {
-		path_hb->reparent(toolbar_hbc, false);
+		path_hb->reparent(toolbar_hbc);
 		toolbar_hbc->move_child(path_hb, 2);
 		set_meta("_dock_display_mode", get_display_mode());
 		set_meta("_dock_file_display_mode", get_file_list_display_mode());

@@ -31,6 +31,7 @@
 #include "spring_bone_simulator_3d.h"
 #include "spring_bone_simulator_3d.compat.inc"
 
+#include "core/config/engine.h"
 #include "scene/3d/spring_bone_collision_3d.h"
 
 // Original VRM Spring Bone movement logic was distributed by (c) VRM Consortium. Licensed under the MIT license.
@@ -1206,7 +1207,7 @@ LocalVector<ObjectID> SpringBoneSimulator3D::get_valid_collision_instance_ids(in
 	if (collisions_dirty) {
 		_find_collisions();
 	}
-	return settings[p_index]->cached_collisions;
+	return LocalVector<ObjectID>(settings[p_index]->cached_collisions);
 }
 
 void SpringBoneSimulator3D::set_external_force(const Vector3 &p_force) {
