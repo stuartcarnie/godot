@@ -169,8 +169,8 @@ bool GDScriptLanguage::validate(const String &p_script, const String &p_path, Li
 			for (const GDScriptParser::ParserError &pe : parser.get_errors()) {
 				ScriptLanguage::ScriptError e;
 				e.path = p_path;
-				e.line = pe.line;
-				e.column = pe.column;
+				e.line = pe.start_line;
+				e.column = pe.start_column;
 				e.message = pe.message;
 				r_errors->push_back(e);
 			}
@@ -180,8 +180,8 @@ bool GDScriptLanguage::validate(const String &p_script, const String &p_path, Li
 				for (const GDScriptParser::ParserError &pe : depended_parser->get_errors()) {
 					ScriptLanguage::ScriptError e;
 					e.path = E.key;
-					e.line = pe.line;
-					e.column = pe.column;
+					e.line = pe.start_line;
+					e.column = pe.start_column;
 					e.message = pe.message;
 					r_errors->push_back(e);
 				}
@@ -1119,7 +1119,7 @@ static void _list_available_types(bool p_inherit_only, GDScriptParser::Completio
 	}
 
 	// Autoload singletons
-	HashMap<StringName, ProjectSettings::AutoloadInfo> autoloads = ProjectSettings::get_singleton()->get_autoload_list();
+	HashMap<StringName, ProjectSettings::AutoloadInfo> autoloads(ProjectSettings::get_singleton()->get_autoload_list());
 
 	for (const KeyValue<StringName, ProjectSettings::AutoloadInfo> &E : autoloads) {
 		const ProjectSettings::AutoloadInfo &info = E.value;

@@ -4218,7 +4218,7 @@ void Tree::gui_input(const Ref<InputEvent> &p_event) {
 					if (rtl) {
 						pressing_pos.x = get_size().width - pressing_pos.x;
 					}
-				} else if (mb->is_double_click() && get_item_at_position(mb->get_position()) != nullptr) {
+				} else if (mb->is_double_click() && cache.click_type != Cache::CLICK_BUTTON && get_item_at_position(mb->get_position()) != nullptr) {
 					emit_signal(SNAME("item_icon_double_clicked"));
 				}
 
@@ -5769,6 +5769,7 @@ int Tree::get_columns() const {
 void Tree::_scroll_moved(float) {
 	_determine_hovered_item();
 	queue_redraw();
+	popup_editor->hide();
 }
 
 Rect2 Tree::get_custom_popup_rect() const {
