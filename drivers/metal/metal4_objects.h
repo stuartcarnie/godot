@@ -67,6 +67,7 @@ namespace MTL4 {
 
 class RenderingDeviceDriverMetal;
 class MD4CommandPool;
+class QueryPool;
 
 // These types are defined in the global namespace (metal_objects_shared.h / rendering_device_driver_metal.h)
 using ::MDAttachment;
@@ -378,7 +379,12 @@ public:
 			BitField<RDD::PipelineStageBits> p_dst_stages,
 			VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
 			VectorView<RDD::BufferBarrier> p_buffer_barriers,
-			VectorView<RDD::TextureBarrier> p_texture_barriers) override;
+			VectorView<RDD::TextureBarrier> p_texture_barriers,
+			VectorView<RDD::AccelerationStructureBarrier> p_acceleration_structure_barriers) override;
+
+#pragma mark - Timestamp
+
+	void timestamp_write(QueryPool *p_pool, uint32_t p_index);
 
 #pragma mark - Debugging
 
@@ -425,6 +431,24 @@ _FORCE_INLINE_ static MTL::Size mipmapLevelSizeFromTexture(MTL::Texture *p_tex, 
 	lvlSize.depth = MAX(p_tex->depth() >> p_level, 1UL);
 	return lvlSize;
 }
+
+class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) QueryPool {
+	NS::SharedPtr<MTL4::CounterHeap> counter_heap;
+	uint64_t timestamp_frequency = 0;
+	double timestamp_to_nano = 0.0;
+	uint32_t count = 0;
+
+public:
+	QueryPool(NS::SharedPtr<MTL4::CounterHeap> p_heap, uint32_t p_count, uint64_t p_frequency);
+
+	MTL4::CounterHeap *get_counter_heap() const { return counter_heap.get(); }
+	uint64_t get_timestamp_frequency() const { return timestamp_frequency; }
+	uint32_t get_count() const { return count; }
+
+	void invalidate(uint32_t p_count);
+	void get_results(uint32_t p_count, uint64_t *r_results);
+	uint64_t result_to_time(uint64_t p_result) const { return uint64_t((double)p_result * timestamp_to_nano); }
+};
 
 } // namespace MTL4
 

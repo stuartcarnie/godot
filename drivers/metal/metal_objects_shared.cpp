@@ -653,7 +653,7 @@ MDLibrary::MDLibrary(ShaderCacheEntry *p_entry
 		) :
 		_entry(p_entry) {
 #ifdef DEV_ENABLED
-	_original_source = p_source;
+	_original_source = NS::RetainPtr(p_source);
 #endif
 }
 

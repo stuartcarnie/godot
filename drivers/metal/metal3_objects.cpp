@@ -169,7 +169,8 @@ void MDCommandBuffer::pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_st
 		BitField<RDD::PipelineStageBits> p_dst_stages,
 		VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
 		VectorView<RDD::BufferBarrier> p_buffer_barriers,
-		VectorView<RDD::TextureBarrier> p_texture_barriers) {
+		VectorView<RDD::TextureBarrier> p_texture_barriers,
+		VectorView<RDD::AccelerationStructureBarrier> p_acceleration_structure_barriers) {
 	MTL::Stages after_stages = convert_src_pipeline_stages_to_metal(p_src_stages);
 	if (after_stages == 0) {
 		return;

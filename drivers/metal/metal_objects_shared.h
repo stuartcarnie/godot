@@ -742,7 +742,8 @@ public:
 			BitField<RDD::PipelineStageBits> p_dst_stages,
 			VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
 			VectorView<RDD::BufferBarrier> p_buffer_barriers,
-			VectorView<RDD::TextureBarrier> p_texture_barriers) = 0;
+			VectorView<RDD::TextureBarrier> p_texture_barriers,
+			VectorView<RDD::AccelerationStructureBarrier> p_acceleration_structure_barriers) = 0;
 
 #pragma mark - Debugging
 
@@ -842,7 +843,7 @@ class MDLibrary : public std::enable_shared_from_this<MDLibrary> {
 protected:
 	ShaderCacheEntry *_entry = nullptr;
 #ifdef DEV_ENABLED
-	NS::String *_original_source = nullptr;
+	NS::SharedPtr<NS::String> _original_source = nullptr;
 #endif
 
 	MDLibrary(ShaderCacheEntry *p_entry
@@ -859,7 +860,7 @@ public:
 	virtual NS::Error *get_error() = 0;
 	virtual void set_label(NS::String *p_label);
 #ifdef DEV_ENABLED
-	NS::String *get_original_source() const { return _original_source; }
+	NS::String *get_original_source() const { return _original_source.get(); }
 #endif
 
 	static std::shared_ptr<MDLibrary> create(ShaderCacheEntry *p_entry,

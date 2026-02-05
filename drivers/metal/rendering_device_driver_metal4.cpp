@@ -240,6 +240,44 @@ RenderingDeviceDriverMetal::~RenderingDeviceDriverMetal() {
 	}
 }
 
+#pragma mark - Timestamp
+
+RDD::QueryPoolID RenderingDeviceDriverMetal::timestamp_query_pool_create(uint32_t p_query_count) {
+	NS::SharedPtr<MTL4::CounterHeapDescriptor> desc = NS::TransferPtr(MTL4::CounterHeapDescriptor::alloc()->init());
+	desc->setType(MTL4::CounterHeapTypeTimestamp);
+	desc->setCount(p_query_count);
+	NS::Error *error = nullptr;
+	NS::SharedPtr<MTL4::CounterHeap> heap = NS::TransferPtr(device->newCounterHeap(desc.get(), &error));
+	ERR_FAIL_COND_V_MSG(error != nullptr, QueryPoolID(), vformat("Failed to create counter heap: %s", String(error->localizedDescription()->utf8String())));
+	QueryPool *pool = memnew(QueryPool(heap, p_query_count, device->queryTimestampFrequency()));
+	return QueryPoolID(pool);
+}
+
+void RenderingDeviceDriverMetal::timestamp_query_pool_free(QueryPoolID p_pool_id) {
+	QueryPool *pool = (QueryPool *)(p_pool_id.id);
+	memdelete(pool);
+}
+
+void RenderingDeviceDriverMetal::timestamp_query_pool_get_results(QueryPoolID p_pool_id, uint32_t p_query_count, uint64_t *r_results) {
+	QueryPool *pool = (QueryPool *)(p_pool_id.id);
+	pool->get_results(p_query_count, r_results);
+}
+
+uint64_t RenderingDeviceDriverMetal::timestamp_query_result_to_time(uint64_t p_result) {
+	return p_result; // Already converted to nanoseconds in get_results.
+}
+
+void RenderingDeviceDriverMetal::command_timestamp_query_pool_reset(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_query_count) {
+	QueryPool *pool = (QueryPool *)(p_pool_id.id);
+	pool->invalidate(p_query_count);
+}
+
+void RenderingDeviceDriverMetal::command_timestamp_write(CommandBufferID p_cmd_buffer, QueryPoolID p_pool_id, uint32_t p_index) {
+	MDCommandBuffer *cmd = (MDCommandBuffer *)(p_cmd_buffer.id);
+	QueryPool *pool = (QueryPool *)(p_pool_id.id);
+	cmd->timestamp_write(pool, p_index);
+}
+
 #pragma mark - Initialization
 
 Error RenderingDeviceDriverMetal::_create_device() {
