@@ -36,6 +36,7 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         editor/pl.po
         editor/pt.po
         editor/pt_BR.po
+        editor/ro.po
         editor/ru.po
         editor/sk.po
         editor/sv.po
@@ -62,6 +63,7 @@ generate_file(make_editor_translations "${GODOT_EDITOR_TRANSLATIONS_SOURCE}" "${
 #   cog.outl(')')
 # ]]]
 set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
+        properties/bg.po
         properties/cs.po
         properties/de.po
         properties/es.po

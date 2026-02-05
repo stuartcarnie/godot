@@ -7,6 +7,7 @@
 #   cog.outl(')')
 # ]]]
 set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
+        icons/action_copy.svg
         icons/add.svg
         icons/arrow_down.svg
         icons/arrow_left.svg

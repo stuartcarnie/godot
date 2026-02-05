@@ -136,6 +136,8 @@ env["minizip"] = True
 env["builtin_certs"] = True
 env["system_certs_path"] = ""
 env["debug_features"] = True
+env["betsy_export_templates"] = False
+env["cvtt_export_templates"] = False
 
 
 def detect_modules_within_searchpath(path: str, env: Environment, selected_platform: str) -> OrderedDict:

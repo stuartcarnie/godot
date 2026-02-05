@@ -88,6 +88,7 @@ set_abs(RENDERER_RD_SERVER_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/particles.glsl
         shaders/particles_copy.glsl
         shaders/skeleton.glsl
+        shaders/tex_blit.glsl
 )
 # [[[end]]]
 

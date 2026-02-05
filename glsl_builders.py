@@ -238,7 +238,7 @@ protected:
 #ifdef DEV_ENABLED
 	const char *rel_shader_path() const override {{ return "{os.path.relpath(shader)}"; }}
 #endif
-};
+}};
 """)
 
 

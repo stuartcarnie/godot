@@ -97,6 +97,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         BezierHandlesMirror.svg
         BitMap.svg
         Blend.svg
+        BlitMaterial.svg
         Bone.svg
         Bone2D.svg
         BoneAttachment3D.svg
@@ -246,6 +247,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         DirectionalLight3D.svg
         DistractionFree.svg
         DragHandle.svg
+        DrawableTexture2D.svg
         Duplicate.svg
         Edit.svg
         EditAddRemove.svg
@@ -967,6 +969,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ViewportSpeed.svg
         ViewportTexture.svg
         ViewportZoom.svg
+        VirtualJoystick.svg
         VisibleOnScreenEnabler2D.svg
         VisibleOnScreenEnabler3D.svg
         VisibleOnScreenNotifier2D.svg

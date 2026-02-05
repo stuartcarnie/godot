@@ -267,6 +267,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/BaseMaterial3D.xml
         classes/Basis.xml
         classes/BitMap.xml
+        classes/BlitMaterial.xml
         classes/Bone2D.xml
         classes/BoneAttachment3D.xml
         classes/BoneConstraint3D.xml
@@ -361,6 +362,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/DirectionalLight2D.xml
         classes/DirectionalLight3D.xml
         classes/DisplayServer.xml
+        classes/DrawableTexture2D.xml
         classes/EditorCommandPalette.xml
         classes/EditorContextMenuPlugin.xml
         classes/EditorDebuggerPlugin.xml
@@ -928,6 +930,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/VideoStreamPlayer.xml
         classes/Viewport.xml
         classes/ViewportTexture.xml
+        classes/VirtualJoystick.xml
         classes/VisibleOnScreenEnabler2D.xml
         classes/VisibleOnScreenEnabler3D.xml
         classes/VisibleOnScreenNotifier2D.xml

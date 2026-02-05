@@ -3,11 +3,12 @@ godot_add_library(apple_embedded FOLDER drivers STATIC)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(apple_embedded PRIVATE')
-#   for file in list_files(cog, '.'):
+#   for file in list_files(cog, '.', exts=['c', 'cpp', 'h', 'mm', 'swift']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
 target_sources(apple_embedded PRIVATE
+        app.swift
         app_delegate_service.h
         app_delegate_service.mm
         apple_embedded.h
@@ -42,7 +43,11 @@ target_sources(apple_embedded PRIVATE
 
 target_compile_definitions(apple_embedded PUBLIC COREAUDIO_ENABLED=1)
 target_compile_features(apple_embedded PRIVATE cxx_std_20)
-set_target_properties(apple_embedded PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
+set_target_properties(apple_embedded PROPERTIES
+        XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20
+        XCODE_ATTRIBUTE_SWIFT_OBJC_BRIDGING_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/bridging_header_apple_embedded.h"
+        XCODE_ATTRIBUTE_SWIFT_OBJC_INTEROP_MODE "objcxx"
+)
 target_link_libraries(apple_embedded PRIVATE core)
 target_compile_options(apple_embedded
         PRIVATE

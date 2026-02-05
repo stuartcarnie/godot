@@ -123,6 +123,8 @@ target_sources(scene PRIVATE
         video_stream_player.h
         view_panner.cpp
         view_panner.h
+        virtual_joystick.cpp
+        virtual_joystick.h
 )
 # [[[end]]]
 target_link_libraries(scene PUBLIC servers)

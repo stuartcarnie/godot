@@ -1,4 +1,3 @@
-add_subdirectory(api)
 godot_add_library(ios)
 # [[[cog
 #   import cog
@@ -72,6 +71,10 @@ target_link_libraries(ios PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,MetalKit.framework>
         $<LINK_LIBRARY:FRAMEWORK,MetalFX.framework>
         $<LINK_LIBRARY:FRAMEWORK,IOSurface.framework>
+        $<LINK_LIBRARY:FRAMEWORK,Foundation.framework>
+        $<LINK_LIBRARY:FRAMEWORK,CoreGraphics.framework>
+        $<LINK_LIBRARY:FRAMEWORK,CoreFoundation.framework>
+        $<LINK_LIBRARY:FRAMEWORK,UIKit.framework>
 )
 
 # Set the SDKROOT Xcode properties to a Xcode-friendly value (the SDK_NAME, E.g, iphoneos)

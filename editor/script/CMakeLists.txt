@@ -15,10 +15,14 @@ target_sources(editor PRIVATE
         find_in_files.h
         script_create_dialog.cpp
         script_create_dialog.h
+        script_editor_base.cpp
+        script_editor_base.h
         script_editor_plugin.cpp
         script_editor_plugin.h
         script_text_editor.cpp
         script_text_editor.h
+        syntax_highlighters.cpp
+        syntax_highlighters.h
         text_editor.cpp
         text_editor.h
 )

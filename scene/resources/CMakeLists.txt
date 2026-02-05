@@ -24,6 +24,8 @@ target_sources(scene PRIVATE
         audio_stream_wav.h
         bit_map.cpp
         bit_map.h
+        blit_material.cpp
+        blit_material.h
         bone_map.cpp
         bone_map.h
         camera_attributes.cpp
@@ -44,6 +46,8 @@ target_sources(scene PRIVATE
         curve_texture.h
         dpi_texture.cpp
         dpi_texture.h
+        drawable_texture_2d.cpp
+        drawable_texture_2d.h
         environment.cpp
         environment.h
         external_texture.cpp

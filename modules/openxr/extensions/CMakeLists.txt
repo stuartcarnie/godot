@@ -60,6 +60,8 @@ target_sources(godot-module-openxr PRIVATE
         openxr_pico_controller_extension.h
         openxr_render_model_extension.cpp
         openxr_render_model_extension.h
+        openxr_user_presence_extension.cpp
+        openxr_user_presence_extension.h
         openxr_valve_analog_threshold_extension.cpp
         openxr_valve_analog_threshold_extension.h
         openxr_valve_controller_extension.cpp

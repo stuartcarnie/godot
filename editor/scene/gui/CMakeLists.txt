@@ -19,5 +19,7 @@ target_sources(editor PRIVATE
         theme_editor_plugin.h
         theme_editor_preview.cpp
         theme_editor_preview.h
+        virtual_joystick_editor_plugin.cpp
+        virtual_joystick_editor_plugin.h
 )
 # [[[end]]]
