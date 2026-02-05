@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  variant_destruct.h                                                    */
+/*  audio_effect_spectrum_analyzer.compat.inc                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,42 +28,20 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef DISABLE_DEPRECATED
 
-#include "core/variant/variant.h"
+void AudioEffectSpectrumAnalyzer::_set_tap_back_pos_bind_compat_114355(float p_seconds) {
+	WARN_PRINT_ONCE("AudioEffectSpectrumAnalyzer.set_tap_back_pos() is deprecated and the value will be discarded.");
+}
 
-#include "core/object/class_db.h"
+float AudioEffectSpectrumAnalyzer::_get_tap_back_pos_bind_compat_114355() {
+	WARN_PRINT_ONCE("AudioEffectSpectrumAnalyzer.get_tap_back_pos() is deprecated and will only return the original default value.");
+	return 0.01;
+}
 
-template <typename T>
-struct VariantDestruct {};
+void AudioEffectSpectrumAnalyzer::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("set_tap_back_pos", "seconds"), &AudioEffectSpectrumAnalyzer::_set_tap_back_pos_bind_compat_114355);
+	ClassDB::bind_compatibility_method(D_METHOD("get_tap_back_pos"), &AudioEffectSpectrumAnalyzer::_get_tap_back_pos_bind_compat_114355);
+}
 
-#define MAKE_PTRDESTRUCT(m_type) \
-	template <> \
-	struct VariantDestruct<m_type> { \
-		_FORCE_INLINE_ static void ptr_destruct(void *p_ptr) { \
-			reinterpret_cast<m_type *>(p_ptr)->~m_type(); \
-		} \
-		_FORCE_INLINE_ static Variant::Type get_base_type() { \
-			return GetTypeInfo<m_type>::VARIANT_TYPE; \
-		} \
-	}
-
-MAKE_PTRDESTRUCT(String);
-MAKE_PTRDESTRUCT(StringName);
-MAKE_PTRDESTRUCT(NodePath);
-MAKE_PTRDESTRUCT(Callable);
-MAKE_PTRDESTRUCT(Signal);
-MAKE_PTRDESTRUCT(Dictionary);
-MAKE_PTRDESTRUCT(Array);
-MAKE_PTRDESTRUCT(PackedByteArray);
-MAKE_PTRDESTRUCT(PackedInt32Array);
-MAKE_PTRDESTRUCT(PackedInt64Array);
-MAKE_PTRDESTRUCT(PackedFloat32Array);
-MAKE_PTRDESTRUCT(PackedFloat64Array);
-MAKE_PTRDESTRUCT(PackedStringArray);
-MAKE_PTRDESTRUCT(PackedVector2Array);
-MAKE_PTRDESTRUCT(PackedVector3Array);
-MAKE_PTRDESTRUCT(PackedColorArray);
-MAKE_PTRDESTRUCT(PackedVector4Array);
-
-#undef MAKE_PTRDESTRUCT
+#endif // DISABLE_DEPRECATED

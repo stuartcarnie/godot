@@ -283,7 +283,7 @@ PixelFormats::~PixelFormats() {
 }
 
 #define addDataFormatDescFull(DATA_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A) \
-	dfFmt = RD::DATA_FORMAT_##DATA_FMT;                                                                                                                                           \
+	dfFmt = RD::DATA_FORMAT_##DATA_FMT; \
 	_data_format_descs[dfFmt] = { dfFmt, MTL::PixelFormat##MTL_FMT, MTL::PixelFormat##MTL_FMT_ALT, MTL::VertexFormat##MTL_VTX_FMT, MTL::VertexFormat##MTL_VTX_FMT_ALT,            \
 		CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, MTLFormatType::MVK_FMT_TYPE,                                                                                                  \
 		{ RD::TEXTURE_SWIZZLE_##SWIZ_R, RD::TEXTURE_SWIZZLE_##SWIZ_G, RD::TEXTURE_SWIZZLE_##SWIZ_B, RD::TEXTURE_SWIZZLE_##SWIZ_A },                                               \
@@ -593,13 +593,13 @@ void PixelFormats::addMTLPixelFormatDescImpl(MTL::PixelFormat p_pix_fmt, MTL::Pi
 #define addMTLPixelFormatDesc(mtlFmt, viewClass, appleGPUCaps) \
 	addMTLPixelFormatDescFull(mtlFmt, mtlFmt, viewClass, kMTLFmtCaps##appleGPUCaps)
 
-#define addMTLPixelFormatDescSRGB(mtlFmt, viewClass, appleGPUCaps, mtlFmtLinear)               \
-	/* Cannot write to sRGB textures in the simulator */                                       \
-	if (TARGET_OS_SIMULATOR) {                                                                 \
-		MTLFmtCaps appleFmtCaps = kMTLFmtCaps##appleGPUCaps;                                   \
-		flags::clear(appleFmtCaps, kMTLFmtCapsWrite);                                          \
-		addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleFmtCaps);              \
-	} else {                                                                                   \
+#define addMTLPixelFormatDescSRGB(mtlFmt, viewClass, appleGPUCaps, mtlFmtLinear) \
+	/* Cannot write to sRGB textures in the simulator */ \
+	if (TARGET_OS_SIMULATOR) { \
+		MTLFmtCaps appleFmtCaps = kMTLFmtCaps##appleGPUCaps; \
+		flags::clear(appleFmtCaps, kMTLFmtCapsWrite); \
+		addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleFmtCaps); \
+	} else { \
 		addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, kMTLFmtCaps##appleGPUCaps); \
 	}
 
