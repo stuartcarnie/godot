@@ -1260,16 +1260,6 @@ void RenderingDeviceGraph::_run_render_commands(int32_t p_level, const RecordedC
 		const uint32_t command_index = p_sorted_commands[i].index;
 		const uint32_t command_data_offset = command_data_offsets[command_index];
 		const RecordedCommand *command = reinterpret_cast<const RecordedCommand *>(&command_data[command_data_offset]);
-
-		// // Only push labels for significant commands (draw list, compute list, driver callback).
-		// // This implements lazy push - labels for copy-only operations are skipped.
-		// bool is_significant_command = (command->type == RecordedCommand::TYPE_DRAW_LIST ||
-		// 		command->type == RecordedCommand::TYPE_COMPUTE_LIST ||
-		// 		command->type == RecordedCommand::TYPE_DRIVER_CALLBACK);
-		//
-		// if (is_significant_command) {
-		// 	_run_label_command_change(r_command_buffer, command->label_index, p_level, false, true, &p_sorted_commands[i], p_sorted_commands_count - i, r_current_label_index, r_current_label_level);
-		// }
 		_run_label_command_change(r_command_buffer, command->label_index, p_level, false, true, &p_sorted_commands[i], p_sorted_commands_count - i, r_current_label_index, r_current_label_level);
 
 		switch (command->type) {
@@ -1521,7 +1511,7 @@ void RenderingDeviceGraph::_run_label_command_change(RDD::CommandBufferID p_comm
 						case RecordedCommand::TYPE_BUFFER_GET_DATA:
 						case RecordedCommand::TYPE_BUFFER_UPDATE:
 						case RecordedCommand::TYPE_TEXTURE_CLEAR_COLOR:
-					case RecordedCommand::TYPE_TEXTURE_CLEAR_DEPTH_STENCIL:
+						case RecordedCommand::TYPE_TEXTURE_CLEAR_DEPTH_STENCIL:
 						case RecordedCommand::TYPE_TEXTURE_COPY:
 						case RecordedCommand::TYPE_TEXTURE_GET_DATA:
 						case RecordedCommand::TYPE_TEXTURE_RESOLVE:
