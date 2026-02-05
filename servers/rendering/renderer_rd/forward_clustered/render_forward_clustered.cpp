@@ -1881,13 +1881,14 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 	}
 
 	p_render_data->scene_data->emissive_exposure_normalization = -1.0;
+	uint32_t depth_prepass_uniform_buffer_index = 0;
 
 	{
 		RD::DrawCommandLabel label = RD::get_singleton()->draw_command_label("Render Setup");
 
 		_setup_lightmaps(p_render_data, *p_render_data->lightmaps, p_render_data->scene_data->cam_transform);
 		_setup_voxelgis(*p_render_data->voxel_gi_instances);
-		uint32_t depth_prepass_uniform_buffer_index = _setup_environment(p_render_data, is_reflection_probe, screen_size, screen_size, p_default_bg_color, false);
+		depth_prepass_uniform_buffer_index = _setup_environment(p_render_data, is_reflection_probe, screen_size, screen_size, p_default_bg_color, false);
 
 		// May have changed due to the above (light buffer enlarged, as an example).
 		_update_render_base_uniform_set();

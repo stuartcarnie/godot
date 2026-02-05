@@ -41,6 +41,8 @@ target_sources(editor PRIVATE
         editor_version_button.h
         editor_zoom_widget.cpp
         editor_zoom_widget.h
+        filter_line_edit.cpp
+        filter_line_edit.h
         progress_dialog.cpp
         progress_dialog.h
         touch_actions_panel.cpp

@@ -947,6 +947,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         UseBlendEnable.svg
         Uv.svg
         VBoxContainer.svg
+        VCSCommit.svg
         VFlowContainer.svg
         VScrollBar.svg
         VSeparator.svg

@@ -38,7 +38,6 @@ target_sources(godot-glslang PRIVATE
         SPIRV/Logger.cpp
         SPIRV/SpvBuilder.cpp
         SPIRV/SpvPostProcess.cpp
-        SPIRV/SPVRemapper.cpp
         SPIRV/SpvTools.cpp
 
         $<IF:$<PLATFORM_ID:Windows>,glslang/OSDependent/Windows/ossource.cpp,glslang/OSDependent/Unix/ossource.cpp>

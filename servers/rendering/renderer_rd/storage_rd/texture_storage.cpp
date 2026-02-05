@@ -1771,7 +1771,7 @@ void TextureStorage::texture_drawable_blit_rect(const TypedArray<RID> &p_texture
 
 	Rect2i tex_blit_rr;
 
-	RD::get_singleton()->draw_command_begin_label("Blit Rect");
+	RD::DrawCommandLabel label = RD::get_singleton()->draw_command_label("Blit Rect");
 	RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(tex_blit_fb, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 1.0f, 0u, tex_blit_rr);
 
 	RD::FramebufferFormatID fb_format = RD::get_singleton()->framebuffer_get_format(tex_blit_fb);
@@ -1798,7 +1798,6 @@ void TextureStorage::texture_drawable_blit_rect(const TypedArray<RID> &p_texture
 	RD::get_singleton()->draw_list_draw(draw_list, false, 1u, 6u);
 
 	RD::get_singleton()->draw_list_end();
-	RD::get_singleton()->draw_command_end_label();
 }
 
 //these two APIs can be used together or in combination with the others.
