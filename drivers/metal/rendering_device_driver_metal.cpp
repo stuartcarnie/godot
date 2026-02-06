@@ -1273,8 +1273,8 @@ RDD::UniformSetID RenderingDeviceDriverMetal::uniform_set_create(VectorView<Boun
 				*sru |= stage_resource_usage(RDD::SHADER_STAGE_COMPUTE, usage);
 			}
 		};
-#define ADD_USAGE(res, stage, usage)  \
-	if (!use_barriers) {              \
+#define ADD_USAGE(res, stage, usage) \
+	if (!use_barriers) { \
 		add_usage(res, stage, usage); \
 	}
 
