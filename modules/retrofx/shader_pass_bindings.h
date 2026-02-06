@@ -40,6 +40,8 @@ struct UBOBufferBinding {
 };
 
 struct PushBufferBinding {
+	/// Size of the push constant data in bytes as specified by the shader pass reflection.
+	uint32_t size = 0;
 	BufferBinding binding;
 
 	void update(RD *p_rd);

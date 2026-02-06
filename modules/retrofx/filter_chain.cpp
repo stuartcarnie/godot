@@ -360,7 +360,7 @@ void FilterChain::render_offscreen_passes() {
 
 void FilterChain::render_pass(FilterChain::Pass &p_pass, RD *p_rd, RenderingDevice::DrawListID p_draw_list) {
 	p_rd->draw_list_bind_render_pipeline(p_draw_list, p_pass.pipeline);
-	p_rd->draw_list_set_push_constant(p_draw_list, p_pass.bindings.push.binding.data.ptr(), p_pass.bindings.push.binding.data.size());
+	p_rd->draw_list_set_push_constant(p_draw_list, p_pass.bindings.push.binding.data.ptr(), p_pass.bindings.push.size);
 	p_rd->draw_list_bind_uniform_set(p_draw_list, p_pass.uniform_set, 0);
 	p_rd->draw_list_draw(p_draw_list, false);
 }
@@ -838,6 +838,7 @@ Error FilterChain::init_bindings(
 
 	if (p_pass->push.is_valid()) {
 		add_uniforms(p_pass->push.size, bindings.push.binding, p_pass->push.uniforms);
+		bindings.push.size = p_pass->push.size;
 	}
 
 	for (auto &t : p_pass->textures) {
