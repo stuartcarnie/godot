@@ -118,3 +118,24 @@ float DisplayServerIOS::screen_get_scale(int p_screen) const {
 
 	return [UIScreen mainScreen].scale;
 }
+
+bool DisplayServerIOS::_screen_hdr_is_supported() const {
+	if (@available(iOS 16.0, *)) {
+		return [UIScreen mainScreen].potentialEDRHeadroom > 1.0;
+	}
+	return false;
+}
+
+float DisplayServerIOS::_screen_potential_edr_headroom() const {
+	if (@available(iOS 16.0, *)) {
+		return [UIScreen mainScreen].potentialEDRHeadroom;
+	}
+	return 1.0f;
+}
+
+float DisplayServerIOS::_screen_current_edr_headroom() const {
+	if (@available(iOS 16.0, *)) {
+		return [UIScreen mainScreen].currentEDRHeadroom;
+	}
+	return 1.0f;
+}
