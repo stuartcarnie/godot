@@ -114,7 +114,7 @@ constexpr real_t GIZMO_RING_HALF_WIDTH = 0.1;
 constexpr real_t GIZMO_PLANE_SIZE = 0.2;
 constexpr real_t GIZMO_PLANE_DST = 0.3;
 constexpr real_t GIZMO_CIRCLE_SIZE = 1.1;
-constexpr real_t GIZMO_VIEW_ROTATION_SIZE = 1.25;
+
 constexpr real_t GIZMO_SCALE_OFFSET = GIZMO_CIRCLE_SIZE + 0.3;
 constexpr real_t GIZMO_ARROW_OFFSET = GIZMO_CIRCLE_SIZE + 0.3;
 
@@ -577,7 +577,7 @@ void Node3DEditorViewport::_update_navigation_controls_visibility() {
 }
 
 bool Node3DEditorViewport::_is_rotation_arc_visible() const {
-	return _edit.mode == TRANSFORM_ROTATE && _edit.accumulated_rotation_angle != 0.0 && _edit.gizmo_initiated;
+	return _edit.mode == TRANSFORM_ROTATE && !Math::is_zero_approx(_edit.accumulated_rotation_angle) && _edit.gizmo_initiated;
 }
 
 void Node3DEditorViewport::_update_camera(real_t p_interp_delta) {
@@ -1459,7 +1459,7 @@ bool Node3DEditorViewport::_transform_gizmo_select(const Vector2 &p_screenpos, b
 			Vector3 closest_point_on_ray = ray_pos + ray * ray_length_to_center;
 			real_t distance_ray_to_center = closest_point_on_ray.distance_to(gt.origin);
 
-			real_t view_rotation_radius = gizmo_scale * GIZMO_VIEW_ROTATION_SIZE;
+			real_t view_rotation_radius = gizmo_scale * spatial_editor->gizmo_view_rotation_scale;
 			real_t circumference_tolerance = gizmo_scale * GIZMO_RING_HALF_WIDTH;
 
 			if (Math::abs(distance_ray_to_center - view_rotation_radius) < circumference_tolerance &&
@@ -1925,6 +1925,7 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 						// Restore.
 						_edit.gizmo->commit_handle(_edit.gizmo_handle, _edit.gizmo_handle_secondary, _edit.gizmo_initial_value, true);
 						_edit.gizmo = Ref<EditorNode3DGizmo>();
+						set_message("");
 					}
 
 					if (_edit.mode == TRANSFORM_NONE) {
@@ -2242,6 +2243,7 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 							selected_node->update_gizmos();
 						}
 						_edit.gizmo = Ref<EditorNode3DGizmo>();
+						set_message("");
 						break;
 					}
 
@@ -2580,6 +2582,7 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 				// Restore.
 				_edit.gizmo->commit_handle(_edit.gizmo_handle, _edit.gizmo_handle_secondary, _edit.gizmo_initial_value, true);
 				_edit.gizmo = Ref<EditorNode3DGizmo>();
+				set_message("");
 			}
 			if (k->get_keycode() == Key::ESCAPE && !cursor.region_select && !k->is_echo()) {
 				_clear_selected();
@@ -2737,12 +2740,29 @@ void Node3DEditorViewport::_sinput(const Ref<InputEvent> &p_event) {
 					begin_transform(TRANSFORM_TRANSLATE, true);
 				}
 			}
-			if (ED_IS_SHORTCUT("spatial_editor/instant_rotate", event_mod) && _edit.mode != TRANSFORM_ROTATE) {
-				if (_edit.mode == TRANSFORM_NONE) {
-					begin_transform(TRANSFORM_ROTATE, true);
-				} else if (_edit.instant || collision_reposition) {
-					commit_transform();
-					begin_transform(TRANSFORM_ROTATE, true);
+			if (ED_IS_SHORTCUT("spatial_editor/instant_rotate", event_mod)) {
+				if (_edit.mode == TRANSFORM_ROTATE && _edit.instant) {
+					_edit.is_trackball = !_edit.is_trackball;
+					_edit.show_rotation_line = !_edit.is_trackball;
+					_edit.plane = TRANSFORM_VIEW;
+					_edit.original_mouse_pos = _edit.mouse_pos;
+					if (_edit.is_trackball) {
+						set_message(TTR("Trackball Rotation"));
+					} else {
+						_edit.initial_click_vector = Vector3();
+						_edit.previous_rotation_vector = Vector3();
+						_edit.accumulated_rotation_angle = 0.0;
+						_edit.display_rotation_angle = 0.0;
+						set_message(vformat(TTR("Rotating %s degrees."), String::num(0, 0)));
+					}
+					surface->queue_redraw();
+				} else if (_edit.mode != TRANSFORM_ROTATE) {
+					if (_edit.mode == TRANSFORM_NONE) {
+						begin_transform(TRANSFORM_ROTATE, true);
+					} else if (_edit.instant || collision_reposition) {
+						commit_transform();
+						begin_transform(TRANSFORM_ROTATE, true);
+					}
 				}
 			}
 			if (ED_IS_SHORTCUT("spatial_editor/instant_scale", event_mod) && _edit.mode != TRANSFORM_SCALE) {
@@ -3572,8 +3592,7 @@ void Node3DEditorViewport::_notification(int p_what) {
 					if (!ruler->is_inside_tree()) {
 						double snap = EDITOR_GET("interface/inspector/default_float_step");
 						int snap_step_decimals = Math::range_step_decimals(snap);
-						set_message(TTR("Translating:") + " (" + String::num(selected_node->get_global_position().x, snap_step_decimals) + ", " +
-								String::num(selected_node->get_global_position().y, snap_step_decimals) + ", " + String::num(selected_node->get_global_position().z, snap_step_decimals) + ")");
+						set_message(vformat(TTR("Translating: %s"), vformat("%.*v", snap_step_decimals, selected_node->get_global_position())));
 					}
 
 					selected_node->set_global_position(spatial_editor->snap_point(_get_instance_position(_edit.mouse_pos, selected_node)));
@@ -3594,8 +3613,7 @@ void Node3DEditorViewport::_notification(int p_what) {
 				preview_node_pos = spatial_editor->snap_point(_get_instance_position(preview_node_viewport_pos, preview_node));
 				double snap = EDITOR_GET("interface/inspector/default_float_step");
 				int snap_step_decimals = Math::range_step_decimals(snap);
-				set_message(TTR("Instantiating:") + " (" + String::num(preview_node_pos.x, snap_step_decimals) + ", " +
-						String::num(preview_node_pos.y, snap_step_decimals) + ", " + String::num(preview_node_pos.z, snap_step_decimals) + ")");
+				set_message(vformat(TTR("Instantiating: %s"), vformat("%.*v", snap_step_decimals, preview_node_pos)));
 				Transform3D preview_gl_transform = Transform3D(Basis(), preview_node_pos);
 				preview_node->set_global_transform(preview_gl_transform);
 				if (!preview_node->is_visible()) {
@@ -3625,6 +3643,7 @@ void Node3DEditorViewport::_notification(int p_what) {
 
 				spatial_editor->get_single_selected_node()->update_gizmos();
 				_edit.gizmo = Ref<EditorNode3DGizmo>();
+				set_message("");
 			}
 		} break;
 
@@ -3767,7 +3786,7 @@ void Node3DEditorViewport::_draw() {
 		Color handle_color;
 		switch (_edit.plane) {
 			case TRANSFORM_VIEW:
-				handle_color = Color(1.0, 1.0, 1.0, 1.0);
+				handle_color = get_theme_color(SNAME("axis_view_plane_color"), EditorStringName(Editor));
 				break;
 			case TRANSFORM_X_AXIS:
 				handle_color = get_theme_color(SNAME("axis_x_color"), EditorStringName(Editor));
@@ -3791,7 +3810,7 @@ void Node3DEditorViewport::_draw() {
 			right.normalize();
 			Vector3 forward = up.cross(right);
 
-			real_t rotation_radius = (_edit.plane == TRANSFORM_VIEW) ? GIZMO_VIEW_ROTATION_SIZE : GIZMO_CIRCLE_SIZE;
+			real_t rotation_radius = (_edit.plane == TRANSFORM_VIEW) ? spatial_editor->gizmo_view_rotation_scale : GIZMO_CIRCLE_SIZE;
 
 			const int circle_segments = 64;
 			Vector<Point2> circle_points;
@@ -3802,11 +3821,16 @@ void Node3DEditorViewport::_draw() {
 				circle_points.push_back(point_2d);
 			}
 
-			Color circle_color = (_edit.plane == TRANSFORM_VIEW) ? Color(1.0, 1.0, 1.0, 0.8) : handle_color.from_hsv(handle_color.get_h(), 0.6, 1.0, 0.8);
-			Vector<Color> circle_colors;
-			circle_colors.resize(circle_points.size());
-			circle_colors.fill(circle_color);
-			RenderingServer::get_singleton()->canvas_item_add_polyline(ci, circle_points, circle_colors, Math::round(2 * EDSCALE), true);
+			Color circle_color = handle_color.from_hsv(handle_color.get_h(), handle_color.get_s() * 0.6, 1.0, 0.8);
+			for (int i = 0; i < circle_points.size() - 1; i++) {
+				RenderingServer::get_singleton()->canvas_item_add_line(
+						ci,
+						circle_points[i],
+						circle_points[i + 1],
+						circle_color,
+						Math::round(2 * EDSCALE),
+						true);
+			}
 
 			const int segments = 64;
 			float display_angle = _edit.display_rotation_angle;
@@ -3854,7 +3878,7 @@ void Node3DEditorViewport::_draw() {
 				RenderingServer::get_singleton()->canvas_item_add_polygon(ci, triangle_points, triangle_colors);
 			}
 
-			Color edge_color = (_edit.plane == TRANSFORM_VIEW) ? Color(1.0, 1.0, 1.0, 0.7) : handle_color.from_hsv(handle_color.get_h(), 0.8, 1.0, 0.7);
+			Color edge_color = handle_color.from_hsv(handle_color.get_h(), handle_color.get_s() * 0.8, 1.0, 0.7);
 
 			Vector3 start_point_3d = _edit.center + gizmo_scale * rotation_radius * right;
 			Point2 start_point_2d = point_to_screen(start_point_3d);
@@ -3875,16 +3899,16 @@ void Node3DEditorViewport::_draw() {
 					edge_color,
 					Math::round(2 * EDSCALE),
 					true);
-		}
 
-		if (_edit.show_rotation_line) {
-			handle_color = handle_color.from_hsv(handle_color.get_h(), 0.25, 1.0, 1);
-			RenderingServer::get_singleton()->canvas_item_add_line(
-					ci,
-					_edit.mouse_pos,
-					center,
-					handle_color,
-					Math::round(2 * EDSCALE));
+			if (_edit.show_rotation_line) {
+				handle_color = handle_color.from_hsv(handle_color.get_h(), handle_color.get_s() * 0.25, 1.0, handle_color.a);
+				RenderingServer::get_singleton()->canvas_item_add_line(
+						ci,
+						_edit.mouse_pos,
+						center,
+						handle_color,
+						Math::round(2 * EDSCALE));
+			}
 		}
 	}
 	if (previewing) {
@@ -4632,8 +4656,8 @@ void Node3DEditorViewport::update_transform_gizmo_view() {
 			MIN(viewport_base_height, subviewport_container->get_size().height) / viewport_base_height;
 	Vector3 scale = Vector3(1, 1, 1) * gizmo_scale;
 
-	// if the determinant is zero, we should disable the gizmo from being rendered
-	// this prevents supplying bad values to the renderer and then having to filter it out again
+	// If the determinant is zero, we should disable the gizmo from being rendered,
+	// this prevents supplying bad values to the renderer and then having to filter it out again.
 	if (xform.basis.determinant() == 0) {
 		for (int i = 0; i < 3; i++) {
 			RenderingServer::get_singleton()->instance_set_visible(move_gizmo_instance[i], false);
@@ -4700,7 +4724,7 @@ void Node3DEditorViewport::update_transform_gizmo_view() {
 	Transform3D view_rotation_xform = xform;
 	view_rotation_xform.orthonormalize();
 	bool shrink_view_ring = arc_replaces_ring >= 0 && arc_replaces_ring < 3;
-	Vector3 view_ring_scale = shrink_view_ring ? scale * (GIZMO_CIRCLE_SIZE / GIZMO_VIEW_ROTATION_SIZE) : scale;
+	Vector3 view_ring_scale = shrink_view_ring ? scale * spatial_editor->gizmo_view_rotation_shrink : scale;
 	view_rotation_xform.basis.scale(view_ring_scale);
 	RenderingServer::get_singleton()->instance_set_transform(rotate_gizmo_instance[3], view_rotation_xform);
 	RenderingServer::get_singleton()->instance_set_visible(rotate_gizmo_instance[3], show_rotate_gizmo && arc_replaces_ring != 3);
@@ -5650,8 +5674,23 @@ void Node3DEditorViewport::begin_transform(TransformMode p_mode, bool instant) {
 		_edit.accumulated_rotation_angle = 0.0;
 		_edit.display_rotation_angle = 0.0;
 		_edit.gizmo_initiated = false;
+		switch (p_mode) {
+			case TRANSFORM_ROTATE:
+				_edit.show_rotation_line = true;
+				set_message(vformat(TTR("Rotating %s degrees."), String::num(0, 0)));
+				break;
+			case TRANSFORM_TRANSLATE:
+				set_message(vformat(TTR("Translating: %s"), vformat("%.0v", Vector3())));
+				break;
+			case TRANSFORM_SCALE:
+				set_message(vformat(TTR("Scaling: %s"), vformat("%.0v", Vector3())));
+				break;
+			default:
+				break;
+		}
 		update_transform_gizmo_view();
 		set_process_input(instant);
+		surface->queue_redraw();
 	}
 }
 
@@ -5827,8 +5866,7 @@ void Node3DEditorViewport::update_transform(bool p_shift) {
 			motion_snapped.snapf(snap);
 			// This might not be necessary anymore after issue #288 is solved (in 4.0?).
 			// TRANSLATORS: Refers to changing the scale of a node in the 3D editor.
-			set_message(TTR("Scaling:") + " (" + String::num(motion_snapped.x, snap_step_decimals) + ", " +
-					String::num(motion_snapped.y, snap_step_decimals) + ", " + String::num(motion_snapped.z, snap_step_decimals) + ")");
+			set_message(vformat(TTR("Scaling: %s"), vformat("%.*v", snap_step_decimals, motion_snapped)));
 			if (local_coords) {
 				// TODO: needed?
 				motion = _edit.original.basis.inverse().xform(motion);
@@ -5895,8 +5933,7 @@ void Node3DEditorViewport::update_transform(bool p_shift) {
 			Vector3 motion_snapped = motion;
 			motion_snapped.snapf(snap);
 			// TRANSLATORS: Refers to changing the position of a node in the 3D editor.
-			set_message(TTR("Translating:") + " (" + String::num(motion_snapped.x, snap_step_decimals) + ", " +
-					String::num(motion_snapped.y, snap_step_decimals) + ", " + String::num(motion_snapped.z, snap_step_decimals) + ")");
+			set_message(vformat(TTR("Translating: %s"), vformat("%.*v", snap_step_decimals, motion_snapped)));
 			if (local_coords) {
 				motion = spatial_editor->get_gizmo_transform().basis.inverse().xform(motion);
 			}
@@ -7944,16 +7981,14 @@ void fragment() {
 					col = get_theme_color(SNAME("axis_z_color"), EditorStringName(Editor));
 					break;
 				case 3:
-					col = Color(0.75, 0.75, 0.75, 1.0);
+					col = get_theme_color(SNAME("axis_view_plane_color"), EditorStringName(Editor));
 					break;
 				default:
 					col = Color();
 					break;
 			}
 
-			if (i < 3) {
-				col.a = EDITOR_GET("editors/3d/manipulator_gizmo_opacity");
-			}
+			col.a = col.a * (float)EDITOR_GET("editors/3d/manipulator_gizmo_opacity");
 
 			if (i < 3) {
 				move_gizmo[i].instantiate();
@@ -7965,7 +8000,7 @@ void fragment() {
 
 			rotate_gizmo[i].instantiate();
 
-			const Color albedo = col.from_hsv(col.get_h(), 0.25, 1.0, 1);
+			const Color albedo = col.from_hsv(col.get_h(), col.get_s() * 0.25, 1.0, 1);
 
 			Ref<StandardMaterial3D> mat;
 			Ref<StandardMaterial3D> mat_hl;
@@ -8092,7 +8127,7 @@ void fragment() {
 				for (int j = 0; j < n; ++j) {
 					Basis basis = Basis(ivec, j * step);
 
-					real_t circle_size = (i == 3) ? GIZMO_VIEW_ROTATION_SIZE : GIZMO_CIRCLE_SIZE;
+					real_t circle_size = (i == 3) ? gizmo_view_rotation_scale : GIZMO_CIRCLE_SIZE;
 					Vector3 vertex = basis.xform(ivec2 * circle_size);
 
 					for (int k = 0; k < m; ++k) {
@@ -8203,9 +8238,7 @@ void fragment() {
 				rotate_gizmo[i]->surface_set_material(0, rotate_mat);
 
 				Ref<ShaderMaterial> rotate_mat_hl = rotate_mat->duplicate();
-				// For view rotation, use bright white; for axes, use highlight color.
-				Color highlight_color = (i == 3) ? Color(1.0, 1.0, 1.0, 1.0) : albedo;
-				rotate_mat_hl->set_shader_parameter("albedo", highlight_color);
+				rotate_mat_hl->set_shader_parameter("albedo", albedo);
 				rotate_gizmo_color_hl[i] = rotate_mat_hl;
 			}
 
@@ -8299,7 +8332,7 @@ void fragment() {
 					surftool->commit(scale_plane_gizmo[i]);
 
 					Ref<StandardMaterial3D> plane_mat_hl = plane_mat->duplicate();
-					plane_mat_hl->set_albedo(col.from_hsv(col.get_h(), 0.25, 1.0, 1));
+					plane_mat_hl->set_albedo(col.from_hsv(col.get_h(), col.get_s() * 0.25, 1.0, 1));
 					plane_gizmo_color_hl[i] = plane_mat_hl; // needed, so we can draw planes from both sides.
 				}
 
@@ -9880,6 +9913,9 @@ void Node3DEditor::PreviewSunEnvPopup::shortcut_input(const Ref<InputEvent> &p_e
 Node3DEditor::Node3DEditor() {
 	gizmo.visible = true;
 	gizmo.scale = 1.0;
+	float vp_radius = (float)EDITOR_GET("editors/3d/view_plane_rotation_gizmo_scale");
+	gizmo_view_rotation_scale = GIZMO_CIRCLE_SIZE * vp_radius;
+	gizmo_view_rotation_shrink = 1.0 / vp_radius;
 
 	viewport_environment.instantiate();
 	VBoxContainer *vbc = this;
