@@ -3,3 +3,4 @@
 # command script import lldb_helpers.py
 # command script import ~/.lldb/libcpp/
 command script import ~/.lldb/GodotFormatters/godot_formatters
+settings set escape-non-printables false

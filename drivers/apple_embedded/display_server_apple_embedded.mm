@@ -43,7 +43,6 @@
 #include "core/io/file_access_pack.h"
 
 #import <GameController/GameController.h>
-#include <iterator>
 
 static const float kDisplayServerIOSAcceleration = 1.f;
 

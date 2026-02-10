@@ -284,9 +284,9 @@ PixelFormats::~PixelFormats() {
 
 #define addDataFormatDescFull(DATA_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, SWIZ_R, SWIZ_G, SWIZ_B, SWIZ_A) \
 	dfFmt = RD::DATA_FORMAT_##DATA_FMT; \
-	_data_format_descs[dfFmt] = { dfFmt, MTL::PixelFormat##MTL_FMT, MTL::PixelFormat##MTL_FMT_ALT, MTL::VertexFormat##MTL_VTX_FMT, MTL::VertexFormat##MTL_VTX_FMT_ALT,            \
-		CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, MTLFormatType::MVK_FMT_TYPE,                                                                                                  \
-		{ RD::TEXTURE_SWIZZLE_##SWIZ_R, RD::TEXTURE_SWIZZLE_##SWIZ_G, RD::TEXTURE_SWIZZLE_##SWIZ_B, RD::TEXTURE_SWIZZLE_##SWIZ_A },                                               \
+	_data_format_descs[dfFmt] = { dfFmt, MTL::PixelFormat##MTL_FMT, MTL::PixelFormat##MTL_FMT_ALT, MTL::VertexFormat##MTL_VTX_FMT, MTL::VertexFormat##MTL_VTX_FMT_ALT, \
+		CSPC, CSCB, { BLK_W, BLK_H }, BLK_BYTE_CNT, MTLFormatType::MVK_FMT_TYPE, \
+		{ RD::TEXTURE_SWIZZLE_##SWIZ_R, RD::TEXTURE_SWIZZLE_##SWIZ_G, RD::TEXTURE_SWIZZLE_##SWIZ_B, RD::TEXTURE_SWIZZLE_##SWIZ_A }, \
 		"DATA_FORMAT_" #DATA_FMT, false }
 
 #define addDataFormatDesc(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE) \
@@ -586,7 +586,7 @@ void PixelFormats::addMTLPixelFormatDescImpl(MTL::PixelFormat p_pix_fmt, MTL::Pi
 	_mtl_pixel_format_descs[p_pix_fmt] = { .mtlPixelFormat = p_pix_fmt, DataFormat::DATA_FORMAT_MAX, p_fmt_caps, p_view_class, p_pix_fmt_linear, p_name };
 }
 
-#define addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleGPUCaps)                                 \
+#define addMTLPixelFormatDescFull(mtlFmt, mtlFmtLinear, viewClass, appleGPUCaps) \
 	addMTLPixelFormatDescImpl(MTL::PixelFormat##mtlFmt, MTL::PixelFormat##mtlFmtLinear, MTLViewClass::viewClass, \
 			appleGPUCaps, "MTL::PixelFormat" #mtlFmt)
 
@@ -791,8 +791,8 @@ void PixelFormats::addMTLVertexFormatDescImpl(MTL::VertexFormat mtlVtxFmt, MTLFm
 }
 
 // Check mtlVtx exists on platform, to avoid overwriting the MTL::VertexFormatInvalid entry.
-#define addMTLVertexFormatDesc(mtlVtx)                                                                         \
-	if (MTL::VertexFormat##mtlVtx) {                                                                           \
+#define addMTLVertexFormatDesc(mtlVtx) \
+	if (MTL::VertexFormat##mtlVtx) { \
 		addMTLVertexFormatDescImpl(MTL::VertexFormat##mtlVtx, kMTLFmtCapsVertex, "MTL::VertexFormat" #mtlVtx); \
 	}
 
