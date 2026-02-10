@@ -6,10 +6,10 @@ set(GODOT_CONFIG_VERSION_HEADER_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/core/version_
 set(GODOT_CONFIG_VERSION_HASH_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/core/version_hash.gen.cpp)
 generate_version_information(${GODOT_CONFIG_VERSION_HEADER_OUTPUT} ${GODOT_CONFIG_VERSION_HASH_OUTPUT})
 
-set(GODOT_INTERFACE_WRAPPERS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/core/extension/ext_wrappers.gen.inc)
+set(GODOT_INTERFACE_WRAPPERS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/core/extension/ext_wrappers.gen.h)
 generate_godot_extension_wrappers(${GODOT_INTERFACE_WRAPPERS_OUTPUT})
 
-set(GODOT_OBJECT_GD_VIRTUALS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/core/object/gdvirtual.gen.inc)
+set(GODOT_OBJECT_GD_VIRTUALS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/core/object/gdvirtual.gen.h)
 generate_godot_gdscript_virtuals(${GODOT_OBJECT_GD_VIRTUALS_OUTPUT})
 
 set(GODOT_CORE_OBJECT_DISABLED_CLASSES_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/core/disabled_classes.gen.h)
@@ -152,6 +152,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(core PUBLIC macos)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
     target_link_libraries(core PUBLIC ios)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    target_link_libraries(core PUBLIC visionos)
 else ()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif ()

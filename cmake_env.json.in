@@ -13,6 +13,7 @@
     "d3d12" : false,
     "metal" : @WANT_METAL_B@,
     "openxr" : @WANT_OPENXR_B@,
+    "d3d12" : false,
     "module_retrofx_enabled": @WANT_RETROFX_B@,
     "opengl3" : true,
     "minizip" : true,

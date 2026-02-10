@@ -1,4 +1,3 @@
-add_subdirectory(api)
 godot_add_library(visionos)
 # [[[cog
 #   import cog

@@ -11,6 +11,8 @@ godot_add_library(tests FOLDER tests STATIC)
 #   cog.outl(')')
 # ]]]
 target_sources(tests PRIVATE
+        compatibility_test/src/compat_checker.c
+        compatibility_test/src/compat_checker.h
         core/config/test_project_settings.h
         core/input/test_input_event.h
         core/input/test_input_event_key.h

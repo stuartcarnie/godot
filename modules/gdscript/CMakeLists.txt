@@ -100,6 +100,8 @@ if (WANT_EDITOR)
             language_server/gdscript_workspace.cpp
             language_server/gdscript_workspace.h
             language_server/godot_lsp.h
+            language_server/scene_cache.cpp
+            language_server/scene_cache.h
     )
     # [[[end]]]
 endif ()
