@@ -3890,7 +3890,7 @@ void Node3DEditorViewport::_draw() {
 					Math::round(2 * EDSCALE),
 					true);
 
-			Vector3 end_point_3d = _edit.center + gizmo_scale * rotation_radius * (right * Math::cos(_edit.accumulated_rotation_angle) + forward * Math::sin(_edit.accumulated_rotation_angle));
+			Vector3 end_point_3d = _edit.center + gizmo_scale * rotation_radius * (right * Math::cos(display_angle) + forward * Math::sin(display_angle));
 			Point2 end_point_2d = point_to_screen(end_point_3d);
 			RenderingServer::get_singleton()->canvas_item_add_line(
 					ci,
@@ -4739,6 +4739,13 @@ void Node3DEditorViewport::update_transform_gizmo_view() {
 	rs->instance_set_visible(axis_gizmo_instance[0], show_axes && (_edit.plane == TRANSFORM_X_AXIS || _edit.plane == TRANSFORM_XY || _edit.plane == TRANSFORM_XZ));
 	rs->instance_set_visible(axis_gizmo_instance[1], show_axes && (_edit.plane == TRANSFORM_Y_AXIS || _edit.plane == TRANSFORM_XY || _edit.plane == TRANSFORM_YZ));
 	rs->instance_set_visible(axis_gizmo_instance[2], show_axes && (_edit.plane == TRANSFORM_Z_AXIS || _edit.plane == TRANSFORM_XZ || _edit.plane == TRANSFORM_YZ));
+}
+
+void Node3DEditorViewport::update_transform_gizmo_highlight() {
+	if (!is_visible_in_tree() || !Rect2(Vector2(), surface->get_size()).has_point(surface->get_local_mouse_position())) {
+		return;
+	}
+	_transform_gizmo_select(surface->get_local_mouse_position(), true);
 }
 
 void Node3DEditorViewport::set_state(const Dictionary &p_state) {
@@ -7509,6 +7516,9 @@ void Node3DEditor::_menu_item_toggled(bool pressed, int p_option) {
 		case MENU_TOOL_USE_TRACKBALL: {
 			tool_option_button[TOOL_OPT_USE_TRACKBALL]->set_pressed(pressed);
 			trackball_enabled = pressed;
+			for (uint32_t i = 0; i < VIEWPORTS_COUNT; i++) {
+				viewports[i]->update_transform_gizmo_highlight();
+			}
 		} break;
 	}
 }
