@@ -48,6 +48,10 @@ void RenderingDeviceDriverMetal::FenceEvent::signal(MTL::CommandBuffer *p_cb) {
 }
 
 Error RenderingDeviceDriverMetal::FenceEvent::wait(uint32_t p_timeout_ms) {
+	if (unlikely(value == 0)) {
+		WARN_PRINT_ONCE("Never signaled fence.");
+		return OK;
+	}
 	bool signaled = event->waitUntilSignaledValue(value, p_timeout_ms);
 	if (!signaled) {
 #ifdef DEBUG_ENABLED
@@ -151,7 +155,12 @@ void RenderingDeviceDriverMetal::remove_residency_set_to_main_queue(MTL::Residen
 #pragma mark - Fences
 
 RDD::FenceID RenderingDeviceDriverMetal::fence_create() {
-	Fence *fence = memnew(FenceEvent(NS::TransferPtr(device->newSharedEvent())));
+	Fence *fence = nullptr;
+	if (__builtin_available(macOS 12.0, iOS 15.0, tvOS 15.0, visionOS 1.0, *)) {
+		fence = memnew(FenceEvent(NS::TransferPtr(device->newSharedEvent())));
+	} else {
+		fence = memnew(FenceSemaphore());
+	}
 	return FenceID(fence);
 }
 

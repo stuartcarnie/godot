@@ -139,6 +139,39 @@ static uint32_t _get_device_type_score(const RenderingContextDriver::Device &p_d
 
 #define SECONDARY_COMMAND_BUFFERS_PER_FRAME 0
 
+enum class RenderGraphFlags {
+	None = 0,
+	DisableReordering = 1 << 0,
+	FullBarriers = 1 << 1,
+};
+
+static RenderGraphFlags g_render_flags = RenderGraphFlags::None;
+
+static void configure_render_graph_flags() {
+	bool disable_reordering = OS::get_singleton()->get_environment("GODOT_RG_DISABLE_REORDERING") == "1";
+	bool enable_full_barriers = OS::get_singleton()->get_environment("GODOT_RG_ENABLE_FULL_BARRIERS") == "1";
+
+	g_render_flags = RenderGraphFlags::None;
+
+	if (disable_reordering) {
+		print_line("RG: Disable reordering");
+		g_render_flags = RenderGraphFlags(uint32_t(g_render_flags) | uint32_t(RenderGraphFlags::DisableReordering));
+	}
+
+	if (enable_full_barriers) {
+		print_line("RG: Enable full barriers");
+		g_render_flags = RenderGraphFlags(uint32_t(g_render_flags) | uint32_t(RenderGraphFlags::FullBarriers));
+	}
+}
+
+static bool render_graph_reordering_enabled() {
+	return (uint32_t(g_render_flags) & uint32_t(RenderGraphFlags::DisableReordering)) == 0;
+}
+
+static bool render_graph_full_barriers_enabled() {
+	return (uint32_t(g_render_flags) & uint32_t(RenderGraphFlags::FullBarriers)) != 0;
+}
+
 RenderingDevice *RenderingDevice::singleton = nullptr;
 
 RenderingDevice *RenderingDevice::get_singleton() {
@@ -7396,7 +7429,7 @@ void RenderingDevice::_end_frame() {
 	_submit_transfer_barriers(command_buffer);
 
 	GodotProfileZoneGrouped(_profile_zone, "draw_graph.end");
-	draw_graph.end(RENDER_GRAPH_REORDER, RENDER_GRAPH_FULL_BARRIERS, command_buffer, frames[frame].command_buffer_pool);
+	draw_graph.end(render_graph_reordering_enabled(), render_graph_full_barriers_enabled(), command_buffer, frames[frame].command_buffer_pool);
 	GodotProfileZoneGrouped(_profile_zone, "driver->command_buffer_end");
 	driver->command_buffer_end(command_buffer);
 	GodotProfileZoneGrouped(_profile_zone, "driver->end_segment");
@@ -9162,6 +9195,7 @@ RenderingDevice::~RenderingDevice() {
 }
 
 RenderingDevice::RenderingDevice() {
+	configure_render_graph_flags();
 	if (singleton == nullptr) {
 		singleton = this;
 	}

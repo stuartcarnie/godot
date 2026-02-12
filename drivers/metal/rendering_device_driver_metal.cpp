@@ -530,7 +530,7 @@ void RenderingDeviceDriverMetal::texture_free(TextureID p_texture) {
 
 uint64_t RenderingDeviceDriverMetal::texture_get_allocation_size(TextureID p_texture) {
 	MTL::Texture *obj = reinterpret_cast<MTL::Texture *>(p_texture.id);
-	return obj->allocatedSize();
+	return NS::Object::sendMessageSafe<NS::UInteger>(obj,  _MTL_PRIVATE_SEL(allocatedSize));
 }
 
 void RenderingDeviceDriverMetal::texture_get_copyable_layout(TextureID p_texture, const TextureSubresource &p_subresource, TextureCopyableLayout *r_layout) {
