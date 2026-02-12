@@ -130,3 +130,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "visionOS")
             XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY TRUE
     )
 endif()
+
+if (GODOT_PCK_FILE AND CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
+    target_sources(Godot PRIVATE "${GODOT_PCK_FILE}")
+    set_source_files_properties("${GODOT_PCK_FILE}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+endif()
