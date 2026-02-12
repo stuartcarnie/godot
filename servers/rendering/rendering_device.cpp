@@ -4865,6 +4865,17 @@ RenderingDevice::FramebufferFormatID RenderingDevice::screen_get_framebuffer_for
 	return const_cast<RenderingDevice *>(this)->framebuffer_format_create(screen_attachment);
 }
 
+RenderingDevice::ColorSpace RenderingDevice::screen_get_color_space(DisplayServer::WindowID p_screen) const {
+	_THREAD_SAFE_METHOD_
+
+	HashMap<DisplayServer::WindowID, RDD::SwapChainID>::ConstIterator it = screen_swap_chains.find(p_screen);
+	ERR_FAIL_COND_V_MSG(it == screen_swap_chains.end(), COLOR_SPACE_MAX, "Screen was never prepared.");
+
+	ColorSpace color_space = driver->swap_chain_get_color_space(it->value);
+	ERR_FAIL_COND_V_MSG(color_space == COLOR_SPACE_MAX, COLOR_SPACE_MAX, "Unknown color space.");
+	return color_space;
+}
+
 Error RenderingDevice::screen_free(DisplayServer::WindowID p_screen) {
 	_THREAD_SAFE_METHOD_
 
@@ -7149,8 +7160,8 @@ String RenderingDevice::get_device_name() const {
 	return device.name;
 }
 
-RenderingDevice::DeviceType RenderingDevice::get_device_type() const {
-	return DeviceType(device.type);
+RenderingDeviceEnums::DeviceType RenderingDevice::get_device_type() const {
+	return RenderingDeviceEnums::DeviceType(device.type);
 }
 
 String RenderingDevice::get_device_api_name() const {
@@ -8572,12 +8583,12 @@ void RenderingDevice::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_device_memory_by_object_type", "type"), &RenderingDevice::get_device_memory_by_object_type);
 	ClassDB::bind_method(D_METHOD("get_device_allocs_by_object_type", "type"), &RenderingDevice::get_device_allocs_by_object_type);
 
-	BIND_ENUM_CONSTANT(DEVICE_TYPE_OTHER);
-	BIND_ENUM_CONSTANT(DEVICE_TYPE_INTEGRATED_GPU);
-	BIND_ENUM_CONSTANT(DEVICE_TYPE_DISCRETE_GPU);
-	BIND_ENUM_CONSTANT(DEVICE_TYPE_VIRTUAL_GPU);
-	BIND_ENUM_CONSTANT(DEVICE_TYPE_CPU);
-	BIND_ENUM_CONSTANT(DEVICE_TYPE_MAX);
+	BIND_ENUM_CONSTANT(RenderingDeviceEnums::DEVICE_TYPE_OTHER);
+	BIND_ENUM_CONSTANT(RenderingDeviceEnums::DEVICE_TYPE_INTEGRATED_GPU);
+	BIND_ENUM_CONSTANT(RenderingDeviceEnums::DEVICE_TYPE_DISCRETE_GPU);
+	BIND_ENUM_CONSTANT(RenderingDeviceEnums::DEVICE_TYPE_VIRTUAL_GPU);
+	BIND_ENUM_CONSTANT(RenderingDeviceEnums::DEVICE_TYPE_CPU);
+	BIND_ENUM_CONSTANT(RenderingDeviceEnums::DEVICE_TYPE_MAX);
 
 	BIND_ENUM_CONSTANT(DRIVER_RESOURCE_LOGICAL_DEVICE);
 	BIND_ENUM_CONSTANT(DRIVER_RESOURCE_PHYSICAL_DEVICE);
@@ -9091,6 +9102,7 @@ void RenderingDevice::_bind_methods() {
 	BIND_ENUM_CONSTANT(SUPPORTS_IMAGE_ATOMIC_32_BIT);
 	BIND_ENUM_CONSTANT(SUPPORTS_RAY_QUERY);
 	BIND_ENUM_CONSTANT(SUPPORTS_RAYTRACING_PIPELINE);
+	BIND_ENUM_CONSTANT(SUPPORTS_HDR_OUTPUT);
 
 	BIND_ENUM_CONSTANT(LIMIT_MAX_BOUND_UNIFORM_SETS);
 	BIND_ENUM_CONSTANT(LIMIT_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS);

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  mesh_editor_plugin.h                                                  */
+/*  rendering_device_enums.h                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,69 +30,17 @@
 
 #pragma once
 
-#include "editor/inspector/editor_inspector.h"
-#include "editor/plugins/editor_plugin.h"
-#include "scene/3d/camera_3d.h"
-#include "scene/3d/light_3d.h"
-#include "scene/3d/mesh_instance_3d.h"
-#include "scene/gui/subviewport_container.h"
-#include "scene/resources/camera_attributes.h"
+namespace RenderingDeviceEnums {
 
-class SubViewport;
-class Button;
-
-class MeshEditor : public SubViewportContainer {
-	GDCLASS(MeshEditor, SubViewportContainer);
-
-	float rot_x;
-	float rot_y;
-
-	SubViewport *viewport = nullptr;
-	MeshInstance3D *mesh_instance = nullptr;
-	Node3D *rotation = nullptr;
-	DirectionalLight3D *light1 = nullptr;
-	DirectionalLight3D *light2 = nullptr;
-	Camera3D *camera = nullptr;
-	Ref<CameraAttributesPractical> camera_attributes;
-
-	Ref<Mesh> mesh;
-
-	Button *light_1_switch = nullptr;
-	Button *light_2_switch = nullptr;
-
-	struct ThemeCache {
-		Ref<Texture2D> light_1_icon;
-		Ref<Texture2D> light_2_icon;
-	} theme_cache;
-
-	void _on_light_1_switch_pressed();
-	void _on_light_2_switch_pressed();
-	void _update_rotation();
-	void _project_settings_changed();
-
-protected:
-	virtual void _update_theme_item_cache() override;
-	void _notification(int p_what);
-	void gui_input(const Ref<InputEvent> &p_event) override;
-
-public:
-	void edit(Ref<Mesh> p_mesh);
-	MeshEditor();
+// This enum matches VkPhysicalDeviceType (except for `DEVICE_TYPE_MAX`).
+// Unlike VkPhysicalDeviceType, DeviceType is exposed to the scripting API.
+enum DeviceType {
+	DEVICE_TYPE_OTHER,
+	DEVICE_TYPE_INTEGRATED_GPU,
+	DEVICE_TYPE_DISCRETE_GPU,
+	DEVICE_TYPE_VIRTUAL_GPU,
+	DEVICE_TYPE_CPU,
+	DEVICE_TYPE_MAX
 };
 
-class EditorInspectorPluginMesh : public EditorInspectorPlugin {
-	GDCLASS(EditorInspectorPluginMesh, EditorInspectorPlugin);
-
-public:
-	virtual bool can_handle(Object *p_object) override;
-	virtual void parse_begin(Object *p_object) override;
-};
-
-class MeshEditorPlugin : public EditorPlugin {
-	GDCLASS(MeshEditorPlugin, EditorPlugin);
-
-public:
-	virtual String get_plugin_name() const override { return "Mesh"; }
-
-	MeshEditorPlugin();
-};
+} //namespace RenderingDeviceEnums
