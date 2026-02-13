@@ -135,6 +135,7 @@ function(generate_version_information _output _output2)
             OUTPUT ${_output} ${_output2}
             COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
             ARGS --env ${GODOT_ENV_FILE} make_version_data_headers --output ${_output} --output2 ${_output2}
+            DEPENDS ${GODOT_ENGINE_ROOT_DIRECTORY}/.git/HEAD
             COMMENT "Generating version information to ${_output} + ${_output2}"
             WORKING_DIRECTORY ${GODOT_ENGINE_ROOT_DIRECTORY}
             VERBATIM

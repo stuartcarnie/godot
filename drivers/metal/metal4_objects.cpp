@@ -1625,11 +1625,11 @@ void QueryPool::get_results(uint32_t p_count, uint64_t *r_results) {
 }
 
 static const char *SHADER_STAGE_NAMES[] = {
-	[RD::SHADER_STAGE_VERTEX] = "vert",
-	[RD::SHADER_STAGE_FRAGMENT] = "frag",
-	[RD::SHADER_STAGE_TESSELATION_CONTROL] = "tess_ctrl",
-	[RD::SHADER_STAGE_TESSELATION_EVALUATION] = "tess_eval",
-	[RD::SHADER_STAGE_COMPUTE] = "comp",
+	[RDD::SHADER_STAGE_VERTEX] = "vert",
+	[RDD::SHADER_STAGE_FRAGMENT] = "frag",
+	[RDD::SHADER_STAGE_TESSELATION_CONTROL] = "tess_ctrl",
+	[RDD::SHADER_STAGE_TESSELATION_EVALUATION] = "tess_eval",
+	[RDD::SHADER_STAGE_COMPUTE] = "comp",
 };
 
 GODOT_CLANG_WARNING_POP

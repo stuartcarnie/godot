@@ -31,6 +31,7 @@
 #pragma once
 
 #include "core/templates/rid_owner.h"
+#include "servers/rendering/rendering_device.h"
 #include "servers/rendering/storage/utilities.h"
 
 namespace RendererRD {

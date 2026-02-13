@@ -12,12 +12,12 @@ target_sources(macos PRIVATE
         crash_handler_macos.mm
         dir_access_macos.h
         dir_access_macos.mm
-        display_server_embedded.h
-        display_server_embedded.mm
         display_server_macos.h
         display_server_macos.mm
         display_server_macos_base.h
         display_server_macos_base.mm
+        display_server_macos_embedded.h
+        display_server_macos_embedded.mm
         embedded_debugger.h
         embedded_debugger.mm
         embedded_gl_manager.h

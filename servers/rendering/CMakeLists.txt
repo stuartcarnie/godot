@@ -42,6 +42,7 @@ target_sources(servers PRIVATE
         rendering_device_commons.h
         rendering_device_driver.cpp
         rendering_device_driver.h
+        rendering_device_enums.h
         rendering_device_graph.cpp
         rendering_device_graph.h
         rendering_light_culler.cpp

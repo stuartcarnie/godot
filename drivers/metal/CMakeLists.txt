@@ -1,4 +1,5 @@
 godot_add_library(metal FOLDER drivers STATIC)
+add_subdirectory(tools)
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
