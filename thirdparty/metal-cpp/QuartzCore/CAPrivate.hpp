@@ -76,6 +76,7 @@ namespace Private
     namespace Class
     {
         _CA_PRIVATE_DEF_CLS(CAMetalLayer);
+            _CA_PRIVATE_DEF_CLS(CALayer);
     } // Class
 } // Private
 } // CA
@@ -121,8 +122,12 @@ namespace Private
             "maximumDrawableCount");
         _CA_PRIVATE_DEF_SEL(nextDrawable,
             "nextDrawable");
+        _CA_PRIVATE_DEF_SEL(opaque,
+            "opaque");
         _CA_PRIVATE_DEF_SEL(pixelFormat,
             "pixelFormat");
+        _CA_PRIVATE_DEF_SEL(preferredDynamicRange,
+            "preferredDynamicRange");
         _CA_PRIVATE_DEF_SEL(residencySet,
             "residencySet");
         _CA_PRIVATE_DEF_SEL(setAllowsNextDrawableTimeout_,
@@ -139,14 +144,19 @@ namespace Private
             "setFramebufferOnly:");
         _CA_PRIVATE_DEF_SEL(setMaximumDrawableCount_,
             "setMaximumDrawableCount:");
+        _CA_PRIVATE_DEF_SEL(setOpaque_,
+            "setOpaque:");
         _CA_PRIVATE_DEF_SEL(setPixelFormat_,
             "setPixelFormat:");
+        _CA_PRIVATE_DEF_SEL(setPreferredDynamicRange_,
+            "setPreferredDynamicRange:");
         _CA_PRIVATE_DEF_SEL(setWantsExtendedDynamicRangeContent_,
             "setWantsExtendedDynamicRangeContent:");
-        _CA_PRIVATE_DEF_SEL(wantsExtendedDynamicRangeContent_,
-            "wantsExtendedDynamicRangeContent");
         _CA_PRIVATE_DEF_SEL(texture,
             "texture");
+        _CA_PRIVATE_DEF_SEL(wantsExtendedDynamicRangeContent,
+            "wantsExtendedDynamicRangeContent");
+
     } // Class
 } // Private
 } // CA
