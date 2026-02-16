@@ -1509,6 +1509,8 @@ void DisplayServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("window_get_safe_title_margins", "window_id"), &DisplayServer::window_get_safe_title_margins, DEFVAL(MAIN_WINDOW_ID));
 
 	ClassDB::bind_method(D_METHOD("window_request_attention", "window_id"), &DisplayServer::window_request_attention, DEFVAL(MAIN_WINDOW_ID));
+	ClassDB::bind_method(D_METHOD("window_set_taskbar_progress_value", "value", "window_id"), &DisplayServer::window_set_taskbar_progress_value, DEFVAL(MAIN_WINDOW_ID));
+	ClassDB::bind_method(D_METHOD("window_set_taskbar_progress_state", "state", "window_id"), &DisplayServer::window_set_taskbar_progress_state, DEFVAL(MAIN_WINDOW_ID));
 
 	ClassDB::bind_method(D_METHOD("window_move_to_foreground", "window_id"), &DisplayServer::window_move_to_foreground, DEFVAL(MAIN_WINDOW_ID));
 	ClassDB::bind_method(D_METHOD("window_is_focused", "window_id"), &DisplayServer::window_is_focused, DEFVAL(MAIN_WINDOW_ID));
@@ -1898,6 +1900,12 @@ void DisplayServer::_bind_methods() {
 	BIND_ENUM_CONSTANT(WINDOW_MODE_FULLSCREEN);
 	BIND_ENUM_CONSTANT(WINDOW_MODE_EXCLUSIVE_FULLSCREEN);
 
+	BIND_ENUM_CONSTANT(PROGRESS_STATE_NOPROGRESS);
+	BIND_ENUM_CONSTANT(PROGRESS_STATE_INDETERMINATE);
+	BIND_ENUM_CONSTANT(PROGRESS_STATE_NORMAL);
+	BIND_ENUM_CONSTANT(PROGRESS_STATE_ERROR);
+	BIND_ENUM_CONSTANT(PROGRESS_STATE_PAUSED);
+
 	BIND_ENUM_CONSTANT(WINDOW_FLAG_RESIZE_DISABLED);
 	BIND_ENUM_CONSTANT(WINDOW_FLAG_BORDERLESS);
 	BIND_ENUM_CONSTANT(WINDOW_FLAG_ALWAYS_ON_TOP);
@@ -1944,6 +1952,8 @@ void DisplayServer::_bind_methods() {
 	BIND_ENUM_CONSTANT(OPENGL_CONTEXT);
 	BIND_ENUM_CONSTANT(EGL_DISPLAY);
 	BIND_ENUM_CONSTANT(EGL_CONFIG);
+	BIND_ENUM_CONSTANT(GLX_VISUALID);
+	BIND_ENUM_CONSTANT(GLX_FBCONFIG);
 
 	BIND_ENUM_CONSTANT(TTS_UTTERANCE_STARTED);
 	BIND_ENUM_CONSTANT(TTS_UTTERANCE_ENDED);
