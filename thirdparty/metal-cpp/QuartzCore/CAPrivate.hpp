@@ -108,6 +108,8 @@ namespace Private
             "allowsNextDrawableTimeout");
         _CA_PRIVATE_DEF_SEL(colorspace,
             "colorspace");
+        _CA_PRIVATE_DEF_SEL(contentsHeadroom,
+            "contentsHeadroom");
         _CA_PRIVATE_DEF_SEL(device,
             "device");
         _CA_PRIVATE_DEF_SEL(displaySyncEnabled,
@@ -134,6 +136,8 @@ namespace Private
             "setAllowsNextDrawableTimeout:");
         _CA_PRIVATE_DEF_SEL(setColorspace_,
             "setColorspace:");
+        _CA_PRIVATE_DEF_SEL(setContentsHeadroom_,
+            "setContentsHeadroom:");
         _CA_PRIVATE_DEF_SEL(setDevice_,
             "setDevice:");
         _CA_PRIVATE_DEF_SEL(setDisplaySyncEnabled_,

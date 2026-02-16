@@ -192,6 +192,7 @@ public:
 		if (hdr_output) {
 			if (__builtin_available(macOS 26.0, iOS 26.0, tvOS 26.0, visionOS 26.0, *)) {
 				layer->setPreferredDynamicRange(CA::DynamicRangeHigh);
+				layer->setContentsHeadroom(16.0);
 				// layer->setWantsExtendedDynamicRangeContent(true);
 			} else {
 				layer->setWantsExtendedDynamicRangeContent(true);

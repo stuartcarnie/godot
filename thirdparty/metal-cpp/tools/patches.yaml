@@ -1,0 +1,29 @@
+# Godot-specific amendments to upstream metal-cpp.
+#
+# Processed by patch_metalcpp.py after extracting a new metal-cpp release.
+# Properties/methods are resolved from SDK headers via libclang.
+
+frameworks:
+  Foundation:
+    namespace: NS
+    prefix: NS
+    strip_prefix: NS
+    forward_declarations: [Array, Dictionary, Error, Object, String, URL]
+    amend_types:
+      NSObject:
+        move_to_public: [sendMessage, sendMessageSafe]
+      NSData:
+        add_properties: [bytes]
+      NSString:
+        add_methods: ["initWithBytes:length:encoding:"]
+
+  QuartzCore:
+    namespace: CA
+    prefix: CA
+    strip_prefix: CA
+    add_types:
+      CALayer:
+        properties: [opaque, wantsExtendedDynamicRangeContent, preferredDynamicRange, contentsHeadroom]
+    amend_types:
+      CAMetalLayer:
+        base_class: Layer

@@ -60,20 +60,47 @@ BUILTIN_TYPE_MAP: dict[str, str] = {
 
 # Types that pass through unchanged (C, CoreFoundation, etc.)
 PASSTHROUGH_TYPES: set[str] = {
-    "void", "bool", "float", "double",
-    "char", "short", "int", "long",
-    "unsigned char", "unsigned short", "unsigned int", "unsigned long",
-    "long long", "unsigned long long",
-    "int8_t", "int16_t", "int32_t", "int64_t",
-    "uint8_t", "uint16_t", "uint32_t", "uint64_t",
-    "size_t", "ssize_t", "ptrdiff_t",
-    "CGRect", "CGSize", "CGPoint", "CGFloat",
-    "CGColorSpaceRef", "CGDirectDisplayID", "CGColorRef",
+    "void",
+    "bool",
+    "float",
+    "double",
+    "char",
+    "short",
+    "int",
+    "long",
+    "unsigned char",
+    "unsigned short",
+    "unsigned int",
+    "unsigned long",
+    "long long",
+    "unsigned long long",
+    "int8_t",
+    "int16_t",
+    "int32_t",
+    "int64_t",
+    "uint8_t",
+    "uint16_t",
+    "uint32_t",
+    "uint64_t",
+    "size_t",
+    "ssize_t",
+    "ptrdiff_t",
+    "CGRect",
+    "CGSize",
+    "CGPoint",
+    "CGFloat",
+    "CGColorSpaceRef",
+    "CGDirectDisplayID",
+    "CGColorRef",
     "CGAffineTransform",
-    "CFStringRef", "CFTypeRef", "CFTimeInterval",
-    "dispatch_queue_t", "dispatch_data_t",
+    "CFStringRef",
+    "CFTypeRef",
+    "CFTimeInterval",
+    "dispatch_queue_t",
+    "dispatch_data_t",
     "IOSurfaceRef",
-    "SEL", "Class",
+    "SEL",
+    "Class",
 }
 
 # Resolved type → system header needed
@@ -89,7 +116,43 @@ SYSTEM_HEADER_FOR_TYPE: dict[str, str] = {
 }
 
 
+# ── Shared helpers ────────────────────────────────────────────────────────
+
+
+def setter_name(prop_name: str) -> str:
+    """ObjC property name → setter name (e.g. 'foo' → 'setFoo')."""
+    return f"set{prop_name[0].upper()}{prop_name[1:]}"
+
+
+def selector_accessor(selector: str) -> str:
+    """ObjC selector → Private.hpp accessor (colons become underscores)."""
+    return selector.replace(":", "_")
+
+
+def strip_objc_prefix(name: str, strip_prefix: str) -> str:
+    """Strip ObjC prefix to get C++ name (e.g. 'CAMetalLayer' → 'MetalLayer')."""
+    if strip_prefix and name.startswith(strip_prefix):
+        stripped = name[len(strip_prefix) :]
+        if stripped:
+            return stripped
+    return name
+
+
+def resolve_type(
+    resolver: TypeResolver,
+    objc_type: str,
+    namespace: str,
+    cpp_class_name: str,
+) -> str:
+    """Resolve an ObjC type, handling instancetype → concrete class pointer."""
+    cpp = resolver.resolve(objc_type, cpp_class_name)
+    if cpp == "__instancetype__":
+        return f"{namespace}::{cpp_class_name}*"
+    return cpp
+
+
 # ── Data classes ──────────────────────────────────────────────────────────
+
 
 @dataclass
 class ObjCProperty:
@@ -115,7 +178,7 @@ class ObjCMethod:
     @property
     def sel_accessor(self) -> str:
         """Selector accessor for _PRIVATE_DEF_SEL: colons replaced with underscores."""
-        return self.selector.replace(":", "_")
+        return selector_accessor(self.selector)
 
     @property
     def cpp_name(self) -> str:
@@ -148,11 +211,13 @@ class ObjCClass:
 @dataclass
 class FrameworkData:
     """Parsed data for one framework from one SDK."""
+
     classes: list[ObjCClass] = field(default_factory=list)
     enums: list[ObjCEnum] = field(default_factory=list)
 
 
 # ── Type resolution ───────────────────────────────────────────────────────
+
 
 class TypeResolver:
     """Maps ObjC type spellings to C++ types."""
@@ -223,7 +288,8 @@ class TypeResolver:
         s = re.sub(
             r"\b(__nullable|__nonnull|_Nullable|_Nonnull|"
             r"__kindof|__autoreleasing|__unsafe_unretained|__weak|__strong)\b",
-            "", s,
+            "",
+            s,
         )
         return re.sub(r"\s+", " ", s).strip()
 
@@ -234,6 +300,7 @@ class TypeResolver:
 
 
 # ── ObjC header parsing ──────────────────────────────────────────────────
+
 
 def _safe_kind(cursor) -> Optional[CursorKind]:
     """Get cursor kind, returning None for unknown kinds from newer SDKs."""
@@ -253,15 +320,17 @@ class ObjCParser:
     def parse_header(self, header_path: Path) -> FrameworkData:
         """Parse a single ObjC header and extract classes/enums."""
         args = [
-            "-x", "objective-c",
-            "-isysroot", str(self.sdk_path),
+            "-x",
+            "objective-c",
+            "-isysroot",
+            str(self.sdk_path),
             "-fno-objc-arc",
             "-Wno-everything",
         ]
         tu = self.index.parse(
-            str(header_path), args=args,
-            options=(TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD
-                     | TranslationUnit.PARSE_SKIP_FUNCTION_BODIES),
+            str(header_path),
+            args=args,
+            options=(TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD | TranslationUnit.PARSE_SKIP_FUNCTION_BODIES),
         )
 
         data = FrameworkData()
@@ -384,10 +453,12 @@ class ObjCParser:
         params = []
         for child in cursor.get_children():
             if _safe_kind(child) == CursorKind.PARM_DECL:
-                params.append(ObjCParam(
-                    name=child.spelling or f"param{len(params)}",
-                    objc_type=child.type.spelling,
-                ))
+                params.append(
+                    ObjCParam(
+                        name=child.spelling or f"param{len(params)}",
+                        objc_type=child.type.spelling,
+                    )
+                )
 
         return ObjCMethod(
             selector=selector,
@@ -406,15 +477,18 @@ class ObjCParser:
         values = []
         for child in cursor.get_children():
             if _safe_kind(child) == CursorKind.ENUM_CONSTANT_DECL:
-                values.append(ObjCEnumValue(
-                    name=child.spelling,
-                    value=child.enum_value,
-                ))
+                values.append(
+                    ObjCEnumValue(
+                        name=child.spelling,
+                        value=child.enum_value,
+                    )
+                )
 
         return ObjCEnum(name=name, underlying_type=underlying, values=values)
 
 
 # ── Code generation ──────────────────────────────────────────────────────
+
 
 class CodeGenerator:
     """Generate metal-cpp style C++ wrappers for a single framework."""
@@ -442,21 +516,12 @@ class CodeGenerator:
 
     def cpp_class_name(self, objc_name: str) -> str:
         """Strip ObjC prefix to get C++ class name (e.g. NSScreen → Screen)."""
-        if self.strip_prefix and objc_name.startswith(self.strip_prefix):
-            stripped = objc_name[len(self.strip_prefix):]
-            if stripped:
-                return stripped
-        return objc_name
+        return strip_objc_prefix(objc_name, self.strip_prefix)
 
     def _resolve(self, objc_type: str, cls_name: str = "", context: str = "") -> str:
         """Resolve type, handling instancetype → concrete class."""
-        cpp = self.resolver.resolve(objc_type, context)
-        if cpp == "__instancetype__" and cls_name:
-            return f"{self.ns}::{self.cpp_class_name(cls_name)}*"
-        return cpp
-
-    def _setter_name(self, prop_name: str) -> str:
-        return f"set{prop_name[0].upper()}{prop_name[1:]}"
+        cpp_name = self.cpp_class_name(cls_name) if cls_name else ""
+        return resolve_type(self.resolver, objc_type, self.ns, cpp_name)
 
     def _system_includes(self, resolved_types: set[str]) -> list[str]:
         """Determine system #include directives needed for the given resolved types."""
@@ -479,7 +544,7 @@ class CodeGenerator:
         for prop in cls.properties:
             self.all_selectors[prop.name] = prop.name
             if not prop.is_readonly:
-                sname = self._setter_name(prop.name)
+                sname = setter_name(prop.name)
                 self.all_selectors[f"{sname}_"] = f"{sname}:"
 
         for method in cls.methods:
@@ -524,17 +589,15 @@ class CodeGenerator:
             f"#if defined({p}_PRIVATE_IMPLEMENTATION)",
             "",
             "#ifdef METALCPP_SYMBOL_VISIBILITY_HIDDEN",
-            f"#define _{p}_PRIVATE_VISIBILITY __attribute__((visibility(\"hidden\")))",
+            f'#define _{p}_PRIVATE_VISIBILITY __attribute__((visibility("hidden")))',
             "#else",
-            f"#define _{p}_PRIVATE_VISIBILITY __attribute__((visibility(\"default\")))",
+            f'#define _{p}_PRIVATE_VISIBILITY __attribute__((visibility("default")))',
             "#endif // METALCPP_SYMBOL_VISIBILITY_HIDDEN",
             "",
             "#ifdef __OBJC__",
-            f"#define _{p}_PRIVATE_OBJC_LOOKUP_CLASS(symbol) "
-            "((__bridge void*)objc_lookUpClass(#symbol))",
+            f"#define _{p}_PRIVATE_OBJC_LOOKUP_CLASS(symbol) ((__bridge void*)objc_lookUpClass(#symbol))",
             "#else",
-            f"#define _{p}_PRIVATE_OBJC_LOOKUP_CLASS(symbol) "
-            "objc_lookUpClass(#symbol)",
+            f"#define _{p}_PRIVATE_OBJC_LOOKUP_CLASS(symbol) objc_lookUpClass(#symbol)",
             "#endif // __OBJC__",
             "",
             f"#define _{p}_PRIVATE_DEF_CLS(symbol) "
@@ -546,8 +609,7 @@ class CodeGenerator:
             "#else",
             "",
             f"#define _{p}_PRIVATE_DEF_CLS(symbol) extern void* s_k##symbol",
-            f"#define _{p}_PRIVATE_DEF_SEL(accessor, symbol) "
-            "extern SEL s_k##accessor",
+            f"#define _{p}_PRIVATE_DEF_SEL(accessor, symbol) extern SEL s_k##accessor",
             "",
             f"#endif // {p}_PRIVATE_IMPLEMENTATION",
             "",
@@ -654,8 +716,7 @@ class CodeGenerator:
             cpp_type = self._resolve(prop.objc_type, cls.name)
             lines.append(f"    {cpp_type} {prop.name}() const;")
             if not prop.is_readonly:
-                lines.append(
-                    f"    void {self._setter_name(prop.name)}({cpp_type} {prop.name});")
+                lines.append(f"    void {setter_name(prop.name)}({cpp_type} {prop.name});")
 
         if instance_props:
             lines.append("")
@@ -686,8 +747,7 @@ class CodeGenerator:
             lines += [
                 f"_{p}_INLINE {cpp_type} {ns}::{cpp_name}::{prop.name}()",
                 "{",
-                f"    return Object::sendMessage<{cpp_type}>("
-                f"_{p}_PRIVATE_CLS({cls.name}), {sel});",
+                f"    return Object::sendMessage<{cpp_type}>(_{p}_PRIVATE_CLS({cls.name}), {sel});",
                 "}",
                 "",
             ]
@@ -702,8 +762,7 @@ class CodeGenerator:
             lines += [
                 f"_{p}_INLINE {ret} {ns}::{cpp_name}::{m.cpp_name}({params_str})",
                 "{",
-                f"    return Object::sendMessage<{ret}>("
-                f"_{p}_PRIVATE_CLS({cls.name}), {sel}{arg_suffix});",
+                f"    return Object::sendMessage<{ret}>(_{p}_PRIVATE_CLS({cls.name}), {sel}{arg_suffix});",
                 "}",
                 "",
             ]
@@ -720,11 +779,10 @@ class CodeGenerator:
                 "",
             ]
             if not prop.is_readonly:
-                sname = self._setter_name(prop.name)
+                sname = setter_name(prop.name)
                 ssel = f"_{p}_PRIVATE_SEL({sname}_)"
                 lines += [
-                    f"_{p}_INLINE void {ns}::{cpp_name}::{sname}"
-                    f"({cpp_type} {prop.name})",
+                    f"_{p}_INLINE void {ns}::{cpp_name}::{sname}({cpp_type} {prop.name})",
                     "{",
                     f"    Object::sendMessage<void>(this, {ssel}, {prop.name});",
                     "}",
@@ -739,8 +797,7 @@ class CodeGenerator:
             sel = f"_{p}_PRIVATE_SEL({m.sel_accessor})"
             arg_suffix = f", {args}" if args else ""
             lines += [
-                f"_{p}_INLINE {ret} {ns}::{cpp_name}::{m.cpp_name}"
-                f"({params_str}) const",
+                f"_{p}_INLINE {ret} {ns}::{cpp_name}::{m.cpp_name}({params_str}) const",
                 "{",
                 f"    return Object::sendMessage<{ret}>(this, {sel}{arg_suffix});",
                 "}",

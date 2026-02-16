@@ -7,7 +7,7 @@ to the upstream files.
 
 Usage:
     python patch_metalcpp.py <metal-cpp-dir> --config patches.yaml
-    python patch_metalcpp.py <metal-cpp-dir> --config patches.yaml --sdk macosx
+    python patch_metalcpp.py <metal-cpp-dir> --zip metal-cpp_26.zip
 """
 
 from __future__ import annotations
@@ -15,8 +15,11 @@ from __future__ import annotations
 import argparse
 import logging
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,23 +30,27 @@ log = logging.getLogger(__name__)
 TOOL_DIR = Path(__file__).resolve().parent
 
 sys.path.insert(0, str(TOOL_DIR))
+from clang.cindex import CursorKind
 from metalcpp_common import (
     CodeGenerator,
     ObjCClass,
     ObjCMethod,
-    ObjCParam,
     ObjCParser,
     ObjCProperty,
     TypeResolver,
+    resolve_type,
+    selector_accessor,
+    setter_name,
+    strip_objc_prefix,
 )
-from clang.cindex import CursorKind
+
 
 # Typed string constant: typedef NSString * SomeType NS_TYPED_ENUM
 # with associated extern const SomeType SomeTypeValue declarations.
 @dataclass
 class TypedStringConst:
-    objc_typedef: str          # e.g. "CADynamicRange"
-    constants: list[str]       # e.g. ["CADynamicRangeAutomatic", ...]
+    objc_typedef: str  # e.g. "CADynamicRange"
+    constants: list[str]  # e.g. ["CADynamicRangeAutomatic", ...]
 
 
 # ── Config loading ───────────────────────────────────────────────────────
@@ -62,9 +69,50 @@ def load_config(config_path: Path) -> dict:
 def get_sdk_path(xcrun_sdk: str) -> Path:
     result = subprocess.run(
         ["xcrun", "--sdk", xcrun_sdk, "--show-sdk-path"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return Path(result.stdout.strip())
+
+
+def extract_zip(zip_path: Path, dest_dir: Path) -> None:
+    """Extract upstream metal-cpp zip into dest_dir, preserving the tools/ dir."""
+    if not zip_path.exists():
+        log.error("Zip file not found: %s", zip_path)
+        sys.exit(1)
+
+    with zipfile.ZipFile(zip_path) as zf:
+        # Find the top-level directory inside the zip (e.g. "metal-cpp/").
+        top_dirs = {name.split("/")[0] for name in zf.namelist() if "/" in name}
+        if len(top_dirs) != 1:
+            log.error("Expected single top-level dir in zip, got: %s", top_dirs)
+            sys.exit(1)
+        zip_root = top_dirs.pop()
+
+        # Remove existing upstream dirs (but preserve tools/).
+        for child in dest_dir.iterdir():
+            if child.name == "tools" or child.name.startswith("."):
+                continue
+            if child.is_dir():
+                shutil.rmtree(child)
+            else:
+                child.unlink()
+
+        # Extract, stripping the zip's top-level directory.
+        for info in zf.infolist():
+            if info.is_dir():
+                continue
+            # Strip "metal-cpp/" prefix to get relative path.
+            rel = info.filename[len(zip_root) + 1 :]
+            if not rel:
+                continue
+            out_path = dest_dir / rel
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(info) as src, open(out_path, "wb") as dst:
+                dst.write(src.read())
+
+    log.info("Extracted %s -> %s", zip_path.name, dest_dir)
 
 
 # ── File patching utilities ──────────────────────────────────────────────
@@ -75,6 +123,8 @@ def read_file(path: Path) -> str:
 
 
 def write_file(path: Path, content: str) -> None:
+    if path.exists() and path.read_text() == content:
+        return
     path.write_text(content)
 
 
@@ -103,7 +153,10 @@ def append_after_last(text: str, pattern: str, insertion: str) -> str:
 
 
 def apply_forward_declarations(
-    metal_cpp_dir: Path, fw_name: str, namespace: str, names: list[str],
+    metal_cpp_dir: Path,
+    fw_name: str,
+    namespace: str,
+    names: list[str],
 ) -> None:
     """Inject forward declarations into *Defines.hpp."""
     defines_path = metal_cpp_dir / fw_name / f"{namespace}Defines.hpp"
@@ -111,9 +164,7 @@ def apply_forward_declarations(
     content = read_file(defines_path)
 
     # Check if already applied.
-    if f"namespace {namespace} {{" in content and all(
-        f"class {n};" in content for n in names
-    ):
+    if f"namespace {namespace} {{" in content and all(f"class {n};" in content for n in names):
         log.info("    forward_declarations: already applied")
         return
 
@@ -142,14 +193,13 @@ def apply_forward_declarations(
 
 
 def apply_move_to_public(
-    metal_cpp_dir: Path, fw_name: str, strip_prefix: str,
-    objc_class_name: str, method_names: list[str],
+    metal_cpp_dir: Path,
+    fw_name: str,
+    strip_prefix: str,
+    objc_class_name: str,
+    method_names: list[str],
 ) -> None:
     """Move method declarations from protected/private to public in a header."""
-    cpp_class_name = objc_class_name
-    if strip_prefix and cpp_class_name.startswith(strip_prefix):
-        cpp_class_name = cpp_class_name[len(strip_prefix):]
-
     header_path = metal_cpp_dir / fw_name / f"{objc_class_name}.hpp"
     content = read_file(header_path)
 
@@ -175,7 +225,7 @@ def apply_move_to_public(
             continue
 
         # Remove from current location.
-        content = content[:m.start()] + content[m.end():]
+        content = content[: m.start()] + content[m.end() :]
 
         # Insert just before "protected:" (end of public section).
         protected_match = re.search(r"^(protected:)", content, re.MULTILINE)
@@ -194,8 +244,12 @@ def apply_move_to_public(
 
 
 def apply_base_class(
-    metal_cpp_dir: Path, fw_name: str, prefix: str, strip_prefix: str,
-    objc_name: str, new_base: str,
+    metal_cpp_dir: Path,
+    fw_name: str,
+    prefix: str,
+    strip_prefix: str,
+    objc_name: str,
+    new_base: str,
 ) -> None:
     """Change NS::Referencing<CppName> to NS::Referencing<CppName, NewBase>."""
     header_path = metal_cpp_dir / fw_name / f"{objc_name}.hpp"
@@ -204,9 +258,7 @@ def apply_base_class(
         return
 
     content = read_file(header_path)
-    cpp_name = objc_name
-    if strip_prefix and cpp_name.startswith(strip_prefix):
-        cpp_name = cpp_name[len(strip_prefix):]
+    cpp_name = strip_objc_prefix(objc_name, strip_prefix)
 
     old = f"NS::Referencing<{cpp_name}>"
     new = f"NS::Referencing<{cpp_name}, {new_base}>"
@@ -224,7 +276,7 @@ def apply_base_class(
     if include_directive not in content:
         # Insert after the last existing #include in the header.
         last_include = -1
-        for m in re.finditer(r'^#include\s+.+$', content, re.MULTILINE):
+        for m in re.finditer(r"^#include\s+.+$", content, re.MULTILINE):
             last_include = m.end()
         if last_include != -1:
             content = content[:last_include] + "\n" + include_directive + content[last_include:]
@@ -239,14 +291,13 @@ def apply_base_class(
 
 
 def _sdk_header_path(sdk_path: Path, fw_name: str, header_name: str) -> Path:
-    return (
-        sdk_path / "System" / "Library" / "Frameworks"
-        / f"{fw_name}.framework" / "Headers" / header_name
-    )
+    return sdk_path / "System" / "Library" / "Frameworks" / f"{fw_name}.framework" / "Headers" / header_name
 
 
 def parse_objc_class(
-    sdk_path: Path, fw_name: str, objc_class_name: str,
+    sdk_path: Path,
+    fw_name: str,
+    objc_class_name: str,
 ) -> ObjCClass | None:
     """Parse an ObjC header from the SDK and return the named class."""
     header_path = _sdk_header_path(sdk_path, fw_name, f"{objc_class_name}.h")
@@ -264,7 +315,9 @@ def parse_objc_class(
 
 
 def parse_typed_string_constants(
-    sdk_path: Path, fw_name: str, header_name: str,
+    sdk_path: Path,
+    fw_name: str,
+    header_name: str,
 ) -> list[TypedStringConst]:
     """Find typedef NSString * ... NS_TYPED_ENUM and their extern constants."""
     header_path = _sdk_header_path(sdk_path, fw_name, header_name)
@@ -274,8 +327,7 @@ def parse_typed_string_constants(
     index = __import__("clang.cindex", fromlist=["Index"]).Index.create()
     tu = index.parse(
         str(header_path),
-        args=["-x", "objective-c", "-isysroot", str(sdk_path),
-              "-fno-objc-arc", "-Wno-everything"],
+        args=["-x", "objective-c", "-isysroot", str(sdk_path), "-fno-objc-arc", "-Wno-everything"],
         options=0,
     )
 
@@ -308,26 +360,6 @@ def parse_typed_string_constants(
 # ── Code snippet generation ──────────────────────────────────────────────
 
 
-def _resolve_type(
-    resolver: TypeResolver, objc_type: str,
-    namespace: str, cpp_class_name: str,
-) -> str:
-    """Resolve an ObjC type, handling instancetype."""
-    cpp = resolver.resolve(objc_type, f"{cpp_class_name}")
-    if cpp == "__instancetype__":
-        return f"{namespace}::{cpp_class_name}*"
-    return cpp
-
-
-def _selector_accessor(selector: str) -> str:
-    """ObjC selector → Private.hpp accessor (colons become underscores)."""
-    return selector.replace(":", "_")
-
-
-def _setter_name(prop_name: str) -> str:
-    return f"set{prop_name[0].upper()}{prop_name[1:]}"
-
-
 def _cpp_method_name(method: ObjCMethod) -> str:
     """C++ method name following metal-cpp convention.
 
@@ -342,23 +374,28 @@ def _cpp_method_name(method: ObjCMethod) -> str:
 
 
 def gen_property_declaration(
-    resolver: TypeResolver, prop: ObjCProperty,
-    namespace: str, cpp_class_name: str,
+    resolver: TypeResolver,
+    prop: ObjCProperty,
+    namespace: str,
+    cpp_class_name: str,
 ) -> list[str]:
     """Generate class body declaration lines for a property."""
-    cpp_type = _resolve_type(resolver, prop.objc_type, namespace, cpp_class_name)
+    cpp_type = resolve_type(resolver, prop.objc_type, namespace, cpp_class_name)
     lines = [f"    {cpp_type} {prop.name}() const;"]
     if not prop.is_readonly:
-        lines.append(f"    void {_setter_name(prop.name)}({cpp_type} {prop.name});")
+        lines.append(f"    void {setter_name(prop.name)}({cpp_type} {prop.name});")
     return lines
 
 
 def gen_property_impl(
-    resolver: TypeResolver, prop: ObjCProperty,
-    namespace: str, prefix: str, cpp_class_name: str,
+    resolver: TypeResolver,
+    prop: ObjCProperty,
+    namespace: str,
+    prefix: str,
+    cpp_class_name: str,
 ) -> str:
     """Generate inline implementation for a property."""
-    cpp_type = _resolve_type(resolver, prop.objc_type, namespace, cpp_class_name)
+    cpp_type = resolve_type(resolver, prop.objc_type, namespace, cpp_class_name)
     parts = []
 
     # Getter
@@ -372,7 +409,7 @@ def gen_property_impl(
 
     # Setter
     if not prop.is_readonly:
-        sname = _setter_name(prop.name)
+        sname = setter_name(prop.name)
         sacc = f"{sname}_"
         parts.append(
             f"_{prefix}_INLINE void {namespace}::{cpp_class_name}::{sname}"
@@ -387,14 +424,15 @@ def gen_property_impl(
 
 
 def gen_method_declaration(
-    resolver: TypeResolver, method: ObjCMethod,
-    namespace: str, cpp_class_name: str,
+    resolver: TypeResolver,
+    method: ObjCMethod,
+    namespace: str,
+    cpp_class_name: str,
 ) -> list[str]:
     """Generate class body declaration lines for a method."""
-    ret = _resolve_type(resolver, method.return_type, namespace, cpp_class_name)
+    ret = resolve_type(resolver, method.return_type, namespace, cpp_class_name)
     params = ", ".join(
-        f"{_resolve_type(resolver, p.objc_type, namespace, cpp_class_name)} {p.name}"
-        for p in method.params
+        f"{resolve_type(resolver, p.objc_type, namespace, cpp_class_name)} {p.name}" for p in method.params
     )
     static = "static " if method.is_class_method else ""
     const = "" if method.is_class_method else " const"
@@ -407,18 +445,20 @@ def gen_method_declaration(
 
 
 def gen_method_impl(
-    resolver: TypeResolver, method: ObjCMethod,
-    namespace: str, prefix: str, cpp_class_name: str,
+    resolver: TypeResolver,
+    method: ObjCMethod,
+    namespace: str,
+    prefix: str,
+    cpp_class_name: str,
     objc_class_name: str,
 ) -> str:
     """Generate inline implementation for a method."""
-    ret = _resolve_type(resolver, method.return_type, namespace, cpp_class_name)
+    ret = resolve_type(resolver, method.return_type, namespace, cpp_class_name)
     params = ", ".join(
-        f"{_resolve_type(resolver, p.objc_type, namespace, cpp_class_name)} {p.name}"
-        for p in method.params
+        f"{resolve_type(resolver, p.objc_type, namespace, cpp_class_name)} {p.name}" for p in method.params
     )
     args = ", ".join(p.name for p in method.params)
-    sel_acc = _selector_accessor(method.selector)
+    sel_acc = selector_accessor(method.selector)
     name = _cpp_method_name(method)
 
     if method.is_class_method:
@@ -452,20 +492,22 @@ def gen_selector_entries(
     if prop:
         entries.append((prop.name, prop.name))
         if not prop.is_readonly:
-            sname = _setter_name(prop.name)
+            sname = setter_name(prop.name)
             entries.append((f"{sname}_", f"{sname}:"))
     if method:
-        entries.append((_selector_accessor(method.selector), method.selector))
+        entries.append((selector_accessor(method.selector), method.selector))
     return entries
 
 
 # ── File insertion operations ────────────────────────────────────────────
 
 
-def _get_class_body(content: str, cpp_class_name: str) -> str | None:
-    """Extract the body of a class declaration from file content."""
-    class_pattern = rf"class\s+{re.escape(cpp_class_name)}\s*:"
-    class_match = re.search(class_pattern, content)
+def _find_class_range(
+    content: str,
+    cpp_class_name: str,
+) -> tuple[int, int] | None:
+    """Find the opening '{' and closing '}' positions of a class declaration."""
+    class_match = re.search(rf"class\s+{re.escape(cpp_class_name)}\s*:", content)
     if not class_match:
         return None
     brace_start = content.index("{", class_match.start())
@@ -477,47 +519,35 @@ def _get_class_body(content: str, cpp_class_name: str) -> str | None:
         elif content[i] == "}":
             depth -= 1
         i += 1
-    return content[brace_start:i - 1]
+    return brace_start, i - 1
 
 
 def class_has_member(header_path: Path, cpp_class_name: str, member_name: str) -> bool:
     """Check if a class already has a member with the given name."""
     content = read_file(header_path)
-    body = _get_class_body(content, cpp_class_name)
-    if body is None:
+    rng = _find_class_range(content, cpp_class_name)
+    if rng is None:
         return False
-    return f"{member_name}(" in body
+    return f"{member_name}(" in content[rng[0] : rng[1]]
 
 
 def insert_in_class_body(
-    header_path: Path, cpp_class_name: str, new_lines: list[str],
+    header_path: Path,
+    cpp_class_name: str,
+    new_lines: list[str],
 ) -> None:
     """Insert declaration lines before the closing }; of a class."""
     content = read_file(header_path)
-    # Find the class declaration and its closing };
-    class_pattern = rf"class\s+{re.escape(cpp_class_name)}\s*:"
-    class_match = re.search(class_pattern, content)
-    if not class_match:
+    rng = _find_class_range(content, cpp_class_name)
+    if rng is None:
         log.error("    Class %s not found in %s", cpp_class_name, header_path)
         return
 
-    # Find matching }; after the class opening {
-    brace_start = content.index("{", class_match.start())
-    depth = 1
-    i = brace_start + 1
-    while i < len(content) and depth > 0:
-        if content[i] == "{":
-            depth += 1
-        elif content[i] == "}":
-            depth -= 1
-        i += 1
-    # i now points just after the closing }
-    close_brace = i - 1
+    brace_start, close_brace = rng
 
     # Check idempotency: see if the first new line is already present.
     first_line = new_lines[0].strip()
-    class_body = content[brace_start:close_brace]
-    if first_line in class_body:
+    if first_line in content[brace_start:close_brace]:
         log.info("    %s: declarations already present", cpp_class_name)
         return
 
@@ -568,7 +598,10 @@ def get_existing_selectors(private_path: Path, prefix: str) -> dict[str, str]:
 
 
 def insert_selector_in_private(
-    private_path: Path, prefix: str, accessor: str, selector_str: str,
+    private_path: Path,
+    prefix: str,
+    accessor: str,
+    selector_str: str,
 ) -> None:
     """Insert a selector registration into *Private.hpp in sorted position."""
     content = read_file(private_path)
@@ -579,10 +612,7 @@ def insert_selector_in_private(
         log.debug("    Selector %s already in %s", accessor, private_path.name)
         return
 
-    entry = (
-        f"        _{prefix}_PRIVATE_DEF_SEL({accessor},\n"
-        f"            \"{selector_str}\");"
-    )
+    entry = f'        _{prefix}_PRIVATE_DEF_SEL({accessor},\n            "{selector_str}");'
 
     # Find the Selector namespace block.
     sel_ns = content.find("namespace Selector")
@@ -629,7 +659,9 @@ def insert_selector_in_private(
 
 
 def insert_class_in_private(
-    private_path: Path, prefix: str, objc_class_name: str,
+    private_path: Path,
+    prefix: str,
+    objc_class_name: str,
 ) -> None:
     """Insert a class registration into *Private.hpp."""
     content = read_file(private_path)
@@ -659,7 +691,8 @@ def insert_class_in_private(
 
 
 def insert_include_in_umbrella(
-    umbrella_path: Path, include_name: str,
+    umbrella_path: Path,
+    include_name: str,
 ) -> None:
     """Add #include to umbrella header in sorted position."""
     content = read_file(umbrella_path)
@@ -701,23 +734,47 @@ def insert_include_in_umbrella(
 # ── Amendment processors ─────────────────────────────────────────────────
 
 
+def _prepare_amend(
+    metal_cpp_dir: Path,
+    sdk_path: Path,
+    fw_name: str,
+    prefix: str,
+    strip_prefix: str,
+    objc_class_name: str,
+) -> tuple[ObjCClass, str, Path, Path] | None:
+    """Shared setup for amend_properties / amend_methods."""
+    cls = parse_objc_class(sdk_path, fw_name, objc_class_name)
+    if not cls:
+        return None
+    cpp_class_name = strip_objc_prefix(objc_class_name, strip_prefix)
+    header_path = metal_cpp_dir / fw_name / f"{objc_class_name}.hpp"
+    private_path = metal_cpp_dir / fw_name / f"{prefix}Private.hpp"
+    return cls, cpp_class_name, header_path, private_path
+
+
 def process_amend_properties(
-    metal_cpp_dir: Path, sdk_path: Path,
-    fw_name: str, namespace: str, prefix: str, strip_prefix: str,
-    objc_class_name: str, prop_names: list[str],
+    metal_cpp_dir: Path,
+    sdk_path: Path,
+    fw_name: str,
+    namespace: str,
+    prefix: str,
+    strip_prefix: str,
+    objc_class_name: str,
+    prop_names: list[str],
     resolver: TypeResolver,
 ) -> None:
     """Add properties to an existing class."""
-    cls = parse_objc_class(sdk_path, fw_name, objc_class_name)
-    if not cls:
+    prepared = _prepare_amend(
+        metal_cpp_dir,
+        sdk_path,
+        fw_name,
+        prefix,
+        strip_prefix,
+        objc_class_name,
+    )
+    if not prepared:
         return
-
-    cpp_class_name = objc_class_name
-    if strip_prefix and cpp_class_name.startswith(strip_prefix):
-        cpp_class_name = cpp_class_name[len(strip_prefix):]
-
-    header_path = metal_cpp_dir / fw_name / f"{objc_class_name}.hpp"
-    private_path = metal_cpp_dir / fw_name / f"{prefix}Private.hpp"
+    cls, cpp_class_name, header_path, private_path = prepared
 
     for prop_name in prop_names:
         prop = next((p for p in cls.properties if p.name == prop_name), None)
@@ -745,22 +802,28 @@ def process_amend_properties(
 
 
 def process_amend_methods(
-    metal_cpp_dir: Path, sdk_path: Path,
-    fw_name: str, namespace: str, prefix: str, strip_prefix: str,
-    objc_class_name: str, selectors: list[str],
+    metal_cpp_dir: Path,
+    sdk_path: Path,
+    fw_name: str,
+    namespace: str,
+    prefix: str,
+    strip_prefix: str,
+    objc_class_name: str,
+    selectors: list[str],
     resolver: TypeResolver,
 ) -> None:
     """Add methods to an existing class."""
-    cls = parse_objc_class(sdk_path, fw_name, objc_class_name)
-    if not cls:
+    prepared = _prepare_amend(
+        metal_cpp_dir,
+        sdk_path,
+        fw_name,
+        prefix,
+        strip_prefix,
+        objc_class_name,
+    )
+    if not prepared:
         return
-
-    cpp_class_name = objc_class_name
-    if strip_prefix and cpp_class_name.startswith(strip_prefix):
-        cpp_class_name = cpp_class_name[len(strip_prefix):]
-
-    header_path = metal_cpp_dir / fw_name / f"{objc_class_name}.hpp"
-    private_path = metal_cpp_dir / fw_name / f"{prefix}Private.hpp"
+    cls, cpp_class_name, header_path, private_path = prepared
 
     # Read Private.hpp once to check existing selectors.
     private_content = read_file(private_path)
@@ -772,7 +835,7 @@ def process_amend_methods(
             continue
 
         # Check if the selector is already registered (method already wrapped).
-        sel_acc = _selector_accessor(selector)
+        sel_acc = selector_accessor(selector)
         if f"_PRIVATE_DEF_SEL({sel_acc}," in private_content:
             log.info("    add_method: %s.%s already wrapped", objc_class_name, selector)
             continue
@@ -785,8 +848,12 @@ def process_amend_methods(
 
         # 2. Inline implementation.
         impl = gen_method_impl(
-            resolver, method, namespace, prefix,
-            cpp_class_name, objc_class_name,
+            resolver,
+            method,
+            namespace,
+            prefix,
+            cpp_class_name,
+            objc_class_name,
         )
         append_inline_impl(header_path, impl)
 
@@ -799,19 +866,20 @@ def process_amend_methods(
 
 
 def process_add_type(
-    metal_cpp_dir: Path, sdk_path: Path,
-    fw_name: str, namespace: str, prefix: str, strip_prefix: str,
-    objc_class_name: str, type_config: dict,
+    metal_cpp_dir: Path,
+    sdk_path: Path,
+    fw_name: str,
+    namespace: str,
+    prefix: str,
+    strip_prefix: str,
+    objc_class_name: str,
+    type_config: dict,
     resolver: TypeResolver,
 ) -> None:
     """Generate a complete .hpp for a new type."""
     cls = parse_objc_class(sdk_path, fw_name, objc_class_name)
     if not cls:
         return
-
-    cpp_class_name = objc_class_name
-    if strip_prefix and cpp_class_name.startswith(strip_prefix):
-        cpp_class_name = cpp_class_name[len(strip_prefix):]
 
     # Filter to requested properties/methods.
     req_props = type_config.get("properties", [])
@@ -822,20 +890,19 @@ def process_add_type(
     if req_methods != ["*"]:
         cls.methods = [m for m in cls.methods if m.selector in req_methods]
 
-    log.info("    add_type: %s (%d props, %d methods)",
-             objc_class_name, len(cls.properties), len(cls.methods))
+    log.info("    add_type: %s (%d props, %d methods)", objc_class_name, len(cls.properties), len(cls.methods))
 
     # Discover typed string constants used by properties and register them
     # in the TypeResolver so generate_class_header resolves the types.
     all_typed_consts = parse_typed_string_constants(
-        sdk_path, fw_name, f"{objc_class_name}.h",
+        sdk_path,
+        fw_name,
+        f"{objc_class_name}.h",
     )
     prop_types = {p.objc_type for p in cls.properties}
     used_typed_consts = [tc for tc in all_typed_consts if tc.objc_typedef in prop_types]
     for tc in used_typed_consts:
-        cpp_type_name = tc.objc_typedef
-        if strip_prefix and cpp_type_name.startswith(strip_prefix):
-            cpp_type_name = cpp_type_name[len(strip_prefix):]
+        cpp_type_name = strip_objc_prefix(tc.objc_typedef, strip_prefix)
         resolver.register(tc.objc_typedef, f"{namespace}::{cpp_type_name}")
 
     # Use CodeGenerator to produce the complete header.
@@ -856,22 +923,22 @@ def process_add_type(
         if sel_str in existing_sels and existing_sels[sel_str] != accessor:
             old_acc = accessor
             new_acc = existing_sels[sel_str]
-            header_content = header_content.replace(
-                f"_PRIVATE_SEL({old_acc})", f"_PRIVATE_SEL({new_acc})")
+            header_content = header_content.replace(f"_PRIVATE_SEL({old_acc})", f"_PRIVATE_SEL({new_acc})")
             del gen.all_selectors[old_acc]
             log.info("    Remapped accessor %s -> %s", old_acc, new_acc)
 
     # Inject auto-detected typed string constants.
     if used_typed_consts:
         header_content = _inject_typed_constants(
-            header_content, namespace, prefix, strip_prefix, used_typed_consts,
+            header_content,
+            namespace,
+            prefix,
+            strip_prefix,
+            used_typed_consts,
         )
 
-    # Write the header file.
+    # Write the header file (always regenerate — it's fully generated).
     header_path = metal_cpp_dir / fw_name / f"{objc_class_name}.hpp"
-    if header_path.exists():
-        log.info("    %s already exists, skipping", header_path.name)
-        return
     write_file(header_path, header_content)
     log.info("    -> %s", header_path.name)
 
@@ -892,7 +959,10 @@ def process_add_type(
 
 
 def _inject_typed_constants(
-    header_content: str, namespace: str, prefix: str, strip_prefix: str,
+    header_content: str,
+    namespace: str,
+    prefix: str,
+    strip_prefix: str,
     typed_consts: list[TypedStringConst],
 ) -> str:
     """Inject type aliases, constant declarations, and definitions into a generated header."""
@@ -900,18 +970,12 @@ def _inject_typed_constants(
     const_lines = []
     def_lines = []
     for tc in typed_consts:
-        # Strip ObjC prefix to get C++ type name: CADynamicRange → DynamicRange
-        cpp_type_name = tc.objc_typedef
-        if strip_prefix and cpp_type_name.startswith(strip_prefix):
-            cpp_type_name = cpp_type_name[len(strip_prefix):]
+        cpp_type_name = strip_objc_prefix(tc.objc_typedef, strip_prefix)
 
         alias_lines.append(f"using {cpp_type_name} = NS::String*;")
         qualified = f"{namespace}::{cpp_type_name}"
         for objc_const in tc.constants:
-            # Strip ObjC prefix: CADynamicRangeAutomatic → DynamicRangeAutomatic
-            cpp_const = objc_const
-            if strip_prefix and cpp_const.startswith(strip_prefix):
-                cpp_const = cpp_const[len(strip_prefix):]
+            cpp_const = strip_objc_prefix(objc_const, strip_prefix)
             const_lines.append(f"_{prefix}_CONST({cpp_type_name}, {cpp_const});")
             def_lines.append(f"_{prefix}_PRIVATE_DEF_STR({qualified}, {cpp_const});")
 
@@ -939,33 +1003,15 @@ def _inject_typed_constants(
 # ── Main ─────────────────────────────────────────────────────────────────
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Patch metal-cpp with Godot-specific amendments")
-    parser.add_argument("metal_cpp_dir", type=Path,
-                        help="Path to metal-cpp root directory")
-    parser.add_argument("--config", type=Path, required=True,
-                        help="Path to patches YAML config")
-    parser.add_argument("--sdk", default="macosx",
-                        help="xcrun SDK name (default: macosx)")
-    parser.add_argument("--strict", action="store_true",
-                        help="Fail on unresolvable types")
-    parser.add_argument("-v", "--verbose", action="store_true")
-    args = parser.parse_args()
-
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(levelname)s: %(message)s",
-    )
-
-    metal_cpp_dir = args.metal_cpp_dir.resolve()
-    config = load_config(args.config)
-    sdk_path = get_sdk_path(args.sdk)
-    log.info("SDK path: %s", sdk_path)
-
+def apply_patches(
+    metal_cpp_dir: Path,
+    config: dict,
+    sdk_path: Path,
+    strict: bool = False,
+) -> None:
+    """Apply all patches from config to the metal-cpp directory."""
     # Build a shared TypeResolver seeded with built-in types.
     resolver = TypeResolver()
-    # Register additional types not in the upstream BUILTIN_TYPE_MAP.
     resolver.register("NSStringEncoding", "NS::StringEncoding")
 
     for fw_name, fw_cfg in config["frameworks"].items():
@@ -977,14 +1023,10 @@ def main() -> None:
 
         # Pre-register types for cross-references.
         for objc_name in fw_cfg.get("amend_types", {}):
-            cpp = objc_name
-            if strip_prefix and cpp.startswith(strip_prefix):
-                cpp = cpp[len(strip_prefix):]
+            cpp = strip_objc_prefix(objc_name, strip_prefix)
             resolver.register(objc_name, f"{namespace}::{cpp}")
         for objc_name, type_cfg in fw_cfg.get("add_types", {}).items():
-            cpp = objc_name
-            if strip_prefix and cpp.startswith(strip_prefix):
-                cpp = cpp[len(strip_prefix):]
+            cpp = strip_objc_prefix(objc_name, strip_prefix)
             resolver.register(objc_name, f"{namespace}::{cpp}")
 
         # Forward declarations.
@@ -996,9 +1038,14 @@ def main() -> None:
         for objc_name, type_cfg in fw_cfg.get("add_types", {}).items():
             log.info("  Add: %s", objc_name)
             process_add_type(
-                metal_cpp_dir, sdk_path, fw_name,
-                namespace, prefix, strip_prefix,
-                objc_name, type_cfg or {},
+                metal_cpp_dir,
+                sdk_path,
+                fw_name,
+                namespace,
+                prefix,
+                strip_prefix,
+                objc_name,
+                type_cfg or {},
                 resolver,
             )
 
@@ -1008,29 +1055,46 @@ def main() -> None:
 
             if "move_to_public" in amendments:
                 apply_move_to_public(
-                    metal_cpp_dir, fw_name, strip_prefix,
-                    objc_name, amendments["move_to_public"],
+                    metal_cpp_dir,
+                    fw_name,
+                    strip_prefix,
+                    objc_name,
+                    amendments["move_to_public"],
                 )
 
             if "base_class" in amendments:
                 apply_base_class(
-                    metal_cpp_dir, fw_name, prefix, strip_prefix,
-                    objc_name, amendments["base_class"],
+                    metal_cpp_dir,
+                    fw_name,
+                    prefix,
+                    strip_prefix,
+                    objc_name,
+                    amendments["base_class"],
                 )
 
             if "add_properties" in amendments:
                 process_amend_properties(
-                    metal_cpp_dir, sdk_path, fw_name,
-                    namespace, prefix, strip_prefix,
-                    objc_name, amendments["add_properties"],
+                    metal_cpp_dir,
+                    sdk_path,
+                    fw_name,
+                    namespace,
+                    prefix,
+                    strip_prefix,
+                    objc_name,
+                    amendments["add_properties"],
                     resolver,
                 )
 
             if "add_methods" in amendments:
                 process_amend_methods(
-                    metal_cpp_dir, sdk_path, fw_name,
-                    namespace, prefix, strip_prefix,
-                    objc_name, amendments["add_methods"],
+                    metal_cpp_dir,
+                    sdk_path,
+                    fw_name,
+                    namespace,
+                    prefix,
+                    strip_prefix,
+                    objc_name,
+                    amendments["add_methods"],
                     resolver,
                 )
 
@@ -1039,8 +1103,76 @@ def main() -> None:
         log.warning("Unresolvable types:")
         for typ, ctx in resolver.unresolved:
             log.warning("  %s (in %s)", typ, ctx)
-        if args.strict:
+        if strict:
             sys.exit(1)
+
+
+def generate_patch(zip_path: Path, config: dict, sdk_path: Path) -> str:
+    """Generate a unified patch by diffing original vs patched metal-cpp."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        original = Path(tmpdir) / "original"
+        patched = Path(tmpdir) / "patched"
+        original.mkdir()
+        patched.mkdir()
+
+        extract_zip(zip_path, original)
+        extract_zip(zip_path, patched)
+        apply_patches(patched, config, sdk_path)
+
+        result = subprocess.run(
+            ["diff", "-ruN", "original", "patched"],
+            capture_output=True,
+            text=True,
+            cwd=tmpdir,
+        )
+        return result.stdout
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Patch metal-cpp with Godot-specific amendments")
+    parser.add_argument("metal_cpp_dir", nargs="?", type=Path, help="Path to metal-cpp root directory")
+    parser.add_argument(
+        "--zip",
+        type=Path,
+        help="Extract upstream metal-cpp zip into metal_cpp_dir before patching",
+    )
+    parser.add_argument(
+        "--generate-patch",
+        type=Path,
+        metavar="ZIP",
+        help="Generate a .patch file from a base zip (writes to stdout)",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=TOOL_DIR / "patches.yaml",
+        help="Path to patches YAML config (default: patches.yaml next to this script)",
+    )
+    parser.add_argument("--sdk", default="macosx", help="xcrun SDK name (default: macosx)")
+    parser.add_argument("--strict", action="store_true", help="Fail on unresolvable types")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(levelname)s: %(message)s",
+        stream=sys.stderr,
+    )
+
+    config = load_config(args.config)
+    sdk_path = get_sdk_path(args.sdk)
+    log.info("SDK path: %s", sdk_path)
+
+    if args.generate_patch:
+        patch = generate_patch(args.generate_patch.resolve(), config, sdk_path)
+        sys.stdout.write(patch)
+    else:
+        if not args.metal_cpp_dir:
+            parser.error("metal_cpp_dir is required when not using --generate-patch")
+        metal_cpp_dir = args.metal_cpp_dir.resolve()
+        if args.zip:
+            extract_zip(args.zip.resolve(), metal_cpp_dir)
+        apply_patches(metal_cpp_dir, config, sdk_path, strict=args.strict)
 
     log.info("Done.")
 
