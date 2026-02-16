@@ -43,6 +43,8 @@ target_sources(macos PRIVATE
         godot_menu_item.mm
         godot_open_save_delegate.h
         godot_open_save_delegate.mm
+        godot_progress_view.h
+        godot_progress_view.mm
         godot_status_item.h
         godot_status_item.mm
         godot_window.h
