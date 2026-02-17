@@ -606,7 +606,7 @@ bool DisplayServerMacOSBase::window_is_hdr_output_enabled(WindowID p_window) con
 }
 
 void DisplayServerMacOSBase::window_set_hdr_output_reference_luminance(const float p_reference_luminance, WindowID p_window) {
-	ERR_FAIL_MSG("Manually setting reference white luminance is not supported on Apple devices, as they provide a user-facing brightness setting that directly controls reference white luminance.");
+	ERR_PRINT_ONCE("Manually setting reference white luminance is not supported on Apple devices, as they provide a user-facing brightness setting that directly controls reference white luminance.");
 }
 
 float DisplayServerMacOSBase::window_get_hdr_output_reference_luminance(WindowID p_window) const {
