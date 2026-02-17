@@ -90,13 +90,19 @@ def extract_zip(zip_path: Path, dest_dir: Path) -> None:
             sys.exit(1)
         zip_root = top_dirs.pop()
 
-        # Remove existing upstream dirs (but preserve tools/).
-        for child in dest_dir.iterdir():
-            if child.name == "tools" or child.name.startswith("."):
-                continue
+        # Collect the set of top-level names present in the zip so we only
+        # replace what the zip ships (preserving tools/, patches/, etc.).
+        zip_top_names: set[str] = set()
+        for name in zf.namelist():
+            rel = name[len(zip_root) + 1 :]
+            if rel:
+                zip_top_names.add(rel.split("/")[0])
+
+        for name in zip_top_names:
+            child = dest_dir / name
             if child.is_dir():
                 shutil.rmtree(child)
-            else:
+            elif child.exists():
                 child.unlink()
 
         # Extract, stripping the zip's top-level directory.
@@ -285,6 +291,130 @@ def apply_base_class(
     content = content.replace(old, new, 1)
     write_file(header_path, content)
     log.info("    base_class %s: %s -> %s", objc_name, old, new)
+
+
+# ── LoadSymbol fallback for older SDKs ────────────────────────────────────
+
+
+def apply_loadsymbol_fallback(
+    metal_cpp_dir: Path,
+    fw_name: str,
+    namespace: str,
+    prefix: str,
+) -> None:
+    """Add LoadSymbol/dlsym fallback for _PRIVATE_DEF_STR on older SDKs.
+
+    When building against SDKs older than 26.0, typed string constants
+    (e.g. CADynamicRange*) are not present in the SDK's tbd files, so
+    weak_import fails at link time.  This mirrors the pattern used by
+    MTLPrivate.hpp: use weak_import when the SDK provides the symbols,
+    fall back to dlsym otherwise.
+    """
+    private_path = metal_cpp_dir / fw_name / f"{prefix}Private.hpp"
+    content = read_file(private_path)
+
+    # Idempotency check.
+    if f"{namespace}::Private::LoadSymbol" in content:
+        log.info("    loadsymbol_fallback: already applied")
+        return
+
+    tag = f"_{prefix}_PRIVATE_DEF_STR"
+
+    # Locate the implementation guard.
+    impl_guard = f"{prefix}_PRIVATE_IMPLEMENTATION"
+    impl_pos = content.find(impl_guard)
+    if impl_pos == -1:
+        log.error("    loadsymbol_fallback: %s not found in %s", impl_guard, private_path.name)
+        return
+
+    # Find the implementation-section macro (multi-line #define with continuations).
+    # Search from impl_pos — the first occurrence is always the impl version.
+    macro_start = content.find(f"#define {tag}(type, symbol)", impl_pos)
+    if macro_start == -1:
+        log.error("    loadsymbol_fallback: %s macro not found in %s", tag, private_path.name)
+        return
+
+    # Walk continuation lines (ending with \) to find the full macro span.
+    pos = macro_start
+    while True:
+        eol = content.find("\n", pos)
+        if eol == -1:
+            eol = len(content)
+            break
+        if not content[pos:eol].rstrip().endswith("\\"):
+            break
+        pos = eol + 1
+    old_macro = content[macro_start:eol]
+    abs_start = macro_start
+    abs_end = eol
+
+    const_tag = f"_{prefix}_PRIVATE_DEF_CONST"
+
+    # Build the weak_import macros (SDK >= 26).
+    weak_const_macro = (
+        f"#define {const_tag}(type, symbol)              \\\n"
+        f"    _{prefix}_EXTERN type const {prefix}##symbol _{prefix}_PRIVATE_IMPORT; \\\n"
+        f"    type const                         {namespace}::symbol ="
+        f" (nullptr != &{prefix}##symbol) ? {prefix}##symbol : nullptr"
+    )
+
+    # Build the dlsym fallback macros (SDK < 26).
+    dlsym_str = (
+        f"#define {tag}(type, symbol)    \\\n"
+        f"    _{prefix}_EXTERN type const {prefix}##symbol;    \\\n"
+        f"    type const             {namespace}::symbol ="
+        f" {namespace}::Private::LoadSymbol<type>(\"{prefix}\" #symbol)"
+    )
+    dlsym_const = (
+        f"#define {const_tag}(type, symbol)    \\\n"
+        f"    _{prefix}_EXTERN type const {prefix}##symbol;    \\\n"
+        f"    type const             {namespace}::symbol ="
+        f" {namespace}::Private::LoadSymbol<type>(\"{prefix}\" #symbol)"
+    )
+
+    # Build the extern-only macros (non-implementation).
+    extern_const = f"#define {const_tag}(type, symbol) extern type const {namespace}::symbol"
+
+    replacement = (
+        f"\n#include <dlfcn.h>\n"
+        f"\n"
+        f"namespace {namespace}::Private\n"
+        f"{{\n"
+        f"    template <typename _Type>\n"
+        f"    inline _Type const LoadSymbol(const char* pSymbol)\n"
+        f"    {{\n"
+        f"        const _Type* pAddress = static_cast<_Type*>(dlsym(RTLD_DEFAULT, pSymbol));\n"
+        f"\n"
+        f"        return pAddress ? *pAddress : nullptr;\n"
+        f"    }}\n"
+        f"}} // {namespace}::Private\n"
+        f"\n"
+        f"#if defined(__MAC_26_0) || defined(__IPHONE_26_0) || defined(__TVOS_26_0)\n"
+        f"\n"
+        f"{old_macro}\n"
+        f"\n"
+        f"{weak_const_macro}\n"
+        f"\n"
+        f"#else\n"
+        f"\n"
+        f"{dlsym_str}\n"
+        f"\n"
+        f"{dlsym_const}\n"
+        f"\n"
+        f"#endif"
+    )
+
+    content = content[:abs_start] + replacement + content[abs_end:]
+
+    # Also add _PRIVATE_DEF_CONST to the extern-only #else section.
+    extern_str_marker = f"#define {tag}(type, symbol) extern type const {namespace}::symbol"
+    marker_pos = content.find(extern_str_marker)
+    if marker_pos != -1:
+        insert_pos = marker_pos + len(extern_str_marker)
+        content = content[:insert_pos] + "\n" + extern_const + content[insert_pos:]
+
+    write_file(private_path, content)
+    log.info("    loadsymbol_fallback: applied to %s", private_path.name)
 
 
 # ── Parse SDK for a class ────────────────────────────────────────────────
@@ -875,11 +1005,11 @@ def process_add_type(
     objc_class_name: str,
     type_config: dict,
     resolver: TypeResolver,
-) -> None:
-    """Generate a complete .hpp for a new type."""
+) -> bool:
+    """Generate a complete .hpp for a new type.  Returns True if typed constants were emitted."""
     cls = parse_objc_class(sdk_path, fw_name, objc_class_name)
     if not cls:
-        return
+        return False
 
     # Filter to requested properties/methods.
     req_props = type_config.get("properties", [])
@@ -957,6 +1087,8 @@ def process_add_type(
     # (not Private.hpp), since the type alias must be visible. This is handled
     # by _inject_typed_constants.
 
+    return bool(used_typed_consts)
+
 
 def _inject_typed_constants(
     header_content: str,
@@ -977,7 +1109,7 @@ def _inject_typed_constants(
         for objc_const in tc.constants:
             cpp_const = strip_objc_prefix(objc_const, strip_prefix)
             const_lines.append(f"_{prefix}_CONST({cpp_type_name}, {cpp_const});")
-            def_lines.append(f"_{prefix}_PRIVATE_DEF_STR({qualified}, {cpp_const});")
+            def_lines.append(f"_{prefix}_PRIVATE_DEF_CONST({qualified}, {cpp_const});")
 
         log.info("    typed_constants: %s (%d constants)", tc.objc_typedef, len(tc.constants))
 
@@ -993,7 +1125,7 @@ def _inject_typed_constants(
     pos = m.end()
     header_content = header_content[:pos] + insertion + "\n" + header_content[pos:]
 
-    # Append _PRIVATE_DEF_STR definitions at the end of the file
+    # Append _PRIVATE_DEF_CONST definitions at the end of the file
     # (after namespace close and inline impls).
     header_content = header_content.rstrip("\n") + "\n\n" + "\n".join(def_lines) + "\n"
 
@@ -1035,9 +1167,10 @@ def apply_patches(
             apply_forward_declarations(metal_cpp_dir, fw_name, namespace, fwd)
 
         # Add new types (before amend, so new types exist for cross-refs).
+        has_typed_consts = False
         for objc_name, type_cfg in fw_cfg.get("add_types", {}).items():
             log.info("  Add: %s", objc_name)
-            process_add_type(
+            if process_add_type(
                 metal_cpp_dir,
                 sdk_path,
                 fw_name,
@@ -1047,7 +1180,12 @@ def apply_patches(
                 objc_name,
                 type_cfg or {},
                 resolver,
-            )
+            ):
+                has_typed_consts = True
+
+        # Typed string constants need a dlsym fallback for older SDKs.
+        if has_typed_consts:
+            apply_loadsymbol_fallback(metal_cpp_dir, fw_name, namespace, prefix)
 
         # Amend existing types.
         for objc_name, amendments in fw_cfg.get("amend_types", {}).items():
