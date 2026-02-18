@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  joypad_apple.h                                                        */
+/*  display_server_headless.cpp                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,53 +28,41 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "display_server_headless.h"
 
 #include "core/input/input.h"
-#include "core/input/input_enums.h"
+#include "core/input/input_event.h"
+#include "servers/display/native_menu.h"
+#include "servers/rendering/dummy/rasterizer_dummy.h"
 
-#define Key _QKey
-#import <GameController/GameController.h>
-#undef Key
+DisplayServer *DisplayServerHeadless::create_func(const String &p_rendering_driver, DisplayServer::WindowMode p_mode, DisplayServer::VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i *p_position, const Vector2i &p_resolution, int p_screen, Context p_context, int64_t p_parent_window, Error &r_error) {
+	r_error = OK;
+	RasterizerDummy::make_current();
+	return memnew(DisplayServerHeadless());
+}
 
-@class GCController;
-class RumbleContext;
+void DisplayServerHeadless::_dispatch_input_events(const Ref<InputEvent> &p_event) {
+	static_cast<DisplayServerHeadless *>(get_singleton())->_dispatch_input_event(p_event);
+}
 
-struct GameController {
-	int joy_id;
-	GCController *controller;
-	RumbleContext *rumble_context API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) = nil;
-	NSInteger ff_effect_timestamp = 0;
-	bool force_feedback = false;
-	bool double_nintendo_joycon_layout = false;
-	bool single_nintendo_joycon_layout = false;
+void DisplayServerHeadless::_dispatch_input_event(const Ref<InputEvent> &p_event) {
+	if (input_event_callback.is_valid()) {
+		input_event_callback.call(p_event);
+	}
+}
 
-	uint32_t axis_changed_mask = 0;
-	static_assert(static_cast<uint32_t>(JoyAxis::MAX) < 32, "JoyAxis::MAX must be less than 32");
-	double axis_value[(int)JoyAxis::MAX];
+void DisplayServerHeadless::process_events() {
+	Input::get_singleton()->flush_buffered_events();
+}
 
-	GameController(int p_joy_id, GCController *p_controller);
-	~GameController();
-};
+DisplayServerHeadless::DisplayServerHeadless() {
+	native_menu = memnew(NativeMenu);
+	Input::get_singleton()->set_event_dispatch_function(_dispatch_input_events);
+}
 
-class JoypadApple {
-private:
-	id<NSObject> connect_observer = nil;
-	id<NSObject> disconnect_observer = nil;
-	HashMap<int, GameController *> joypads;
-	HashMap<GCController *, int> controller_to_joy_id;
-
-	GCControllerPlayerIndex get_free_player_index();
-
-	void add_joypad(GCController *p_controller);
-	void remove_joypad(GCController *p_controller);
-
-public:
-	JoypadApple();
-	~JoypadApple();
-
-	void joypad_vibration_start(GameController &p_joypad, float p_weak_magnitude, float p_strong_magnitude, float p_duration, uint64_t p_timestamp) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0));
-	void joypad_vibration_stop(GameController &p_joypad, uint64_t p_timestamp) API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0));
-
-	void process_joypads();
-};
+DisplayServerHeadless::~DisplayServerHeadless() {
+	if (native_menu) {
+		memdelete(native_menu);
+		native_menu = nullptr;
+	}
+}

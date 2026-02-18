@@ -39,7 +39,9 @@
 typedef struct CAContext CAContext;
 typedef struct CALayer CALayer;
 #endif
+class InputEvent;
 class GLManagerEmbedded;
+class NativeMenu;
 class RenderingContextDriver;
 class RenderingDevice;
 
