@@ -41,6 +41,7 @@ target_sources(core PRIVATE
         math_fieldwise.h
         math_funcs.cpp
         math_funcs.h
+        math_funcs_binary.h
         plane.cpp
         plane.h
         projection.cpp

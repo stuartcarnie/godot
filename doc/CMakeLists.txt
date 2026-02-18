@@ -262,6 +262,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/AudioStreamPolyphonic.xml
         classes/AudioStreamRandomizer.xml
         classes/AudioStreamWAV.xml
+        classes/AwaitTweener.xml
         classes/BackBufferCopy.xml
         classes/BaseButton.xml
         classes/BaseMaterial3D.xml

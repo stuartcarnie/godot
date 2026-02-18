@@ -128,8 +128,20 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             thread/pthread/SDL_systls.c
             timer/unix/SDL_systimer.c
     )
-#elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-#    target_link_libraries(godot-module-ktx PRIVATE ios)
+elseif (CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
+    target_sources(sdl3 PRIVATE
+            core/unix/SDL_appid.c
+            core/unix/SDL_poll.c
+            haptic/dummy/SDL_syshaptic.c
+            joystick/apple/SDL_mfijoystick.m
+            thread/pthread/SDL_syscond.c
+            thread/pthread/SDL_sysmutex.c
+            thread/pthread/SDL_sysrwlock.c
+            thread/pthread/SDL_syssem.c
+            thread/pthread/SDL_systhread.c
+            thread/pthread/SDL_systls.c
+            timer/unix/SDL_systimer.c
+    )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(sdl3 PRIVATE
             core/windows/SDL_gameinput.c
@@ -165,6 +177,7 @@ target_compile_definitions(sdl3
         $<$<PLATFORM_ID:Linux>:SDL_PLATFORM_LINUX>
         $<$<PLATFORM_ID:Darwin>:SDL_PLATFORM_MACOS>
         $<$<PLATFORM_ID:iOS>:SDL_PLATFORM_IOS>
+        $<$<PLATFORM_ID:visionOS>:SDL_PLATFORM_VISIONOS>
         $<$<PLATFORM_ID:Windows>:SDL_PLATFORM_WINDOWS>
 )
 target_include_directories(sdl3

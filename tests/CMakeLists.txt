@@ -97,6 +97,7 @@ target_sources(tests PRIVATE
         core/variant/test_dictionary.h
         core/variant/test_variant.h
         core/variant/test_variant_utility.h
+        display_server_mock.cpp
         display_server_mock.h
         scene/test_animation.h
         scene/test_animation_blend_tree.h

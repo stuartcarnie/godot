@@ -185,7 +185,7 @@ else ()
     set(WANT_RETROFX 0)
 endif ()
 
-if (ENABLE_SDL AND CMAKE_SYSTEM_NAME MATCHES "^(Linux|Windows|Darwin)$")
+if (ENABLE_SDL AND CMAKE_SYSTEM_NAME MATCHES "^(Linux|Windows|Darwin|iOS|visionOS)$")
     set(WANT_SDL 1)
 else ()
     set(WANT_SDL 0)
