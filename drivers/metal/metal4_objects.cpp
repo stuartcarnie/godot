@@ -181,18 +181,21 @@ void MDCommandBuffer::pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_st
 		return;
 	}
 
-	// Encode intra-pass barrier if an encoder is active for matching stages.
-	if (render.encoder) {
-		MTL::Stages render_after = after_stages & (MTL::StageVertex | MTL::StageFragment);
-		MTL::Stages render_before = before_stages & (MTL::StageVertex | MTL::StageFragment);
-		if (render_after != 0 && render_before != 0) {
-			render.encoder->barrierAfterEncoderStages(render_after, render_before, MTL4::VisibilityOptionDevice);
-		}
-	} else if (compute.encoder) {
-		MTL::Stages compute_after = after_stages & (MTL::StageDispatch | MTL::StageBlit);
-		MTL::Stages compute_before = before_stages & (MTL::StageDispatch | MTL::StageBlit);
-		if (compute_after != 0 && compute_before != 0) {
-			compute.encoder->barrierAfterEncoderStages(compute_after, compute_before, MTL4::VisibilityOptionDevice);
+	// Encode intra-pass barrier if an encoder is active and there are actual barriers to process.
+	bool has_barriers = p_memory_barriers.size() > 0 || p_buffer_barriers.size() > 0 || p_texture_barriers.size() > 0 || p_acceleration_structure_barriers.size() > 0;
+	if (has_barriers) {
+		if (render.encoder) {
+			MTL::Stages render_after = after_stages & (MTL::StageVertex | MTL::StageFragment);
+			MTL::Stages render_before = before_stages & (MTL::StageVertex | MTL::StageFragment);
+			if (render_after != 0 && render_before != 0) {
+				render.encoder->barrierAfterEncoderStages(render_after, render_before, MTL4::VisibilityOptionDevice);
+			}
+		} else if (compute.encoder) {
+			MTL::Stages compute_after = after_stages & (MTL::StageDispatch | MTL::StageBlit);
+			MTL::Stages compute_before = before_stages & (MTL::StageDispatch | MTL::StageBlit);
+			if (compute_after != 0 && compute_before != 0) {
+				compute.encoder->barrierAfterEncoderStages(compute_after, compute_before, MTL4::VisibilityOptionDevice);
+			}
 		}
 	}
 
@@ -212,9 +215,8 @@ void MDCommandBuffer::pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_st
 void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 	MDPipeline *p = (MDPipeline *)(p_pipeline.id);
 
-	// End current encoder if it is a compute encoder or blit encoder,
-	// as they do not have a defined end boundary in the RDD like render.
-	if (type == MDCommandBufferStateType::Compute) {
+	// End current encoder if it doesn't match the incoming pipeline type.
+	if (type == MDCommandBufferStateType::Compute && p->type != MDPipelineType::Compute) {
 		_end_compute_dispatch();
 	}
 
@@ -252,7 +254,6 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 			render.pipeline = rp;
 		}
 	} else if (p->type == MDPipelineType::Compute) {
-		DEV_ASSERT(type == MDCommandBufferStateType::None);
 		type = MDCommandBufferStateType::Compute;
 
 		if (compute.pipeline != p) {
@@ -1271,9 +1272,10 @@ void MDCommandBuffer::ComputeState::end_encoding() {
 
 void MDCommandBuffer::_compute_set_dirty_state() {
 	if (compute.dirty.has_flag(ComputeState::DIRTY_PIPELINE)) {
-		DEV_ASSERT(!compute.encoder);
-		compute.encoder = NS::RetainPtr(command_buffer->computeCommandEncoder());
-		_encode_barrier(compute.encoder.get());
+		if (!compute.encoder) {
+			compute.encoder = NS::RetainPtr(command_buffer->computeCommandEncoder());
+			_encode_barrier(compute.encoder.get());
+		}
 		compute.encoder->setComputePipelineState(compute.pipeline->state.get());
 	}
 
