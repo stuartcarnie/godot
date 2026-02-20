@@ -48,7 +48,6 @@ struct GodotSwiftUIViewController: UIViewControllerRepresentable {
 @main
 struct SwiftUIApp: App {
 	@UIApplicationDelegateAdaptor(GDTApplicationDelegate.self) var appDelegate
-	@Environment(\.scenePhase) private var scenePhase
 
 	var body: some Scene {
 		WindowGroup {
