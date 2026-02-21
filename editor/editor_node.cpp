@@ -256,7 +256,7 @@ void EditorNode::disambiguate_filenames(const Vector<String> p_full_paths, Vecto
 
 	// For each index set with a size > 1, we need to disambiguate.
 	for (int i = 0; i < index_sets.size(); i++) {
-		RBSet<int> iset = index_sets[i];
+		RBSet<int> iset(index_sets[i]);
 		while (iset.size() > 1) {
 			// Append the parent folder to each scene name.
 			for (const int &E : iset) {
@@ -9058,9 +9058,22 @@ EditorNode::EditorNode() {
 	const String docks_section = "docks";
 	default_layout.instantiate();
 	// Dock numbers are based on DockSlot enum value + 1.
-	default_layout->set_value(docks_section, "dock_3", "Scene,Import");
-	default_layout->set_value(docks_section, "dock_4", "FileSystem,History");
-	default_layout->set_value(docks_section, "dock_5", "Inspector,Signals,Groups");
+	{
+		const String scene_key = SceneTreeDock::get_singleton()->get_effective_layout_key();
+		const String import_key = ImportDock::get_singleton()->get_effective_layout_key();
+		default_layout->set_value(docks_section, "dock_3", vformat("%s,%s", scene_key, import_key));
+	}
+	{
+		const String filesystem_key = filesystem_dock->get_effective_layout_key();
+		const String history_key = history_dock->get_effective_layout_key();
+		default_layout->set_value(docks_section, "dock_4", vformat("%s,%s", filesystem_key, history_key));
+	}
+	{
+		const String inspector_key = InspectorDock::get_singleton()->get_effective_layout_key();
+		const String signals_key = SignalsDock::get_singleton()->get_effective_layout_key();
+		const String groups_key = GroupsDock::get_singleton()->get_effective_layout_key();
+		default_layout->set_value(docks_section, "dock_5", vformat("%s,%s,%s", inspector_key, signals_key, groups_key));
+	}
 
 	int hsplits[] = { 0, dock_hsize, -dock_hsize, 0 };
 	for (int i = 0; i < (int)std_size(hsplits); i++) {
