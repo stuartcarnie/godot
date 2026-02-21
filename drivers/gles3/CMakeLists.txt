@@ -75,6 +75,8 @@ target_sources(gles3 PRIVATE
         rasterizer_gles3.h
         rasterizer_scene_gles3.cpp
         rasterizer_scene_gles3.h
+        rasterizer_util_gles3.cpp
+        rasterizer_util_gles3.h
         shader_gles3.cpp
         shader_gles3.h
         storage/config.cpp

@@ -166,6 +166,8 @@ target_sources(tests PRIVATE
         servers/test_navigation_server_3d.cpp
         servers/test_text_server.cpp
         servers/test_triangle2.cpp
+        signal_watcher.cpp
+        signal_watcher.h
         test_macros.cpp
         test_macros.h
         test_main.cpp

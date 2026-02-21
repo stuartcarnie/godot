@@ -19,6 +19,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ../../modules/gdscript/icons/GDScript.svg
         ../../modules/gdscript/icons/GDScriptInternal.svg
         ../../modules/gridmap/icons/GridMap.svg
+        ../../modules/gridmap/icons/GridMapDock.svg
         ../../modules/noise/icons/FastNoiseLite.svg
         ../../modules/noise/icons/Noise.svg
         ../../modules/noise/icons/NoiseTexture2D.svg
