@@ -37,6 +37,8 @@ target_sources(core PRIVATE
         variant_op.h
         variant_parser.cpp
         variant_parser.h
+        variant_pools.cpp
+        variant_pools.h
         variant_setget.cpp
         variant_setget.h
         variant_utility.cpp
