@@ -263,7 +263,7 @@ fragment void fullscreenNoopFrag(float4 gl_FragCoord [[position]]) {
 		*p_error = err;
 	}
 
-	if (mtlLib.get() == nullptr) {
+	if (!mtlLib) {
 		return {};
 	}
 

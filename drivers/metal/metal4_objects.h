@@ -55,11 +55,9 @@
 
 #include "servers/rendering/rendering_device_driver.h"
 
-#include <CommonCrypto/CommonDigest.h>
+#include <zlib.h>
 #include <Foundation/Foundation.hpp>
 #include <Metal/Metal.hpp>
-#include <simd/simd.h>
-#include <zlib.h>
 #include <initializer_list>
 #include <optional>
 
@@ -453,10 +451,10 @@ public:
 } // namespace MTL4
 
 namespace rid {
-#define MAKE_ID(FROM, TO)                                     \
+#define MAKE_ID(FROM, TO) \
 	API_AVAILABLE(macos(26), ios(26), tvos(26), visionos(26)) \
-	_FORCE_INLINE_ TO make(FROM p_obj) {                      \
-		return TO(reinterpret_cast<uint64_t>(p_obj));         \
+	_FORCE_INLINE_ TO make(FROM p_obj) { \
+		return TO(reinterpret_cast<uint64_t>(p_obj)); \
 	}
 
 MAKE_ID(MTL4::CommandQueue *, RDD::CommandQueueID);

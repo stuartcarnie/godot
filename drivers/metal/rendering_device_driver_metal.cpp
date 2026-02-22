@@ -554,7 +554,7 @@ void RenderingDeviceDriverMetal::texture_get_copyable_layout(TextureID p_texture
 
 Vector<uint8_t> RenderingDeviceDriverMetal::texture_get_data(TextureID p_texture, uint32_t p_layer) {
 	MTL::Texture *obj = reinterpret_cast<MTL::Texture *>(p_texture.id);
-	// ERR_FAIL_COND_V_MSG(obj->storageMode() != MTL::StorageModeShared, Vector<uint8_t>(), "Texture must be created with TEXTURE_USAGE_CPU_READ_BIT set.");
+	ERR_FAIL_COND_V_MSG(obj->storageMode() != MTL::StorageModeShared, Vector<uint8_t>(), "Texture must be created with TEXTURE_USAGE_CPU_READ_BIT set.");
 
 	MTL::Buffer *buf = obj->buffer();
 	if (buf) {
@@ -564,25 +564,6 @@ Vector<uint8_t> RenderingDeviceDriverMetal::texture_get_data(TextureID p_texture
 		image_data.resize_uninitialized(buf->length());
 		memcpy(image_data.ptrw(), buf->contents(), buf->length());
 		return image_data;
-	}
-
-	NS::SharedPtr<MTL::Texture> temporary;
-	if (obj->storageMode() == MTL::StorageModePrivate) {
-		// Need to copy to a temporary texture instead.
-		NS::SharedPtr<MTL::CommandQueue> tmp = NS::TransferPtr(device->newCommandQueue());
-		MTL::CommandBuffer *cmd = tmp->commandBuffer();
-		MTL::BlitCommandEncoder *blit = cmd->blitCommandEncoder();
-		NS::SharedPtr<MTL::TextureDescriptor> desc = NS::TransferPtr(MTL::TextureDescriptor::texture2DDescriptor(obj->pixelFormat(), obj->width(), obj->height(), obj->mipmapLevelCount() > 1));
-		desc->setTextureType(obj->textureType());
-		desc->setDepth(obj->depth());
-		desc->setArrayLength(obj->arrayLength());
-		desc->setStorageMode(MTL::StorageModeShared);
-		temporary = NS::TransferPtr(device->newTexture(desc.get()));
-		blit->copyFromTexture(obj, temporary.get());
-		blit->endEncoding();
-		cmd->commit();
-		cmd->waitUntilCompleted();
-		obj = temporary.get();
 	}
 
 	DataFormat tex_format = pixel_formats->getDataFormat(obj->pixelFormat());
@@ -606,10 +587,6 @@ Vector<uint8_t> RenderingDeviceDriverMetal::texture_get_data(TextureID p_texture
 	uint8_t *dest_ptr = image_data.ptrw();
 
 	for (uint32_t mm_i = 0; mm_i < tex_mipmaps; mm_i++) {
-		size_t rowPitch = pixel_formats->getBytesPerRow(obj->pixelFormat(), tex_w);
-		size_t depthPitch = pixel_formats->getBytesPerLayer(obj->pixelFormat(), rowPitch, tex_w);
-		size_t arrayPitch = depthPitch * tex_d;
-
 		uint32_t bw = STEPIFY(tex_w, blockw);
 		uint32_t bh = STEPIFY(tex_h, blockh);
 
@@ -2392,6 +2369,8 @@ Error RenderingDeviceDriverMetal::gpu_capture_begin() {
 		String project_name = ((String)GLOBAL_GET("application/config/name")).to_snake_case();
 		project_name.append_ascii(".");
 		project_name.append_utf32(get_api_name().span());
+		project_name.append_ascii(".");
+		project_name.append_utf32((itos(OS::get_singleton()->get_unix_time())).span());
 		project_name.append_ascii(".gputrace");
 		NS::Dictionary *env = NS::ProcessInfo::processInfo()->environment();
 		NS::String *tmpdir = static_cast<NS::String *>(env->object(MTLSTR("TMPDIR")));

@@ -86,7 +86,7 @@ void MDCommandBuffer::end_label() {
 }
 
 void MDCommandBuffer::begin() {
-	DEV_ASSERT(commandBuffer.get() == nullptr && !state_begin);
+	DEV_ASSERT(!commandBuffer && !state_begin);
 	state_begin = true;
 	bzero(pending_after_stages, sizeof(pending_after_stages));
 	bzero(pending_before_queue_stages, sizeof(pending_before_queue_stages));
@@ -129,7 +129,7 @@ void MDCommandBuffer::commit() {
 
 MTL::CommandBuffer *MDCommandBuffer::command_buffer() {
 	DEV_ASSERT(state_begin);
-	if (commandBuffer.get() == nullptr) {
+	if (!commandBuffer) {
 		commandBuffer = NS::RetainPtr(queue->commandBuffer());
 		if (use_barriers) {
 			commandBuffer->useResidencySet(_frame_state.rs.get());
@@ -231,9 +231,13 @@ void MDCommandBuffer::pipeline_barrier(BitField<RDD::PipelineStageBits> p_src_st
 void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 	MDPipeline *p = (MDPipeline *)(p_pipeline.id);
 
-	// End current encoder if the new pipeline requires a new encoder type.
-	if (type == MDCommandBufferStateType::Compute && p->type != MDPipelineType::Compute) {
-		_end_compute_dispatch();
+	// End the current encoder if the new pipeline requires a new encoder type.
+	if (type == MDCommandBufferStateType::Compute) {
+		// NOTE: We must end the encoder if we're not using barriers, as proper synchronization between dispatch
+		// calls is only guaranteed when using barriers.
+		if (p->type != MDPipelineType::Compute || !use_barriers) {
+			_end_compute_dispatch();
+		}
 	} else if (type == MDCommandBufferStateType::Blit) {
 		_end_blit();
 	}
@@ -242,7 +246,7 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 		DEV_ASSERT(type == MDCommandBufferStateType::Render);
 		MDRenderPipeline *rp = (MDRenderPipeline *)p;
 
-		if (render.encoder.get() == nullptr) {
+		if (!render.encoder) {
 			// This error would happen if the render pass failed.
 			ERR_FAIL_NULL_MSG(render.desc.get(), "Render pass descriptor is null.");
 
@@ -1367,7 +1371,7 @@ void MDCommandBuffer::RenderState::reset() {
 }
 
 void MDCommandBuffer::RenderState::end_encoding() {
-	if (encoder.get() == nullptr) {
+	if (!encoder) {
 		return;
 	}
 
@@ -1378,7 +1382,7 @@ void MDCommandBuffer::RenderState::end_encoding() {
 #pragma mark - ComputeState
 
 void MDCommandBuffer::ComputeState::end_encoding() {
-	if (encoder.get() == nullptr) {
+	if (!encoder) {
 		return;
 	}
 
@@ -1390,7 +1394,7 @@ void MDCommandBuffer::ComputeState::end_encoding() {
 
 void MDCommandBuffer::_compute_set_dirty_state() {
 	if (compute.dirty.has_flag(ComputeState::DIRTY_PIPELINE)) {
-		if (compute.encoder.get() == nullptr) {
+		if (!compute.encoder) {
 			compute.encoder = NS::RetainPtr(command_buffer()->computeCommandEncoder(MTL::DispatchTypeConcurrent));
 			_encode_barrier(compute.encoder.get());
 		}
