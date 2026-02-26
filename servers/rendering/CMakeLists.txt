@@ -50,10 +50,11 @@ target_sources(servers PRIVATE
         rendering_method.h
         rendering_server.cpp
         rendering_server.h
-        rendering_server_constants.h
         rendering_server_default.cpp
         rendering_server_default.h
+        rendering_server_enums.h
         rendering_server_globals.h
+        rendering_server_types.h
         rendering_shader_container.cpp
         rendering_shader_container.h
         rendering_shader_library.h

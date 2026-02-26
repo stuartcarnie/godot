@@ -10,7 +10,9 @@ target_sources(servers PRIVATE
         environment/fog.h
         environment/gi.h
         rasterizer_canvas_dummy.h
+        rasterizer_dummy.cpp
         rasterizer_dummy.h
+        rasterizer_scene_dummy.cpp
         rasterizer_scene_dummy.h
         storage/light_storage.cpp
         storage/light_storage.h

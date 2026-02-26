@@ -20,6 +20,8 @@ target_sources(servers PRIVATE
         particles_storage.h
         render_data.cpp
         render_data.h
+        render_data_extension.cpp
+        render_data_extension.h
         render_scene_buffers.cpp
         render_scene_buffers.h
         render_scene_data.cpp
