@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_script_plugin.cpp                                              */
+/*  windows.h                                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,38 +28,27 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "editor_script_plugin.h"
+#pragma once
 
-#include "core/io/resource_loader.h"
-#include "editor/editor_interface.h"
-#include "editor/script/editor_script.h"
-#include "editor/settings/editor_command_palette.h"
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 
-Ref<EditorScript> create_instance(const StringName &p_name) {
-	Ref<EditorScript> es;
-	es.instantiate();
-	Ref<Script> scr = ResourceLoader::load(ScriptServer::get_global_class_path(p_name), "Script", ResourceFormatLoader::CACHE_MODE_REUSE);
-	if (scr.is_valid()) {
-		es->set_script(scr);
-	}
-	return es;
-}
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 
-void EditorScriptPlugin::run_command(const StringName &p_name) {
-	create_instance(p_name)->run();
-}
+#ifdef _MSC_VER
+// HACK: MSVC lacks an `include_next` equivalent, so we'll instead utilize the relative path of
+//  the system include by going up one directory and immediately returning.
+#include <../um/windows.h>
+#else
+#include_next <windows.h>
+#endif
 
-void EditorScriptPlugin::command_palette_about_to_popup() {
-	for (const StringName &command : commands) {
-		EditorInterface::get_singleton()->get_command_palette()->remove_command("editor_scripts/" + command);
-	}
-	commands.clear();
-	ScriptServer::get_indirect_inheriters_list(SNAME("EditorScript"), &commands);
-	for (const StringName &command : commands) {
-		EditorInterface::get_singleton()->get_command_palette()->add_command(String(command).capitalize(), "editor_scripts/" + command, callable_mp(this, &EditorScriptPlugin::run_command).bind(command));
-	}
-}
-
-EditorScriptPlugin::EditorScriptPlugin() {
-	EditorInterface::get_singleton()->get_command_palette()->connect("about_to_popup", callable_mp(this, &EditorScriptPlugin::command_palette_about_to_popup));
-}
+// windows.h badly defines macros that clash with our own or types/enums.
+#undef ERROR // wingdi.h
+#undef DELETE // winnt.h
+#undef MessageBox // winuser.h
+#undef CONNECT_DEFERRED // winnetwk.h
+#undef MONO_FONT // wingdi.h
