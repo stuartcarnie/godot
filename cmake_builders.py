@@ -493,7 +493,7 @@ def version_hash_builder(target, source, env: Environment):
 #include "core/version.h"
 
 const char *const GODOT_VERSION_HASH = "{git_hash}";
-const uint64_t GODOT_VERSION_TIMESTAMP = {git_timestamp};
+const unsigned long long GODOT_VERSION_TIMESTAMP = {git_timestamp};
 """.format(**version_info)
         )
 

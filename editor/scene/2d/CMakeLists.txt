@@ -26,6 +26,8 @@ target_sources(editor PRIVATE
         path_2d_editor_plugin.h
         polygon_2d_editor_plugin.cpp
         polygon_2d_editor_plugin.h
+        scene_paint_2d_editor_plugin.cpp
+        scene_paint_2d_editor_plugin.h
         skeleton_2d_editor_plugin.cpp
         skeleton_2d_editor_plugin.h
         sprite_2d_editor_plugin.cpp
