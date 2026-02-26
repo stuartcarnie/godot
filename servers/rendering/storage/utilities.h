@@ -31,6 +31,7 @@
 #pragma once
 
 #include "core/math/aabb.h"
+#include "core/math/color.h"
 #include "core/math/vector2i.h"
 #include "core/string/ustring.h"
 #include "core/templates/hash_map.h"

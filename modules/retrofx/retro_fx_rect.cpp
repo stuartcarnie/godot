@@ -31,6 +31,7 @@
 #include "retro_fx_rect.h"
 
 #include "servers/rendering/renderer_rd/storage_rd/texture_storage.h"
+#include "servers/rendering/rendering_server_default.h"
 
 void RetroFXRect::_notification(int p_what) {
 	switch (p_what) {
@@ -123,7 +124,7 @@ void RetroFXRect::_internal_process() {
 	// TODO(sgc): shader_chain should accept a `Texture2D`, so that it defers this to the
 	//  FilterChain, which will have separate versions for RenderingDevice and GLES3
 	// If the texture is a ViewportTexture, this ensures that
-	auto info = RendererRD::TextureStorage::get_singleton()->canvas_texture_get_info(texture->get_rid(), RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED, false, false);
+	auto info = RendererRD::TextureStorage::get_singleton()->canvas_texture_get_info(texture->get_rid(), RSE::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RSE::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED, false, false);
 
 	shader_chain->render(texture_rid, texture->get_size(), output_fb, get_size());
 
