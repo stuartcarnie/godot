@@ -12,6 +12,7 @@ target_sources(platform-android-api PRIVATE
         api.cpp
         api.h
         java_class_wrapper.h
+        jni_singleton.cpp
         jni_singleton.h
 )
 # [[[end]]]
