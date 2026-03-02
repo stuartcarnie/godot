@@ -75,5 +75,5 @@ endif ()
 
 target_link_libraries(godot-module-retrofx PUBLIC core servers slang scene)
 # disable -Wunused-variable for now, as it's too noisy
-target_compile_options(godot-module-retrofx PRIVATE -Wno-unused-variable -Wno-unused-private-field -fexceptions)
+target_compile_options(godot-module-retrofx PRIVATE -Wno-unused-variable -Wno-unused-private-field -Wno-c99-designator -fexceptions)
 group_target_sources(godot-module-retrofx)

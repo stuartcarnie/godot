@@ -7,6 +7,10 @@
 #   cog.outl(')')
 # ]]]
 target_sources(servers PRIVATE
+        accessibility_server.cpp
+        accessibility_server.h
+        accessibility_server_dummy.h
+        accessibility_server_enums.h
         display_server.cpp
         display_server.h
         display_server_headless.cpp

@@ -174,6 +174,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/AStar3D.xml
         classes/AStarGrid2D.xml
         classes/AcceptDialog.xml
+        classes/AccessibilityServer.xml
         classes/AimModifier3D.xml
         classes/AnimatableBody2D.xml
         classes/AnimatableBody3D.xml
