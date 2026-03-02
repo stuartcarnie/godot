@@ -58,6 +58,8 @@ class DisplayServerMacOSBase : public DisplayServer {
 
 	Callable system_theme_changed;
 
+	constexpr static CGFloat HARDWARE_REFERENCE_LUMINANCE_NITS = 100.0f;
+
 public:
 	struct HDROutput {
 		static constexpr float AUTO_MAX_LUMINANCE = -1.0f;

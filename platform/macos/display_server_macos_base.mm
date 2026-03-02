@@ -557,7 +557,7 @@ void DisplayServerMacOSBase::_update_hdr_output(WindowID p_window, const HDROutp
 	float reference_luminance = _calculate_current_reference_luminance(max_potential_edr, max_edr);
 	rendering_context->window_set_hdr_output_reference_luminance(p_window, reference_luminance);
 
-	float max_luminance = p_hdr.is_auto_max_luminance() ? max_potential_edr * 100.0f : p_hdr.max_luminance;
+	float max_luminance = p_hdr.is_auto_max_luminance() ? max_potential_edr * HARDWARE_REFERENCE_LUMINANCE_NITS : p_hdr.max_luminance;
 	rendering_context->window_set_hdr_output_max_luminance(p_window, max_luminance);
 #endif
 }
@@ -614,7 +614,7 @@ float DisplayServerMacOSBase::window_get_hdr_output_reference_luminance(WindowID
 }
 
 constexpr float DisplayServerMacOSBase::_calculate_current_reference_luminance(CGFloat p_max_potential_edr_value, CGFloat p_max_edr_value) const {
-	return (p_max_potential_edr_value * 100.0) / p_max_edr_value;
+	return (p_max_potential_edr_value * HARDWARE_REFERENCE_LUMINANCE_NITS) / p_max_edr_value;
 }
 
 float DisplayServerMacOSBase::window_get_hdr_output_current_reference_luminance(WindowID p_window) const {
@@ -653,7 +653,7 @@ float DisplayServerMacOSBase::window_get_hdr_output_current_max_luminance(Window
 	if (hdr.is_auto_max_luminance()) {
 		CGFloat max_potential_edr;
 		window_get_edr_values(p_window, &max_potential_edr, nullptr);
-		return max_potential_edr * 100.0f;
+		return max_potential_edr * HARDWARE_REFERENCE_LUMINANCE_NITS;
 	}
 	return hdr.max_luminance;
 }

@@ -837,8 +837,7 @@ void DisplayServerAppleEmbedded::_update_hdr_output() {
 	float reference_luminance = _calculate_current_reference_luminance();
 	rendering_context->window_set_hdr_output_reference_luminance(MAIN_WINDOW_ID, reference_luminance);
 
-	float potential = _screen_potential_edr_headroom();
-	float max_luminance = _is_auto_max_luminance() ? potential * 100.0f : hdr_max_luminance;
+	float max_luminance = _screen_potential_edr_headroom() * hardware_reference_luminance_nits;
 	rendering_context->window_set_hdr_output_max_luminance(MAIN_WINDOW_ID, max_luminance);
 #endif
 }
@@ -879,17 +878,17 @@ bool DisplayServerAppleEmbedded::window_is_hdr_output_enabled(WindowID p_window)
 }
 
 void DisplayServerAppleEmbedded::window_set_hdr_output_reference_luminance(const float p_reference_luminance, WindowID p_window) {
-	ERR_FAIL_MSG("Setting reference luminance is not supported on Apple platforms, as it always uses 100 nits as the reference luminance for HDR output.");
+	ERR_PRINT_ONCE("Manually setting reference white luminance is not supported on Apple devices, as they provide a user-facing brightness setting that directly controls reference white luminance.");
 }
 
 float DisplayServerAppleEmbedded::window_get_hdr_output_reference_luminance(WindowID p_window) const {
-	return -1.0f; // Not supported, Apple always uses 100 nits.
+	return -1.0f; // Always auto-adjusted by the OS on Apple platforms.
 }
 
 float DisplayServerAppleEmbedded::_calculate_current_reference_luminance() const {
 	float potential = _screen_potential_edr_headroom();
 	float current = _screen_current_edr_headroom();
-	return potential * 100.0f / current;
+	return potential * hardware_reference_luminance_nits / current;
 }
 
 float DisplayServerAppleEmbedded::window_get_hdr_output_current_reference_luminance(WindowID p_window) const {
@@ -902,22 +901,15 @@ float DisplayServerAppleEmbedded::window_get_hdr_output_current_reference_lumina
 }
 
 void DisplayServerAppleEmbedded::window_set_hdr_output_max_luminance(const float p_max_luminance, WindowID p_window) {
-	if (hdr_max_luminance == p_max_luminance) {
-		return;
-	}
-	hdr_max_luminance = p_max_luminance;
-	_update_hdr_output();
+	ERR_PRINT_ONCE("Manually setting max luminance is not supported on Apple embedded devices as they provide accurate max luminance values for their built-in screens.");
 }
 
 float DisplayServerAppleEmbedded::window_get_hdr_output_max_luminance(WindowID p_window) const {
-	return hdr_max_luminance;
+	return -1.0f;
 }
 
 float DisplayServerAppleEmbedded::window_get_hdr_output_current_max_luminance(WindowID p_window) const {
-	if (_is_auto_max_luminance()) {
-		return _screen_potential_edr_headroom() * 100.0f;
-	}
-	return hdr_max_luminance;
+	return _screen_potential_edr_headroom() * hardware_reference_luminance_nits;
 }
 
 float DisplayServerAppleEmbedded::window_get_output_max_linear_value(WindowID p_window) const {

@@ -470,7 +470,6 @@ float RenderingContextDriverMetal::surface_get_hdr_output_max_luminance(SurfaceI
 }
 
 void RenderingContextDriverMetal::surface_set_hdr_output_linear_luminance_scale(SurfaceID p_surface, float p_linear_luminance_scale) {
-	// TODO: What should the error say?
 }
 
 float RenderingContextDriverMetal::surface_get_hdr_output_linear_luminance_scale(SurfaceID p_surface) const {
