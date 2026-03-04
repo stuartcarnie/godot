@@ -64,6 +64,7 @@
 #include "scene/resources/style_box_flat.h"
 #include "scene/scene_string_names.h"
 #include "servers/display/accessibility_server.h"
+#include "servers/display/display_server.h"
 #include "servers/rendering/rendering_server.h"
 
 void EditorInspectorActionButton::_notification(int p_what) {
@@ -4895,11 +4896,15 @@ void EditorInspector::update_tree() {
 				}
 
 				if (p.name.begins_with("metadata/")) {
-					Variant _default = Variant();
-					if (node != nullptr) {
-						_default = PropertyUtils::get_property_default_value(node, p.name, nullptr, &sstack, false, nullptr, nullptr);
+					if (property_read_only || all_read_only) {
+						ep->set_deletable(false);
+					} else {
+						Variant _default = Variant();
+						if (node != nullptr) {
+							_default = PropertyUtils::get_property_default_value(node, p.name, nullptr, &sstack, false, nullptr, nullptr);
+						}
+						ep->set_deletable(_default == Variant());
 					}
-					ep->set_deletable(_default == Variant());
 				} else {
 					ep->set_deletable(deletable_properties);
 				}
