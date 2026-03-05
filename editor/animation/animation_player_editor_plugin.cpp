@@ -32,8 +32,10 @@
 
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/os/keyboard.h"
+#include "core/os/os.h"
 #include "editor/animation/animation_tree_editor_plugin.h"
 #include "editor/docks/editor_dock_manager.h"
 #include "editor/docks/inspector_dock.h"
@@ -50,6 +52,7 @@
 #include "editor/themes/editor_theme_manager.h"
 #include "scene/animation/animation_tree.h"
 #include "scene/gui/separator.h"
+#include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/image_texture.h"
@@ -469,12 +472,12 @@ void AnimationPlayerEditor::_animation_selected(int p_which) {
 			Node *root = player->get_node_or_null(player->get_root_node());
 
 			// Player shouldn't access parent if it's the scene root.
-			if (!root || (player == get_tree()->get_edited_scene_root() && player->get_root_node() == SceneStringName(path_pp))) {
+			if (!root || (player == get_tree()->get_edited_scene_root() && player->get_root_node() == NodePath(".."))) {
 				NodePath cached_root_path = player->get_path_to(get_cached_root_node());
 				if (player->get_node_or_null(cached_root_path) != nullptr) {
 					player->set_root_node(cached_root_path);
 				} else {
-					player->set_root_node(SceneStringName(path_pp)); // No other choice, preventing crash.
+					player->set_root_node(NodePath("..")); // No other choice, preventing crash.
 				}
 			} else {
 				cached_root_node_id = root->get_instance_id(); // Caching as `track_editor` can lose track of player's root node.
@@ -2257,7 +2260,8 @@ AnimationPlayerEditor::AnimationPlayerEditor(AnimationPlayerEditorPlugin *p_plug
 	blend_editor.tree->set_column_clip_content(0, true);
 	blend_editor.tree->set_column_expand_ratio(1, 3);
 	blend_editor.tree->set_column_clip_content(1, true);
-	blend_vb->add_margin_child(TTRC("Blend Times:"), blend_editor.tree, true);
+	blend_editor.tree->set_scroll_hint_mode(Tree::SCROLL_HINT_MODE_BOTH);
+	blend_vb->add_margin_child(TTRC("Blend Times:"), blend_editor.tree, true)->set_theme_type_variation("NoBorderHorizontalWindow");
 	blend_editor.tree->connect(SNAME("item_edited"), callable_mp(this, &AnimationPlayerEditor::_blend_edited));
 
 	blend_editor.next = memnew(OptionButton);

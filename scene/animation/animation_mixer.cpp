@@ -33,6 +33,7 @@
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/string/string_name.h"
 #include "scene/2d/audio_stream_player_2d.h"
@@ -2488,7 +2489,7 @@ void AnimationMixer::_bind_methods() {
 }
 
 AnimationMixer::AnimationMixer() {
-	root_node = SceneStringName(path_pp);
+	root_node = NodePath("..");
 }
 
 AnimationMixer::~AnimationMixer() {
