@@ -36,8 +36,15 @@ target_sources(metal PRIVATE
         sha256_digest.h
 )
 # [[[end]]]
-target_compile_features(metal PRIVATE cxx_std_20)
-set_target_properties(metal PROPERTIES XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20)
+target_compile_features(metal PRIVATE cxx_std_20 c_std_11)
+set_target_properties(metal PROPERTIES
+        XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD c++20
+        C_STANDARD 11
+        C_STANDARD_REQUIRED OFF
+        C_EXTENSIONS ON
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON
+)
 target_link_libraries(metal PUBLIC core spirv-cross metal-cpp)
 target_compile_definitions(metal
         PUBLIC
@@ -46,7 +53,7 @@ target_compile_definitions(metal
         PRIVATE
         METAL4_ENABLED
 )
-target_compile_options(metal PRIVATE -fexceptions)
+target_compile_options(metal PRIVATE -fexceptions -Wno-c99-designator)
 # disable -Wunused-variable for now, as it's too noisy
 target_compile_options(metal PRIVATE -Wno-unused-variable)
 target_include_directories(metal PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

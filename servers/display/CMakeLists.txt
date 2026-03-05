@@ -13,6 +13,7 @@ target_sources(servers PRIVATE
         accessibility_server_enums.h
         display_server.cpp
         display_server.h
+        display_server_enums.h
         display_server_headless.cpp
         display_server_headless.h
         native_menu.cpp
