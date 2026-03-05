@@ -20,6 +20,7 @@ target_sources(core PRIVATE
         mutex.h
         os.cpp
         os.h
+        process_id.h
         rw_lock.h
         safe_binary_mutex.h
         semaphore.h

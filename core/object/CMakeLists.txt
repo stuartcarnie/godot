@@ -7,8 +7,8 @@
 #   cog.outl(')')
 # ]]]
 target_sources(core PRIVATE
-        callable_method_pointer.cpp
-        callable_method_pointer.h
+        callable_mp.cpp
+        callable_mp.h
         class_db.cpp
         class_db.h
         gdtype.cpp
