@@ -735,8 +735,12 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Progress7.svg
         Progress8.svg
         ProgressBar.svg
+        ProjectDowngrade.svg
+        ProjectDowngradeMajor.svg
         ProjectIconLoading.svg
         ProjectList.svg
+        ProjectUpgrade.svg
+        ProjectUpgradeMajor.svg
         Projection.svg
         Quad.svg
         QuadMesh.svg

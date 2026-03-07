@@ -13,5 +13,7 @@ target_sources(scene PRIVATE
         scene_debugger.h
         scene_debugger_object.cpp
         scene_debugger_object.h
+        view_3d_controller.cpp
+        view_3d_controller.h
 )
 # [[[end]]]
