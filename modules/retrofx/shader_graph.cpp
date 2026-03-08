@@ -4,6 +4,7 @@
 
 #include "shader_graph.h"
 
+#include "core/object/class_db.h"
 #include "core/variant/typed_array.h"
 
 void ShaderGraph::_bind_methods() {

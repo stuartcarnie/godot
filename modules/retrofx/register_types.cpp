@@ -34,6 +34,8 @@
 #include "shader_graph.h"
 #include "slang_shader.h"
 
+#include "core/object/class_db.h"
+#include "core/os/os.h"
 #include "editor/retro_fx_editor_plugin.h"
 
 static Ref<ResourceFormatLoaderSlangPreset> resource_loader_slang_preset;

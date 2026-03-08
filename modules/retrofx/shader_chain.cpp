@@ -4,6 +4,8 @@
 
 #include "shader_chain.h"
 
+#include "core/object/class_db.h"
+
 void ShaderParameter::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_index"), &ShaderParameter::get_index);
 	ClassDB::bind_method(D_METHOD("get_name"), &ShaderParameter::get_name);
