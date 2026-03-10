@@ -27,6 +27,7 @@ target_sources(core PRIVATE
         variant_call.cpp
         variant_callable.cpp
         variant_callable.h
+        variant_caster.h
         variant_construct.cpp
         variant_construct.h
         variant_deep_duplicate.h

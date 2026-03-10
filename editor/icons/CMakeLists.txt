@@ -428,9 +428,6 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         GuiTreeUpdown.svg
         GuiUnchecked.svg
         GuiUncheckedDisabled.svg
-        GuiViewportHdiagsplitter.svg
-        GuiViewportVdiagsplitter.svg
-        GuiViewportVhsplitter.svg
         GuiVisibilityHidden.svg
         GuiVisibilityVisible.svg
         GuiVisibilityXray.svg
