@@ -44,6 +44,8 @@ target_sources(godot-module-openxr PRIVATE
         openxr_htc_vive_tracker_extension.h
         openxr_huawei_controller_extension.cpp
         openxr_huawei_controller_extension.h
+        openxr_khr_generic_controller_extension.cpp
+        openxr_khr_generic_controller_extension.h
         openxr_local_floor_extension.cpp
         openxr_local_floor_extension.h
         openxr_meta_controller_extension.cpp
