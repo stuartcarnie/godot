@@ -60,6 +60,8 @@ target_sources(servers PRIVATE
         rendering_shader_library.h
         shader_compiler.cpp
         shader_compiler.h
+        shader_expression.cpp
+        shader_expression.h
         shader_include_db.cpp
         shader_include_db.h
         shader_language.cpp

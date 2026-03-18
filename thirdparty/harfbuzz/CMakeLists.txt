@@ -66,6 +66,7 @@ target_sources(harfbuzz PRIVATE
         # src/hb-subset-cff-common.cc
         # src/hb-subset-cff1.cc
         # src/hb-subset-cff2.cc
+        # src/hb-subset-cff2-to-cff1.cc
         # src/hb-subset-input.cc
         # src/hb-subset-instancer-iup.cc
         # src/hb-subset-instancer-solver.cc
@@ -76,12 +77,35 @@ target_sources(harfbuzz PRIVATE
         # src/hb-subset-table-layout.cc
         # src/hb-subset-table-other.cc
         # src/hb-subset-table-var.cc
+        src/hb-raster.cc
+        src/hb-raster-draw.cc
+        src/hb-raster-image.cc
+        src/hb-raster-paint.cc
+        src/hb-raster-svg-base.cc
+        src/hb-raster-svg-bbox.cc
+        src/hb-raster-svg-color.cc
+        src/hb-raster-svg-clip.cc
+        src/hb-raster-svg-defs.cc
+        src/hb-raster-svg-defs-scan.cc
+        src/hb-raster-svg-gradient.cc
+        src/hb-raster-svg-fill.cc
+        src/hb-raster-svg-render.cc
+        src/hb-raster-svg-parse.cc
+        src/hb-raster-svg-use.cc
+        src/hb-vector-svg-draw.cc
+        src/hb-vector-svg-paint.cc
+        src/hb-vector-svg-path.cc
+        src/hb-vector-svg-subset.cc
+        src/hb-vector-svg-utils.cc
         src/hb-subset.cc
         src/hb-ucd.cc
         src/hb-unicode.cc
+        src/hb-zlib.cc
         # src/hb-uniscribe.cc
         src/OT/Var/VARC/VARC.cc
+)
 
+target_sources(harfbuzz PRIVATE
         # TODO: should be conditional if free type is enabled
         src/hb-ft.cc
 
@@ -95,6 +119,7 @@ target_compile_definitions(harfbuzz PRIVATE
         HAVE_FREETYPE
         # TODO: if graphite is enabled
         HAVE_GRAPHITE2
+        GRAPHITE2_STATIC
         HAVE_ICU)
 target_compile_options(harfbuzz PRIVATE $<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>>)
 target_link_libraries(harfbuzz PUBLIC freetype graphite icu4c)
