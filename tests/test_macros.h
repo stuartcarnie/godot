@@ -47,7 +47,7 @@
 
 // See documentation for doctest at:
 // https://github.com/onqtam/doctest/blob/master/doc/markdown/readme.md#reference
-#include "thirdparty/doctest/doctest.h"
+#include <thirdparty/doctest/doctest.h>
 
 // Forces a test file to be linked.
 #define TEST_FORCE_LINK(m_name) \
@@ -146,7 +146,7 @@ extern HashMap<String, TestFunc> *test_commands;
 int register_test_command(String p_command, TestFunc p_function);
 
 #define REGISTER_TEST_COMMAND(m_command, m_function) \
-	DOCTEST_GLOBAL_NO_WARNINGS(DOCTEST_ANONYMOUS(DOCTEST_ANON_VAR_), \
+	DOCTEST_GLOBAL_NO_WARNINGS(DOCTEST_ANONYMOUS(GODOT_DOCTEST_ANON_VAR_), \
 			register_test_command(m_command, m_function))
 
 #define MULTICHECK_STRING_EQ(m_obj, m_func, m_param1, m_eq) \
