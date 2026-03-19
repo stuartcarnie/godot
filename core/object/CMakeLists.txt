@@ -17,6 +17,7 @@ target_sources(core PRIVATE
         message_queue.h
         method_bind.cpp
         method_bind.h
+        method_bind_common.h
         method_info.cpp
         method_info.h
         object.cpp
