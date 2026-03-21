@@ -30,15 +30,18 @@
 
 #include "renderer_viewport.h"
 
+#include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/math/transform_interpolator.h"
 #include "core/object/worker_thread_pool.h"
+#include "core/os/os.h"
 #include "core/profiling/profiling.h"
 #include "servers/display/display_server.h"
 #include "servers/rendering/renderer_canvas_cull.h"
 #include "servers/rendering/renderer_compositor.h"
-#include "servers/rendering/renderer_scene_cull.h"
+#include "servers/rendering/renderer_scene_occlusion_cull.h"
 #include "servers/rendering/rendering_device.h"
+#include "servers/rendering/rendering_method.h"
 #include "servers/rendering/rendering_server_globals.h"
 #include "servers/rendering/storage/texture_storage.h"
 

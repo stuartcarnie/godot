@@ -30,7 +30,8 @@
 
 #include "editor_dock_manager.h"
 
-#include "core/object/class_db.h"
+#include "core/object/callable_mp.h"
+#include "core/object/class_db.h" // IWYU pragma: keep. `ADD_SIGNAL` macro.
 #include "editor/docks/dock_tab_container.h"
 #include "editor/docks/editor_dock.h"
 #include "editor/editor_node.h"
@@ -41,6 +42,7 @@
 #include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
 #include "scene/gui/label.h"
+#include "scene/gui/popup_menu.h"
 #include "scene/gui/split_container.h"
 #include "scene/gui/tab_container.h"
 #include "scene/main/window.h"
@@ -48,6 +50,17 @@
 
 ////////////////////////////////////////////////
 ////////////////////////////////////////////////
+
+void DockSplitContainer::_notification(int p_what) {
+	switch (p_what) {
+		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
+			if (!EditorSettings::get_singleton()->check_changed_settings_in_group("interface/touchscreen")) {
+				return;
+			}
+			set_touch_dragger_enabled(EDITOR_GET("interface/touchscreen/enable_touch_optimizations"));
+		} break;
+	}
+}
 
 void DockSplitContainer::_update_visibility() {
 	if (is_updating) {
@@ -115,6 +128,7 @@ DockSplitContainer::DockSplitContainer() {
 	if (EDITOR_GET("interface/touchscreen/enable_touch_optimizations")) {
 		callable_mp((SplitContainer *)this, &SplitContainer::set_touch_dragger_enabled).call_deferred(true);
 	}
+	set_drag_nested_intersections(true);
 }
 
 ////////////////////////////////////////////////

@@ -30,6 +30,7 @@
 
 #include "movie_writer.h"
 
+#include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
 #include "core/object/class_db.h"
@@ -141,6 +142,7 @@ void MovieWriter::_bind_methods() {
 	GDVIRTUAL_BIND(_get_audio_speaker_mode)
 
 	GDVIRTUAL_BIND(_handles_file, "path")
+	GDVIRTUAL_BIND(_get_supported_extensions)
 
 	GDVIRTUAL_BIND(_write_begin, "movie_size", "fps", "base_path")
 	GDVIRTUAL_BIND(_write_frame, "frame_image", "audio_frame_block")

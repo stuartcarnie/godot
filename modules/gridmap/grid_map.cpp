@@ -30,9 +30,12 @@
 
 #include "grid_map.h"
 
+#include "core/config/engine.h"
 #include "core/io/marshalls.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/templates/a_hash_map.h"
+#include "scene/main/scene_tree.h"
 #include "scene/resources/3d/mesh_library.h"
 #include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/surface_tool.h"
@@ -40,7 +43,6 @@
 
 #ifndef PHYSICS_3D_DISABLED
 #include "core/math/convex_hull.h"
-#include "scene/resources/3d/box_shape_3d.h"
 #include "scene/resources/3d/capsule_shape_3d.h"
 #include "scene/resources/3d/concave_polygon_shape_3d.h"
 #include "scene/resources/3d/convex_polygon_shape_3d.h"

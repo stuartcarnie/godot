@@ -32,11 +32,15 @@
 
 STATIC_ASSERT_INCOMPLETE_TYPE(class, RenderingServer);
 
+#include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/input/input.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
+#include "core/os/os.h"
 #include "scene/gui/control.h"
+#include "scene/main/scene_tree.h"
 #include "scene/theme/theme_db.h"
 #include "scene/theme/theme_owner.h"
 #include "servers/display/accessibility_server.h"
@@ -953,12 +957,16 @@ void Window::hide() {
 
 void Window::_accessibility_activate() {
 	_accessibility_notify_enter(this);
-	AccessibilityServer::get_singleton()->window_activation_completed(get_window_id());
+	if (!get_embedder()) {
+		AccessibilityServer::get_singleton()->window_activation_completed(get_window_id());
+	}
 }
 
 void Window::_accessibility_deactivate() {
 	_accessibility_notify_exit(this);
-	AccessibilityServer::get_singleton()->window_deactivation_completed(get_window_id());
+	if (!get_embedder()) {
+		AccessibilityServer::get_singleton()->window_deactivation_completed(get_window_id());
+	}
 }
 
 void Window::_accessibility_notify_enter(Node *p_node) {
@@ -1050,12 +1058,16 @@ void Window::set_visible(bool p_visible) {
 		if (get_tree() && get_tree()->is_accessibility_supported()) {
 			get_tree()->_accessibility_force_update();
 			_accessibility_notify_enter(this);
-			AccessibilityServer::get_singleton()->window_activation_completed(get_window_id());
+			if (!embedder_vp) {
+				AccessibilityServer::get_singleton()->window_activation_completed(get_window_id());
+			}
 		}
 	} else {
 		if (get_tree() && get_tree()->is_accessibility_supported()) {
 			_accessibility_notify_exit(this);
-			AccessibilityServer::get_singleton()->window_deactivation_completed(get_window_id());
+			if (!embedder_vp) {
+				AccessibilityServer::get_singleton()->window_deactivation_completed(get_window_id());
+			}
 		}
 		focused = false;
 		if (focused_window == this) {
@@ -1672,7 +1684,9 @@ void Window::_notification(int p_what) {
 				if (window_id != DisplayServerEnums::MAIN_WINDOW_ID && get_tree() && get_tree()->is_accessibility_supported()) {
 					get_tree()->_accessibility_force_update();
 					_accessibility_notify_enter(this);
-					AccessibilityServer::get_singleton()->window_activation_completed(get_window_id());
+					if (!embedder) {
+						AccessibilityServer::get_singleton()->window_activation_completed(get_window_id());
+					}
 				}
 				notification(NOTIFICATION_VISIBILITY_CHANGED);
 				emit_signal(SceneStringName(visibility_changed));
@@ -1727,7 +1741,9 @@ void Window::_notification(int p_what) {
 			if (visible && window_id != DisplayServerEnums::MAIN_WINDOW_ID) {
 				if (get_tree() && get_tree()->is_accessibility_supported()) {
 					_accessibility_notify_exit(this);
-					AccessibilityServer::get_singleton()->window_deactivation_completed(get_window_id());
+					if (!embedder) {
+						AccessibilityServer::get_singleton()->window_deactivation_completed(get_window_id());
+					}
 					if (get_parent()) {
 						get_parent()->queue_accessibility_update();
 					}

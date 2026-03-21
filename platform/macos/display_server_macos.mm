@@ -55,9 +55,10 @@
 #include "core/io/file_access.h"
 #include "core/io/marshalls.h"
 #include "core/math/geometry_2d.h"
-#include "core/object/callable_method_pointer.h"
+#include "core/object/callable_mp.h"
 #include "core/os/keyboard.h"
 #include "core/os/main_loop.h"
+#include "core/os/os.h"
 #include "drivers/png/png_driver_common.h"
 #include "main/main.h"
 #include "scene/resources/image_texture.h"
@@ -66,6 +67,7 @@
 
 #ifdef TOOLS_ENABLED
 #import "display_server_macos_embedded.h"
+
 #import "editor/embedded_process_macos.h"
 #endif
 
@@ -2868,7 +2870,7 @@ void DisplayServerMacOS::update_screen_parameters() {
 	}
 
 #ifdef TOOLS_ENABLED
-	for (KeyValue<OS::ProcessID, EmbeddedProcessData> &E : embedded_processes) {
+	for (KeyValue<ProcessID, EmbeddedProcessData> &E : embedded_processes) {
 		E.value.process->display_state_changed();
 	}
 #endif
@@ -3039,7 +3041,7 @@ bool DisplayServerMacOS::get_swap_cancel_ok() {
 	return false;
 }
 
-void DisplayServerMacOS::enable_for_stealing_focus(OS::ProcessID pid) {
+void DisplayServerMacOS::enable_for_stealing_focus(ProcessID pid) {
 }
 
 #define GET_OR_FAIL_V(m_val, m_map, m_key, m_retval) \
@@ -3065,7 +3067,7 @@ void DisplayServerMacOS::_window_update_display_id(WindowData *p_wd) {
 
 #ifdef TOOLS_ENABLED
 	// Notify any embedded processes of the new display ID, so that they can potentially update their vsync.
-	for (KeyValue<OS::ProcessID, EmbeddedProcessData> &E : embedded_processes) {
+	for (KeyValue<ProcessID, EmbeddedProcessData> &E : embedded_processes) {
 		if (E.value.wd == p_wd) {
 			E.value.process->display_state_changed();
 		}
@@ -3081,7 +3083,7 @@ Error DisplayServerMacOS::embed_process_update(DisplayServerEnums::WindowID p_wi
 	WindowData *wd;
 	GET_OR_FAIL_V(wd, windows, p_window, FAILED);
 
-	OS::ProcessID p_pid = p_process->get_embedded_pid();
+	ProcessID p_pid = p_process->get_embedded_pid();
 
 	[CATransaction begin];
 	[CATransaction setDisableActions:YES];
@@ -3118,11 +3120,11 @@ Error DisplayServerMacOS::embed_process_update(DisplayServerEnums::WindowID p_wi
 	return OK;
 }
 
-Error DisplayServerMacOS::request_close_embedded_process(OS::ProcessID p_pid) {
+Error DisplayServerMacOS::request_close_embedded_process(ProcessID p_pid) {
 	return OK;
 }
 
-Error DisplayServerMacOS::remove_embedded_process(OS::ProcessID p_pid) {
+Error DisplayServerMacOS::remove_embedded_process(ProcessID p_pid) {
 	_THREAD_SAFE_METHOD_
 
 	EmbeddedProcessData *ed;
@@ -3784,11 +3786,19 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, Display
 #endif
 
 #if defined(GLES3_ENABLED)
+	if (rendering_driver == "opengl3" && OS::get_singleton()->get_processor_name().contains("Virtual")) {
+		WARN_PRINT("Virtual Machine detected, switching to ANGLE.");
+		rendering_driver = "opengl3_angle";
+	}
 	if (rendering_driver == "opengl3_angle") {
 		gl_manager_angle = memnew(GLManagerANGLE_MacOS);
 		if (gl_manager_angle->initialize() != OK || gl_manager_angle->open_display(nullptr) != OK) {
 			memdelete(gl_manager_angle);
 			gl_manager_angle = nullptr;
+			if (OS::get_singleton()->get_processor_name().contains("Virtual")) {
+				r_error = ERR_UNAVAILABLE;
+				ERR_FAIL_MSG("Could not initialize ANGLE OpenGL.");
+			}
 			bool fallback = GLOBAL_GET("rendering/gl_compatibility/fallback_to_native");
 			if (fallback) {
 #ifdef EGL_STATIC

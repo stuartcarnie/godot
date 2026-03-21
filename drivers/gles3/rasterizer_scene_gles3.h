@@ -104,7 +104,6 @@ struct RenderDataGLES3 {
 	Transform3D inv_cam_transform;
 	Projection cam_projection;
 	bool cam_orthogonal = false;
-	bool cam_frustum = false;
 	uint32_t camera_visible_layers = 0xFFFFFFFF;
 
 	// For billboards to cast correct shadows.
@@ -733,6 +732,8 @@ private:
 
 	template <PassMode p_pass_mode>
 	_FORCE_INLINE_ void _render_list_template(RenderListParameters *p_params, const RenderDataGLES3 *p_render_data, uint32_t p_from_element, uint32_t p_to_element, bool p_alpha_pass = false);
+
+	_FORCE_INLINE_ uint32_t _indices_to_primitives(RSE::PrimitiveType p_primitive, uint32_t p_indices) const;
 
 protected:
 	double time;

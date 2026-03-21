@@ -34,14 +34,20 @@
 #include "core/input/input_map.h"
 #include "core/io/resource_loader.h"
 #include "core/math/math_defs.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
 #include "core/string/translation_server.h"
 #include "scene/gui/label.h"
+#include "scene/gui/popup_menu.h"
 #include "scene/gui/rich_text_effect.h"
+#include "scene/gui/scroll_bar.h"
+#include "scene/main/scene_tree.h"
 #include "scene/main/timer.h"
 #include "scene/resources/atlas_texture.h"
+#include "scene/resources/text_paragraph.h"
+#include "scene/resources/texture.h"
 #include "scene/theme/theme_db.h"
 #include "servers/display/accessibility_server.h"
 #include "servers/display/display_server.h"
@@ -51,6 +57,36 @@
 #ifdef MODULE_REGEX_ENABLED
 #include "modules/regex/regex.h"
 #endif
+
+RichTextLabel::ItemDropcap::~ItemDropcap() {
+	if (font.is_valid()) {
+		RichTextLabel *owner_rtl = ObjectDB::get_instance<RichTextLabel>(owner);
+		if (owner_rtl) {
+			font->disconnect_changed(callable_mp(owner_rtl, &RichTextLabel::_invalidate_fonts));
+		}
+	}
+}
+
+RichTextLabel::ItemImage::~ItemImage() {
+	if (image.is_valid()) {
+		RichTextLabel *owner_rtl = ObjectDB::get_instance<RichTextLabel>(owner);
+		if (owner_rtl) {
+			if (owner_rtl->hr_list.has(rid)) {
+				owner_rtl->hr_list.erase((rid));
+			}
+			image->disconnect_changed(callable_mp(owner_rtl, &RichTextLabel::_texture_changed));
+		}
+	}
+}
+
+RichTextLabel::ItemFont::~ItemFont() {
+	if (font.is_valid()) {
+		RichTextLabel *owner_rtl = ObjectDB::get_instance<RichTextLabel>(owner);
+		if (owner_rtl) {
+			font->disconnect_changed(callable_mp(owner_rtl, &RichTextLabel::_invalidate_fonts));
+		}
+	}
+}
 
 RichTextLabel::ItemCustomFX::ItemCustomFX() {
 	type = ITEM_CUSTOMFX;
@@ -194,7 +230,8 @@ RichTextLabel::Item *RichTextLabel::_get_item_at_pos(RichTextLabel::Item *p_item
 				}
 			} break;
 			case ITEM_TABLE: {
-				offset += 1;
+				ItemTable *table = static_cast<ItemTable *>(it);
+				offset += table->char_count;
 			} break;
 			default:
 				break;
@@ -225,11 +262,11 @@ String RichTextLabel::_roman(int p_num, bool p_capitalize) const {
 }
 
 String RichTextLabel::_letters(int p_num, bool p_capitalize) const {
-	int64_t n = p_num;
+	uint64_t n = p_num;
 
 	int chars = 0;
 	do {
-		n /= 24;
+		n = (n - 1) / 26;
 		chars++;
 	} while (n);
 
@@ -239,11 +276,10 @@ String RichTextLabel::_letters(int p_num, bool p_capitalize) const {
 	c[chars] = 0;
 	n = p_num;
 	do {
-		int mod = Math::abs(n % 24);
-		char a = (p_capitalize ? 'A' : 'a');
-		c[--chars] = a + mod - 1;
-
-		n /= 24;
+		const char a = (p_capitalize ? 'A' : 'a');
+		n = n - 1;
+		c[--chars] = a + n % 26;
+		n /= 26;
 	} while (n);
 
 	return s;
@@ -782,6 +818,7 @@ float RichTextLabel::_shape_line(ItemFrame *p_frame, int p_line, const Ref<Font>
 					}
 					idx++;
 				}
+				table->char_count = t_char_count;
 
 				// Compute width for each column.
 				const int available_width = p_width - l.offset.x - theme_cache.table_h_separation * col_count;
@@ -2825,38 +2862,82 @@ void RichTextLabel::gui_input(const Ref<InputEvent> &p_event) {
 				int c_index = 0;
 				bool outside;
 
-				selection.double_click = false;
+				selection.selection_mode = Selection::SINGLE_CLICK;
 				selection.drag_attempt = false;
 
-				_find_click(main, b->get_position(), &c_frame, &c_line, &c_item, &c_index, &outside, false);
-				if (c_item != nullptr) {
-					if (selection.enabled) {
+				// Detect triple-click.
+				const int triple_click_timeout = 600;
+				const int triple_click_tolerance = 5;
+				bool is_triple_click = (selection.enabled && (OS::get_singleton()->get_ticks_msec() - last_double_click) < (uint64_t)triple_click_timeout && b->get_position().distance_to(last_double_click_pos) < triple_click_tolerance);
+
+				if (is_triple_click) {
+					// Triple-click: select paragraph.
+					last_double_click = 0;
+
+					_find_click(main, b->get_position(), &c_frame, &c_line, &c_item, &c_index, &outside, false);
+
+					if (c_frame) {
+						const Line &l = c_frame->lines[c_line];
+
+						selection.from_frame = c_frame;
+						selection.from_line = c_line;
+						selection.from_item = c_item;
+						selection.from_char = 0;
+
+						selection.to_frame = c_frame;
+						selection.to_line = c_line;
+						selection.to_item = c_item;
+						selection.to_char = l.char_count;
+
 						selection.click_frame = c_frame;
 						selection.click_item = c_item;
 						selection.click_line = c_line;
 						selection.click_char = c_index;
 
-						// Erase previous selection.
-						if (selection.active) {
-							if (drag_and_drop_selection_enabled && _is_click_inside_selection()) {
-								selection.drag_attempt = true;
-								selection.click_item = nullptr;
-							} else {
-								selection.from_frame = nullptr;
-								selection.from_line = 0;
-								selection.from_item = nullptr;
-								selection.from_char = 0;
-								selection.to_frame = nullptr;
-								selection.to_line = 0;
-								selection.to_item = nullptr;
-								selection.to_char = 0;
-								deselect();
-							}
+						selection.active = true;
+						selection.selection_mode = Selection::TRIPLE_CLICK;
+						if (DisplayServer::get_singleton()->has_feature(DisplayServerEnums::FEATURE_CLIPBOARD_PRIMARY)) {
+							DisplayServer::get_singleton()->clipboard_set_primary(get_selected_text());
 						}
 
-						if (!selection.drag_attempt) {
-							is_selecting_text = true;
-							click_select_held->start();
+						is_selecting_text = true;
+						click_select_held->start();
+
+						queue_accessibility_update();
+						queue_redraw();
+					}
+				} else {
+					// Regular single click.
+					_find_click(main, b->get_position(), &c_frame, &c_line, &c_item, &c_index, &outside, false);
+					if (c_item != nullptr) {
+						if (selection.enabled) {
+							selection.click_frame = c_frame;
+							selection.click_item = c_item;
+							selection.click_line = c_line;
+							selection.click_char = c_index;
+
+							// Erase previous selection.
+							if (selection.active) {
+								if (drag_and_drop_selection_enabled && _is_click_inside_selection()) {
+									selection.drag_attempt = true;
+									selection.click_item = nullptr;
+								} else {
+									selection.from_frame = nullptr;
+									selection.from_line = 0;
+									selection.from_item = nullptr;
+									selection.from_char = 0;
+									selection.to_frame = nullptr;
+									selection.to_line = 0;
+									selection.to_item = nullptr;
+									selection.to_char = 0;
+									deselect();
+								}
+							}
+
+							if (!selection.drag_attempt) {
+								is_selecting_text = true;
+								click_select_held->start();
+							}
 						}
 					}
 				}
@@ -2904,7 +2985,11 @@ void RichTextLabel::gui_input(const Ref<InputEvent> &p_event) {
 					selection.click_line = c_line;
 					selection.click_char = c_index;
 
-					selection.double_click = true;
+					selection.selection_mode = Selection::DOUBLE_CLICK;
+					last_double_click = OS::get_singleton()->get_ticks_msec();
+					last_double_click_pos = b->get_position();
+					is_selecting_text = true;
+					click_select_held->start();
 				}
 			} else if (!b->is_pressed()) {
 				if (selection.enabled && DisplayServer::get_singleton()->has_feature(DisplayServerEnums::FEATURE_CLIPBOARD_PRIMARY)) {
@@ -3207,7 +3292,7 @@ void RichTextLabel::_update_selection() {
 			const Line &l2 = selection.click_frame->lines[selection.click_line];
 			if (l1.char_offset + c_index < l2.char_offset + selection.click_char) {
 				swap = true;
-			} else if (l1.char_offset + c_index == l2.char_offset + selection.click_char && !selection.double_click) {
+			} else if (l1.char_offset + c_index == l2.char_offset + selection.click_char && selection.selection_mode == Selection::SINGLE_CLICK) {
 				deselect();
 				return;
 			}
@@ -3220,7 +3305,11 @@ void RichTextLabel::_update_selection() {
 			SWAP(selection.from_char, selection.to_char);
 		}
 
-		if (selection.double_click && c_frame) {
+		if (selection.selection_mode == Selection::TRIPLE_CLICK && c_frame) {
+			// Expand the selection to paragraph edges.
+			selection.from_char = 0;
+			selection.to_char = selection.to_frame->lines[selection.to_line].char_count;
+		} else if (selection.selection_mode == Selection::DOUBLE_CLICK && c_frame) {
 			// Expand the selection to word edges.
 
 			Line *l = &selection.from_frame->lines[selection.from_line];

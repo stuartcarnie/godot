@@ -31,12 +31,15 @@
 #include "text_edit.h"
 #include "text_edit.compat.inc"
 
+#include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
 #include "core/input/input_map.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/object/script_language.h"
 #include "core/os/keyboard.h"
+#include "core/os/main_loop.h"
 #include "core/os/os.h"
 #include "core/string/alt_codes.h"
 #include "core/string/string_builder.h"
@@ -837,7 +840,9 @@ void TextEdit::_notification(int p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			_update_caches();
 			if (caret_pos_dirty) {
-				callable_mp(this, &TextEdit::_emit_caret_changed).call_deferred();
+				// No need to emit "caret_changed" signal (otherwise will save an unnecessary state to history),
+				// so we use `_set_caret_pos_dirty()` instead of `_emit_caret_changed()`.
+				callable_mp(this, &TextEdit::_set_caret_pos_dirty).call_deferred(false);
 			}
 			if (text_changed_dirty) {
 				callable_mp(this, &TextEdit::_emit_text_changed).call_deferred();
@@ -943,7 +948,7 @@ void TextEdit::_notification(int p_what) {
 			int left_margin = Math::ceil(style->get_margin(SIDE_LEFT));
 			int xmargin_beg = left_margin + gutters_width + gutter_padding;
 
-			int xmargin_end = size.width - Math::ceil(style->get_margin(SIDE_RIGHT));
+			int xmargin_end = size.width - Math::floor(style->get_margin(SIDE_RIGHT));
 			if (draw_minimap) {
 				xmargin_end -= minimap_width;
 			}
@@ -1974,7 +1979,7 @@ void TextEdit::_notification(int p_what) {
 		} break;
 
 		case MainLoop::NOTIFICATION_OS_IME_UPDATE: {
-			if (has_focus()) {
+			if (has_focus() && editable) {
 				const String &new_ime_text = DisplayServer::get_singleton()->ime_get_text();
 				const Vector2i &new_ime_selection = DisplayServer::get_singleton()->ime_get_selection();
 				if (ime_text == new_ime_text && ime_selection == new_ime_selection) {
@@ -2059,6 +2064,9 @@ void TextEdit::unhandled_key_input(const Ref<InputEvent> &p_event) {
 }
 
 bool TextEdit::alt_input(const Ref<InputEvent> &p_gui_input) {
+	if (!editable) {
+		return false;
+	}
 	Ref<InputEventKey> k = p_gui_input;
 	if (k.is_valid()) {
 		// Start Unicode Alt input (hold).
@@ -3436,6 +3444,10 @@ void TextEdit::_update_ime_window_position() {
 	if (wid == DisplayServerEnums::INVALID_WINDOW_ID || !DisplayServer::get_singleton()->has_feature(DisplayServerEnums::FEATURE_IME)) {
 		return;
 	}
+	if (!editable) {
+		DisplayServer::get_singleton()->window_set_ime_active(false, wid);
+		return;
+	}
 	DisplayServer::get_singleton()->window_set_ime_active(true, wid);
 	Point2 pos = get_global_position() + get_caret_draw_pos();
 	if (get_window()->get_embedder()) {
@@ -3611,7 +3623,7 @@ Control::CursorShape TextEdit::get_cursor_shape(const Point2 &p_pos) const {
 		return CURSOR_ARROW;
 	}
 
-	int xmargin_end = get_size().width - Math::ceil(style->get_margin(SIDE_RIGHT));
+	int xmargin_end = get_size().width - Math::floor(style->get_margin(SIDE_RIGHT));
 	if (draw_minimap && p_pos.x > xmargin_end - minimap_width && p_pos.x <= xmargin_end) {
 		return CURSOR_ARROW;
 	}
@@ -5800,7 +5812,7 @@ String TextEdit::get_word_under_caret(int p_caret) const {
 
 		PackedInt32Array words = TS->shaped_text_get_word_breaks(text.get_line_data(get_caret_line(c))->get_rid());
 		for (int i = 0; i < words.size(); i = i + 2) {
-			if (words[i] <= get_caret_column(c) && words[i + 1] > get_caret_column(c)) {
+			if (words[i] <= get_caret_column(c) && words[i + 1] >= get_caret_column(c)) {
 				selected_text += text[get_caret_line(c)].substr(words[i], words[i + 1] - words[i]);
 				if (p_caret == -1 && c != carets.size() - 1) {
 					selected_text += "\n";
@@ -6649,6 +6661,26 @@ int TextEdit::get_total_visible_line_count() const {
 }
 
 // Auto adjust.
+bool TextEdit::is_line_in_viewport(int p_line) const {
+	ERR_FAIL_INDEX_V(p_line, text.size(), false);
+
+	int line_wrap = get_line_wrap_index_at_column(p_line, 0);
+
+	int first_vis_line = get_first_visible_line();
+	int first_vis_wrap = first_visible_line_wrap_ofs;
+	int last_vis_line = get_last_full_visible_line();
+	int last_vis_wrap = get_last_full_visible_line_wrap_index();
+
+	if (p_line < first_vis_line || (p_line == first_vis_line && p_line < first_vis_wrap)) {
+		// Caret is above screen.
+		return false;
+	} else if (p_line > last_vis_line || (p_line == last_vis_line && line_wrap > last_vis_wrap)) {
+		// Caret is below screen.
+		return false;
+	}
+	return true;
+}
+
 void TextEdit::adjust_viewport_to_caret(int p_caret) {
 	ERR_FAIL_INDEX(p_caret, carets.size());
 
@@ -7458,6 +7490,7 @@ void TextEdit::_bind_methods() {
 	// Visible lines.
 	ClassDB::bind_method(D_METHOD("set_line_as_first_visible", "line", "wrap_index"), &TextEdit::set_line_as_first_visible, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("get_first_visible_line"), &TextEdit::get_first_visible_line);
+	ClassDB::bind_method(D_METHOD("is_line_in_viewport", "line"), &TextEdit::is_line_in_viewport);
 
 	ClassDB::bind_method(D_METHOD("set_line_as_center_visible", "line", "wrap_index"), &TextEdit::set_line_as_center_visible, DEFVAL(0));
 
@@ -8241,6 +8274,10 @@ int TextEdit::_get_char_pos_for_line(int p_px, int p_line, int p_wrap_index) con
 }
 
 /* Caret */
+void TextEdit::_set_caret_pos_dirty(bool p_dirty) {
+	caret_pos_dirty = p_dirty;
+}
+
 void TextEdit::_caret_changed(int p_caret) {
 	queue_redraw();
 
@@ -8900,7 +8937,7 @@ void TextEdit::_adjust_viewport_to_caret_horizontally(int p_caret, bool p_maximi
 
 void TextEdit::_update_minimap_hover() {
 	const Point2 mp = get_local_mouse_pos();
-	const int xmargin_end = get_size().width - Math::ceil(_get_current_stylebox()->get_margin(SIDE_RIGHT));
+	const int xmargin_end = get_size().width - Math::floor(_get_current_stylebox()->get_margin(SIDE_RIGHT));
 
 	bool hovering_sidebar = mp.x > xmargin_end - minimap_width && mp.x < xmargin_end;
 	if (!hovering_sidebar) {
@@ -8927,7 +8964,7 @@ void TextEdit::_update_minimap_hover() {
 void TextEdit::_update_minimap_click() {
 	Point2 mp = get_local_mouse_pos();
 
-	int xmargin_end = get_size().width - Math::ceil(_get_current_stylebox()->get_margin(SIDE_RIGHT));
+	int xmargin_end = get_size().width - Math::floor(_get_current_stylebox()->get_margin(SIDE_RIGHT));
 	if (!dragging_minimap && (mp.x < xmargin_end - minimap_width || mp.x > xmargin_end)) {
 		minimap_clicked = false;
 		return;

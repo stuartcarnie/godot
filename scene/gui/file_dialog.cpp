@@ -34,8 +34,10 @@
 #include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/os/keyboard.h"
+#include "core/os/os.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/check_box.h"
 #include "scene/gui/flow_container.h"
@@ -387,7 +389,7 @@ void FileDialog::update_dir() {
 }
 
 void FileDialog::_dir_submitted(String p_dir) {
-	String new_dir = p_dir;
+	String new_dir = OS::get_singleton()->expand_path(p_dir);
 #ifdef WINDOWS_ENABLED
 	if (root_prefix.is_empty() && drives->is_visible() && !new_dir.is_network_share_path() && new_dir.is_absolute_path() && new_dir.find(":/") == -1 && new_dir.find(":\\") == -1) {
 		// Non network path without X:/ prefix on Windows, add drive letter.
@@ -456,6 +458,9 @@ void FileDialog::_action_pressed() {
 	}
 
 	String file_text = filename_edit->get_text();
+
+	file_text = OS::get_singleton()->expand_path(file_text);
+
 	String f = file_text.is_absolute_path() ? file_text : dir_access->get_current_dir().path_join(file_text);
 
 	if ((mode == FILE_MODE_OPEN_ANY || mode == FILE_MODE_OPEN_FILE) && (dir_access->file_exists(f) || dir_access->is_bundle(f))) {
@@ -801,7 +806,7 @@ void FileDialog::_popup_menu(const Vector2 &p_pos, int p_for_item) {
 		meta = file_list->get_item_metadata(p_for_item);
 	}
 
-	item_menu->add_item((p_for_item == -1 || meta["dir"]) ? ETR("Open in File Manager") : ETR("Show in File Manager"), ITEM_MENU_SHOW_IN_EXPLORER);
+	item_menu->add_item((p_for_item == -1 || meta["dir"]) ? OS::get_singleton()->get_platform_string(OS::PLATFORM_STRING_FILE_MANAGER_OPEN) : OS::get_singleton()->get_platform_string(OS::PLATFORM_STRING_FILE_MANAGER_SHOW), ITEM_MENU_SHOW_IN_EXPLORER);
 	item_menu->set_item_icon(-1, theme_cache.menu_show_in_file_manager);
 	if (meta["bundle"]) {
 		item_menu->add_item(ETR("Show Package Contents"), ITEM_MENU_SHOW_BUNDLE_CONTENT);
@@ -1326,12 +1331,15 @@ void FileDialog::set_current_path(const String &p_path) {
 	if (!p_path.size()) {
 		return;
 	}
-	int pos = MAX(p_path.rfind_char('/'), p_path.rfind_char('\\'));
+
+	String path = OS::get_singleton()->expand_path(p_path);
+
+	int pos = MAX(path.rfind_char('/'), path.rfind_char('\\'));
 	if (pos == -1) {
-		set_current_file(p_path);
+		set_current_file(path);
 	} else {
-		String path_dir = p_path.substr(0, pos);
-		String path_file = p_path.substr(pos + 1);
+		String path_dir = path.substr(0, pos);
+		String path_file = path.substr(pos + 1);
 		set_current_dir(path_dir);
 		set_current_file(path_file);
 	}
@@ -1561,6 +1569,10 @@ void FileDialog::_invalidate() {
 
 	update_file_list();
 
+	if (ensure_visible_after_invalidating) {
+		file_list->ensure_current_is_visible();
+		ensure_visible_after_invalidating = false;
+	}
 	is_invalidating = false;
 }
 
@@ -1674,6 +1686,7 @@ void FileDialog::_sort_option_selected(int p_option) {
 		file_sort_button->get_popup()->set_item_checked(i, (i == p_option));
 	}
 	file_sort = FileSortOption(p_option);
+	ensure_visible_after_invalidating = true;
 	invalidate();
 }
 

@@ -30,21 +30,14 @@
 
 #pragma once
 
-#include "crash_handler_windows.h"
-#include "key_mapping_windows.h"
-#include "tts_windows.h"
-
 #include "core/config/project_settings.h"
 #include "core/input/input_event.h"
 #include "core/io/image.h"
-#include "core/os/os.h"
+#include "core/os/process_id.h"
+#include "core/templates/a_hash_map.h"
 #include "core/templates/rb_map.h"
-#include "drivers/wasapi/audio_driver_wasapi.h"
-#include "drivers/winmidi/midi_driver_winmidi.h"
-#include "servers/audio/audio_server.h"
 #include "servers/display/display_server.h"
 #include "servers/rendering/renderer_compositor.h"
-#include "servers/rendering/renderer_rd/renderer_compositor_rd.h"
 
 #ifdef XAUDIO2_ENABLED
 #include "drivers/xaudio2/audio_driver_xaudio2.h"
@@ -59,12 +52,10 @@
 #include "gl_manager_windows_native.h"
 #endif // GLES3_ENABLED
 
-#include <io.h>
-#include <cstdio>
-
-#define WIN32_LEAN_AND_MEAN
-#include <shobjidl.h>
 #include <windows.h>
+
+#include <io.h>
+#include <shobjidl.h>
 #include <windowsx.h>
 
 // WinTab API
@@ -159,7 +150,7 @@ enum PreferredAppMode {
 	APPMODE_MAX = 4
 };
 
-typedef const char *(CDECL *WineGetVersionPtr)(void);
+typedef const char *(CDECL *WineGetVersionPtr)();
 typedef bool(WINAPI *ShouldAppsUseDarkModePtr)();
 typedef DWORD(WINAPI *GetImmersiveColorFromColorSetExPtr)(UINT dwImmersiveColorSet, UINT dwImmersiveColorType, bool bIgnoreHighContrast, UINT dwHighContrastCacheMode);
 typedef int(WINAPI *GetImmersiveColorTypeFromNamePtr)(const WCHAR *name);
@@ -190,6 +181,7 @@ typedef struct {
 
 class DropTargetWindows;
 class NativeMenuWindows;
+class TTS_Windows;
 
 #ifndef WDA_EXCLUDEFROMCAPTURE
 #define WDA_EXCLUDEFROMCAPTURE 0x00000011
@@ -389,7 +381,7 @@ class DisplayServerWindows : public DisplayServer {
 
 		bool initialized = false;
 
-		HWND parent_hwnd = 0;
+		HWND parent_hwnd = nullptr;
 
 		bool no_redirection_bitmap = false;
 	};
@@ -433,7 +425,7 @@ class DisplayServerWindows : public DisplayServer {
 	HashMap<DisplayServerEnums::IndicatorID, IndicatorData> indicators;
 
 	struct FileDialogData {
-		HWND hwnd_owner = 0;
+		HWND hwnd_owner = nullptr;
 		Rect2i wrect;
 		String appid;
 		String title;
@@ -537,13 +529,13 @@ class DisplayServerWindows : public DisplayServer {
 	String _get_klid(HKL p_hkl) const;
 
 	struct EmbeddedProcessData {
-		HWND window_handle = 0;
-		HWND parent_window_handle = 0;
+		HWND window_handle = nullptr;
+		HWND parent_window_handle = nullptr;
 		bool is_visible = false;
 	};
-	HashMap<OS::ProcessID, EmbeddedProcessData *> embedded_processes;
+	HashMap<ProcessID, EmbeddedProcessData *> embedded_processes;
 
-	HWND _find_window_from_process_id(OS::ProcessID p_pid, HWND p_current_hwnd);
+	HWND _find_window_from_process_id(ProcessID p_pid, HWND p_current_hwnd);
 
 	void initialize_tts() const;
 
@@ -732,11 +724,11 @@ public:
 
 	virtual bool get_swap_cancel_ok() override;
 
-	virtual void enable_for_stealing_focus(OS::ProcessID pid) override;
-	virtual Error embed_process(DisplayServerEnums::WindowID p_window, OS::ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus) override;
-	virtual Error request_close_embedded_process(OS::ProcessID p_pid) override;
-	virtual Error remove_embedded_process(OS::ProcessID p_pid) override;
-	virtual OS::ProcessID get_focused_process_id() override;
+	virtual void enable_for_stealing_focus(ProcessID pid) override;
+	virtual Error embed_process(DisplayServerEnums::WindowID p_window, ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus) override;
+	virtual Error request_close_embedded_process(ProcessID p_pid) override;
+	virtual Error remove_embedded_process(ProcessID p_pid) override;
+	virtual ProcessID get_focused_process_id() override;
 
 	virtual Error dialog_show(String p_title, String p_description, Vector<String> p_buttons, const Callable &p_callback) override;
 	virtual Error dialog_input_text(String p_title, String p_description, String p_partial, const Callable &p_callback) override;

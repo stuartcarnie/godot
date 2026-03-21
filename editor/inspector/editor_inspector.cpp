@@ -32,9 +32,10 @@
 #include "editor_inspector.compat.inc"
 
 #include "core/input/input.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/os/keyboard.h"
-#include "core/variant/typed_dictionary.h"
+#include "core/variant/typed_dictionary.h" // IWYU pragma: keep. For EditorDebuggerRemoteObjects.
 #include "editor/debugger/editor_debugger_inspector.h"
 #include "editor/debugger/editor_debugger_node.h"
 #include "editor/doc/doc_tools.h"
@@ -58,6 +59,7 @@
 #include "scene/gui/separator.h"
 #include "scene/gui/spin_box.h"
 #include "scene/gui/texture_rect.h"
+#include "scene/main/scene_tree.h"
 #include "scene/main/timer.h"
 #include "scene/property_utils.h"
 #include "scene/resources/packed_scene.h"
@@ -741,7 +743,8 @@ StringName EditorProperty::get_edited_property() const {
 Variant EditorProperty::get_edited_property_display_value() const {
 	ERR_FAIL_NULL_V(object, Variant());
 	Control *control = Object::cast_to<Control>(object);
-	if (checkable && !checked && control && String(property).begins_with("theme_override_")) {
+	// If checked but it's empty, it means that the set value has just been undone, and should show the default value as well.
+	if (control && checkable && (!checked || get_edited_property_value() == Variant()) && String(property).begins_with("theme_override_")) {
 		return control->get_used_theme_item(property);
 	} else {
 		return get_edited_property_value();
@@ -5235,7 +5238,7 @@ void EditorInspector::edit(Object *p_object) {
 		}
 		object->connect(CoreStringName(property_list_changed), callable_mp(this, &EditorInspector::_changed_callback));
 
-		can_favorite = Object::cast_to<Node>(object) || Object::cast_to<Resource>(object);
+		can_favorite = Object::cast_to<Node>(object) || Object::cast_to<Resource>(object) || Object::cast_to<MultiNodeEdit>(object);
 		_update_current_favorites();
 
 		update_tree();
@@ -5831,7 +5834,8 @@ void EditorInspector::_update_current_favorites() {
 	}
 
 	// Fetch built-in properties.
-	StringName class_name = object->get_class_name();
+	const MultiNodeEdit *multi_node_edit = Object::cast_to<MultiNodeEdit>(object);
+	StringName class_name = multi_node_edit ? multi_node_edit->get_edited_class_name() : object->get_class_name();
 	for (const KeyValue<String, PackedStringArray> &KV : favorites) {
 		if (ClassDB::is_parent_class(class_name, KV.key)) {
 			current_favorites.append_array(KV.value);
@@ -5844,7 +5848,8 @@ void EditorInspector::_set_property_favorited(const String &p_path, bool p_favor
 		return;
 	}
 
-	StringName validate_name = object->get_class_name();
+	const MultiNodeEdit *mne = Object::cast_to<MultiNodeEdit>(object);
+	StringName validate_name = mne ? mne->get_edited_class_name() : object->get_class_name();
 	StringName class_name;
 
 	String theme_property;

@@ -36,6 +36,7 @@ TEST_FORCE_LINK(test_text_edit)
 
 #include "core/input/input_map.h"
 #include "scene/gui/text_edit.h"
+#include "scene/main/scene_tree.h"
 #include "tests/display_server_mock.h"
 #include "tests/signal_watcher.h"
 
@@ -6794,7 +6795,7 @@ TEST_CASE("[SceneTree][TextEdit] caret") {
 
 	// Should this work?
 	text_edit->set_caret_column(5);
-	CHECK(text_edit->get_word_under_caret() == "");
+	CHECK(text_edit->get_word_under_caret() == "Lorem");
 
 	text_edit->set_caret_column(6);
 	CHECK(text_edit->get_word_under_caret() == "");

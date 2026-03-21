@@ -1101,10 +1101,12 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 			p_theme->set_icon("radio_unchecked_disabled", "PopupMenu", p_theme->get_icon(SNAME("GuiRadioUncheckedDisabled"), EditorStringName(EditorIcons)));
 			p_theme->set_icon("submenu", "PopupMenu", p_theme->get_icon(SNAME("ArrowRight"), EditorStringName(EditorIcons)));
 			p_theme->set_icon("submenu_mirrored", "PopupMenu", p_theme->get_icon(SNAME("ArrowLeft"), EditorStringName(EditorIcons)));
+			p_theme->set_icon("search", "PopupMenu", p_theme->get_icon(SNAME("Search"), EditorStringName(EditorIcons)));
 
 			p_theme->set_constant("h_separation", "PopupMenu", p_config.base_margin * 1.75 * EDSCALE);
 			int v_sep = (p_config.enable_touch_optimizations ? 12 : p_config.base_margin * 1.75) * EDSCALE;
 			p_theme->set_constant("v_separation", "PopupMenu", v_sep);
+			p_theme->set_constant("search_bar_separation", "PopupMenu", v_sep);
 			p_theme->set_constant("outline_size", "PopupMenu", 0);
 			p_theme->set_constant("item_start_padding", "PopupMenu", p_config.popup_margin);
 			p_theme->set_constant("item_end_padding", "PopupMenu", p_config.popup_margin);
@@ -2200,6 +2202,7 @@ void ThemeModern::populate_editor_styles(const Ref<EditorTheme> &p_theme, Editor
 				style_audio_bus_effect_tree->set_border_color(p_config.extra_border_color_2);
 			}
 			p_theme->set_stylebox(SceneStringName(panel), "EditorAudioBusEffectsTree", style_audio_bus_effect_tree);
+			p_theme->set_constant("h_separation", "EditorAudioBusEffectsTree", 0);
 		}
 
 		// ForegroundPanel.

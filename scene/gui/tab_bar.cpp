@@ -31,6 +31,7 @@
 #include "tab_bar.h"
 
 #include "core/input/input.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/label.h"
@@ -39,6 +40,8 @@
 #include "scene/main/viewport.h"
 #include "scene/theme/theme_db.h"
 #include "servers/display/accessibility_server.h"
+
+#include <cfloat> // FLT_MAX
 
 static inline Color _select_color(const Color &p_override_color, const Color &p_default_color) {
 	return p_override_color.a > 0 ? p_override_color : p_default_color;

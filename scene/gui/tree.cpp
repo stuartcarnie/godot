@@ -34,6 +34,7 @@
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
 #include "core/math/math_funcs.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
@@ -43,6 +44,7 @@
 #include "scene/gui/scroll_bar.h"
 #include "scene/gui/slider.h"
 #include "scene/gui/text_edit.h"
+#include "scene/main/scene_tree.h"
 #include "scene/main/timer.h"
 #include "scene/main/window.h"
 #include "scene/theme/theme_db.h"
@@ -4526,6 +4528,9 @@ bool Tree::edit_selected(bool p_force_edit) {
 		line_editor->select_all();
 		line_editor->show();
 
+		const String &col_title = columns[col].title;
+		line_editor->set_accessibility_name(col_title.is_empty() ? c.text : col_title);
+
 		text_editor->hide();
 
 		popup_editor->set_position(popup_rect.position);
@@ -4549,6 +4554,9 @@ bool Tree::edit_selected(bool p_force_edit) {
 		text_editor->set_text(c.text);
 		text_editor->select_all();
 		text_editor->show();
+
+		const String &col_title_ml = columns[col].title;
+		text_editor->set_accessibility_name(col_title_ml.is_empty() ? c.text : col_title_ml);
 
 		popup_editor->set_position(get_screen_position() + rect.position);
 		popup_editor->set_size(rect.size * popup_scale);
@@ -5326,7 +5334,7 @@ Size2 Tree::get_minimum_size() const {
 }
 
 TreeItem *Tree::create_item(TreeItem *p_parent, int p_index) {
-	ERR_FAIL_COND_V(blocked > 0, nullptr);
+	ERR_FAIL_COND_V_MSG(blocked > 0, nullptr, "The tree cannot create items during mouse selection events.");
 
 	TreeItem *ti = nullptr;
 
@@ -5490,7 +5498,7 @@ bool Tree::is_anything_selected() {
 }
 
 void Tree::clear() {
-	ERR_FAIL_COND(blocked > 0);
+	ERR_FAIL_COND_MSG(blocked > 0, "The tree cannot be cleared during mouse selection events.");
 
 	if (pressing_for_editor) {
 		if (range_drag_enabled) {
@@ -5767,7 +5775,7 @@ void Tree::propagate_set_columns(TreeItem *p_item) {
 
 void Tree::set_columns(int p_columns) {
 	ERR_FAIL_COND(p_columns < 1);
-	ERR_FAIL_COND(blocked > 0);
+	ERR_FAIL_COND_MSG(blocked > 0, "The number of columns cannot be changed during mouse selection events.");
 
 	if (columns.size() > p_columns) {
 		for (int i = p_columns; i < columns.size(); i++) {

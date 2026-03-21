@@ -34,24 +34,24 @@
 
 #include "core/input/input_enums.h"
 #include "core/os/mutex.h"
+#include "core/os/process_id.h"
 #include "core/os/thread.h"
+#include "core/os/thread_safe.h"
 #include "core/templates/local_vector.h"
 #include "servers/display/display_server.h"
 
 #ifdef SOWRAP_ENABLED
-#include "x11/dynwrappers/xlib-so_wrap.h"
-
 #include "x11/dynwrappers/xcursor-so_wrap.h"
 #include "x11/dynwrappers/xinput2-so_wrap.h"
+#include "x11/dynwrappers/xlib-so_wrap.h"
 #include "x11/dynwrappers/xrandr-so_wrap.h"
 
 #ifdef XKB_ENABLED
 #include "xkbcommon-so_wrap.h"
 #endif
 #else // !SOWRAP_ENABLED
-#include <X11/Xlib.h>
-
 #include <X11/Xcursor/Xcursor.h>
+#include <X11/Xlib.h>
 #include <X11/extensions/XInput2.h>
 #include <X11/extensions/Xrandr.h>
 
@@ -373,7 +373,7 @@ class DisplayServerX11 : public DisplayServer {
 		Window process_window = 0;
 		bool visible = true;
 	};
-	HashMap<OS::ProcessID, EmbeddedProcessData *> embedded_processes;
+	HashMap<ProcessID, EmbeddedProcessData *> embedded_processes;
 
 	Point2i _get_window_position(Window p_window) const;
 	Rect2i _get_window_rect(Window p_window) const;
@@ -531,10 +531,10 @@ public:
 	virtual void window_start_drag(DisplayServerEnums::WindowID p_window = DisplayServerEnums::MAIN_WINDOW_ID) override;
 	virtual void window_start_resize(DisplayServerEnums::WindowResizeEdge p_edge, DisplayServerEnums::WindowID p_window) override;
 
-	virtual Error embed_process(DisplayServerEnums::WindowID p_window, OS::ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus) override;
-	virtual Error request_close_embedded_process(OS::ProcessID p_pid) override;
-	virtual Error remove_embedded_process(OS::ProcessID p_pid) override;
-	virtual OS::ProcessID get_focused_process_id() override;
+	virtual Error embed_process(DisplayServerEnums::WindowID p_window, ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus) override;
+	virtual Error request_close_embedded_process(ProcessID p_pid) override;
+	virtual Error remove_embedded_process(ProcessID p_pid) override;
+	virtual ProcessID get_focused_process_id() override;
 
 	virtual void cursor_set_shape(DisplayServerEnums::CursorShape p_shape) override;
 	virtual DisplayServerEnums::CursorShape cursor_get_shape() const override;

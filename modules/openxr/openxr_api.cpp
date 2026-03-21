@@ -30,18 +30,23 @@
 
 #include "openxr_api.h"
 
+#include "action_map/openxr_interaction_profile_metadata.h"
 #include "openxr_interface.h"
 #include "openxr_util.h"
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
+#include "core/object/callable_mp.h"
 #include "core/os/memory.h"
-#include "core/os/os.h"
 #include "core/profiling/profiling.h"
 #include "core/version.h"
 #include "servers/rendering/rendering_server.h"
 
-#include "openxr_platform_inc.h"
+#ifdef ANDROID_ENABLED
+#include "core/os/os.h"
+#endif
+
+#include "openxr_platform_inc.h" // IWYU pragma: keep.
 
 #ifdef VULKAN_ENABLED
 #include "extensions/platform/openxr_vulkan_extension.h"

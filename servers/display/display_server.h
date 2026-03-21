@@ -30,11 +30,12 @@
 
 #pragma once
 
+#include "core/input/input_enums.h"
 #include "core/io/image.h"
 #include "core/io/resource.h"
 #include "core/object/object.h"
 #include "core/os/keyboard.h"
-#include "core/os/os.h"
+#include "core/os/process_id.h"
 #include "core/variant/callable.h"
 #include "core/variant/typed_array.h"
 #include "servers/display/display_server_enums.h"
@@ -486,12 +487,12 @@ public:
 
 	/* PROCESS */
 
-	virtual void enable_for_stealing_focus(OS::ProcessID pid);
+	virtual void enable_for_stealing_focus(ProcessID pid);
 
-	virtual Error embed_process(DisplayServerEnums::WindowID p_window, OS::ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus);
-	virtual Error request_close_embedded_process(OS::ProcessID p_pid);
-	virtual Error remove_embedded_process(OS::ProcessID p_pid);
-	virtual OS::ProcessID get_focused_process_id();
+	virtual Error embed_process(DisplayServerEnums::WindowID p_window, ProcessID p_pid, const Rect2i &p_rect, bool p_visible, bool p_grab_focus);
+	virtual Error request_close_embedded_process(ProcessID p_pid);
+	virtual Error remove_embedded_process(ProcessID p_pid);
+	virtual ProcessID get_focused_process_id();
 
 	/* DIALOGS */
 
@@ -530,6 +531,12 @@ public:
 	void register_additional_output(Object *p_output);
 	void unregister_additional_output(Object *p_output);
 	bool has_additional_outputs() const { return additional_outputs.size() > 0; }
+
+	/* PICTURE_IN_PICTURE */
+	virtual bool is_in_pip_mode(DisplayServerEnums::WindowID p_window = DisplayServerEnums::MAIN_WINDOW_ID) { return false; }
+	virtual void pip_mode_enter(DisplayServerEnums::WindowID p_window = DisplayServerEnums::MAIN_WINDOW_ID) {}
+	virtual void pip_mode_set_aspect_ratio(int p_numerator, int p_denominator, DisplayServerEnums::WindowID p_window = DisplayServerEnums::MAIN_WINDOW_ID) {}
+	virtual void pip_mode_set_auto_enter_on_background(bool p_auto_enter_on_background, DisplayServerEnums::WindowID p_window = DisplayServerEnums::MAIN_WINDOW_ID) {}
 
 	/* ACCESSIBILITY */
 
