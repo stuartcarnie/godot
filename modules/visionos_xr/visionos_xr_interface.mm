@@ -32,21 +32,22 @@
 
 #include "visionos_xr_interface.h"
 
-#import <ARKit/ARKit.h>
-#import <CompositorServices/CompositorServices.h>
-
 #include "core/input/input.h"
-#include "core/object/callable_method_pointer.h"
+#include "core/object/callable_mp.h"
 #include "core/object/class_db.h"
 #include "core/os/os.h"
+#include "core/os/thread.h"
 #include "drivers/metal/metal3_objects.h"
-#include "platform/visionos/godot_app_delegate_service_visionos.h"
 #include "servers/rendering/rendering_device.h"
+#include "servers/rendering/rendering_server.h" // ERR_NOT_ON_RENDER_THREAD_V
 #include "servers/rendering/rendering_server_globals.h"
 #include "servers/rendering/rendering_server_types.h"
-#include "visionos_simd_helpers.h"
 
-#include "core/os/thread.h"
+#include "modules/visionos_xr/visionos_simd_helpers.h"
+#include "platform/visionos/godot_app_delegate_service_visionos.h"
+
+#import <ARKit/ARKit.h>
+#import <CompositorServices/CompositorServices.h>
 
 const String VisionOSXRInterface::name = "visionOS";
 
@@ -93,7 +94,7 @@ VisionOSXRInterface::~VisionOSXRInterface() {
 	// and make sure we cleanup if we haven't already
 	if (is_initialized()) {
 		uninitialize();
-	};
+	}
 }
 
 StringName VisionOSXRInterface::get_name() const {
@@ -113,10 +114,7 @@ bool VisionOSXRInterface::is_initialized() const {
 }
 
 bool VisionOSXRInterface::initialize() {
-	if (initialized) {
-		ERR_PRINT("VisionOSXRInterface already initialized");
-		return true;
-	}
+	ERR_FAIL_COND_V_MSG(initialized, true, "VisionOSXRInterface already initialized.");
 
 	XRServer *xr_server = XRServer::get_singleton();
 	ERR_FAIL_NULL_V(xr_server, false);
@@ -246,7 +244,7 @@ bool VisionOSXRInterface::set_play_area_mode(XRInterface::PlayAreaMode p_mode) {
 }
 
 void VisionOSXRInterface::set_head_pose_from_arkit() {
-	ERR_FAIL_NULL_MSG(current_frame, "Current frame is nil, probably process() has not been called, using identity transform");
+	ERR_FAIL_NULL_MSG(current_frame, "Current frame is nil, process() has probably not been called, using identity transform.");
 
 	cp_frame_timing_t frame_timing = cp_frame_predict_timing(current_frame);
 
@@ -274,7 +272,7 @@ void VisionOSXRInterface::process() {
 
 	current_frame = cp_layer_renderer_query_next_frame(layer_renderer);
 
-	ERR_FAIL_NULL_MSG(current_frame, "Layer renderer unexpectedly returned a nil frame, probably the layer renderer has been invalidated and it hasn't been updated to a new one");
+	ERR_FAIL_NULL_MSG(current_frame, "Layer renderer unexpectedly returned a nil frame, the layer renderer has probably been invalidated and it hasn't been updated to a new one.");
 
 	// Set head pose before engine update, so scripts can access fresh head tracker data
 	set_head_pose_from_arkit();
@@ -339,7 +337,7 @@ Transform3D VisionOSXRInterface::RenderThread::get_transform_for_view(uint32_t p
 	ERR_FAIL_NULL_V(xr_server, origin_from_eye);
 	if (initialized) {
 		ERR_FAIL_COND_V(p_view > get_view_count(), origin_from_eye);
-		ERR_FAIL_NULL_V_MSG(current_drawable, origin_from_eye, "Current drawable is nil, probably pre_render() has not been called, using identity transform");
+		ERR_FAIL_NULL_V_MSG(current_drawable, origin_from_eye, "Current drawable is nil, pre_render() has probably not been called, using identity transform.");
 
 		cp_view_t view = cp_drawable_get_view(current_drawable, p_view);
 		simd_float4x4 head_from_eye_simd = cp_view_get_transform(view);
@@ -353,7 +351,7 @@ Transform3D VisionOSXRInterface::RenderThread::get_transform_for_view(uint32_t p
 	} else {
 		ERR_PRINT("vision_vr_interface not initialized, returning received camera transform");
 		origin_from_eye = Transform3D();
-	};
+	}
 	Transform3D reference_frame = xr_server->get_reference_frame();
 	return p_cam_transform * reference_frame * origin_from_eye;
 }
@@ -367,7 +365,7 @@ Projection VisionOSXRInterface::RenderThread::get_projection_for_view(uint32_t p
 	}
 
 	ERR_FAIL_COND_V(p_view > get_view_count(), eye_projection);
-	ERR_FAIL_NULL_V_MSG(current_drawable, eye_projection, "Current drawable is nil, probably pre_render() has not been called");
+	ERR_FAIL_NULL_V_MSG(current_drawable, eye_projection, "Current drawable is nil, pre_render() has probably not been called.");
 
 	XRServer *xr_server = XRServer::get_singleton();
 	float world_scale = xr_server->get_world_scale();
@@ -375,7 +373,7 @@ Projection VisionOSXRInterface::RenderThread::get_projection_for_view(uint32_t p
 	double scaled_z_far = p_z_far / world_scale;
 	double scaled_z_near = p_z_near / world_scale;
 
-	ERR_FAIL_COND_V_MSG(scaled_z_near < minimum_supported_near_plane, eye_projection, "Your XRCamera3D Near value is lower than the minimum value supported by the visionOS platform. Make sure that Near divided by XROrigin's World Scale is higher or equal than the value returned by LayerRender.Capabilities.supportedMinimumNearPlaneDistance. This value is 0.1 for Apple Vision Pro.");
+	ERR_FAIL_COND_V_MSG(scaled_z_near < minimum_supported_near_plane, eye_projection, "Your XRCamera3D Near value is lower than the minimum value supported by the visionOS platform. Make sure that Near divided by XROrigin's World Scale is higher than or equal to the value returned by LayerRender.Capabilities.supportedMinimumNearPlaneDistance. This value is 0.1 for Apple Vision Pro.");
 
 	simd_float2 depth_range = simd_make_float2(scaled_z_far, scaled_z_near);
 	cp_drawable_set_depth_range(current_drawable, depth_range);
@@ -411,7 +409,7 @@ Rect2i VisionOSXRInterface::RenderThread::get_render_region() {
 		return viewport_rect;
 	}
 
-	ERR_FAIL_NULL_V_MSG(current_drawable, viewport_rect, "Current drawable is nil, probably pre_render() has not been called");
+	ERR_FAIL_NULL_V_MSG(current_drawable, viewport_rect, "Current drawable is nil, pre_render() has probably not been called.");
 
 	// The viewport should be the same for both eyes, so only get it from the first view
 	cp_view_t view = cp_drawable_get_view(current_drawable, 0);
@@ -433,7 +431,7 @@ void VisionOSXRInterface::RenderThread::start_frame_update() {
 		return;
 	}
 
-	ERR_FAIL_NULL_MSG(current_frame, "Current frame is nil, probably process() has not been called");
+	ERR_FAIL_NULL_MSG(current_frame, "Current frame is nil, process() has probably not been called.");
 	cp_frame_start_update(current_frame);
 }
 
@@ -444,7 +442,7 @@ void VisionOSXRInterface::RenderThread::end_frame_update() {
 		return;
 	}
 
-	ERR_FAIL_NULL_MSG(current_frame, "Current frame is nil, probably process() has not been called");
+	ERR_FAIL_NULL_MSG(current_frame, "Current frame is nil, process() has probably not been called.");
 	cp_frame_end_update(current_frame);
 }
 
@@ -507,7 +505,7 @@ void VisionOSXRInterface::RenderThread::encode_present(MTL3::MDCommandBuffer *p_
 		return;
 	}
 
-	ERR_FAIL_NULL_MSG(current_drawable, "Current drawable is nil, probably process() has not been called");
+	ERR_FAIL_NULL_MSG(current_drawable, "Current drawable is nil, process() has probably not been called.");
 	cp_drawable_encode_present(current_drawable, (__bridge id<MTLCommandBuffer>)p_cmd_buffer->get_command_buffer());
 	current_drawable = nullptr;
 }
@@ -519,7 +517,7 @@ void VisionOSXRInterface::RenderThread::end_frame() {
 		return;
 	}
 
-	ERR_FAIL_NULL_MSG(current_frame, "Current frame is nil, probably process() has not been called");
+	ERR_FAIL_NULL_MSG(current_frame, "Current frame is nil, process() has probably not been called.");
 	cp_frame_end_submission(current_frame);
 	current_frame = nullptr;
 }
@@ -535,7 +533,7 @@ RID VisionOSXRInterface::RenderThread::get_color_texture() {
 		rendering_device->texture_owner.free(current_color_texture_id);
 	}
 
-	ERR_FAIL_NULL_V_MSG(current_drawable, RID(), "Current drawable is nil, probably pre_render() has not been called");
+	ERR_FAIL_NULL_V_MSG(current_drawable, RID(), "Current drawable is nil, pre_render() has probably not been called.");
 
 	id<MTLTexture> color_texture = cp_drawable_get_color_texture(current_drawable, 0);
 	current_color_texture_id = rendering_device->texture_create_from_extension(
@@ -564,7 +562,7 @@ RID VisionOSXRInterface::RenderThread::get_depth_texture() {
 		rendering_device->texture_owner.free(current_depth_texture_id);
 	}
 
-	ERR_FAIL_NULL_V_MSG(current_drawable, RID(), "Current drawable is nil, probably pre_render() has not been called");
+	ERR_FAIL_NULL_V_MSG(current_drawable, RID(), "Current drawable is nil, pre_render() has probably not been called.");
 	id<MTLTexture> depth_texture = cp_drawable_get_depth_texture(current_drawable, 0);
 
 	current_depth_texture_id = rendering_device->texture_create_from_extension(
@@ -593,7 +591,7 @@ RID VisionOSXRInterface::RenderThread::get_vrs_texture() {
 		rendering_device->texture_owner.free(current_rasterization_rate_map_id);
 	}
 
-	ERR_FAIL_NULL_V_MSG(current_drawable, RID(), "Current drawable is nil, probably pre_render() has not been called");
+	ERR_FAIL_NULL_V_MSG(current_drawable, RID(), "Current drawable is nil, pre_render() has probably not been called.");
 	size_t count = cp_drawable_get_rasterization_rate_map_count(current_drawable);
 	ERR_FAIL_COND_V_MSG(count == 0, RID(), "No rasterizationRateMaps found");
 	id<MTLRasterizationRateMap> rasterization_rate_map = cp_drawable_get_rasterization_rate_map(current_drawable, 0);

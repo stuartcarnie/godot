@@ -6,14 +6,11 @@
 	<description>
 		This is a visionOS XR implementation for rendering in immersive mode. It uses the Compositor Services framework to render an Immersive scene. It supports the full and mixed immersive modes mode.
 
-		To use this module, you must set 'application/app_role' export setting to 'Immersive'. You can choose the immersion style using the 'application/immersion_style' export setting.
-
+		To use this module, you must set the [code]application/app_role[/code] export setting to [code]Immersive[/code]. You can choose the immersion style using the [code]application/immersion_style[/code] export setting.
 		You must use the Metal rendering driver, and only the Mobile renderer is supported for now.
-
-		You can initialize this interface on the [codeblock]_ready()[/codeblock] function of any of your nodes as follows:
-
+		You can initialize this interface in the [method Node._ready] method of any of your nodes as follows:
 		[codeblock]
-		func  _ready() -> void:
+		func _ready() -> void:
 			var interface = XRServer.find_interface("visionOS")
 			if interface and interface.initialize():
 				var viewport : Viewport = get_viewport()
@@ -21,8 +18,7 @@
 				viewport.vrs_mode = Viewport.VRS_XR
 				viewport.use_hdr_2d = true
 		[/codeblock]
-
-		Important: Do not initialize the XR interface on the [codeblock]_process()[/codeblock] function, as this will initialize it at some unspecified point in the middle of the frame rendering, possibly causing incorrect visionOS API usage.
+		Do not initialize the XR interface in the [method Node._process] method, as this will initialize it at some unspecified point in the middle of the frame rendering, possibly causing incorrect visionOS API usage.
 	</description>
 	<tutorials>
 	</tutorials>

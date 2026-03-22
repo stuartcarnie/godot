@@ -18,7 +18,7 @@
 			[/codeblock]
 		</member>
 		<member name="application/app_role" type="int" setter="" getter="">
-			The application role on the visionOS platform. It can be [code skip-lint]Window[/code] for running a 3D game on a 2D window, or [code skip-lint]Immersive[/code] for a XR experience.
+			The application role on the visionOS platform. It can be [code skip-lint]Window[/code] for running a 3D game on a 2D window, or [code skip-lint]Immersive[/code] for an XR experience.
 		</member>
 		<member name="application/app_store_team_id" type="String" setter="" getter="">
 			Apple Team ID, unique 10-character string. To locate your Team ID check "Membership details" section in your Apple developer account dashboard, or "Organizational Unit" of your code signing certificate. See [url=https://developer.apple.com/help/account/manage-your-team/locate-your-team-id]Locate your Team ID[/url].

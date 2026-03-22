@@ -30,6 +30,8 @@
 
 #import "display_server_visionos.h"
 
+#import "core/os/os.h"
+
 #import "platform/visionos/godot_app_delegate_service_visionos.h"
 
 DisplayServerVisionOS *DisplayServerVisionOS::get_singleton() {

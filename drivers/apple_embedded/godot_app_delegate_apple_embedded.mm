@@ -30,10 +30,8 @@
 
 #import "godot_app_delegate_apple_embedded.h"
 
-#import "godot_app_delegate_service_apple_embedded.h"
-
 #include "core/typedefs.h"
-#import "drivers/apple_embedded/app_delegate_service.h"
+#import "drivers/apple_embedded/godot_app_delegate_service_apple_embedded.h"
 
 @implementation GDTAppDelegate
 
