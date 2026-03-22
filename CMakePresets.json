@@ -1,0 +1,39 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "visionos",
+      "displayName": "visionOS (Window)",
+      "generator": "Xcode",
+      "toolchainFile": "cmake/toolchains/visionos.cmake",
+      "binaryDir": "${sourceDir}/xcode-visionos",
+      "cacheVariables": {
+        "VISIONOS_APP_ROLE": "window",
+        "APPLE_BUNDLE_IDENTIFIER": "org.stuartcarnie.godot",
+        "DEV_BUILD_LEVEL": "all",
+        "GODOT_TARGET": "template_debug"
+      }
+    },
+    {
+      "name": "visionos-immersive",
+      "displayName": "visionOS (Immersive)",
+      "inherits": "visionos",
+      "cacheVariables": {
+        "VISIONOS_APP_ROLE": "immersive",
+        "VISIONOS_IMMERSION_STYLE": "mixed"
+      }
+    },
+    {
+      "name": "ios",
+      "displayName": "iOS",
+      "generator": "Xcode",
+      "toolchainFile": "cmake/toolchains/ios.cmake",
+      "binaryDir": "${sourceDir}/xcode-ios",
+      "cacheVariables": {
+        "APPLE_BUNDLE_IDENTIFIER": "org.stuartcarnie.godot",
+        "DEV_BUILD_LEVEL": "all",
+        "GODOT_TARGET": "template_debug"
+      }
+    }
+  ]
+}

@@ -131,11 +131,20 @@ function(generate_editor_themes_fonts _input _output _tempFileOutput)
 endfunction()
 
 function(generate_version_information _output _output2)
+    # Resolve the git directory, which differs between normal repos and worktrees.
+    execute_process(
+            COMMAND git rev-parse --git-dir
+            WORKING_DIRECTORY ${GODOT_ENGINE_ROOT_DIRECTORY}
+            OUTPUT_VARIABLE _git_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    cmake_path(ABSOLUTE_PATH _git_dir BASE_DIRECTORY ${GODOT_ENGINE_ROOT_DIRECTORY} NORMALIZE)
+
     add_custom_command(
             OUTPUT ${_output} ${_output2}
             COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
             ARGS --env ${GODOT_ENV_FILE} make_version_data_headers --output ${_output} --output2 ${_output2}
-            DEPENDS ${GODOT_ENGINE_ROOT_DIRECTORY}/.git/HEAD
+            DEPENDS ${_git_dir}/HEAD
             COMMENT "Generating version information to ${_output} + ${_output2}"
             WORKING_DIRECTORY ${GODOT_ENGINE_ROOT_DIRECTORY}
             VERBATIM

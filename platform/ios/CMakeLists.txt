@@ -1,3 +1,10 @@
+set(_apple_embedded_plugins_stub "${CMAKE_BINARY_DIR}/generated/apple_embedded_plugins.gen.cpp")
+file(WRITE "${_apple_embedded_plugins_stub}" [=[
+// Auto-generated stub for CMake builds.
+void godot_apple_embedded_plugins_initialize() {}
+void godot_apple_embedded_plugins_deinitialize() {}
+]=])
+
 godot_add_library(ios)
 # [[[cog
 #   import cog
@@ -8,6 +15,7 @@ godot_add_library(ios)
 #   cog.outl(')')
 # ]]]
 target_sources(ios PRIVATE
+        ${_apple_embedded_plugins_stub}
         device_metrics.h
         device_metrics.mm
         display_layer_ios.h
