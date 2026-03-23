@@ -42,6 +42,7 @@
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/gui/editor_zoom_widget.h"
 #include "editor/gui/filter_line_edit.h"
+#include "editor/scene/3d/mesh_library_editor_plugin.h"
 #include "editor/scene/3d/node_3d_editor_plugin.h"
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
@@ -894,7 +895,7 @@ EditorPlugin::AfterGUIInput GridMapEditor::forward_spatial_input_event(Camera3D 
 				floor->set_value(floor->get_value() + mb->get_factor());
 			}
 
-			return EditorPlugin::AFTER_GUI_INPUT_STOP; // Eaten.
+			return EditorPlugin::AFTER_GUI_INPUT_STOP;
 		} else if (mb->get_button_index() == MouseButton::WHEEL_DOWN && (mb->is_command_or_control_pressed())) {
 			if (mb->is_pressed()) {
 				floor->set_value(floor->get_value() - mb->get_factor());
@@ -940,14 +941,14 @@ EditorPlugin::AfterGUIInput GridMapEditor::forward_spatial_input_event(Camera3D 
 					}
 					return EditorPlugin::AFTER_GUI_INPUT_STOP;
 				}
+
+				return EditorPlugin::AFTER_GUI_INPUT_PASS; // Allow freelook to be enabled.
 			} else {
 				return EditorPlugin::AFTER_GUI_INPUT_PASS;
 			}
 
-			if (do_input_action(p_camera, Point2(mb->get_position().x, mb->get_position().y), true)) {
-				return EditorPlugin::AFTER_GUI_INPUT_STOP;
-			}
-			return EditorPlugin::AFTER_GUI_INPUT_PASS;
+			do_input_action(p_camera, Point2(mb->get_position().x, mb->get_position().y), true);
+			return EditorPlugin::AFTER_GUI_INPUT_STOP;
 		} else {
 			if ((mb->get_button_index() == MouseButton::LEFT && input_action == INPUT_ERASE) || (mb->get_button_index() == MouseButton::LEFT && input_action == INPUT_PAINT)) {
 				if (set_items.size()) {
@@ -975,7 +976,7 @@ EditorPlugin::AfterGUIInput GridMapEditor::forward_spatial_input_event(Camera3D 
 			if (valid_mb_press && mb->get_button_index() == MouseButton::LEFT) {
 				valid_mb_press = false;
 
-				if (input_action == INPUT_SELECT) {
+				if (input_action == INPUT_SELECT && selection.active && (selection.begin != last_selection.begin || selection.end != last_selection.end)) {
 					EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
 					undo_redo->create_action(TTR("GridMap Selection"));
 					undo_redo->add_do_method(this, "_set_selection", selection.active, selection.begin, selection.end);
@@ -1162,8 +1163,17 @@ void GridMapEditor::_update_mesh_library() {
 		return;
 	}
 
+	MeshLibraryEditorPlugin *mesh_library_editor_plugin = MeshLibraryEditorPlugin::get_singleton();
 	if (mesh_library.is_valid()) {
 		mesh_library->connect_changed(callable_mp(this, &GridMapEditor::update_palette));
+
+		if (mesh_library_editor_plugin) {
+			mesh_library_editor_plugin->edit(*mesh_library);
+			mesh_library_editor_plugin->make_visible(true);
+		}
+	} else if (mesh_library_editor_plugin) {
+		mesh_library_editor_plugin->edit(nullptr);
+		mesh_library_editor_plugin->make_visible(false);
 	}
 
 	update_palette();
@@ -2031,6 +2041,8 @@ void GridMapEditorPlugin::make_visible(bool p_visible) {
 		grid_map_editor->_show_viewports_transform_gizmo(true);
 		grid_map_editor->close();
 		grid_map_editor->set_process(false);
+
+		MeshLibraryEditorPlugin::get_singleton()->make_visible(false);
 	}
 }
 

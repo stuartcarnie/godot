@@ -8804,6 +8804,7 @@ AnimationTrackKeyEditEditor::AnimationTrackKeyEditEditor(Ref<Animation> p_animat
 			fps = 1.0 / fps;
 		}
 		spinner->set_value(key_ofs * fps);
+		spinner->set_max(animation->get_length() * fps);
 		spinner->connect("updown_pressed", callable_mp(this, &AnimationTrackKeyEditEditor::_time_edit_spun), CONNECT_DEFERRED);
 	} else {
 		spinner->set_step(SECOND_DECIMAL);
@@ -9170,6 +9171,7 @@ void AnimationMarkerEdit::gui_input(const Ref<InputEvent> &p_event) {
 			float offset = (pos.x - timeline->get_name_limit()) / timeline->get_zoom_scale();
 			if (!read_only) {
 				bool selected = _try_select_at_ui_pos(pos, mb->is_command_or_control_pressed() || mb->is_shift_pressed(), false);
+				moving_selection_attempt = false;
 
 				menu->clear();
 				menu->add_icon_item(get_editor_theme_icon(SNAME("Key")), TTRC("Insert Marker..."), MENU_KEY_INSERT);
@@ -9979,6 +9981,7 @@ AnimationMarkerKeyEditEditor::AnimationMarkerKeyEditEditor(Ref<Animation> p_anim
 			fps = 1.0 / fps;
 		}
 		spinner->set_value(time * fps);
+		spinner->set_max(animation->get_length() * fps);
 		spinner->connect("updown_pressed", callable_mp(this, &AnimationMarkerKeyEditEditor::_time_edit_exited), CONNECT_DEFERRED);
 	} else {
 		spinner->set_step(SECOND_DECIMAL);

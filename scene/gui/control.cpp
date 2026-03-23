@@ -2328,7 +2328,7 @@ bool Control::is_focus_owner_in_shortcut_context() const {
 	}
 
 	const Node *ctx_node = get_shortcut_context();
-	const Control *vp_focus = get_viewport() ? get_viewport()->gui_get_focus_owner() : nullptr;
+	const Control *vp_focus = (get_viewport() && get_viewport()->gui_shortcut_use_focus_owner()) ? get_viewport()->gui_get_focus_owner() : nullptr;
 
 	// If the context is valid and the viewport focus is valid, check if the context is the focus or is a parent of it.
 	return ctx_node && vp_focus && (ctx_node == vp_focus || ctx_node->is_ancestor_of(vp_focus));
@@ -3952,6 +3952,15 @@ Node::AutoTranslateMode Control::get_tooltip_auto_translate_mode() const {
 	return data.tooltip_auto_translate_mode;
 }
 
+Node::AutoTranslateMode Control::get_tooltip_auto_translate_mode_at(const Vector2 &p_at) const {
+	ERR_READ_THREAD_GUARD_V(AUTO_TRANSLATE_MODE_INHERIT);
+	AutoTranslateMode auto_translating;
+	if (GDVIRTUAL_CALL(_get_tooltip_auto_translate_mode_at, p_at, auto_translating)) {
+		return auto_translating;
+	}
+	return get_tooltip_auto_translate_mode();
+}
+
 // Extra properties.
 
 void Control::set_tooltip_text(const String &p_hint) {
@@ -4756,6 +4765,7 @@ void Control::_bind_methods() {
 	GDVIRTUAL_BIND(_structured_text_parser, "args", "text");
 	GDVIRTUAL_BIND(_get_minimum_size);
 	GDVIRTUAL_BIND(_get_tooltip, "at_position");
+	GDVIRTUAL_BIND(_get_tooltip_auto_translate_mode_at, "at_position");
 
 	GDVIRTUAL_BIND(_get_drag_data, "at_position");
 	GDVIRTUAL_BIND(_can_drop_data, "at_position", "data");

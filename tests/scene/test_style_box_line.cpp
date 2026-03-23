@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  vulkan_hooks.h                                                        */
+/*  test_style_box_line.cpp                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,26 +28,66 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "tests/test_macros.h"
 
-#include "core/math/vector2i.h"
-#include "core/templates/local_vector.h"
+TEST_FORCE_LINK(test_style_box_line)
 
-#include <drivers/vulkan/godot_vulkan.h>
+#include "scene/resources/style_box_line.h"
 
-class VulkanHooks {
-private:
-	static VulkanHooks *singleton;
+namespace TestStyleBoxLine {
 
-public:
-	VulkanHooks();
-	virtual ~VulkanHooks();
-	virtual bool create_vulkan_instance(const VkInstanceCreateInfo *p_vulkan_create_info, VkInstance *r_instance) = 0;
-	virtual bool get_physical_device(VkPhysicalDevice *r_device) = 0;
-	virtual bool create_vulkan_device(const VkDeviceCreateInfo *p_device_create_info, VkDevice *r_device) = 0;
-	virtual void set_direct_queue_family_and_index(uint32_t p_queue_family_index, uint32_t p_queue_index) = 0;
-	virtual bool use_fragment_density_offsets() = 0;
-	virtual void get_fragment_density_offsets(LocalVector<VkOffset2D> &r_offsets, const Vector2i &p_granularity) = 0;
-	virtual bool use_subsampled_images() = 0;
-	static VulkanHooks *get_singleton() { return singleton; }
-};
+TEST_CASE("[StyleBoxLine] Constructor") {
+	Ref<StyleBoxLine> style_box_line = memnew(StyleBoxLine);
+
+	CHECK(style_box_line->get_color() == Color(0, 0, 0, 1));
+	CHECK(style_box_line->get_thickness() == 1);
+	CHECK(style_box_line->is_vertical() == false);
+	CHECK(style_box_line->get_grow_begin() == 1.0);
+	CHECK(style_box_line->get_grow_end() == 1.0);
+}
+
+TEST_CASE("[StyleBoxLine] set_color, get_color") {
+	Ref<StyleBoxLine> style_box_line = memnew(StyleBoxLine);
+	Color color = Color(0.1, 0.2, 0.3, 1.0);
+
+	style_box_line->set_color(color);
+	CHECK(style_box_line->get_color() == color);
+}
+
+TEST_CASE("[StyleBoxLine] set_thickness, get_thickness") {
+	Ref<StyleBoxLine> style_box_line = memnew(StyleBoxLine);
+
+	style_box_line->set_thickness(5);
+	CHECK(style_box_line->get_thickness() == 5);
+}
+
+TEST_CASE("[StyleBoxLine] set_vertical, is_vertical") {
+	Ref<StyleBoxLine> style_box_line = memnew(StyleBoxLine);
+
+	style_box_line->set_vertical(true);
+	CHECK(style_box_line->is_vertical() == true);
+}
+
+TEST_CASE("[StyleBoxLine] set_vertical, is_vertical") {
+	Ref<StyleBoxLine> style_box_line = memnew(StyleBoxLine);
+
+	style_box_line->set_vertical(true);
+	CHECK(style_box_line->is_vertical() == true);
+}
+
+TEST_CASE("[StyleBoxLine] set_grow_begin, get_grow_begin, set_grow_end, get_grow_end") {
+	Ref<StyleBoxLine> style_box_line = memnew(StyleBoxLine);
+	float grow_value = 3.5;
+
+	SUBCASE("set_grow_begin, get_grow_begin") {
+		style_box_line->set_grow_begin(grow_value);
+		CHECK(style_box_line->get_grow_begin() == grow_value);
+	}
+
+	SUBCASE("set_grow_end, get_grow_end") {
+		style_box_line->set_grow_end(grow_value);
+		CHECK(style_box_line->get_grow_end() == grow_value);
+	}
+}
+
+} // namespace TestStyleBoxLine
