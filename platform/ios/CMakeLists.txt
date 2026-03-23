@@ -1,10 +1,3 @@
-set(_apple_embedded_plugins_stub "${CMAKE_BINARY_DIR}/generated/apple_embedded_plugins.gen.cpp")
-file(WRITE "${_apple_embedded_plugins_stub}" [=[
-// Auto-generated stub for CMake builds.
-void godot_apple_embedded_plugins_initialize() {}
-void godot_apple_embedded_plugins_deinitialize() {}
-]=])
-
 godot_add_library(ios)
 # [[[cog
 #   import cog
@@ -15,7 +8,6 @@ godot_add_library(ios)
 #   cog.outl(')')
 # ]]]
 target_sources(ios PRIVATE
-        ${_apple_embedded_plugins_stub}
         device_metrics.h
         device_metrics.mm
         display_layer_ios.h
@@ -34,18 +26,29 @@ target_sources(ios PRIVATE
 )
 # [[[end]]]
 
-if(${WANT_OPENGL})
+set(_apple_embedded_plugins_stub "${CMAKE_BINARY_DIR}/generated/apple_embedded_plugins.gen.cpp")
+file(WRITE "${_apple_embedded_plugins_stub}" [=[
+// Auto-generated stub for CMake builds.
+void godot_apple_embedded_plugins_initialize() {}
+void godot_apple_embedded_plugins_deinitialize() {}
+]=])
+
+target_sources(ios PRIVATE
+        ${_apple_embedded_plugins_stub}
+)
+
+if (${WANT_OPENGL})
     target_link_libraries(ios PUBLIC OpenGLES3::ES3)
     target_link_libraries(ios PUBLIC gles3)
     target_link_libraries(ios PRIVATE angle)
     target_compile_definitions(ios PRIVATE GLES3_ENABLED=1)
-endif()
+endif ()
 
-if(${WANT_VULKAN} AND ${VULKAN_FOUND})
+if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     target_link_libraries(ios PUBLIC driver-vulkan vulkan
             $<LINK_LIBRARY:FRAMEWORK,${MOLTENVK_FOUND}>)
     target_compile_definitions(ios PRIVATE VULKAN_ENABLED=1)
-endif()
+endif ()
 
 target_link_libraries(ios
         PUBLIC
