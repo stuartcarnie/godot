@@ -149,6 +149,8 @@ target_sources(tests PRIVATE
         scene/test_split_container.cpp
         scene/test_sprite_2d.cpp
         scene/test_sprite_frames.cpp
+        scene/test_style_box_empty.cpp
+        scene/test_style_box_line.cpp
         scene/test_style_box_texture.cpp
         scene/test_tab_bar.cpp
         scene/test_tab_container.cpp

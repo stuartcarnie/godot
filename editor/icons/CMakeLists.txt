@@ -574,6 +574,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         MeshInstance3D.svg
         MeshItem.svg
         MeshLibrary.svg
+        MeshLibraryEditor.svg
         MeshTexture.svg
         MethodOverride.svg
         MethodOverrideAndSlot.svg
@@ -732,6 +733,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Progress7.svg
         Progress8.svg
         ProgressBar.svg
+        ProgressRing.svg
         ProjectDowngrade.svg
         ProjectDowngradeMajor.svg
         ProjectIconLoading.svg
