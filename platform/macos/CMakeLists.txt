@@ -3,7 +3,7 @@ godot_add_library(macos FOLDER platform)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(macos PRIVATE')
-#   for file in list_files(cog, '.'):
+#   for file in list_files(cog, '.', exclude=['gl_manager_macos_angle.h', 'gl_manager_macos_angle.mm']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
@@ -22,8 +22,6 @@ target_sources(macos PRIVATE
         embedded_debugger.mm
         embedded_gl_manager.h
         embedded_gl_manager.mm
-        gl_manager_macos_angle.h
-        gl_manager_macos_angle.mm
         gl_manager_macos_legacy.h
         gl_manager_macos_legacy.mm
         godot_application.h
@@ -89,17 +87,19 @@ endif ()
 
 # target_link_libraries(servers PRIVATE $<$<BOOL:${WANT_PROFILER}>:profiler>)
 
-if(${WANT_OPENGL} AND ${OPENGL_FOUND})
+if (${WANT_OPENGL} AND ${OPENGL_FOUND})
     target_link_libraries(macos PUBLIC OpenGL::GL)
     target_link_libraries(macos PUBLIC gles3 glad)
-    target_link_libraries(macos PRIVATE angle)
+    if (WANT_ANGLE)
+        target_link_libraries(macos PRIVATE angle)
+    endif ()
     target_compile_definitions(macos PRIVATE GLES3_ENABLED=1)
-endif()
+endif ()
 
-if(${WANT_VULKAN} AND ${VULKAN_FOUND})
+if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     target_link_libraries(macos PUBLIC driver-vulkan vulkan MoltenVK)
     target_compile_definitions(macos PRIVATE VULKAN_ENABLED=1)
-endif()
+endif ()
 
 target_link_libraries(macos
         PUBLIC

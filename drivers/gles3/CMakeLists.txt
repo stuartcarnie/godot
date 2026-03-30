@@ -101,8 +101,8 @@ target_sources(gles3 PRIVATE
 target_include_directories(gles3 PUBLIC ${CMAKE_BINARY_INCLUDE_DIR})
 target_link_libraries(gles3 PUBLIC core $<${WANT_GLAD}:glad>)
 target_compile_definitions(gles3 PUBLIC
-        GLES3_ENABLED=1
-        $<${WANT_GLAD}:EGL_ENABLED=1 GLAD_ENABLED=1>
+        GLES3_ENABLED
+        $<${WANT_GLAD}:GLAD_ENABLED>
 )
 
 group_target_sources(gles3)

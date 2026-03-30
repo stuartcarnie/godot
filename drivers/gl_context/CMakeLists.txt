@@ -4,7 +4,7 @@ godot_add_library(gl_context FOLDER drivers STATIC)
 target_sources(gl_context PRIVATE
         ${GLCONTEXT_DRIVER_SOURCE_DIR}/gl.c
 )
-target_compile_definitions(gl_context PUBLIC GLAD_ENABLED=1 EGL_ENABLED=1)
+target_compile_definitions(gl_context PUBLIC GLAD_ENABLED $<$<PLATFORM_ID:Linux>:EGL_ENABLED GLAD_GLES2>)
 target_include_directories(gl_context PUBLIC ${GLCONTEXT_DRIVER_SOURCE_DIR})
 
 group_target_sources(gl_context)

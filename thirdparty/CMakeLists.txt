@@ -4,7 +4,9 @@ add_compile_options($<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:$<IF:$<CXX_COMPILER_
 add_subdirectory(libktx)
 add_subdirectory(amd-fsr)
 add_subdirectory(amd-fsr2)
-add_subdirectory(angle)
+if (WANT_ANGLE)
+    add_subdirectory(angle)
+endif ()
 add_subdirectory(astcenc)
 add_subdirectory(basis_universal)
 
