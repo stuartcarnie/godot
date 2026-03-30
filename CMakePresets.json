@@ -2,6 +2,17 @@
   "version": 6,
   "configurePresets": [
     {
+      "name": "macos",
+      "displayName": "macos (Editor)",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/xcode",
+      "cacheVariables": {
+        "APPLE_BUNDLE_IDENTIFIER": "org.stuartcarnie.godot",
+        "DEV_BUILD_LEVEL": "debug",
+        "ENABLE_RETROFX": true
+      }
+    },
+    {
       "name": "visionos",
       "displayName": "visionOS (Window)",
       "generator": "Xcode",
