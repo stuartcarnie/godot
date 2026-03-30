@@ -21,6 +21,8 @@ target_sources(core PRIVATE
         gdextension_loader.h
         gdextension_manager.cpp
         gdextension_manager.h
+        gdextension_resource_format.cpp
+        gdextension_resource_format.h
         gdextension_special_compat_hashes.cpp
         gdextension_special_compat_hashes.h
         godot_instance.cpp

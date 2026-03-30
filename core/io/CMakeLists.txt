@@ -39,12 +39,16 @@ target_sources(core PRIVATE
         image.h
         image_loader.cpp
         image_loader.h
+        image_resource_format.cpp
+        image_resource_format.h
         ip.cpp
         ip.h
         ip_address.cpp
         ip_address.h
         json.cpp
         json.h
+        json_resource_format.cpp
+        json_resource_format.h
         logger.cpp
         logger.h
         marshalls.cpp
@@ -75,6 +79,7 @@ target_sources(core PRIVATE
         resource_importer.h
         resource_loader.cpp
         resource_loader.h
+        resource_loader_constants.h
         resource_saver.cpp
         resource_saver.h
         resource_uid.cpp

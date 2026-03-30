@@ -40,6 +40,8 @@ target_sources(scene PRIVATE
         compositor.h
         compressed_texture.cpp
         compressed_texture.h
+        compressed_texture_resource_format.cpp
+        compressed_texture_resource_format.h
         curve.cpp
         curve.h
         curve_texture.cpp
@@ -92,6 +94,10 @@ target_sources(scene PRIVATE
         shader.h
         shader_include.cpp
         shader_include.h
+        shader_include_resource_format.cpp
+        shader_include_resource_format.h
+        shader_resource_format.cpp
+        shader_resource_format.h
         skeleton_profile.cpp
         skeleton_profile.h
         sky.cpp

@@ -13,6 +13,8 @@ target_sources(core PRIVATE
         crypto.h
         crypto_core.cpp
         crypto_core.h
+        crypto_resource_format.cpp
+        crypto_resource_format.h
         hashing_context.cpp
         hashing_context.h
 )
