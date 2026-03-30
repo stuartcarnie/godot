@@ -1273,6 +1273,13 @@ void DisplayServerWayland::window_set_mode(DisplayServerEnums::WindowMode p_mode
 	wayland_thread.window_try_set_mode(p_window_id, p_mode);
 }
 
+void DisplayServerWayland::window_set_icon(const Ref<Image> &p_icon, DisplayServerEnums::WindowID p_window_id) {
+	MutexLock mutex_lock(wayland_thread.mutex);
+
+	ERR_FAIL_COND(!windows.has(p_window_id));
+	wayland_thread.set_icon(p_icon, p_window_id);
+}
+
 DisplayServerEnums::WindowMode DisplayServerWayland::window_get_mode(DisplayServerEnums::WindowID p_window_id) const {
 	MutexLock mutex_lock(wayland_thread.mutex);
 
@@ -1901,7 +1908,23 @@ void DisplayServerWayland::process_events() {
 
 		Ref<WaylandThread::WindowRectMessage> winrect_msg = msg;
 		if (winrect_msg.is_valid()) {
+			int scale = winrect_msg->buffer_scale;
+
+			WaylandThread::WindowState *ws = wayland_thread.window_get_state(winrect_msg->id);
+			ERR_CONTINUE(ws == nullptr);
+
+			if (scale == 0) {
+				// This should *never* happen. We fallback to the latest scale but it might
+				// have changed in the meantime to something invalid (non-integer divisor),
+				// leading to a protocol error.
+				ERR_PRINT("Wayland Thread did not report buffer scale at the time of resize.");
+				scale = wayland_thread.window_state_get_preferred_buffer_scale(ws);
+			}
+
+			wayland_thread.window_state_set_buffer_scale(ws, scale);
+
 			_update_window_rect(winrect_msg->rect, winrect_msg->id);
+
 			continue;
 		}
 
@@ -2127,7 +2150,8 @@ void DisplayServerWayland::swap_buffers() {
 
 void DisplayServerWayland::set_icon(const Ref<Image> &p_icon) {
 	MutexLock mutex_lock(wayland_thread.mutex);
-	wayland_thread.set_icon(p_icon);
+
+	wayland_thread.set_default_icon(p_icon);
 }
 
 void DisplayServerWayland::set_context(DisplayServerEnums::Context p_context) {
