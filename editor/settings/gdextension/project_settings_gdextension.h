@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  post_effects.h                                                        */
+/*  project_settings_gdextension.h                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,40 +30,30 @@
 
 #pragma once
 
-#ifdef GLES3_ENABLED
+#include "scene/gui/box_container.h"
 
-#include "drivers/gles3/effects/glow.h"
-#include "drivers/gles3/shaders/effects/post.glsl.gen.h"
+class Tree;
 
-namespace GLES3 {
+class ProjectSettingsGDExtension : public VBoxContainer {
+	GDCLASS(ProjectSettingsGDExtension, VBoxContainer);
 
-class PostEffects {
-private:
-	struct Post {
-		PostShaderGLES3 shader;
-		RID shader_version;
-	} post;
+	enum {
+		COLUMN_PATH,
+		COLUMN_MIN_VERSION,
+		COLUMN_MAX_VERSION,
+		COLUMN_RELOAD,
+		COLUMN_MAX,
+	};
 
-	static PostEffects *singleton;
+	Tree *extension_list = nullptr;
 
-	// Use for full-screen effects. Slightly more efficient than screen_quad as this eliminates pixel overdraw along the diagonal.
-	GLuint screen_triangle = 0;
-	GLuint screen_triangle_array = 0;
+	void _cell_button_pressed(Object *p_item, int p_column, int p_id, MouseButton p_button);
+	void _on_item_activated();
+	void _update_extension_tree();
 
-	void _draw_screen_triangle();
+protected:
+	void _notification(int p_what);
 
 public:
-	static PostEffects *get_singleton();
-
-	PostEffects();
-	~PostEffects();
-
-	void post_copy(GLuint p_dest_framebuffer, Size2i p_dest_size, GLuint p_source_color,
-			GLuint p_source_depth, bool p_ssao_enabled, int p_ssao_quality_level, float p_ssao_strength, float p_ssao_radius,
-			Size2i p_source_size, float p_luminance_multiplier, const Glow::Level *p_glow_buffers, float p_glow_intensity,
-			float p_srgb_white, uint32_t p_view = 0, bool p_use_multiview = false, uint64_t p_spec_constants = 0, bool p_filter = true);
+	ProjectSettingsGDExtension();
 };
-
-} //namespace GLES3
-
-#endif // GLES3_ENABLED
