@@ -692,6 +692,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/QuadMesh.xml
         classes/QuadOccluder3D.xml
         classes/Quaternion.xml
+        classes/RDAccelerationStructureGeometry.xml
         classes/RDAttachmentFormat.xml
         classes/RDFramebufferPass.xml
         classes/RDPipelineColorBlendState.xml

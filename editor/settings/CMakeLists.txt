@@ -1,3 +1,5 @@
+add_subdirectory(gdextension)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
