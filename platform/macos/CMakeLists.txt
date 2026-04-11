@@ -58,6 +58,7 @@ target_sources(macos PRIVATE
         os_macos.h
         os_macos.mm
         platform_config.h
+        platform_egl.h
         platform_gl.h
         platform_thread.h
         rendering_context_driver_vulkan_macos.h

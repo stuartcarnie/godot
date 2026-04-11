@@ -693,13 +693,16 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/QuadOccluder3D.xml
         classes/Quaternion.xml
         classes/RDAccelerationStructureGeometry.xml
+        classes/RDAccelerationStructureInstance.xml
         classes/RDAttachmentFormat.xml
         classes/RDFramebufferPass.xml
+        classes/RDHitGroup.xml
         classes/RDPipelineColorBlendState.xml
         classes/RDPipelineColorBlendStateAttachment.xml
         classes/RDPipelineDepthStencilState.xml
         classes/RDPipelineMultisampleState.xml
         classes/RDPipelineRasterizationState.xml
+        classes/RDPipelineShader.xml
         classes/RDPipelineSpecializationConstant.xml
         classes/RDSamplerState.xml
         classes/RDShaderFile.xml
@@ -939,118 +942,6 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/VisibleOnScreenNotifier2D.xml
         classes/VisibleOnScreenNotifier3D.xml
         classes/VisualInstance3D.xml
-        classes/VisualShader.xml
-        classes/VisualShaderNode.xml
-        classes/VisualShaderNodeBillboard.xml
-        classes/VisualShaderNodeBooleanConstant.xml
-        classes/VisualShaderNodeBooleanParameter.xml
-        classes/VisualShaderNodeClamp.xml
-        classes/VisualShaderNodeColorConstant.xml
-        classes/VisualShaderNodeColorFunc.xml
-        classes/VisualShaderNodeColorOp.xml
-        classes/VisualShaderNodeColorParameter.xml
-        classes/VisualShaderNodeComment.xml
-        classes/VisualShaderNodeCompare.xml
-        classes/VisualShaderNodeConstant.xml
-        classes/VisualShaderNodeCubemap.xml
-        classes/VisualShaderNodeCubemapParameter.xml
-        classes/VisualShaderNodeCurveTexture.xml
-        classes/VisualShaderNodeCurveXYZTexture.xml
-        classes/VisualShaderNodeCustom.xml
-        classes/VisualShaderNodeDerivativeFunc.xml
-        classes/VisualShaderNodeDeterminant.xml
-        classes/VisualShaderNodeDistanceFade.xml
-        classes/VisualShaderNodeDotProduct.xml
-        classes/VisualShaderNodeExpression.xml
-        classes/VisualShaderNodeFaceForward.xml
-        classes/VisualShaderNodeFloatConstant.xml
-        classes/VisualShaderNodeFloatFunc.xml
-        classes/VisualShaderNodeFloatOp.xml
-        classes/VisualShaderNodeFloatParameter.xml
-        classes/VisualShaderNodeFrame.xml
-        classes/VisualShaderNodeFresnel.xml
-        classes/VisualShaderNodeGlobalExpression.xml
-        classes/VisualShaderNodeGroupBase.xml
-        classes/VisualShaderNodeIf.xml
-        classes/VisualShaderNodeInput.xml
-        classes/VisualShaderNodeIntConstant.xml
-        classes/VisualShaderNodeIntFunc.xml
-        classes/VisualShaderNodeIntOp.xml
-        classes/VisualShaderNodeIntParameter.xml
-        classes/VisualShaderNodeIs.xml
-        classes/VisualShaderNodeLinearSceneDepth.xml
-        classes/VisualShaderNodeMix.xml
-        classes/VisualShaderNodeMultiplyAdd.xml
-        classes/VisualShaderNodeOuterProduct.xml
-        classes/VisualShaderNodeOutput.xml
-        classes/VisualShaderNodeParameter.xml
-        classes/VisualShaderNodeParameterRef.xml
-        classes/VisualShaderNodeParticleAccelerator.xml
-        classes/VisualShaderNodeParticleBoxEmitter.xml
-        classes/VisualShaderNodeParticleConeVelocity.xml
-        classes/VisualShaderNodeParticleEmit.xml
-        classes/VisualShaderNodeParticleEmitter.xml
-        classes/VisualShaderNodeParticleMeshEmitter.xml
-        classes/VisualShaderNodeParticleMultiplyByAxisAngle.xml
-        classes/VisualShaderNodeParticleOutput.xml
-        classes/VisualShaderNodeParticleRandomness.xml
-        classes/VisualShaderNodeParticleRingEmitter.xml
-        classes/VisualShaderNodeParticleSphereEmitter.xml
-        classes/VisualShaderNodeProximityFade.xml
-        classes/VisualShaderNodeRandomRange.xml
-        classes/VisualShaderNodeRemap.xml
-        classes/VisualShaderNodeReroute.xml
-        classes/VisualShaderNodeResizableBase.xml
-        classes/VisualShaderNodeRotationByAxis.xml
-        classes/VisualShaderNodeSDFRaymarch.xml
-        classes/VisualShaderNodeSDFToScreenUV.xml
-        classes/VisualShaderNodeSample3D.xml
-        classes/VisualShaderNodeScreenNormalWorldSpace.xml
-        classes/VisualShaderNodeScreenUVToSDF.xml
-        classes/VisualShaderNodeSmoothStep.xml
-        classes/VisualShaderNodeStep.xml
-        classes/VisualShaderNodeSwitch.xml
-        classes/VisualShaderNodeTexture.xml
-        classes/VisualShaderNodeTexture2DArray.xml
-        classes/VisualShaderNodeTexture2DArrayParameter.xml
-        classes/VisualShaderNodeTexture2DParameter.xml
-        classes/VisualShaderNodeTexture3D.xml
-        classes/VisualShaderNodeTexture3DParameter.xml
-        classes/VisualShaderNodeTextureParameter.xml
-        classes/VisualShaderNodeTextureParameterTriplanar.xml
-        classes/VisualShaderNodeTextureSDF.xml
-        classes/VisualShaderNodeTextureSDFNormal.xml
-        classes/VisualShaderNodeTransformCompose.xml
-        classes/VisualShaderNodeTransformConstant.xml
-        classes/VisualShaderNodeTransformDecompose.xml
-        classes/VisualShaderNodeTransformFunc.xml
-        classes/VisualShaderNodeTransformOp.xml
-        classes/VisualShaderNodeTransformParameter.xml
-        classes/VisualShaderNodeTransformVecMult.xml
-        classes/VisualShaderNodeUIntConstant.xml
-        classes/VisualShaderNodeUIntFunc.xml
-        classes/VisualShaderNodeUIntOp.xml
-        classes/VisualShaderNodeUIntParameter.xml
-        classes/VisualShaderNodeUVFunc.xml
-        classes/VisualShaderNodeUVPolarCoord.xml
-        classes/VisualShaderNodeVarying.xml
-        classes/VisualShaderNodeVaryingGetter.xml
-        classes/VisualShaderNodeVaryingSetter.xml
-        classes/VisualShaderNodeVec2Constant.xml
-        classes/VisualShaderNodeVec2Parameter.xml
-        classes/VisualShaderNodeVec3Constant.xml
-        classes/VisualShaderNodeVec3Parameter.xml
-        classes/VisualShaderNodeVec4Constant.xml
-        classes/VisualShaderNodeVec4Parameter.xml
-        classes/VisualShaderNodeVectorBase.xml
-        classes/VisualShaderNodeVectorCompose.xml
-        classes/VisualShaderNodeVectorDecompose.xml
-        classes/VisualShaderNodeVectorDistance.xml
-        classes/VisualShaderNodeVectorFunc.xml
-        classes/VisualShaderNodeVectorLen.xml
-        classes/VisualShaderNodeVectorOp.xml
-        classes/VisualShaderNodeVectorRefract.xml
-        classes/VisualShaderNodeWorldPositionFromDepth.xml
         classes/VoxelGI.xml
         classes/VoxelGIData.xml
         classes/WeakRef.xml

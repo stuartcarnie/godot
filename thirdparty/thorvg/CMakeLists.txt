@@ -1,6 +1,7 @@
 godot_add_library(thorvg FOLDER thirdparty STATIC)
 target_sources(thorvg PRIVATE
         # common
+        src/common/tvgColor.cpp
         src/common/tvgCompressor.cpp
         src/common/tvgMath.cpp
         src/common/tvgStr.cpp
@@ -19,7 +20,6 @@ target_sources(thorvg PRIVATE
         # "src/renderer/tvgAnimation.cpp",
         src/renderer/tvgCanvas.cpp
         src/renderer/tvgFill.cpp
-        # "src/renderer/tvgGlCanvas.cpp",
         src/renderer/tvgInitializer.cpp
         src/renderer/tvgLoader.cpp
         src/renderer/tvgPaint.cpp
@@ -28,10 +28,8 @@ target_sources(thorvg PRIVATE
         # "src/renderer/tvgSaver.cpp",
         src/renderer/tvgScene.cpp
         src/renderer/tvgShape.cpp
-        src/renderer/tvgSwCanvas.cpp
         src/renderer/tvgTaskScheduler.cpp
         src/renderer/tvgText.cpp
-        # "src/renderer/tvgWgCanvas.cpp",
         # renderer sw_engine
         src/renderer/sw_engine/tvgSwFill.cpp
         src/renderer/sw_engine/tvgSwImage.cpp

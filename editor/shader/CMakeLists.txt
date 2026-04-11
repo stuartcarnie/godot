@@ -26,9 +26,5 @@ target_sources(editor PRIVATE
         text_shader_editor.h
         text_shader_language_plugin.cpp
         text_shader_language_plugin.h
-        visual_shader_editor_plugin.cpp
-        visual_shader_editor_plugin.h
-        visual_shader_language_plugin.cpp
-        visual_shader_language_plugin.h
 )
 # [[[end]]]

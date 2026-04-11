@@ -130,14 +130,6 @@ target_sources(scene PRIVATE
         theme.h
         video_stream.cpp
         video_stream.h
-        visual_shader.cpp
-        visual_shader.h
-        visual_shader_nodes.cpp
-        visual_shader_nodes.h
-        visual_shader_particle_nodes.cpp
-        visual_shader_particle_nodes.h
-        visual_shader_sdf_nodes.cpp
-        visual_shader_sdf_nodes.h
         world_2d.cpp
         world_2d.h
 )

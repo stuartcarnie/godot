@@ -104,11 +104,14 @@ target_sources(tests PRIVATE
         scene/test_animation_blend_tree.cpp
         scene/test_animation_player.cpp
         scene/test_arraymesh.cpp
+        scene/test_aspect_ratio_container.cpp
         scene/test_audio_stream_wav.cpp
         scene/test_bit_map.cpp
+        scene/test_box_container.cpp
         scene/test_button.cpp
         scene/test_camera_2d.cpp
         scene/test_camera_3d.cpp
+        scene/test_center_container.cpp
         scene/test_code_edit.cpp
         scene/test_color_picker.cpp
         scene/test_control.cpp
@@ -118,15 +121,20 @@ target_sources(tests PRIVATE
         scene/test_curve_2d.cpp
         scene/test_curve_3d.cpp
         scene/test_decal.cpp
+        scene/test_flow_container.cpp
+        scene/test_foldable_container.cpp
         scene/test_fontfile.cpp
         scene/test_gltf_document.cpp
         scene/test_gradient.cpp
         scene/test_gradient_texture.cpp
         scene/test_graph_node.cpp
+        scene/test_grid_container.cpp
         scene/test_height_map_shape_3d.cpp
         scene/test_image_texture.cpp
         scene/test_image_texture_3d.cpp
         scene/test_instance_placeholder.cpp
+        scene/test_label.cpp
+        scene/test_margin_container.cpp
         scene/test_navigation_agent_2d.cpp
         scene/test_navigation_agent_3d.cpp
         scene/test_navigation_obstacle_2d.cpp
@@ -137,6 +145,7 @@ target_sources(tests PRIVATE
         scene/test_node_2d.cpp
         scene/test_option_button.cpp
         scene/test_packed_scene.cpp
+        scene/test_panel_container.cpp
         scene/test_parallax_2d.cpp
         scene/test_path_2d.cpp
         scene/test_path_3d.cpp
@@ -144,6 +153,8 @@ target_sources(tests PRIVATE
         scene/test_path_follow_3d.cpp
         scene/test_physics_material.cpp
         scene/test_primitives.cpp
+        scene/test_rich_text_label.cpp
+        scene/test_scroll_container.cpp
         scene/test_skeleton_3d.cpp
         scene/test_sky.cpp
         scene/test_split_container.cpp
@@ -160,7 +171,6 @@ target_sources(tests PRIVATE
         scene/test_timer.cpp
         scene/test_tree.cpp
         scene/test_viewport.cpp
-        scene/test_visual_shader.cpp
         scene/test_window.cpp
         servers/rendering/test_shader_preprocessor.cpp
         servers/test_nav_heap.cpp
