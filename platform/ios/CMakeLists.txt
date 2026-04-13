@@ -40,7 +40,9 @@ target_sources(ios PRIVATE
 if (${WANT_OPENGL})
     target_link_libraries(ios PUBLIC OpenGLES3::ES3)
     target_link_libraries(ios PUBLIC gles3)
-    target_link_libraries(ios PRIVATE angle)
+    if (WANT_ANGLE)
+        target_link_libraries(ios PRIVATE angle)
+    endif ()
     target_compile_definitions(ios PRIVATE GLES3_ENABLED=1)
 endif ()
 
@@ -59,6 +61,7 @@ target_compile_definitions(ios
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>
         $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
         $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
+        $<${WANT_SDL}:SDL_ENABLED=1>
 )
 target_compile_options(ios PRIVATE -fmodules)
 

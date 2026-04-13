@@ -56,18 +56,18 @@ add_dependencies(Godot generate_main_app_files)
 
 set_target_properties(Godot PROPERTIES RESOURCE "${MACOS_RESOURCES}")
 
-if(APPLE)
+if (APPLE)
     get_target_property(SOURCES Godot SOURCES)
-    foreach(source IN LISTS SOURCES)
-        if("${source}" MATCHES "\\.(inl|h)$")
+    foreach (source IN LISTS SOURCES)
+        if ("${source}" MATCHES "\\.(inl|h)$")
             set_source_files_properties("${source}" PROPERTIES XCODE_EXPLICIT_FILE_TYPE sourcecode.cpp.h)
-        endif()
-        if("${source}" MATCHES "\\.icns$")
+        endif ()
+        if ("${source}" MATCHES "\\.icns$")
             set_source_files_properties("${source}" PROPERTIES XCODE_EXPLICIT_FILE_TYPE image.icns)
-        endif()
+        endif ()
 
-    endforeach()
-endif()
+    endforeach ()
+endif ()
 
 # [[[cog
 #   import cog
@@ -331,9 +331,89 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "visionOS")
             MACOSX_BUNDLE_INFO_PLIST "${_info_plist}"
             XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY TRUE
     )
-endif()
+elseif (CMAKE_SYSTEM_NAME STREQUAL "tvOS")
+    set(_info_plist "${CMAKE_BINARY_DIR}/Info.plist")
+    file(WRITE "${_info_plist}" [=[<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>$(INFOPLIST_KEY_CFBundleDisplayName)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>AppleTVOS</string>
+	</array>
+	<key>CFBundleSignature</key>
+	<string>GODO</string>
+	<key>CFBundleVersion</key>
+	<string>1.0.0</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>MinimumOSVersion</key>
+	<string>26.0</string>
+	<key>UIDeviceFamily</key>
+	<array>
+		<integer>3</integer>
+	</array>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key><false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+</dict>
+</plist>
+]=])
+    set_target_properties(Godot PROPERTIES
+            XCODE_ATTRIBUTE_INFOPLIST_FILE "${_info_plist}"
+            XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${APPLE_BUNDLE_IDENTIFIER}
+            MACOSX_BUNDLE_INFO_PLIST "${_info_plist}"
+            XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY TRUE
+            XCODE_GENERATE_SCHEME TRUE
+            XCODE_SCHEME_LLDB_INIT_FILE "${CMAKE_SOURCE_DIR}/.lldbinit"
+    )
+endif ()
 
-if (GODOT_PCK_FILE AND CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
+if (GODOT_PCK_FILE)
+    cmake_path(GET GODOT_PCK_FILE STEM _product_name)
+else ()
+    set(_product_name "Godot")
+endif ()
+set_target_properties(Godot PROPERTIES
+        XCODE_ATTRIBUTE_PRODUCT_NAME "${_product_name}"
+)
+
+if (GODOT_PCK_FILE AND CMAKE_SYSTEM_NAME MATCHES "^(iOS|tvOS|visionOS)$")
     target_sources(Godot PRIVATE "${GODOT_PCK_FILE}")
     set_source_files_properties("${GODOT_PCK_FILE}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-endif()
+endif ()

@@ -128,7 +128,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             thread/pthread/SDL_systls.c
             timer/unix/SDL_systimer.c
     )
-elseif (CMAKE_SYSTEM_NAME MATCHES "^(iOS|visionOS)$")
+elseif (CMAKE_SYSTEM_NAME MATCHES "^(iOS|tvOS|visionOS)$")
     target_sources(sdl3 PRIVATE
             core/unix/SDL_appid.c
             core/unix/SDL_poll.c
@@ -177,6 +177,7 @@ target_compile_definitions(sdl3
         $<$<PLATFORM_ID:Linux>:SDL_PLATFORM_LINUX>
         $<$<PLATFORM_ID:Darwin>:SDL_PLATFORM_MACOS>
         $<$<PLATFORM_ID:iOS>:SDL_PLATFORM_IOS>
+        $<$<PLATFORM_ID:tvOS>:SDL_PLATFORM_TVOS>
         $<$<PLATFORM_ID:visionOS>:SDL_PLATFORM_VISIONOS>
         $<$<PLATFORM_ID:Windows>:SDL_PLATFORM_WINDOWS>
 )

@@ -43,6 +43,7 @@ target_compile_definitions(visionos
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>
         $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
         $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
+        $<${WANT_SDL}:SDL_ENABLED=1>
 )
 target_compile_options(visionos
         PRIVATE

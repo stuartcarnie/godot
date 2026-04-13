@@ -1,15 +1,30 @@
 {
-  "version": 6,
+  "version": 10,
   "configurePresets": [
     {
       "name": "macos",
       "displayName": "macos (Editor)",
       "generator": "Xcode",
       "binaryDir": "${sourceDir}/xcode",
+      "environment": {
+        "MOLTENVK_SDK": "/Users/stuartcarnie/SDKs/VulkanSDK/1.3.290.0/macOS/lib"
+      },
       "cacheVariables": {
         "APPLE_BUNDLE_IDENTIFIER": "org.stuartcarnie.godot",
         "DEV_BUILD_LEVEL": "debug",
         "ENABLE_RETROFX": true
+      }
+    },
+    {
+      "hidden": true,
+      "name": "apple-embedded-xcode",
+      "generator": "Xcode",
+      "cacheVariables": {
+        "CMAKE_FRAMEWORK_PATH": "/Users/stuartcarnie/SDKs/VulkanSDK/1.3.290.0/macOS/lib",
+        "CMAKE_FIND_ROOT_PATH_MODE_LIBRARY": "BOTH",
+        "APPLE_BUNDLE_IDENTIFIER": "org.stuartcarnie.godot",
+        "DEV_BUILD_LEVEL": "all",
+        "ARCHS": "arm64"
       }
     },
     {
@@ -35,14 +50,13 @@
       }
     },
     {
-      "name": "ios",
-      "displayName": "iOS",
+      "inherits": ["apple-embedded-xcode"],
+      "name": "ios-xcode",
+      "displayName": "iOS (Xcode)",
       "generator": "Xcode",
       "toolchainFile": "cmake/toolchains/ios.cmake",
       "binaryDir": "${sourceDir}/xcode-ios",
       "cacheVariables": {
-        "APPLE_BUNDLE_IDENTIFIER": "org.stuartcarnie.godot",
-        "DEV_BUILD_LEVEL": "all",
         "GODOT_TARGET": "template_debug"
       }
     }
