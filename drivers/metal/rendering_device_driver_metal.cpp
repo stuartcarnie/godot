@@ -2292,7 +2292,7 @@ void RenderingDeviceDriverMetal::raytracing_pipeline_free(RDD::RaytracingPipelin
 	ERR_FAIL_MSG("Ray tracing is not currently supported by the Metal driver.");
 }
 
-bool RenderingDeviceDriverMetal::raytracing_pipeline_get_shader_group_handles(RaytracingPipelineID p_pipeline, uint32_t p_group_index_offset, VectorView<uint32_t> p_group_indices, uint8_t *r_data) {
+bool RenderingDeviceDriverMetal::raytracing_pipeline_get_shader_group_handles(RaytracingPipelineID p_pipeline, uint32_t p_group_index_offset, VectorView<uint32_t> p_group_indices, uint8_t *r_data, uint32_t p_data_stride_bytes) {
 	ERR_FAIL_V_MSG(false, "Ray tracing is not currently supported by the Metal driver.");
 }
 
@@ -2549,13 +2549,15 @@ Error RenderingDeviceDriverMetal::_copy_queue_initialize() {
 	copy_queue_buffer.get()->setLabel(MTLSTR("Copy Command Scratch Buffer"));
 
 	if (__builtin_available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 1.0, *)) {
-		MTL::ResidencySetDescriptor *rs_desc = MTL::ResidencySetDescriptor::alloc()->init();
-		rs_desc->setInitialCapacity(2);
-		rs_desc->setLabel(MTLSTR("Copy Queue Residency Set"));
-		NS::Error *error = nullptr;
-		copy_queue_rs = NS::TransferPtr(device->newResidencySet(rs_desc, &error));
-		rs_desc->release();
-		copy_queue.get()->addResidencySet(copy_queue_rs.get());
+		if (!OS::get_singleton()->get_processor_name().contains("Virtual")) {
+			MTL::ResidencySetDescriptor *rs_desc = MTL::ResidencySetDescriptor::alloc()->init();
+			rs_desc->setInitialCapacity(2);
+			rs_desc->setLabel(MTLSTR("Copy Queue Residency Set"));
+			NS::Error *error = nullptr;
+			copy_queue_rs = NS::TransferPtr(device->newResidencySet(rs_desc, &error));
+			rs_desc->release();
+			copy_queue.get()->addResidencySet(copy_queue_rs.get());
+		}
 	}
 
 	return OK;
