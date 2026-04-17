@@ -28,6 +28,8 @@ namespace GodotTools.Utils
             public const string BSD = "BSD";
             public const string Android = "Android";
             public const string iOS = "iOS";
+            public const string tvOS = "tvOS";
+            public const string visionOS = "visionOS";
             public const string Web = "Web";
         }
 
@@ -41,7 +43,11 @@ namespace GodotTools.Utils
             public const string LinuxBSD = "linuxbsd";
             public const string Android = "android";
             public const string iOS = "ios";
-            public const string Web = "web";
+            public const string tvOS = "tvos";
+
+            // Not yet implemented with C#. More accurate to add these here and throw 'NotImplementedException during export instead of a more confusing 'NotSupportedException.''
+            public const string visionOS = "visionos"; // Lacks support in .NET runtime as of .NET 10.
+            public const string Web = "web"; // PR in Godot not merged.
         }
 
         /// <summary>
@@ -58,6 +64,9 @@ namespace GodotTools.Utils
             public const string LinuxBionic = "linux-bionic";
             public const string iOS = "ios";
             public const string iOSSimulator = "iossimulator";
+            public const string tvOS = "tvos"; // Although available in .NET runtime, tvOS simulator is not supported in Godot yet, so only physical device RID is needed.
+            public const string visionOS = "visionos"; // Expected RID value for visionOS when/if it's added to .NET runtime.
+            public const string visionOSSimulator = "visionossimulator";
             public const string Browser = "browser";
         }
 
@@ -71,6 +80,8 @@ namespace GodotTools.Utils
             ["Linux"] = Platforms.LinuxBSD,
             ["Android"] = Platforms.Android,
             ["iOS"] = Platforms.iOS,
+            ["tvOS"] = Platforms.tvOS,
+            ["visionOS"] = Platforms.visionOS,
             ["Web"] = Platforms.Web
         };
 
@@ -84,6 +95,8 @@ namespace GodotTools.Utils
             [Names.BSD] = Platforms.LinuxBSD,
             [Names.Android] = Platforms.Android,
             [Names.iOS] = Platforms.iOS,
+            [Names.tvOS] = Platforms.tvOS,
+            [Names.visionOS] = Platforms.visionOS,
             [Names.Web] = Platforms.Web
         };
 
@@ -98,6 +111,8 @@ namespace GodotTools.Utils
             [Platforms.LinuxBSD] = DotNetOS.Linux,
             [Platforms.Android] = DotNetOS.Android,
             [Platforms.iOS] = DotNetOS.iOS,
+            [Platforms.tvOS] = DotNetOS.tvOS,
+            [Platforms.visionOS] = DotNetOS.visionOS,
             [Platforms.Web] = DotNetOS.Browser
         };
         private static bool IsOS(string name)
@@ -127,13 +142,19 @@ namespace GodotTools.Utils
             new[] { Names.MacOS, Names.Android, Names.iOS }
                 .Concat(LinuxBSDPlatforms).ToArray();
 
+        private static readonly IEnumerable<string> AppleEmbeddedPlatforms =
+            new[] { Names.iOS, Names.tvOS, Names.visionOS }; // Godot's Apple embedded architecture does not include macOS.
+
         private static readonly Lazy<bool> _isWindows = new(() => IsOS(Names.Windows));
         private static readonly Lazy<bool> _isMacOS = new(() => IsOS(Names.MacOS));
         private static readonly Lazy<bool> _isLinuxBSD = new(() => IsAnyOS(LinuxBSDPlatforms));
         private static readonly Lazy<bool> _isAndroid = new(() => IsOS(Names.Android));
         private static readonly Lazy<bool> _isiOS = new(() => IsOS(Names.iOS));
+        private static readonly Lazy<bool> _istvOS = new(() => IsOS(Names.tvOS));
+        private static readonly Lazy<bool> _isvisionOS = new(() => IsOS(Names.visionOS));
         private static readonly Lazy<bool> _isWeb = new(() => IsOS(Names.Web));
         private static readonly Lazy<bool> _isUnixLike = new(() => IsAnyOS(UnixLikePlatforms));
+        private static readonly Lazy<bool> _isAppleEmbedded = new(() => IsAnyOS(AppleEmbeddedPlatforms));
 
         [SupportedOSPlatformGuard("windows")] public static bool IsWindows => _isWindows.Value;
 
@@ -145,8 +166,15 @@ namespace GodotTools.Utils
 
         [SupportedOSPlatformGuard("ios")] public static bool IsiOS => _isiOS.Value;
 
+        [SupportedOSPlatformGuard("tvos")] public static bool IstvOS => _istvOS.Value;
+
+        [SupportedOSPlatformGuard("visionos")] public static bool IsvisionOS => _isvisionOS.Value;
+
         [SupportedOSPlatformGuard("browser")] public static bool IsWeb => _isWeb.Value;
+
         public static bool IsUnixLike => _isUnixLike.Value;
+
+        public static bool IsAppleEmbedded => _isAppleEmbedded.Value;
 
         public static char PathSep => IsWindows ? ';' : ':';
 

@@ -787,7 +787,17 @@ StringName EditorProperty::get_edited_property() const {
 
 Variant EditorProperty::get_edited_property_display_value() const {
 	ERR_FAIL_NULL_V(object, Variant());
+
 	Control *control = Object::cast_to<Control>(object);
+	if (!control) {
+		MultiNodeEdit *multi = Object::cast_to<MultiNodeEdit>(object);
+		if (multi) {
+			Node *root = EditorNode::get_singleton()->get_edited_scene();
+			NodePath np = multi->get_node(0);
+			control = Object::cast_to<Control>(root->get_node_or_null(np));
+		}
+	}
+
 	// If checked but it's empty, it means that the set value has just been undone, and should show the default value as well.
 	if (control && checkable && (!checked || get_edited_property_value() == Variant()) && String(property).begins_with("theme_override_")) {
 		return control->get_used_theme_item(property);
@@ -1664,7 +1674,7 @@ void EditorProperty::_update_popup() {
 	menu->add_icon_shortcut(theme_cache.paste_icon, ED_GET_SHORTCUT("property_editor/paste_value"), MENU_PASTE_VALUE);
 	menu->set_item_disabled(-1, read_only || EditorInspector::get_property_clipboard_type() != EditorInspector::PropertyClipboard::Type::PROPERTY);
 	menu->add_icon_shortcut(theme_cache.copy_node_path_icon, ED_GET_SHORTCUT("property_editor/copy_property_path"), MENU_COPY_PROPERTY_PATH);
-	menu->set_item_disabled(-1, internal);
+	menu->set_item_disabled(-1, internal || property_path.is_empty());
 
 	if (can_favorite || !pin_hidden) {
 		menu->add_separator();

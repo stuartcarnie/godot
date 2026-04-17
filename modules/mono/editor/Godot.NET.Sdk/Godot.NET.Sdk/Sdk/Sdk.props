@@ -63,6 +63,8 @@
   <!-- Auto-detect the target Godot platform if it was not specified. -->
   <PropertyGroup Condition=" '$(GodotTargetPlatform)' == '' ">
     <GodotTargetPlatform Condition=" $(RuntimeIdentifier.StartsWith('ios')) ">ios</GodotTargetPlatform>
+    <GodotTargetPlatform Condition=" $(RuntimeIdentifier.StartsWith('tvos')) ">tvos</GodotTargetPlatform>
+    <GodotTargetPlatform Condition=" $(RuntimeIdentifier.StartsWith('visionos')) ">visionos</GodotTargetPlatform>
     <GodotTargetPlatform Condition=" '$(GodotTargetPlatform)' == '' and $(RuntimeIdentifier.StartsWith('android')) ">android</GodotTargetPlatform>
     <GodotTargetPlatform Condition=" '$(GodotTargetPlatform)' == '' and $(RuntimeIdentifier.StartsWith('browser')) ">web</GodotTargetPlatform>
 
@@ -78,6 +80,11 @@
     <GodotTargetPlatform Condition=" '$([MSBuild]::IsOsPlatform(FreeBSD))' ">linuxbsd</GodotTargetPlatform>
     <GodotTargetPlatform Condition=" '$([MSBuild]::IsOsPlatform(OSX))' ">macos</GodotTargetPlatform>
     <GodotTargetPlatform Condition=" '$([MSBuild]::IsOsPlatform(Windows))' ">windows</GodotTargetPlatform>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsAppleEmbeddedPlatform>false</IsAppleEmbeddedPlatform>
+    <IsAppleEmbeddedPlatform Condition=" '$(GodotTargetPlatform)' == 'ios' or '$(GodotTargetPlatform)' == 'tvos' or '$(GodotTargetPlatform)' == 'visionos' ">true</IsAppleEmbeddedPlatform>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -98,11 +105,13 @@
     <_GodotPlatformConstants Condition=" '$(GodotTargetPlatform)' == 'macos' ">GODOT_OSX;GODOT_MACOS;GODOT_PC</_GodotPlatformConstants>
     <_GodotPlatformConstants Condition=" '$(GodotTargetPlatform)' == 'android' ">GODOT_ANDROID;GODOT_MOBILE</_GodotPlatformConstants>
     <_GodotPlatformConstants Condition=" '$(GodotTargetPlatform)' == 'ios' ">GODOT_IPHONE;GODOT_IOS;GODOT_MOBILE</_GodotPlatformConstants>
+    <_GodotPlatformConstants Condition=" '$(GodotTargetPlatform)' == 'tvos' ">GODOT_TVOS;GODOT_MOBILE</_GodotPlatformConstants>
+    <_GodotPlatformConstants Condition=" '$(GodotTargetPlatform)' == 'visionos' ">GODOT_VISIONOS;GODOT_MOBILE</_GodotPlatformConstants>
     <_GodotPlatformConstants Condition=" '$(GodotTargetPlatform)' == 'web' ">GODOT_JAVASCRIPT;GODOT_HTML5;GODOT_WASM;GODOT_WEB</_GodotPlatformConstants>
 
     <_GodotDefineConstants>$(_GodotDefineConstants);$(_GodotPlatformConstants);$(_GodotVersionConstants)</_GodotDefineConstants>
   </PropertyGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)\Android.props" Condition=" '$(GodotTargetPlatform)' == 'android' " />
-  <Import Project="$(MSBuildThisFileDirectory)\iOS.props" Condition=" '$(GodotTargetPlatform)' == 'ios' " />
+  <Import Project="$(MSBuildThisFileDirectory)\iOS.props" Condition=" '$(IsAppleEmbeddedPlatform)' == 'true' " />
 </Project>

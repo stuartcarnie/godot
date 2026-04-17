@@ -221,7 +221,7 @@
 		<method name="accessibility_update_set_bounds" deprecated="Use [AccessibilityServer] instead.">
 			<return type="void" />
 			<param index="0" name="id" type="RID" />
-			<param index="1" name="p_rect" type="Rect2" />
+			<param index="1" name="rect" type="Rect2" />
 			<description>
 				Sets element bounding box, relative to the node position.
 			</description>
@@ -2698,7 +2698,7 @@
 			Display server supports multiple windows that can be moved outside of the main window. [b]Windows, macOS, Linux (X11)[/b]
 		</constant>
 		<constant name="FEATURE_TOUCHSCREEN" value="2" enum="Feature">
-			Display server supports touchscreen input. [b]Windows, Linux (X11), Android, iOS, Web[/b]
+			Display server supports touchscreen input. [b]Windows, Linux (X11/Wayland), Android, iOS, Web[/b]
 		</constant>
 		<constant name="FEATURE_MOUSE" value="3" enum="Feature">
 			Display server supports mouse input. [b]Windows, macOS, Linux (X11/Wayland), Android, Web[/b]

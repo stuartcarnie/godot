@@ -179,7 +179,7 @@ namespace GodotTools.Export
             if (!TryDeterminePlatformFromOSName(osName, out string? platform))
                 throw new NotSupportedException("Target platform not supported.");
 
-            if (!new[] { OS.Platforms.Windows, OS.Platforms.LinuxBSD, OS.Platforms.MacOS, OS.Platforms.Android, OS.Platforms.iOS }
+            if (!new[] { OS.Platforms.Windows, OS.Platforms.LinuxBSD, OS.Platforms.MacOS, OS.Platforms.Android, OS.Platforms.iOS, OS.Platforms.tvOS }
                     .Contains(platform))
             {
                 throw new NotImplementedException("Target platform not yet implemented.");
@@ -227,7 +227,9 @@ namespace GodotTools.Export
 
             var targets = new List<PublishConfig> { publishConfig };
 
-            if (platform == OS.Platforms.iOS)
+            // tvOS simulator builds are not currently supported so only iOS and visionOS will have
+            // simulator targets.
+            if (platform == OS.Platforms.iOS || platform == OS.Platforms.visionOS)
             {
                 targets.Add(new PublishConfig
                 {
@@ -235,7 +237,7 @@ namespace GodotTools.Export
                     Archs = ["arm64", "x86_64"],
                     BundleOutputs = false,
                     IncludeDebugSymbols = publishConfig.IncludeDebugSymbols,
-                    RidOS = OS.DotNetOS.iOSSimulator,
+                    RidOS = DetermineSimulatorRid(platform),
                     UseTempDir = false,
                 });
             }
@@ -292,7 +294,7 @@ namespace GodotTools.Export
                     string soExt = ridOS switch
                     {
                         OS.DotNetOS.Win or OS.DotNetOS.Win10 => "dll",
-                        OS.DotNetOS.OSX or OS.DotNetOS.iOS or OS.DotNetOS.iOSSimulator => "dylib",
+                        OS.DotNetOS.OSX or OS.DotNetOS.iOS or OS.DotNetOS.tvOS or OS.DotNetOS.visionOS or OS.DotNetOS.iOSSimulator or OS.DotNetOS.visionOSSimulator => "dylib",
                         _ => "so"
                     };
 
@@ -316,7 +318,7 @@ namespace GodotTools.Export
                     RecursePublishContents(publishOutputDir,
                         filterDir: dir =>
                         {
-                            if (platform == OS.Platforms.iOS)
+                            if (DetermineIfPlatformAppleEmbedded(platform))
                             {
                                 // Exclude dsym folders.
                                 return !dir.EndsWith(".dsym", StringComparison.OrdinalIgnoreCase);
@@ -326,7 +328,7 @@ namespace GodotTools.Export
                         },
                         filterFile: file =>
                         {
-                            if (platform == OS.Platforms.iOS)
+                            if (DetermineIfPlatformAppleEmbedded(platform))
                             {
                                 // Exclude the dylib artifact, since it's included separately as an xcframework.
                                 return Path.GetFileName(file) != $"{GodotSharpDirs.ProjectAssemblyName}.dylib";
@@ -336,7 +338,7 @@ namespace GodotTools.Export
                         },
                         recurseDir: dir =>
                         {
-                            if (platform == OS.Platforms.iOS)
+                            if (DetermineIfPlatformAppleEmbedded(platform))
                             {
                                 // Don't recurse into dsym folders.
                                 return !dir.EndsWith(".dsym", StringComparison.OrdinalIgnoreCase);
@@ -404,7 +406,7 @@ namespace GodotTools.Export
                                 }
                                 else
                                 {
-                                    if (platform == OS.Platforms.iOS && path.EndsWith(".dat", StringComparison.OrdinalIgnoreCase))
+                                    if (DetermineIfPlatformAppleEmbedded(platform) && path.EndsWith(".dat", StringComparison.OrdinalIgnoreCase))
                                     {
                                         AddAppleEmbeddedPlatformBundleFile(path);
                                     }
@@ -427,7 +429,7 @@ namespace GodotTools.Export
                 }
             }
 
-            if (platform == OS.Platforms.iOS)
+            if (DetermineIfPlatformAppleEmbedded(platform))
             {
                 if (outputPaths.Count > 2)
                 {
@@ -548,6 +550,43 @@ namespace GodotTools.Export
 
             platform = null;
             return false;
+        }
+
+        /// <summary>
+        /// Determines if export platform is an Apple embedded platform.
+        /// </summary>
+        /// <param name="platformName">Name of export platform.</param>
+        /// <returns>Returns true when export platform is an Apple embedded one or false otherwise.</returns>
+        private static bool DetermineIfPlatformAppleEmbedded(string? platformName)
+        {
+            if (platformName == OS.Platforms.iOS || platformName == OS.Platforms.tvOS || platformName == OS.Platforms.visionOS)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Selects a simulator RID from the name of the export platform.
+        /// </summary>
+        /// <param name="platformName">Name of export platform.</param>
+        /// <returns>Returns the selected RID.</returns>
+        private static string DetermineSimulatorRid(string platformName)
+        {
+            switch (platformName)
+            {
+                case OS.Platforms.iOS:
+                    return OS.DotNetOS.iOSSimulator;
+                //case OS.Platforms.tvOS: // In case simulator support comes to tvOS.
+                //    return OS.DotNetOS.tvOSSimulator;
+                case OS.Platforms.visionOS:
+                    return OS.DotNetOS.visionOSSimulator;
+                default:
+                    return "";
+            }
         }
 
         private struct PublishConfig

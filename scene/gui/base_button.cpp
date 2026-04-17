@@ -67,7 +67,7 @@ void BaseButton::gui_input(const Ref<InputEvent> &p_event) {
 		return;
 	}
 
-	if (p_event->is_pressed()) {
+	if (p_event->is_pressed() && status.touch_index == -1) {
 		status.device_id = p_event->get_device();
 	}
 
@@ -251,7 +251,8 @@ void BaseButton::on_action_event(Ref<InputEvent> p_event) {
 	Ref<InputEventScreenDrag> screen_drag = p_event;
 
 	bool is_accept_event = mouse_button.is_null() && screen_touch.is_null() && screen_drag.is_null();
-	if (p_event->is_pressed() && (is_accept_event || status.hovering)) {
+	bool is_touch_press_inside = screen_touch.is_valid() && screen_touch->is_pressed() && status.pressing_inside;
+	if (p_event->is_pressed() && (is_accept_event || status.hovering || is_touch_press_inside)) {
 		status.press_attempt = true;
 		status.pressing_inside = true;
 		if (!status.pressed_down_with_focus) {
@@ -267,6 +268,7 @@ void BaseButton::on_action_event(Ref<InputEvent> p_event) {
 				if (action_mode == ACTION_MODE_BUTTON_PRESS) {
 					status.press_attempt = false;
 					status.pressing_inside = false;
+					status.touch_index = -1; // Action completed, release matching touch so later taps aren't dropped if a modal consumes the release.
 				}
 				status.pressed = !status.pressed;
 				_unpress_group();
