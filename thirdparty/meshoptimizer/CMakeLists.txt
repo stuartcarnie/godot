@@ -13,7 +13,10 @@ target_sources(meshoptimizer PRIVATE
         indexanalyzer.cpp
         indexcodec.cpp
         indexgenerator.cpp
+        meshletcodec.cpp
+        meshletutils.cpp
         meshoptimizer.h
+        opacitymap.cpp
         overdrawoptimizer.cpp
         partition.cpp
         quantization.cpp
