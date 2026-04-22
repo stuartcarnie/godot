@@ -6,6 +6,8 @@ import pathlib
 import argparse
 import json
 
+from servers.rendering.storage import make_ltc_lut
+
 sys.path.insert(0, 'cmake/scripts/lib')  # enable fake SCons.Environment
 
 # Engine Modules
@@ -18,6 +20,7 @@ from core.input.input_builders import *
 import core.extension.make_interface_dumper
 import core.extension.make_interface_header
 import core.extension.make_wrappers
+import servers.rendering.storage.make_ltc_lut
 
 import core.object.make_virtuals
 from main.main_builders import *
@@ -46,6 +49,10 @@ class Target:
     @property
     def path(self):
         return self._path
+
+    @property
+    def name(self):
+        return pathlib.Path(self._path).name
 
     @property
     def abspath(self):
@@ -295,6 +302,13 @@ def cmd_donors_header(source: str, target: str) -> int:
 
 
 @check_output
+@source_target
+def cmd_luts(source: [str], target: str) -> int:
+    make_ltc_lut.run(target=[target], source=[Target(p) for p in source], env=None)
+    return 0
+
+
+@check_output
 def cmd_license_header(args: argparse.Namespace) -> int:
     make_license_header(target=[args.output], source=[args.input_copyright, args.input_license], env=None)
     return 0
@@ -452,7 +466,6 @@ def cmd_make_editor_icons_action(source: str, target: str) -> int:
 def cmd_make_editor_translations(source: [str], target: [str]) -> int:
     make_translations(target=target, source=[Target(p) for p in source], env=env)
     return 0
-
 
 
 @check_output
@@ -786,6 +799,7 @@ def _main() -> int:
     sp.add_parser('certs_header', parents=[args_in_out]).set_defaults(func=cmd_certs_header)
     sp.add_parser('authors_header', parents=[args_in_out]).set_defaults(func=cmd_authors_header)
     sp.add_parser('donors_header', parents=[args_in_out]).set_defaults(func=cmd_donors_header)
+    sp.add_parser('luts', parents=[args_inl_out]).set_defaults(func=cmd_luts)
 
     cmd = sp.add_parser('license_header')
     cmd.add_argument('--input-copyright', dest='input_copyright', required=True)
@@ -795,8 +809,10 @@ def _main() -> int:
 
     sp.add_parser('disabled_classes', parents=[args_out]).set_defaults(func=cmd_disabled_classes)
     sp.add_parser('controller_mappings', parents=[args_inl_out]).set_defaults(func=cmd_controller_mappings)
-    sp.add_parser('gdextension_interface_dumper', parents=[args_in_out]).set_defaults(func=cmd_gdextension_interface_dumper)
-    sp.add_parser('gdextension_interface_header', parents=[args_in_out]).set_defaults(func=cmd_gdextension_interface_header)
+    sp.add_parser('gdextension_interface_dumper', parents=[args_in_out]).set_defaults(
+        func=cmd_gdextension_interface_dumper)
+    sp.add_parser('gdextension_interface_header', parents=[args_in_out]).set_defaults(
+        func=cmd_gdextension_interface_header)
     sp.add_parser('make_smaa_areatex', parents=[args_in_out]).set_defaults(func=cmd_make_smaa_areatex)
     sp.add_parser('make_smaa_searchtex', parents=[args_in_out]).set_defaults(func=cmd_make_smaa_searchtex)
     sp.add_parser('make_app_icon', parents=[args_in_out]).set_defaults(func=cmd_make_app_icon)

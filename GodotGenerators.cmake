@@ -48,6 +48,17 @@ function(generate_shader_sources _buildType _input _output)
     endforeach ()
 endfunction()
 
+function(generate_lut_sources _input1 _input2 _output)
+    add_custom_command(
+            OUTPUT ${_output}
+            COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
+            ARGS --env ${GODOT_ENV_FILE} luts --input "make_ltc_lut.py" ${_input1} ${_input2} --output ${_output}
+            DEPENDS ${_input1} ${_input2}
+            COMMENT "Generating lut from ${_input1} and ${_input2}"
+            WORKING_DIRECTORY ${GODOT_ENGINE_ROOT_DIRECTORY}
+    )
+endfunction()
+
 function(generate_core_disabled_classes _disabledClasses _output)
     add_custom_command(
             OUTPUT ${_output}

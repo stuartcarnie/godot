@@ -55,6 +55,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         AnimationTreeDock.svg
         Area2D.svg
         Area3D.svg
+        AreaLight3D.svg
         Array.svg
         ArrayMesh.svg
         ArrayOccluder3D.svg
@@ -63,7 +64,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ArrowRight.svg
         ArrowUp.svg
         AspectRatioContainer.svg
-        AssetLib.svg
+        AssetStore.svg
+        AssetThumbLoading.svg
         AtlasTexture.svg
         AudioBusBypass.svg
         AudioBusLayout.svg
@@ -117,8 +119,6 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         BoxShape3D.svg
         Breakpoint.svg
         Bucket.svg
-        BusVuActive.svg
-        BusVuFrozen.svg
         Button.svg
         ButtonGroup.svg
         CCDIK3D.svg
@@ -342,6 +342,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Geometry3D.svg
         GeometryInstance3D.svg
         Gizmo3DSamplePlayer.svg
+        GizmoAreaLight.svg
         GizmoAudioListener3D.svg
         GizmoCPUParticles3D.svg
         GizmoCamera3D.svg
@@ -892,6 +893,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ThemeSelectAll.svg
         ThemeSelectFull.svg
         ThumbnailWait.svg
+        ThumbsUp.svg
         TileChecked.svg
         TileMap.svg
         TileMapDock.svg

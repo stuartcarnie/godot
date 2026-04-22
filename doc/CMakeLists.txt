@@ -209,6 +209,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/AnimationTree.xml
         classes/Area2D.xml
         classes/Area3D.xml
+        classes/AreaLight3D.xml
         classes/Array.xml
         classes/ArrayMesh.xml
         classes/ArrayOccluder3D.xml

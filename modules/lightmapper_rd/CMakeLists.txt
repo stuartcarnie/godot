@@ -7,6 +7,7 @@
 #   cog.outl(')')
 # ]]]
 set_abs(GODOT_MODULE_LIGHTMAPPER_RD_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
+        lm_area_lights_inc.glsl
         lm_blendseams.glsl
         lm_common_inc.glsl
         lm_compute.glsl

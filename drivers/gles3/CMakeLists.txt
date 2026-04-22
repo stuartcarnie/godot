@@ -7,6 +7,7 @@
 #   cog.outl(')')
 # ]]]
 set_abs(GLES3_GLSL_SHADERS ${CMAKE_CURRENT_SOURCE_DIR}
+        shaders/area_lights_inc.glsl
         shaders/canvas.glsl
         shaders/canvas_occlusion.glsl
         shaders/canvas_sdf.glsl

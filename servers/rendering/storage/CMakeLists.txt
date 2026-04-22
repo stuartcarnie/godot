@@ -1,3 +1,21 @@
+set(RENDERING_STORAGE_LUTS_OUTPUT ${CMAKE_BINARY_INCLUDE_DIR}/servers/rendering/storage/ltc_lut.gen.h)
+generate_lut_sources(
+        ${CMAKE_CURRENT_SOURCE_DIR}/ltc/ltc_lut1.dds
+        ${CMAKE_CURRENT_SOURCE_DIR}/ltc/ltc_lut2.dds
+        ${RENDERING_STORAGE_LUTS_OUTPUT})
+
+add_custom_target(servers-storage-generated
+        DEPENDS
+        ${RENDERING_STORAGE_LUTS_OUTPUT}
+)
+set_target_properties(servers-storage-generated PROPERTIES FOLDER "generated")
+add_dependencies(servers servers-storage-generated)
+
+target_sources(servers
+        PRIVATE
+        ${RENDERING_STORAGE_LUTS_OUTPUT}
+)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
