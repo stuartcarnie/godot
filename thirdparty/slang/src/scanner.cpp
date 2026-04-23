@@ -4,7 +4,6 @@
 
 #include "scanner.h"
 #include <unicode/uchar.h>
-#include <cctype>
 
 namespace slang {
 

@@ -47,7 +47,7 @@ struct ShaderBufferSemanticMeta {
 
 	ShaderBufferSemanticMeta(ShaderBufferSemanticMeta &&p_other) = default;
 
-	ShaderBufferSemanticMeta(std::string p_name) :
+	ShaderBufferSemanticMeta(const std::string &p_name) :
 			ShaderBufferSemanticMeta(0, p_name) {
 	}
 

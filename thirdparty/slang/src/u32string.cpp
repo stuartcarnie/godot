@@ -66,11 +66,7 @@ std::string to_utf8(const std::u32string &p_str) {
 	return str;
 }
 
-bool starts_with(const std::u32string &p_str, const std::u32string &p_prefix) {
-	return p_prefix.length() <= p_str.length() && p_str.compare(0, p_prefix.length(), p_prefix) == 0;
-}
-
-std::u32string joined(const std::vector<std::u32string> &p_strs, std::u32string const &p_delimiter) {
+std::u32string joined(const std::vector<std::u32string> &p_strs, std::u32string_view p_delimiter) {
 	if (p_strs.empty()) {
 		return std::u32string();
 	}

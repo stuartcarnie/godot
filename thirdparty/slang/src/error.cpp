@@ -5,8 +5,7 @@
 #include "error.h"
 #include "u32string.h"
 
-namespace slang {
-namespace error {
+namespace slang::error {
 
 std::string Error::to_string() const {
 	std::string result;
@@ -34,5 +33,4 @@ std::string Error::to_string() const {
 	return result;
 }
 
-} //namespace error
-} //namespace slang
+} //namespace slang::error

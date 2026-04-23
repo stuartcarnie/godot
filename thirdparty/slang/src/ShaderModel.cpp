@@ -4,7 +4,6 @@
 
 #include "ShaderModel.h"
 #include "scanner.h"
-#include "thirdparty/simdutf/simdutf.h"
 #include "u32string.h"
 
 #include <icu4c/common/unicode/uchar.h>

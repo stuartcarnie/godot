@@ -4,10 +4,10 @@
 
 #include "compiled.h"
 
+#include <array>
 #include <map>
 
-namespace slang {
-namespace compiled {
+namespace slang::compiled {
 
 static std::map<std::u32string, PixelFormat> *str_to_pixel_format = nullptr;
 
@@ -132,8 +132,8 @@ char const *to_cstr(ShaderTextureSemantic p_val) {
 	}
 }
 
-const std::vector<ShaderTextureSemantic> texture_semantics() {
-	return {
+std::span<const ShaderTextureSemantic> texture_semantics() {
+	static constexpr std::array semantics{
 		ShaderTextureSemantic::ORIGINAL,
 		ShaderTextureSemantic::SOURCE,
 		ShaderTextureSemantic::ORIGINAL_HISTORY,
@@ -141,10 +141,12 @@ const std::vector<ShaderTextureSemantic> texture_semantics() {
 		ShaderTextureSemantic::PASS_FEEDBACK,
 		ShaderTextureSemantic::USER,
 	};
-};
 
-const std::vector<ShaderBufferSemantic> buffer_semantics() {
-	return {
+	return semantics;
+}
+
+std::span<const ShaderBufferSemantic> buffer_semantics() {
+	static constexpr std::array semantics{
 		ShaderBufferSemantic::MVP,
 		ShaderBufferSemantic::OUTPUT_SIZE,
 		ShaderBufferSemantic::FINAL_VIEWPORT_SIZE,
@@ -158,6 +160,8 @@ const std::vector<ShaderBufferSemantic> buffer_semantics() {
 		ShaderBufferSemantic::PASS_FEEDBACK_SIZE,
 		ShaderBufferSemantic::USER_SIZE,
 	};
+
+	return semantics;
 }
 
 std::string to_string(ShaderTextureSemantic p_val) {
@@ -199,5 +203,4 @@ std::string to_string(ShaderBufferSemantic p_val) {
 	return to_cstr(p_val);
 }
 
-} //namespace compiled
-} //namespace slang
+} //namespace slang::compiled

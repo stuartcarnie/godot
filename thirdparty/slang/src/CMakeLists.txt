@@ -43,6 +43,7 @@ target_sources(slang PRIVATE
 )
 
 target_link_libraries(slang PRIVATE icu4c glslang spirv-cross)
+target_compile_features(slang PUBLIC cxx_std_20)
 
 add_executable(slang_test test.cpp)
 target_link_libraries(slang_test PRIVATE slang icu4c glslang spirv-cross)

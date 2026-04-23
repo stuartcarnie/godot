@@ -22,7 +22,7 @@ struct ShaderLUT {
 	compiled::Wrap wrap_mode;
 	bool is_mipmap;
 
-	ShaderLUT() {};
+	ShaderLUT() : filter(compiled::Filter::UNSPECIFIED), wrap_mode(compiled::Wrap::BORDER), is_mipmap(false) {};
 	ShaderLUT(fs::path const &p_path, ShaderTextureModel const &p_spec) :
 			path(p_path) {
 		name = p_spec.name;

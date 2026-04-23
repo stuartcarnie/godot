@@ -17,14 +17,14 @@ namespace fs = std::filesystem;
 using std::holds_alternative, std::get, std::u32string;
 
 namespace prefixes {
-static const u32string version = U"#version ";
-static const u32string include = U"#include ";
-static const u32string endif = U"#endif";
-static const u32string pragma = U"#pragma ";
-static const u32string pragma_name = U"#pragma name ";
-static const u32string pragma_param = U"#pragma parameter ";
-static const u32string pragma_format = U"#pragma format ";
-static const u32string pragma_stage = U"#pragma stage ";
+static constexpr std::u32string_view version = U"#version ";
+static constexpr std::u32string_view include = U"#include ";
+static constexpr std::u32string_view endif = U"#endif";
+static constexpr std::u32string_view pragma = U"#pragma ";
+static constexpr std::u32string_view pragma_name = U"#pragma name ";
+static constexpr std::u32string_view pragma_param = U"#pragma parameter ";
+static constexpr std::u32string_view pragma_format = U"#pragma format ";
+static constexpr std::u32string_view pragma_stage = U"#pragma stage ";
 } //namespace prefixes
 
 error::ErrorOpt SourceParser::load(fs::path p_source_path, bool p_is_root) {

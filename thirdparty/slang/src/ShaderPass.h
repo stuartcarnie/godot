@@ -48,7 +48,14 @@ struct ShaderPass {
 	}
 
 	ShaderPass(fs::path const &p_path, const ShaderPassModel &p_model);
-	ShaderPass() {};
+	ShaderPass() :
+			index(0),
+			frame_count_mod(0),
+			filter(compiled::Filter::UNSPECIFIED),
+			wrap_mode(compiled::Wrap::BORDER),
+			is_float(false),
+			is_sRGB(false),
+			is_mipmap(false) {}
 };
 
 } // namespace slang

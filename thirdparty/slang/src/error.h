@@ -116,7 +116,7 @@ public:
 		}
 	}
 
-	Error(Error &&p_error) {
+	Error(Error &&p_error) noexcept {
 		type = p_error.type;
 		switch (type) {
 			case Type::PARAMETER_MISMATCH:

@@ -118,10 +118,10 @@ optional<ShaderTextureSemanticMapRef> ShaderSymbols::get_texture_semantic_for_na
 	return find_texture_semantic_for_name(p_name);
 }
 
-optional<ShaderBufferSemanticMapRef> ShaderSymbols::find_texture_semantic_for_uniform_name(const std::string &p_name) const {
+optional<ShaderBufferSemanticMapRef> ShaderSymbols::find_texture_semantic_for_uniform_name(const std::string &p_name) {
 	for (auto &it : texture_semantic_uniform_names) {
 		if (uniform_semantic_arrays.contains(it.second)) {
-			// An array texture may be referred to as PassOutput0, PassOutput1, etc
+			// An array texture may be referred to as PassOutput0, PassOutput1, etc.
 			// if p_name starts with the semantic name, then it's a match
 			if (p_name.rfind(it.first, 0) == 0) {
 				// TODO: Validate the suffix is a number and within range
@@ -135,10 +135,10 @@ optional<ShaderBufferSemanticMapRef> ShaderSymbols::find_texture_semantic_for_un
 	return std::nullopt;
 }
 
-optional<ShaderTextureSemanticMapRef> ShaderSymbols::find_texture_semantic_for_name(const std::string &p_name) const {
+optional<ShaderTextureSemanticMapRef> ShaderSymbols::find_texture_semantic_for_name(const std::string &p_name) {
 	for (auto &it : texture_semantic_names) {
 		if (texture_semantic_arrays.contains(it.second)) {
-			// An array texture may be referred to as PassOutput0, PassOutput1, etc
+			// An array texture may be referred to as PassOutput0, PassOutput1, etc.
 			// if p_name starts with the semantic name, then it's a match
 			if (p_name.rfind(it.first, 0) == 0) {
 				// TODO: Validate the suffix is a number and within range

@@ -25,8 +25,8 @@ class ShaderSymbols {
 	static std::map<std::string, compiled::ShaderBufferSemantic> texture_semantic_uniform_names;
 	static std::map<std::string, ShaderBufferSemanticMapRef> semantic_uniform_names;
 
-	optional<ShaderBufferSemanticMapRef> find_texture_semantic_for_uniform_name(const std::string &p_name) const;
-	optional<ShaderTextureSemanticMapRef> find_texture_semantic_for_name(const std::string &p_name) const;
+	static optional<ShaderBufferSemanticMapRef> find_texture_semantic_for_uniform_name(const std::string &p_name);
+	static optional<ShaderTextureSemanticMapRef> find_texture_semantic_for_name(const std::string &p_name);
 
 public:
 	error::ErrorOpt add_texture_semantic(compiled::ShaderTextureSemantic p_semantic, int p_index, const std::string &p_name);

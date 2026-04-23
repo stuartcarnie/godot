@@ -20,7 +20,7 @@ namespace slang {
 using STS = compiled::ShaderTextureSemantic;
 using SBS = compiled::ShaderBufferSemantic;
 
-result::Result<compiled::Shader> ShaderPassCompiler::compile(const ShaderCompilerOptions &p_options) {
+result::Result<compiled::Shader> ShaderPassCompiler::compile(const ShaderCompilerOptions &p_options) const {
 	std::vector<compiled::ShaderPass> passes;
 	for (ShaderPass &pass : shader->passes) {
 		// Compile the pass
@@ -88,7 +88,7 @@ result::Result<compiled::Shader> ShaderPassCompiler::compile(const ShaderCompile
 	};
 }
 
-result::Result<compiled::ShaderPass> ShaderPassCompiler::compile_pass(ShaderPass &p_pass, const ShaderCompilerOptions &p_options) {
+result::Result<compiled::ShaderPass> ShaderPassCompiler::compile_pass(ShaderPass &p_pass, const ShaderCompilerOptions &p_options) const {
 	auto res = make_compilers_for_pass(p_pass, p_options);
 	if (res.is_err()) {
 		return res.take_err();
@@ -142,13 +142,6 @@ result::Result<compiled::ShaderPass> ShaderPassCompiler::compile_pass(ShaderPass
 	};
 }
 
-static spirv_cross::CompilerGLSL::Options default_options() {
-	spirv_cross::CompilerGLSL::Options options;
-	options.fragment.default_float_precision = spirv_cross::CompilerGLSL::Options::Precision::Highp;
-	options.fragment.default_int_precision = spirv_cross::CompilerGLSL::Options::Precision::Highp;
-	return options;
-}
-
 static Compiler compiler_from_spirv(std::vector<uint32_t> &&p_spirv) {
 	spirv_cross::Parser parser(std::move(p_spirv));
 	parser.parse();
@@ -194,7 +187,7 @@ result::Result<std::vector<uint32_t>> ShaderPassCompiler::ir_for_pass(ShaderPass
 
 	auto messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules | EShMsgDebugInfo);
 
-	const int DefaultVersion = 110;
+	constexpr int DefaultVersion = 110;
 
 	if (!glsl.parse(GetDefaultResources(), DefaultVersion, false, messages)) {
 		std::string error = glsl.getInfoLog();
@@ -271,7 +264,7 @@ result::Result<ShaderSymbols> ShaderPassCompiler::make_symbols() const {
 	return sym;
 }
 
-bool ShaderPassCompiler::validate_resources(spirv_cross::ShaderResources &p_vert, spirv_cross::ShaderResources &p_frag) {
+bool ShaderPassCompiler::validate_resources(const spirv_cross::ShaderResources &p_vert, const spirv_cross::ShaderResources &p_frag) {
 	return p_vert.sampled_images.empty() &&
 			p_vert.storage_buffers.empty() &&
 			p_vert.subpass_inputs.empty() &&
@@ -482,19 +475,19 @@ error::ErrorOpt ShaderPassCompiler::add_active_buffer_ranges(ShaderPassReflectio
 	return {};
 }
 
-compiled::UBOBufferDescriptor ShaderPassCompiler::make_ubo_descriptor(slang::ShaderPassReflection &p_ref) const {
+compiled::UBOBufferDescriptor ShaderPassCompiler::make_ubo_descriptor(slang::ShaderPassReflection &p_ref) {
 	auto desc = make_descriptors(p_ref, ShaderBufferSemanticMeta::UBO);
 
 	return compiled::UBOBufferDescriptor(p_ref.ubo.binding, (compiled::Stage)p_ref.ubo.stage, p_ref.ubo.size, desc);
 }
 
-compiled::PushBufferDescriptor ShaderPassCompiler::make_push_descriptor(slang::ShaderPassReflection &p_ref) const {
+compiled::PushBufferDescriptor ShaderPassCompiler::make_push_descriptor(slang::ShaderPassReflection &p_ref) {
 	auto desc = make_descriptors(p_ref, ShaderBufferSemanticMeta::PUSH);
 
 	return compiled::PushBufferDescriptor((compiled::Stage)p_ref.push.stage, p_ref.push.size, desc);
 }
 
-std::vector<compiled::BufferUniformDescriptor> ShaderPassCompiler::make_descriptors(slang::ShaderPassReflection &p_ref, ShaderBufferSemanticMeta::OffsetType p_type) const {
+std::vector<compiled::BufferUniformDescriptor> ShaderPassCompiler::make_descriptors(const slang::ShaderPassReflection &p_ref, ShaderBufferSemanticMeta::OffsetType p_type) {
 	// Find bound global semantics, like MVP, FrameCount, etc
 	std::vector<compiled::BufferUniformDescriptor> descriptors;
 	for (auto &kv : p_ref.semantics) {
@@ -503,10 +496,10 @@ std::vector<compiled::BufferUniformDescriptor> ShaderPassCompiler::make_descript
 		if (auto offset = meta->get_offset(p_type); offset.has_value()) {
 			descriptors.push_back(
 					compiled::BufferUniformDescriptor(sem,
-							std::nullopt,
-							meta->name,
-							meta->number_of_components * sizeof(float),
-							offset.value()));
+			                                          std::nullopt,
+			                                          meta->name,
+			                                          meta->number_of_components * sizeof(float),
+			                                          offset.value()));
 		}
 	}
 
@@ -516,10 +509,10 @@ std::vector<compiled::BufferUniformDescriptor> ShaderPassCompiler::make_descript
 		if (auto offset = meta->get_offset(p_type); offset.has_value()) {
 			descriptors.push_back(
 					compiled::BufferUniformDescriptor(SBS::FLOAT_PARAMETER,
-							meta->index,
-							meta->name,
-							meta->number_of_components * sizeof(float),
-							offset.value()));
+			                                          meta->index,
+			                                          meta->name,
+			                                          meta->number_of_components * sizeof(float),
+			                                          offset.value()));
 		}
 	}
 
@@ -532,10 +525,10 @@ std::vector<compiled::BufferUniformDescriptor> ShaderPassCompiler::make_descript
 			if (auto offset = meta->get_offset(p_type); offset.has_value()) {
 				descriptors.push_back(
 						compiled::BufferUniformDescriptor(sem,
-								meta->index,
-								meta->name,
-								4 * sizeof(float), // these are always vec4
-								offset.value()));
+				                                          meta->index,
+				                                          meta->name,
+				                                          4 * sizeof(float), // these are always vec4
+				                                          offset.value()));
 			}
 		}
 	}
@@ -543,7 +536,7 @@ std::vector<compiled::BufferUniformDescriptor> ShaderPassCompiler::make_descript
 	return descriptors;
 }
 
-std::vector<compiled::TextureDescriptor> ShaderPassCompiler::make_textures(ShaderPassReflection &p_ref, ShaderSymbols &p_sym) const {
+std::vector<compiled::TextureDescriptor> ShaderPassCompiler::make_textures(const ShaderPassReflection &p_ref, ShaderSymbols &p_sym) const {
 	std::vector<compiled::TextureDescriptor> textures;
 
 	for (auto &kv : p_ref.textures) {
@@ -557,11 +550,11 @@ std::vector<compiled::TextureDescriptor> ShaderPassCompiler::make_textures(Shade
 				auto filter = sem == STS::USER ? shader->luts[meta->index].filter : shader->passes[p_ref.pass_number].filter;
 				textures.push_back(
 						compiled::TextureDescriptor(meta->name,
-								sem,
-								binding,
-								wrap,
-								filter,
-								meta->index));
+				                                    sem,
+				                                    binding,
+				                                    wrap,
+				                                    filter,
+				                                    meta->index));
 			}
 		}
 	}

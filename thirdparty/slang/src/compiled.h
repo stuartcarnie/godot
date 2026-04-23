@@ -5,6 +5,7 @@
 #pragma once
 
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -181,7 +182,7 @@ enum class ShaderTextureSemantic {
 	USER,
 };
 
-const std::vector<ShaderTextureSemantic> texture_semantics();
+std::span<const ShaderTextureSemantic> texture_semantics();
 
 std::string to_string(ShaderTextureSemantic p_semantic);
 char const *to_cstr(ShaderTextureSemantic p_val);
@@ -276,7 +277,7 @@ enum class ShaderBufferSemantic {
 	USER_SIZE,
 };
 
-const std::vector<ShaderBufferSemantic> buffer_semantics();
+std::span<const ShaderBufferSemantic> buffer_semantics();
 
 std::string to_string(ShaderBufferSemantic p_semantic);
 char const *to_cstr(ShaderBufferSemantic p_val);
@@ -291,7 +292,7 @@ struct BufferUniformDescriptor {
 	int size = 0;
 	int offset = 0;
 
-	BufferUniformDescriptor() {}
+	BufferUniformDescriptor() : semantic(ShaderBufferSemantic::MVP) {}
 	BufferUniformDescriptor(ShaderBufferSemantic p_semantic, optional<int> p_index, std::string p_name, int p_size, int p_offset) :
 		semantic(p_semantic), index(p_index), name(p_name), size(p_size), offset(p_offset) {}
 };

@@ -58,7 +58,7 @@ struct ShaderPassModel {
 		}
 	}
 
-	ShaderPassModel() {}
+	ShaderPassModel() : pass(0) {}
 	ShaderPassModel(int p_pass, fs::path const &p_shader) :
 			pass(p_pass), shader(p_shader) {}
 	~ShaderPassModel() {}
@@ -80,7 +80,7 @@ struct ShaderParameterModel {
 	u32string name;
 	double value;
 
-	ShaderParameterModel() {}
+	ShaderParameterModel() : value(0) {}
 	ShaderParameterModel(const u32string &p_name, double p_value) :
 			name(p_name), value(p_value) {}
 };

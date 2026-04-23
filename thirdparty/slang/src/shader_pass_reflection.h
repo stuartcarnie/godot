@@ -74,6 +74,7 @@ struct ShaderPassReflection {
 	 * @param p_offset
 	 * @param p_semantic
 	 * @param p_index
+	 * @param p_name
 	 * @param p_ubo
 	 * @return
 	 */

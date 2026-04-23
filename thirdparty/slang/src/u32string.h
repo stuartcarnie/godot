@@ -5,6 +5,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace u32 {
@@ -25,6 +26,8 @@ std::vector<std::u32string> split(const std::u32string &p_str, char32_t p_delimi
 std::u32string from_utf8(const std::string &p_str);
 std::string to_utf8(const std::u32string &p_str);
 std::string to_ascii(const std::u32string &p_str, char replacement = '?');
-bool starts_with(const std::u32string &p_str, const std::u32string &p_prefix);
-std::u32string joined(const std::vector<std::u32string> &p_strs, std::u32string const &p_delimiter);
+constexpr bool starts_with(std::u32string_view p_str, std::u32string_view p_prefix) {
+	return p_prefix.length() <= p_str.length() && p_str.compare(0, p_prefix.length(), p_prefix) == 0;
+}
+std::u32string joined(const std::vector<std::u32string> &p_strs, std::u32string_view p_delimiter);
 } //namespace u32
