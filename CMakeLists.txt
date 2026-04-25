@@ -57,6 +57,9 @@ set(CMAKE_C_STANDARD 17)
 set(GODOT_TARGET "editor" CACHE STRING "Compilation target")
 set(GODOT_TARGETS editor template_release template_debug)
 set_property(CACHE GODOT_TARGET PROPERTY STRINGS ${GODOT_TARGETS})
+set(LIBRARY_TYPE "executable" CACHE STRING "Build library type")
+set(LIBRARY_TYPES executable static_library shared_library)
+set_property(CACHE LIBRARY_TYPE PROPERTY STRINGS ${LIBRARY_TYPES})
 option(ENABLE_THREADS "Enable threading support" ON)
 option(ENABLE_ENGINE_UPDATE_CHECK "Enable engine update checks in the Project Manager" ON)
 
@@ -85,6 +88,7 @@ set_property(CACHE PROFILER PROPERTY STRINGS none tracy perfetto instruments)
 set(PROFILER_PATH "" CACHE STRING "Path to the Profiler framework.")
 option(PROFILER_SAMPLE_CALLSTACK "Profile random samples application-wide using a callstack based sampler." OFF)
 option(PROFILER_TRACK_MEMORY "Profile memory allocations, if the profiler supports it." OFF)
+option(PROFILER_RECORD_ON_DEMAND "Record only when the profiler is connected, if the profiler supports it. In Tracy, this configures TRACY_ON_DEMAND, which has a performance impact if enabled." OFF)
 
 # Determine profiler backend
 
@@ -154,6 +158,9 @@ elseif (GODOT_CORE_PROFILER_BACKEND STREQUAL "tracy")
     endif ()
     if (PROFILER_TRACK_MEMORY)
         set(GODOT_PROFILER_TRACK_MEMORY 1)
+    endif ()
+    if (PROFILER_RECORD_ON_DEMAND)
+        set(TRACY_ON_DEMAND 1)
     endif ()
     set(WANT_PROFILER 1)
 elseif (GODOT_CORE_PROFILER_BACKEND STREQUAL "perfetto")
@@ -347,6 +354,10 @@ if (NOT GODOT_TARGET IN_LIST GODOT_TARGETS)
     message(FATAL_ERROR "Invalid GODOT_TARGET: ${GODOT_TARGET}. Expect editor, template_release or template_debug")
 endif ()
 
+if (NOT LIBRARY_TYPE IN_LIST LIBRARY_TYPES)
+    message(FATAL_ERROR "Invalid LIBRARY_TYPE: ${LIBRARY_TYPE}. Expect executable, static_library or shared_library")
+endif ()
+
 if (GODOT_TARGET STREQUAL "editor")
     message(STATUS "Building editor")
     set(WANT_EDITOR 1)
@@ -366,6 +377,13 @@ if (GODOT_TARGET MATCHES "^(editor|template_debug)$")
     set(WANT_DEBUG_FEATURES 1)
 else ()
     set(WANT_DEBUG_FEATURES 0)
+endif ()
+
+if (LIBRARY_TYPE STREQUAL "executable")
+    set(WANT_LIBGODOT 0)
+else ()
+    message(STATUS "Building LibGodot ${LIBRARY_TYPE}")
+    set(WANT_LIBGODOT 1)
 endif ()
 
 if (PRECISION STREQUAL "single")
@@ -406,6 +424,7 @@ add_compile_definitions(
         $<${WANT_EDITOR}:TOOLS_ENABLED>
         $<${WANT_THREADS}:THREADS_ENABLED>
         $<${WANT_DEBUG_FEATURES}:DEBUG_ENABLED>
+        $<${WANT_LIBGODOT}:LIBGODOT_ENABLED>
 )
 
 add_compile_options($<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:-fobjc-arc>)
@@ -562,6 +581,7 @@ endfunction()
 set(_json "{}")
 json_set_string(_json "${_json}" platform "${GODOT_PLATFORM}")
 json_set_string(_json "${_json}" arch "${OS_ARCH}")
+json_set_string(_json "${_json}" library_type "${LIBRARY_TYPE}")
 json_set_bool(_json "${_json}" editor_build ${WANT_EDITOR})
 json_set_bool(_json "${_json}" modules_enabled_by_default TRUE)
 json_set_bool(_json "${_json}" disable_3d FALSE)

@@ -44,17 +44,36 @@ set(MACOS_RESOURCES
 )
 # [[[end]]]
 
-add_executable(Godot MACOSX_BUNDLE
+set(_godot_target_sources
         ${GODOT_MAIN_EXECUTABLE_APP_ICON_OUTPUT}
         ${GODOT_PLATFORM_GENERATED_REGISTERED_APIS_OUTPUT}
         ${GODOT_EXTENSION_INTERFACE_DUMP_OUTPUT}
         ${GODOT_EXTENSION_INTERFACE_HEADER_OUTPUT}
-        ${MACOS_RESOURCES}
 )
+
+if (LIBRARY_TYPE STREQUAL "executable")
+    add_executable(Godot MACOSX_BUNDLE
+            ${_godot_target_sources}
+            ${MACOS_RESOURCES}
+    )
+else ()
+    if (LIBRARY_TYPE STREQUAL "static_library")
+        add_library(Godot STATIC ${_godot_target_sources})
+    else ()
+        add_library(Godot SHARED ${_godot_target_sources})
+    endif ()
+
+    set_target_properties(Godot PROPERTIES
+            OUTPUT_NAME godot
+            XCODE_ATTRIBUTE_PRODUCT_NAME godot
+    )
+endif ()
 
 add_dependencies(Godot generate_main_app_files)
 
-set_target_properties(Godot PROPERTIES RESOURCE "${MACOS_RESOURCES}")
+if (LIBRARY_TYPE STREQUAL "executable")
+    set_target_properties(Godot PROPERTIES RESOURCE "${MACOS_RESOURCES}")
+endif ()
 
 if (APPLE)
     get_target_property(SOURCES Godot SOURCES)
@@ -107,14 +126,14 @@ target_include_directories(Godot PUBLIC
         ${GODOT_ENGINE_ROOT_DIRECTORY}/platform
 )
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+if (LIBRARY_TYPE STREQUAL "executable" AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set_target_properties(Godot PROPERTIES
             XCODE_ATTRIBUTE_INFOPLIST_FILE ${CMAKE_SOURCE_DIR}/misc/dist/macos_tools.app/Contents/Info.plist
             XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ${CMAKE_SOURCE_DIR}/misc/dist/macos/editor_debug.entitlements
             XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${APPLE_BUNDLE_IDENTIFIER}
             MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/misc/dist/macos_tools.app/Contents/Info.plist
     )
-elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+elseif (LIBRARY_TYPE STREQUAL "executable" AND CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(_info_plist "${CMAKE_BINARY_DIR}/Info.plist")
     file(WRITE "${_info_plist}" [=[<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -205,7 +224,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
             XCODE_EMBED_FRAMEWORKS "${MOLTENVK_FOUND}"
             XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY TRUE
     )
-elseif (CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+elseif (LIBRARY_TYPE STREQUAL "executable" AND CMAKE_SYSTEM_NAME STREQUAL "visionOS")
     # Compute scene manifest based on VISIONOS_APP_ROLE / VISIONOS_IMMERSION_STYLE.
     if (VISIONOS_APP_ROLE STREQUAL "immersive")
         if (VISIONOS_IMMERSION_STYLE STREQUAL "full")
@@ -331,7 +350,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "visionOS")
             MACOSX_BUNDLE_INFO_PLIST "${_info_plist}"
             XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY TRUE
     )
-elseif (CMAKE_SYSTEM_NAME STREQUAL "tvOS")
+elseif (LIBRARY_TYPE STREQUAL "executable" AND CMAKE_SYSTEM_NAME STREQUAL "tvOS")
     set(_info_plist "${CMAKE_BINARY_DIR}/Info.plist")
     file(WRITE "${_info_plist}" [=[<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -404,16 +423,18 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "tvOS")
     )
 endif ()
 
-if (GODOT_PCK_FILE)
-    cmake_path(GET GODOT_PCK_FILE STEM _product_name)
-else ()
-    set(_product_name "Godot")
-endif ()
-set_target_properties(Godot PROPERTIES
-        XCODE_ATTRIBUTE_PRODUCT_NAME "${_product_name}"
-)
+if (LIBRARY_TYPE STREQUAL "executable")
+    if (GODOT_PCK_FILE)
+        cmake_path(GET GODOT_PCK_FILE STEM _product_name)
+    else ()
+        set(_product_name "Godot")
+    endif ()
+    set_target_properties(Godot PROPERTIES
+            XCODE_ATTRIBUTE_PRODUCT_NAME "${_product_name}"
+    )
 
-if (GODOT_PCK_FILE AND CMAKE_SYSTEM_NAME MATCHES "^(iOS|tvOS|visionOS)$")
-    target_sources(Godot PRIVATE "${GODOT_PCK_FILE}")
-    set_source_files_properties("${GODOT_PCK_FILE}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    if (GODOT_PCK_FILE AND CMAKE_SYSTEM_NAME MATCHES "^(iOS|tvOS|visionOS)$")
+        target_sources(Godot PRIVATE "${GODOT_PCK_FILE}")
+        set_source_files_properties("${GODOT_PCK_FILE}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    endif ()
 endif ()

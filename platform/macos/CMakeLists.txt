@@ -3,7 +3,7 @@ godot_add_library(macos FOLDER platform)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(macos PRIVATE')
-#   for file in list_files(cog, '.', exclude=['gl_manager_macos_angle.h', 'gl_manager_macos_angle.mm']):
+#   for file in list_files(cog, '.', exclude=['gl_manager_macos_angle.h', 'gl_manager_macos_angle.mm', 'godot_main_macos.mm', 'libgodot_macos.mm']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
@@ -34,7 +34,6 @@ target_sources(macos PRIVATE
         godot_content_view.mm
         godot_core_cursor.h
         godot_core_cursor.mm
-        godot_main_macos.mm
         godot_menu_delegate.h
         godot_menu_delegate.mm
         godot_menu_item.h
@@ -51,7 +50,6 @@ target_sources(macos PRIVATE
         godot_window_delegate.mm
         key_mapping_macos.h
         key_mapping_macos.mm
-        libgodot_macos.mm
         macos_quartz_core_spi.h
         native_menu_macos.h
         native_menu_macos.mm
@@ -67,6 +65,12 @@ target_sources(macos PRIVATE
         tts_macos.mm
 )
 # [[[end]]]
+
+if (LIBRARY_TYPE STREQUAL "executable")
+    target_sources(macos PRIVATE godot_main_macos.mm)
+else ()
+    target_sources(macos PRIVATE libgodot_macos.mm)
+endif ()
 
 if (WANT_EDITOR)
     # [[[cog
