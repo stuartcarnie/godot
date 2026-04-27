@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "register_types.h"
+
 #include "retro_fx_rect.h"
 #include "shader_chain.h"
 #include "shader_graph.h"
@@ -37,6 +38,7 @@
 #include "core/object/class_db.h"
 #include "core/os/os.h"
 #include "editor/retro_fx_editor_plugin.h"
+#include "editor/retro_fx_inspector_plugin.h"
 
 static Ref<ResourceFormatLoaderSlangPreset> resource_loader_slang_preset;
 
@@ -70,6 +72,9 @@ void initialize_retrofx_module(ModuleInitializationLevel p_level) {
 
 #if TOOLS_ENABLED
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+		GDREGISTER_INTERNAL_CLASS(EditorPropertyShaderColor);
+		GDREGISTER_INTERNAL_CLASS(EditorPropertyShaderVector2);
+		GDREGISTER_INTERNAL_CLASS(RetroFXInspectorPlugin);
 		EditorPlugins::add_by_type<RetroFXEditorPlugin>();
 	}
 #endif

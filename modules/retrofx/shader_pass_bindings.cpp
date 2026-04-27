@@ -19,7 +19,7 @@ void BufferBinding::update_data() {
 	}
 }
 
-void BufferBinding::free(RD *p_rd) {
+void BufferBinding::reset(RD *p_rd) {
 	data.clear();
 	uniforms.clear();
 }
@@ -33,8 +33,8 @@ void UBOBufferBinding::update(RD *p_rd) {
 	p_rd->buffer_update(ubo_buffer, 0, binding.data.size(), binding.data.ptr());
 }
 
-void UBOBufferBinding::free(RD *p_rd) {
-	binding.free(p_rd);
+void UBOBufferBinding::reset(RD *p_rd) {
+	binding.reset(p_rd);
 
 	if (ubo_buffer.is_valid()) {
 		p_rd->free_rid(ubo_buffer);
@@ -50,8 +50,9 @@ void PushBufferBinding::update(RD *p_rd) {
 	binding.update_data();
 }
 
-void PushBufferBinding::free(RD *p_rd) {
-	binding.free(p_rd);
+void PushBufferBinding::reset(RD *p_rd) {
+	size = 0;
+	binding.reset(p_rd);
 }
 
-}
+} //namespace shader::pass

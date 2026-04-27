@@ -69,6 +69,8 @@ if (WANT_EDITOR)
             editor/resource_importer_slang_preset.h
             editor/retro_fx_editor_plugin.cpp
             editor/retro_fx_editor_plugin.h
+            editor/retro_fx_inspector_plugin.cpp
+            editor/retro_fx_inspector_plugin.h
     )
     # [[[end]]]
 endif ()

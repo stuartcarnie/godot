@@ -4,9 +4,11 @@
 
 #pragma once
 
-#include "editor/plugins/editor_plugin.h"
 #include "resource_importer_slang.h"
 #include "resource_importer_slang_preset.h"
+#include "retro_fx_inspector_plugin.h"
+
+#include "editor/plugins/editor_plugin.h"
 
 class RetroFXEditorPlugin : public EditorPlugin {
 	GDCLASS(RetroFXEditorPlugin, EditorPlugin);
@@ -19,4 +21,5 @@ private:
 
 	Ref<ResourceImporterSlang> _slang_importer;
 	Ref<ResourceImporterSlangPreset> _slang_preset_importer;
+	Ref<RetroFXInspectorPlugin> _inspector_plugin;
 };

@@ -304,7 +304,12 @@ void FilterChain::render_final_pass(const RID p_target, const Size2 p_target_siz
 		blit_texture(dl, view);
 	} else {
 		Pass &pass = passes[last_pass_index];
-		render_pass(pass, rd, dl);
+		// Direct render to the external target — use the alpha-masked variant so the
+		// cleared opaque alpha survives regardless of what the shader writes.
+		rd->draw_list_bind_render_pipeline(dl, pass.pipeline_final);
+		rd->draw_list_set_push_constant(dl, pass.bindings.push.binding.data.ptr(), pass.bindings.push.size);
+		rd->draw_list_bind_uniform_set(dl, pass.uniform_set, 0);
+		rd->draw_list_draw(dl, false);
 	}
 
 	rd->draw_list_end();
@@ -433,7 +438,7 @@ void FilterChain::update_history() {
 	}
 }
 
-void FilterChain::Pass::free_resources(RD *p_rd) {
+void FilterChain::Pass::reset(RD *p_rd) {
 	uniform_set = RID(); // managed by uniform set cache
 	render_target.free(p_rd);
 	feedback_target.free(p_rd);
@@ -441,16 +446,28 @@ void FilterChain::Pass::free_resources(RD *p_rd) {
 		p_rd->free_rid(pipeline);
 		pipeline = RID();
 	}
+	if (pipeline_final.is_valid()) {
+		p_rd->free_rid(pipeline_final);
+		pipeline_final = RID();
+	}
 	if (shader.is_valid()) {
 		p_rd->free_rid(shader);
 		shader = RID();
 	}
-	bindings.free(p_rd);
+	bindings.reset(p_rd);
+
+	format = RD::DATA_FORMAT_MAX;
+	frame_count = 0;
+	frame_count_mod = 0;
+	frame_direction = 0;
+	has_feedback = false;
+	scale_x.reset();
+	scale_y.reset();
 }
 
 void FilterChain::free_resources(RD *p_rd) {
 	for (uint32_t i = 0; i < passes_count; i++) {
-		passes[i].free_resources(p_rd);
+		passes[i].reset(p_rd);
 	}
 
 	for (uint32_t i = 0; i < history_count; i++) {
@@ -707,7 +724,7 @@ Error FilterChain::set_compiled_shader(const ShaderContainer &p_container) {
 			ERR_FAIL_COND_V_MSG(pass.shader.is_null(), ERR_CANT_CREATE, "Failed to create shader");
 		}
 
-		// create render pipeline
+		// Intermediate pipeline: alpha writes preserved so downstream passes can sample .a
 		pass.pipeline = rd->render_pipeline_create(
 				pass.shader,
 				pass.fb_format,
@@ -718,6 +735,25 @@ Error FilterChain::set_compiled_shader(const ShaderContainer &p_container) {
 				RD::PipelineDepthStencilState(),
 				RD::PipelineColorBlendState::create_disabled());
 		ERR_FAIL_COND_V_MSG(pass.pipeline.is_null(), ERR_CANT_CREATE, "Failed to create pipeline");
+
+		// Final-target pipeline: only the last pass can write directly to the external
+		// target. Mask alpha so the cleared opaque value survives — most slang shaders
+		// leave FragColor.a undefined, which would otherwise turn the canvas-item composite
+		// transparent.
+		if (pass_no == last_pass_index) {
+			RD::PipelineColorBlendState final_blend = RD::PipelineColorBlendState::create_disabled();
+			final_blend.attachments.write[0].write_a = false;
+			pass.pipeline_final = rd->render_pipeline_create(
+					pass.shader,
+					pass.fb_format,
+					pipeline_state.vert_format,
+					RD::RENDER_PRIMITIVE_TRIANGLE_STRIPS,
+					RD::PipelineRasterizationState(),
+					RD::PipelineMultisampleState(),
+					RD::PipelineDepthStencilState(),
+					final_blend);
+			ERR_FAIL_COND_V_MSG(pass.pipeline_final.is_null(), ERR_CANT_CREATE, "Failed to create final pipeline");
+		}
 	}
 
 	// remaining state
@@ -921,10 +957,12 @@ FilterChain::FilterChain() {
 
 			pipeline_state.vert_format = rd->vertex_format_create(attrs);
 		}
+		RD::PipelineColorBlendState blit_blend = RD::PipelineColorBlendState::create_disabled();
+		blit_blend.attachments.write[0].write_a = false;
 		pipeline_state.pipeline = rd->render_pipeline_create(
 				pipeline_state.shader,
 				pipeline_state.fb_format, pipeline_state.vert_format,
-				RD::RENDER_PRIMITIVE_TRIANGLE_STRIPS, {}, {}, {}, RD::PipelineColorBlendState::create_disabled());
+				RD::RENDER_PRIMITIVE_TRIANGLE_STRIPS, {}, {}, {}, blit_blend);
 	}
 
 	// vertex buffers

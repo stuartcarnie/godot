@@ -255,6 +255,61 @@ bool RetroFXRect::_set(const StringName &p_name, const Variant &p_value) {
 	return true;
 }
 
+// Detect libretro slang-shader UI sentinels:
+//   *_nonono / *_dummy_header / *_dummy_footer / *_unused# / *_comment_header
+//   → desc holds a section title (often wrapped in === or ---), used as a section header.
+static bool is_section_header_sentinel(const Ref<ShaderParameter> &p_param) {
+	const String name = p_param->get_name().to_lower();
+	if (name.ends_with("_nonono") || name.contains("nonono")) {
+		return true;
+	}
+	if (name.contains("dummy_header") || name.contains("dummy_footer") || name.contains("comment_header")) {
+		return true;
+	}
+	if (name.contains("_unused")) {
+		return true;
+	}
+	return false;
+}
+
+// Detect spacer/divider rows: name like *_space# / *-row#, or desc that is purely whitespace
+// or made of repeated punctuation.
+static bool is_spacer_sentinel(const Ref<ShaderParameter> &p_param) {
+	const String name = p_param->get_name().to_lower();
+	if (name.contains("_space") || name.contains("-row")) {
+		return true;
+	}
+	const String desc = p_param->get_desc().strip_edges();
+	if (desc.is_empty()) {
+		return true;
+	}
+	bool only_punct = true;
+	for (int i = 0; i < desc.length(); i++) {
+		const char32_t c = desc[i];
+		if (c != '-' && c != '=' && c != '#' && c != '>' && c != '<' && c != '_' && c != '*') {
+			only_punct = false;
+			break;
+		}
+	}
+	return only_punct && desc.length() >= 3;
+}
+
+// Strip decorative wrapping like "==== Title ====" or "--- Title ---" down to "Title".
+static String clean_section_title(const String &p_desc) {
+	String s = p_desc.strip_edges();
+	while (!s.is_empty() && (s[0] == '=' || s[0] == '-' || s[0] == '#' || s[0] == '>')) {
+		s = s.substr(1);
+	}
+	while (!s.is_empty()) {
+		const char32_t c = s[s.length() - 1];
+		if (c != '=' && c != '-' && c != '#' && c != '<' && c != ':') {
+			break;
+		}
+		s = s.substr(0, s.length() - 1);
+	}
+	return s.strip_edges();
+}
+
 void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
 	if (!shader_chain->has_shader_loaded()) {
 		return;
@@ -265,6 +320,18 @@ void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
 
 	TypedArray<ShaderParameter> params = shader_chain->get_parameters();
 	for (Ref<ShaderParameter> const param : params) {
+		if (intelligent_grouping) {
+			if (is_spacer_sentinel(param)) {
+				continue; // Decorative — drop entirely.
+			}
+			if (is_section_header_sentinel(param)) {
+				// Render as a native collapsible group covering subsequent `parameters/*` rows.
+				PropertyInfo pi(Variant::NIL, clean_section_title(param->get_desc()), PROPERTY_HINT_NONE, "parameters/", PROPERTY_USAGE_GROUP);
+				p_list->push_back(pi);
+				continue;
+			}
+		}
+
 		if (param->is_boolean()) {
 			p_list->push_back(PropertyInfo(Variant::BOOL, vformat("parameters/%s", param->get_name()), PROPERTY_HINT_NONE));
 		} else {
@@ -287,6 +354,14 @@ void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
 			p_list->push_back(PropertyInfo(type, vformat("parameters/%s", param->get_name()), hint, hint_string));
 		}
 	}
+}
+
+void RetroFXRect::set_intelligent_grouping(bool p_enabled) {
+	if (intelligent_grouping == p_enabled) {
+		return;
+	}
+	intelligent_grouping = p_enabled;
+	notify_property_list_changed();
 }
 
 bool RetroFXRect::_property_can_revert(const StringName &p_name) const {
@@ -331,6 +406,9 @@ void RetroFXRect::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_stretch_mode"), &RetroFXRect::get_stretch_mode);
 	ClassDB::bind_method(D_METHOD("set_shader_path", "path"), &RetroFXRect::set_shader_path);
 	ClassDB::bind_method(D_METHOD("get_shader_path"), &RetroFXRect::get_shader_path);
+	ClassDB::bind_method(D_METHOD("set_intelligent_grouping", "enabled"), &RetroFXRect::set_intelligent_grouping);
+	ClassDB::bind_method(D_METHOD("is_intelligent_grouping_enabled"), &RetroFXRect::is_intelligent_grouping_enabled);
+	ClassDB::bind_method(D_METHOD("get_shader_chain"), &RetroFXRect::get_shader_chain);
 
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "texture", PROPERTY_HINT_RESOURCE_TYPE, "Texture2D"), "set_texture", "get_texture");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "expand_mode", PROPERTY_HINT_ENUM, "Keep Size,Ignore Size,Fit Width,Fit Width Proportional,Fit Height,Fit Height Proportional"), "set_expand_mode", "get_expand_mode");
@@ -338,6 +416,7 @@ void RetroFXRect::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_h"), "set_flip_h", "is_flipped_h");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_v"), "set_flip_v", "is_flipped_v");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "shader_path", PROPERTY_HINT_GLOBAL_FILE, "*.slangp"), "set_shader_path", "get_shader_path");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "intelligent_grouping"), "set_intelligent_grouping", "is_intelligent_grouping_enabled");
 
 	BIND_ENUM_CONSTANT(EXPAND_KEEP_SIZE);
 	BIND_ENUM_CONSTANT(EXPAND_IGNORE_SIZE);

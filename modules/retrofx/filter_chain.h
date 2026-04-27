@@ -9,8 +9,9 @@
 #include "shader_pass_bindings.h"
 #include "shader_pass_semantics.h"
 
-#include "modules/retrofx/final_blit.glsl.gen.h"
 #include "servers/rendering/rendering_device.h"
+
+#include "modules/retrofx/final_blit.glsl.gen.h"
 
 class FilterChain {
 	struct SamplerWrapArray {
@@ -116,7 +117,8 @@ class FilterChain {
 		Rect2i viewport;
 		RD::FramebufferFormatID fb_format;
 		RID shader;
-		RID pipeline;
+		RID pipeline; // Used when this pass renders to its own intermediate render_target. Preserves shader alpha so downstream passes can sample .a.
+		RID pipeline_final; // Used when this pass writes directly to the FilterChain's external target. Masks alpha so the cleared opaque value survives the canvas-item composite.
 		RID uniform_set;
 		bool has_feedback = false;
 		optional<compiled::Scale> scale_x;
@@ -128,7 +130,7 @@ class FilterChain {
 
 		Size2i get_output_size(Size2i p_viewport, Size2i p_source) const;
 
-		void free_resources(RD *p_rd);
+		void reset(RD *p_rd);
 	};
 
 	struct Vertex {

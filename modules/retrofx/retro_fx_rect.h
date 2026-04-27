@@ -63,6 +63,7 @@ private:
 	bool hflip = false;
 	bool vflip = false;
 	bool paused = false;
+	bool intelligent_grouping = true;
 	Ref<Texture2D> texture;
 	RID texture_rid;
 	ExpandMode expand_mode = EXPAND_KEEP_SIZE;
@@ -112,6 +113,11 @@ public:
 
 	void set_shader_path(const String &p_path);
 	String get_shader_path() const;
+
+	void set_intelligent_grouping(bool p_enabled);
+	bool is_intelligent_grouping_enabled() const { return intelligent_grouping; }
+
+	Ref<ShaderChain> get_shader_chain() const { return shader_chain; }
 
 	RetroFXRect();
 	~RetroFXRect() override;

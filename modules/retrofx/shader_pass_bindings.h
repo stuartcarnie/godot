@@ -28,7 +28,7 @@ struct BufferBinding {
 	}
 
 	void update_data();
-	void free(RD *p_rd);
+	void reset(RD *p_rd);
 };
 
 struct UBOBufferBinding {
@@ -36,7 +36,7 @@ struct UBOBufferBinding {
 	BufferBinding binding;
 
 	void update(RD *p_rd);
-	void free(RD *p_rd);
+	void reset(RD *p_rd);
 };
 
 struct PushBufferBinding {
@@ -45,7 +45,7 @@ struct PushBufferBinding {
 	BufferBinding binding;
 
 	void update(RD *p_rd);
-	void free(RD *p_rd);
+	void reset(RD *p_rd);
 };
 
 struct TextureBinding {
@@ -71,9 +71,9 @@ struct Bindings {
 		// TODO: sort by binding
 	}
 
-	void free(RD *p_rd) {
-		ubo.free(p_rd);
-		push.free(p_rd);
+	void reset(RD *p_rd) {
+		ubo.reset(p_rd);
+		push.reset(p_rd);
 
 		uniforms.clear();
 		textures.clear();
@@ -81,4 +81,4 @@ struct Bindings {
 	}
 };
 
-}
+} //namespace shader::pass

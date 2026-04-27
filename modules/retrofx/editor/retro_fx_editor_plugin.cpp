@@ -4,7 +4,10 @@
 
 #include "retro_fx_editor_plugin.h"
 
-RetroFXEditorPlugin::RetroFXEditorPlugin() {}
+RetroFXEditorPlugin::RetroFXEditorPlugin() {
+	_inspector_plugin.instantiate();
+	add_inspector_plugin(_inspector_plugin);
+}
 
 void RetroFXEditorPlugin::_notification(int p_what) {
 	switch (p_what) {
