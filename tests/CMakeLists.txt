@@ -141,6 +141,7 @@ target_sources(tests PRIVATE
         scene/test_navigation_obstacle_3d.cpp
         scene/test_navigation_region_2d.cpp
         scene/test_navigation_region_3d.cpp
+        scene/test_nine_patch_rect.cpp
         scene/test_node.cpp
         scene/test_node_2d.cpp
         scene/test_option_button.cpp
@@ -167,6 +168,7 @@ target_sources(tests PRIVATE
         scene/test_tab_container.cpp
         scene/test_text_edit.cpp
         scene/test_texture_progress_bar.cpp
+        scene/test_texture_rect.cpp
         scene/test_theme.cpp
         scene/test_timer.cpp
         scene/test_tree.cpp
