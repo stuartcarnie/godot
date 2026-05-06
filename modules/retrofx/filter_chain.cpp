@@ -194,12 +194,16 @@ void FilterChain::resize_render_targets() {
 			String label = vformat("Pass %02d Output", i);
 
 			pass.render_target.init(rd, tf, pass.fb_format);
+#if DEBUG_ENABLED
 			rd->set_resource_name(pass.render_target.texture.rid, label);
+#endif
 
 			if (pass.has_feedback) {
 				pass.feedback_target.free(rd);
 				pass.feedback_target.init(rd, tf, pass.fb_format);
+#if DEBUG_ENABLED
 				rd->set_resource_name(pass.render_target.texture.rid, label);
+#endif
 			}
 		}
 	}
@@ -291,7 +295,7 @@ void FilterChain::render_final_pass(const RID p_target, const Size2 p_target_siz
 
 	RD::DrawCommandLabel label = rd->draw_command_label("RFX Final Pass");
 
-	RD::DrawListID dl = rd->draw_list_begin(p_target);
+	RD::DrawListID dl = rd->draw_list_begin(p_target, RD::DRAW_CLEAR_ALL, Color(0, 0, 0));
 	ERR_FAIL_COND_MSG(dl == RD::INVALID_ID, "Failed to create draw list for final pass.");
 
 	rd->draw_list_set_viewport(dl, output_frame.viewport);
@@ -349,9 +353,9 @@ void FilterChain::render_offscreen_passes() {
 		Pass &pass = passes[i];
 		char label_str[16];
 		int len = snprintf(label_str, sizeof(label_str), "RFX Pass %02d", i);
-		RD::DrawCommandLabel label = RD::get_singleton()->draw_command_label(Span<char>(label_str, len));
+		RD::DrawCommandLabel label = RD::get_singleton()->draw_command_label(Span(label_str, len));
 
-		RD::DrawListID dl = rd->draw_list_begin(pass.render_target.frame_buffer);
+		RD::DrawListID dl = rd->draw_list_begin(pass.render_target.frame_buffer, RD::DRAW_CLEAR_ALL, Color(0, 0, 0));
 		ERR_FAIL_COND_MSG(dl == RD::INVALID_ID, "Failed to create draw list for pass.");
 
 		rd->draw_list_set_viewport(dl, pass.viewport);
@@ -503,7 +507,7 @@ RID FilterChain::get_checker_texture() {
 		tformat.texture_type = RD::TEXTURE_TYPE_2D;
 
 		checker_texture = RD::get_singleton()->texture_create(tformat, RD::TextureView(), { checkerboard });
-#if DEV_ENABLED
+#if DEBUG_ENABLED
 		RD::get_singleton()->set_resource_name(checker_texture, "Filter chain checker pattern");
 #endif
 	}
@@ -798,6 +802,12 @@ void FilterChain::load_luts(const ShaderContainer &p_container) {
 				texture_storage->texture_2d_initialize(texture_rids[i], img);
 				texture = texture_storage->texture_get_rd_texture(texture_rids[i]);
 				size = TextureSize(img->get_width(), img->get_height());
+#if DEBUG_ENABLED
+				String name = "LUT (";
+				name.append_utf8(Span(lut.name.c_str(), lut.name.length()));
+				name.append_ascii(")");
+				RD::get_singleton()->set_resource_name(texture, name);
+#endif
 			}
 		}
 
