@@ -154,10 +154,12 @@ target_sources(tests PRIVATE
         scene/test_path_follow_3d.cpp
         scene/test_physics_material.cpp
         scene/test_primitives.cpp
+        scene/test_reference_rect.cpp
         scene/test_rich_text_label.cpp
         scene/test_scroll_container.cpp
         scene/test_skeleton_3d.cpp
         scene/test_sky.cpp
+        scene/test_spin_box.cpp
         scene/test_split_container.cpp
         scene/test_sprite_2d.cpp
         scene/test_sprite_frames.cpp
@@ -167,6 +169,7 @@ target_sources(tests PRIVATE
         scene/test_tab_bar.cpp
         scene/test_tab_container.cpp
         scene/test_text_edit.cpp
+        scene/test_texture_button.cpp
         scene/test_texture_progress_bar.cpp
         scene/test_texture_rect.cpp
         scene/test_theme.cpp
