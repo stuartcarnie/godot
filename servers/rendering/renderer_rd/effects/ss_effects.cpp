@@ -615,8 +615,6 @@ void SSEffects::downsample_depth(Ref<RenderSceneBuffersRD> p_render_buffers, uin
 	}
 
 	RD::get_singleton()->compute_list_dispatch_threads(compute_list, size.x, size.y, 1);
-	RD::get_singleton()->compute_list_add_barrier(compute_list);
-
 	RD::get_singleton()->compute_list_end();
 
 	ss_effects.used_full_mips_last_frame = use_full_mips;
@@ -1025,7 +1023,6 @@ void SSEffects::screen_space_indirect_lighting(Ref<RenderSceneBuffersRD> p_rende
 		RD::get_singleton()->compute_list_set_push_constant(compute_list, &ssil.interleave_push_constant, sizeof(SSILInterleavePushConstant));
 
 		RD::get_singleton()->compute_list_dispatch_threads(compute_list, p_settings.full_screen_size.x, p_settings.full_screen_size.y, 1);
-		RD::get_singleton()->compute_list_add_barrier(compute_list);
 	}
 
 	RD::get_singleton()->compute_list_end();
@@ -1402,7 +1399,6 @@ void SSEffects::generate_ssao(Ref<RenderSceneBuffersRD> p_render_buffers, SSAORe
 		RD::get_singleton()->compute_list_set_push_constant(compute_list, &ssao.interleave_push_constant, sizeof(SSAOInterleavePushConstant));
 
 		RD::get_singleton()->compute_list_dispatch_threads(compute_list, p_settings.full_screen_size.x, p_settings.full_screen_size.y, 1);
-		RD::get_singleton()->compute_list_add_barrier(compute_list);
 	}
 
 	RD::get_singleton()->compute_list_end();
