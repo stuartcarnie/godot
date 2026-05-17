@@ -50,6 +50,7 @@ GODOT_CLANG_WARNING_POP
 
 - (void)godot_commonInit {
 	[super godot_commonInit];
+	self.contentScaleFactor = 1.0;
 }
 
 - (CALayer<GDTDisplayLayer> *)initializeRenderingForDriver:(NSString *)driverName {
