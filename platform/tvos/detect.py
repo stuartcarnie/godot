@@ -50,7 +50,7 @@ def get_flags():
         "target": "template_debug",
         "use_volk": False,
         "metal": True,
-        "supported": ["metal", "mono"],
+        "supported": ["metal", "opengl3", "mono"],
         "builtin_pcre2_with_jit": False,
         "vulkan": False,
         "opengl3": False,
@@ -160,8 +160,13 @@ def configure(env: "SConsEnvironment"):
         env.Prepend(CPPPATH=["#thirdparty/spirv-cross"])
 
     if env["opengl3"]:
-        print_warning("The tvOS platform does not support the OpenGL rendering driver")
-        env["opengl3"] = False
+        env.Append(CPPDEFINES=["GLES3_ENABLED", "GLES_SILENCE_DEPRECATION"])
+        env.Append(CCFLAGS=["-Wno-module-import-in-extern-c"])
+        env.Prepend(
+            CPPPATH=[
+                "$APPLE_SDK_PATH/System/Library/Frameworks/OpenGLES.framework/Headers",
+            ]
+        )
 
     if env["sdl"]:
         if env["builtin_sdl"]:

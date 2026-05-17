@@ -142,7 +142,7 @@ Config::Config() {
 #else
 	msaa_supported = true;
 #endif
-#ifndef IOS_ENABLED
+#if !defined(IOS_ENABLED) && !defined(TVOS_ENABLED)
 #ifdef WEB_ENABLED
 	msaa_multiview_supported = extensions.has("OCULUS_multiview");
 	rt_msaa_multiview_supported = msaa_multiview_supported;

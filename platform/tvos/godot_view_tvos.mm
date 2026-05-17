@@ -57,7 +57,19 @@ GODOT_CLANG_WARNING_POP
 		return self.renderingLayer;
 	}
 
-	CALayer<GDTDisplayLayer> *layer = [GDTMetalLayer layer];
+	CALayer<GDTDisplayLayer> *layer;
+
+	if ([driverName isEqualToString:@"metal"]) {
+		layer = [GDTMetalLayer layer];
+#if defined(GLES3_ENABLED)
+	} else if ([driverName isEqualToString:@"opengl3"]) {
+		GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wdeprecated-declarations")
+		layer = [GDTOpenGLLayer layer];
+		GODOT_CLANG_WARNING_POP
+#endif
+	} else {
+		return nil;
+	}
 
 	layer.frame = self.bounds;
 	layer.contentsScale = self.contentScaleFactor;
