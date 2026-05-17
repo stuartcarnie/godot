@@ -32,5 +32,16 @@
 
 #include "drivers/apple_embedded/display_layer_apple_embedded.h"
 
+#if defined(GLES3_ENABLED)
+#import <OpenGLES/EAGLDrawable.h>
+#endif
+#import <QuartzCore/QuartzCore.h>
+
 @interface GDTMetalLayer : CAMetalLayer <GDTDisplayLayer>
 @end
+
+#if defined(GLES3_ENABLED)
+API_DEPRECATED("OpenGLES is deprecated", tvos(9.0, 12.0))
+@interface GDTOpenGLLayer : CAEAGLLayer <GDTDisplayLayer>
+@end
+#endif

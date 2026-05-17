@@ -90,7 +90,11 @@ float DisplayServerTVOS::screen_get_scale(int p_screen) const {
 	UIScreen *screen = _get_ui_screen(p_screen);
 	ERR_FAIL_NULL_V(screen, 1.0f);
 
-	return screen.scale;
+	// tvOS renders to a fixed TV-sized view. Treating the tvOS screen as a
+	// Retina-style scaled surface makes Godot render a backbuffer larger than
+	// the visible layer on some Apple TV hardware, so only the lower-left part
+	// of the game is visible. Keep tvOS window/display coordinates 1:1.
+	return 1.0f;
 }
 
 // TODO: tvOS virtual keyboard support.

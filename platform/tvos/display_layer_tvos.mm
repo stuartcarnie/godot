@@ -30,6 +30,16 @@
 
 #import "display_layer_tvos.h"
 
+#include "core/config/project_settings.h"
+
+#if defined(GLES3_ENABLED)
+#include "drivers/gles3/storage/texture_storage.h"
+#import <OpenGLES/EAGL.h>
+#import <OpenGLES/ES1/gl.h>
+#import <OpenGLES/ES1/glext.h>
+#endif
+#import <QuartzCore/QuartzCore.h>
+
 @implementation GDTMetalLayer
 
 - (void)initializeDisplayLayer {
@@ -45,3 +55,118 @@
 }
 
 @end
+
+#if defined(GLES3_ENABLED)
+@implementation GDTOpenGLLayer {
+	GLint backingWidth;
+	GLint backingHeight;
+
+	EAGLContext *context;
+	GLuint viewRenderbuffer, viewFramebuffer;
+	GLuint depthRenderbuffer;
+}
+
+- (void)initializeDisplayLayer {
+	self.opaque = YES;
+	self.drawableProperties = [NSDictionary
+			dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:FALSE],
+			kEAGLDrawablePropertyRetainedBacking,
+			kEAGLColorFormatRGBA8,
+			kEAGLDrawablePropertyColorFormat,
+			nil];
+
+	if (GLOBAL_GET("rendering/renderer/rendering_method") == "gl_compatibility") {
+		context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
+		NSLog(@"Setting up a tvOS OpenGL ES 3.0 context.");
+		if (!context) {
+			NSLog(@"Failed to create tvOS OpenGL ES 3.0 context.");
+			return;
+		}
+	}
+
+	if (![EAGLContext setCurrentContext:context]) {
+		NSLog(@"Failed to set tvOS EAGLContext.");
+		return;
+	}
+	if (![self createFramebuffer]) {
+		NSLog(@"Failed to create tvOS OpenGL framebuffer.");
+		return;
+	}
+}
+
+- (void)layoutDisplayLayer {
+	[EAGLContext setCurrentContext:context];
+	[self destroyFramebuffer];
+	[self createFramebuffer];
+}
+
+- (void)startRenderDisplayLayer {
+	[EAGLContext setCurrentContext:context];
+	glBindFramebufferOES(GL_FRAMEBUFFER_OES, viewFramebuffer);
+}
+
+- (void)stopRenderDisplayLayer {
+	glBindRenderbufferOES(GL_RENDERBUFFER_OES, viewRenderbuffer);
+	[context presentRenderbuffer:GL_RENDERBUFFER_OES];
+
+#ifdef DEBUG_ENABLED
+	GLenum err = glGetError();
+	if (err) {
+		NSLog(@"tvOS OpenGL layer: %x error", err);
+	}
+#endif
+}
+
+- (void)dealloc {
+	if ([EAGLContext currentContext] == context) {
+		[EAGLContext setCurrentContext:nil];
+	}
+
+	if (context) {
+		context = nil;
+	}
+}
+
+- (BOOL)createFramebuffer {
+	glGenFramebuffersOES(1, &viewFramebuffer);
+	glGenRenderbuffersOES(1, &viewRenderbuffer);
+
+	glBindFramebufferOES(GL_FRAMEBUFFER_OES, viewFramebuffer);
+	glBindRenderbufferOES(GL_RENDERBUFFER_OES, viewRenderbuffer);
+	[context renderbufferStorage:GL_RENDERBUFFER_OES fromDrawable:(id<EAGLDrawable>)self];
+	glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_RENDERBUFFER_OES, viewRenderbuffer);
+
+	glGetRenderbufferParameterivOES(GL_RENDERBUFFER_OES, GL_RENDERBUFFER_WIDTH_OES, &backingWidth);
+	glGetRenderbufferParameterivOES(GL_RENDERBUFFER_OES, GL_RENDERBUFFER_HEIGHT_OES, &backingHeight);
+
+	glGenRenderbuffersOES(1, &depthRenderbuffer);
+	glBindRenderbufferOES(GL_RENDERBUFFER_OES, depthRenderbuffer);
+	glRenderbufferStorageOES(GL_RENDERBUFFER_OES, GL_DEPTH_COMPONENT16_OES, backingWidth, backingHeight);
+	glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_DEPTH_ATTACHMENT_OES, GL_RENDERBUFFER_OES, depthRenderbuffer);
+
+	if (glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) != GL_FRAMEBUFFER_COMPLETE_OES) {
+		NSLog(@"Failed to make complete tvOS OpenGL framebuffer object %x", glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
+		return NO;
+	}
+
+	GLES3::TextureStorage::system_fbo = viewFramebuffer;
+
+	return YES;
+}
+
+- (void)destroyFramebuffer {
+	GLES3::TextureStorage::system_fbo = 0;
+
+	glDeleteFramebuffersOES(1, &viewFramebuffer);
+	viewFramebuffer = 0;
+	glDeleteRenderbuffersOES(1, &viewRenderbuffer);
+	viewRenderbuffer = 0;
+
+	if (depthRenderbuffer) {
+		glDeleteRenderbuffersOES(1, &depthRenderbuffer);
+		depthRenderbuffer = 0;
+	}
+}
+
+@end
+#endif
