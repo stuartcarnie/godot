@@ -971,6 +971,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Vector4i.svg
         VehicleBody3D.svg
         VehicleWheel3D.svg
+        Verified.svg
         VideoStream.svg
         VideoStreamPlayer.svg
         VideoStreamTheora.svg
