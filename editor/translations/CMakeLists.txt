@@ -30,8 +30,6 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         editor/ja.po
         editor/ka.po
         editor/ko.po
-        editor/lv.po
-        editor/ms.po
         editor/nl.po
         editor/pl.po
         editor/pt.po

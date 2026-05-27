@@ -91,6 +91,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         AutoTriangle.svg
         Back.svg
         BackBufferCopy.svg
+        BackStart.svg
         Bake.svg
         BaseButton.svg
         Basis.svg
@@ -327,6 +328,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         FontSize.svg
         FontVariation.svg
         Forward.svg
+        ForwardEnd.svg
         GPUParticles2D.svg
         GPUParticles3D.svg
         GPUParticlesAttractorBox3D.svg
