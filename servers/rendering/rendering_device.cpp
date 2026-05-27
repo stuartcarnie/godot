@@ -4895,9 +4895,14 @@ RID RenderingDevice::render_pipeline_create(RID p_shader, FramebufferFormatID p_
 	RDD::VertexFormatID driver_vertex_format;
 	if (p_vertex_format != INVALID_ID) {
 		// Uses vertices, else it does not.
-		ERR_FAIL_COND_V(!vertex_formats.has(p_vertex_format), RID());
-		const VertexDescriptionCache &vd = vertex_formats[p_vertex_format];
-		driver_vertex_format = vertex_formats[p_vertex_format].driver_id;
+		const VertexDescriptionCache *vd;
+		{
+			_THREAD_SAFE_METHOD_
+			vd = vertex_formats.getptr(p_vertex_format);
+		}
+		ERR_FAIL_NULL_V(vd, RID());
+
+		driver_vertex_format = vd->driver_id;
 
 		// Validate with inputs.
 		for (uint32_t i = 0; i < 64; i++) {
@@ -4905,8 +4910,8 @@ RID RenderingDevice::render_pipeline_create(RID p_shader, FramebufferFormatID p_
 				continue;
 			}
 			bool found = false;
-			for (int j = 0; j < vd.vertex_formats.size(); j++) {
-				if (vd.vertex_formats[j].location == i) {
+			for (int j = 0; j < vd->vertex_formats.size(); j++) {
+				if (vd->vertex_formats[j].location == i) {
 					found = true;
 					break;
 				}
@@ -5581,7 +5586,12 @@ RenderingDevice::DrawListID RenderingDevice::draw_list_begin(RID p_framebuffer, 
 	Framebuffer *framebuffer = framebuffer_owner.get_or_null(p_framebuffer);
 	ERR_FAIL_NULL_V(framebuffer, INVALID_ID);
 
-	const FramebufferFormatKey &framebuffer_key = framebuffer_formats[framebuffer->format_id].E->key();
+	const FramebufferFormatKey *framebuffer_key;
+	{
+		_THREAD_SAFE_METHOD_
+		framebuffer_key = &framebuffer_formats[framebuffer->format_id].E->key();
+	}
+
 	Point2i viewport_offset;
 	Point2i viewport_size = framebuffer->size;
 
@@ -5627,10 +5637,10 @@ RenderingDevice::DrawListID RenderingDevice::draw_list_begin(RID p_framebuffer, 
 
 		RDG::AttachmentOperation operation = RDG::ATTACHMENT_OPERATION_DEFAULT;
 		RDD::RenderPassClearValue clear_value;
-		if (framebuffer_key.vrs_attachment == i && (texture->usage_flags & TEXTURE_USAGE_VRS_ATTACHMENT_BIT)) {
+		if (framebuffer_key->vrs_attachment == i && (texture->usage_flags & TEXTURE_USAGE_VRS_ATTACHMENT_BIT)) {
 			resource_trackers.push_back(texture->draw_tracker);
-			resource_usages.push_back(_vrs_usage_from_method(framebuffer_key.vrs_method));
-			stages.set_flag(_vrs_stages_from_method(framebuffer_key.vrs_method));
+			resource_usages.push_back(_vrs_usage_from_method(framebuffer_key->vrs_method));
+			stages.set_flag(_vrs_stages_from_method(framebuffer_key->vrs_method));
 		} else if (texture->usage_flags & TEXTURE_USAGE_COLOR_ATTACHMENT_BIT) {
 			if (p_draw_flags.has_flag(DrawFlags(DRAW_CLEAR_COLOR_0 << color_index))) {
 				ERR_FAIL_COND_V_MSG(color_index >= p_clear_color_values.size(), INVALID_ID, vformat("Color texture (%d) was specified to be cleared but no color value was provided.", color_index));
@@ -5684,7 +5694,7 @@ RenderingDevice::DrawListID RenderingDevice::draw_list_begin(RID p_framebuffer, 
 	draw_list_framebuffer_format = framebuffer->format_id;
 #endif
 	draw_list_current_subpass = 0;
-	draw_list_subpass_count = framebuffer_key.passes.size();
+	draw_list_subpass_count = framebuffer_key->passes.size();
 
 	Rect2i viewport_rect(viewport_offset, viewport_size);
 	draw_graph.add_draw_list_set_viewport(viewport_rect);
@@ -5866,7 +5876,11 @@ void RenderingDevice::draw_list_bind_vertex_buffers_format(DrawListID p_list, Ve
 
 	ERR_FAIL_COND(!draw_list.active);
 
-	const VertexDescriptionCache *vertex_description = vertex_formats.getptr(p_vertex_format);
+	const VertexDescriptionCache *vertex_description;
+	{
+		_THREAD_SAFE_METHOD_
+		vertex_description = vertex_formats.getptr(p_vertex_format);
+	}
 	ERR_FAIL_NULL_MSG(vertex_description, "Supplied vertex format does not exist.");
 
 	Span<uint64_t> offsets_span = p_offsets;
@@ -7883,6 +7897,10 @@ String RenderingDevice::get_device_pipeline_cache_uuid() const {
 	return driver->get_pipeline_cache_uuid();
 }
 
+RenderingDevice::DriverWorkarounds RenderingDevice::get_driver_workarounds() const {
+	return driver->get_driver_workarounds();
+}
+
 void RenderingDevice::swap_buffers(bool p_present) {
 	ERR_RENDER_THREAD_GUARD();
 
@@ -8583,7 +8601,7 @@ Error RenderingDevice::initialize(RenderingContextDriver *p_context, DisplayServ
 	driver->command_buffer_begin(frames[0].command_buffer);
 
 	// Create draw graph and start it initialized as well.
-	draw_graph.initialize(driver, device, &_render_pass_create_from_graph, frames.size(), main_queue_family, SECONDARY_COMMAND_BUFFERS_PER_FRAME);
+	draw_graph.initialize(driver, &_render_pass_create_from_graph, frames.size(), main_queue_family, SECONDARY_COMMAND_BUFFERS_PER_FRAME);
 	draw_graph.begin();
 
 	for (uint32_t i = 0; i < frames.size(); i++) {
