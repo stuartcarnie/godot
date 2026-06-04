@@ -2184,6 +2184,10 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 	}
 	_pre_opaque_render(p_render_data, using_ssao, using_ssil, using_ssr, using_sdfgi || using_voxelgi, normal_roughness_views, rb_data.is_valid() && rb_data->has_voxelgi() ? rb_data->get_voxelgi() : RID());
 
+	if (current_cluster_builder) {
+		base_specialization.cluster_has_area_light = current_cluster_builder->get_cluster_count_by_type(ClusterBuilderRD::ELEMENT_TYPE_AREA_LIGHT) != 0;
+	}
+
 	RENDER_TIMESTAMP("Render Opaque Pass");
 
 	p_render_data->scene_data->directional_light_count = p_render_data->directional_light_count;
