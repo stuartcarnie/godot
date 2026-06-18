@@ -17,6 +17,8 @@ target_sources(editor PRIVATE
         script_create_dialog.h
         script_editor_base.cpp
         script_editor_base.h
+        script_editor_navigation_marker.cpp
+        script_editor_navigation_marker.h
         script_editor_plugin.cpp
         script_editor_plugin.h
         script_text_editor.cpp
