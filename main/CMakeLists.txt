@@ -109,6 +109,7 @@ target_sources(Godot PRIVATE
 # [[[end]]]
 
 target_link_libraries(Godot PUBLIC ${GODOT_LIBRARIES})
+# target_link_options(Godot PUBLIC -all_load)
 target_include_directories(Godot PUBLIC ${CMAKE_BINARY_INCLUDE_DIR})
 target_compile_definitions(Godot
         PUBLIC

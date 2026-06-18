@@ -47,7 +47,7 @@ target_compile_definitions(visionos
 )
 target_compile_options(visionos
         PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:-fmodules -fcxx-modules>
+        $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:-fmodules -fcxx-modules>
         $<$<COMPILE_LANGUAGE:Swift>:-import-objc-header ${CMAKE_CURRENT_SOURCE_DIR}/bridging_header_visionos.h>
         $<$<COMPILE_LANGUAGE:Swift>:-cxx-interoperability-mode=default>
 )

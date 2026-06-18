@@ -41,4 +41,7 @@ target_compile_definitions(servers
         $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
 )
 
+# This flag ensures that uninitialized stack variables are initialized to a known pattern.
+# target_compile_options(servers PRIVATE -ftrivial-auto-var-init=pattern)
+
 group_target_sources(servers)

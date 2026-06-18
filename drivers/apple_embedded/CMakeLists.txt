@@ -55,7 +55,7 @@ set_target_properties(apple_embedded PROPERTIES
 target_link_libraries(apple_embedded PRIVATE core)
 target_compile_options(apple_embedded
         PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:-fmodules -fcxx-modules>
+        $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:-fmodules -fcxx-modules>
         $<$<COMPILE_LANGUAGE:Swift>:-import-objc-header ${CMAKE_CURRENT_SOURCE_DIR}/bridging_header_apple_embedded.h>
         $<$<COMPILE_LANGUAGE:Swift>:-cxx-interoperability-mode=default>
 )

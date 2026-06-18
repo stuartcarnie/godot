@@ -63,7 +63,8 @@ target_compile_definitions(ios
         $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
         $<${WANT_SDL}:SDL_ENABLED=1>
 )
-target_compile_options(ios PRIVATE -fmodules)
+target_compile_options(ios PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:-fmodules -fcxx-modules>)
 
 #add_custom_target(libgodot
 #        COMMAND libtool -static -o libgodot.a $<TARGET_FILE:ios>
