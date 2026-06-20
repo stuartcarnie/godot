@@ -28,10 +28,13 @@ target_sources(editor PRIVATE
         mesh_library_editor_plugin.h
         multimesh_editor_plugin.cpp
         multimesh_editor_plugin.h
+        node_3d_editor_constants.h
         node_3d_editor_gizmos.cpp
         node_3d_editor_gizmos.h
         node_3d_editor_plugin.cpp
         node_3d_editor_plugin.h
+        node_3d_editor_viewport.cpp
+        node_3d_editor_viewport.h
         occluder_instance_3d_editor_plugin.cpp
         occluder_instance_3d_editor_plugin.h
         particles_3d_editor_plugin.cpp

@@ -11,6 +11,7 @@ target_sources(core PRIVATE
         callable_mp.h
         class_db.cpp
         class_db.h
+        editor_language.h
         gdtype.cpp
         gdtype.h
         message_queue.cpp

@@ -87,6 +87,7 @@ if (WANT_EDITOR)
     target_sources(godot-module-gdscript PRIVATE
             editor/gdscript_docgen.cpp
             editor/gdscript_docgen.h
+            editor/gdscript_editor_language.h
             editor/gdscript_highlighter.cpp
             editor/gdscript_highlighter.h
             editor/gdscript_translation_parser_plugin.cpp
