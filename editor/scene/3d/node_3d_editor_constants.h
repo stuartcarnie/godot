@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  winrt_utils.h                                                         */
+/*  node_3d_editor_constants.h                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,25 +30,34 @@
 
 #pragma once
 
-#include "core/typedefs.h"
-#include "core/variant/callable.h"
-#include "core/variant/variant.h"
+#include "core/math/math_defs.h"
 
-#include <windows.h>
+namespace Node3DEditorConstants {
 
-class WinRTWindowData;
+constexpr real_t GIZMO_ARROW_SIZE = 0.35;
+constexpr real_t GIZMO_RING_HALF_WIDTH = 0.1;
+constexpr real_t GIZMO_PLANE_SIZE = 0.2;
+constexpr real_t GIZMO_PLANE_DST = 0.3;
+constexpr real_t GIZMO_CIRCLE_SIZE = 1.1;
 
-class WinRTUtils {
-public:
-	static bool try_show_onecore_emoji_picker();
+constexpr real_t GIZMO_SCALE_OFFSET = GIZMO_CIRCLE_SIZE + 0.3;
+constexpr real_t GIZMO_ARROW_OFFSET = GIZMO_CIRCLE_SIZE + 0.3;
 
-	static bool create_queue();
-	static void destroy_queue();
+constexpr real_t TRACKBALL_SENSITIVITY = 0.005;
+constexpr int TRACKBALL_SPHERE_RINGS = 16;
+constexpr int TRACKBALL_SPHERE_SECTORS = 32;
+constexpr real_t TRACKBALL_HIGHLIGHT_ALPHA = 0.01;
+constexpr int GIZMO_HIGHLIGHT_AXIS_VIEW_ROTATION = 15;
 
-	static Vector<String> get_preferred_locales();
+constexpr float VERTEX_SNAP_THRESHOLD = 30.0f;
+constexpr int GIZMO_HIGHLIGHT_AXIS_TRACKBALL = 16;
 
-	static WinRTWindowData *create_wd(HWND p_window, const Callable &p_color_cb, int64_t p_window_id);
-	static bool window_has_display_info(const WinRTWindowData *p_data);
-	static void window_get_advanced_color_info(const WinRTWindowData *p_data, bool &r_hdr_supported, float &r_min_luminance, float &r_max_luminance, float &r_max_average_luminance, float &r_sdr_white_level);
-	static void destroy_wd(WinRTWindowData *p_data);
-};
+constexpr real_t ZOOM_FREELOOK_INDICATOR_DELAY_S = 1.5;
+
+constexpr real_t MIN_Z = 0.01;
+constexpr real_t MAX_Z = 1000000.0;
+
+constexpr real_t MIN_FOV = 0.01;
+constexpr real_t MAX_FOV = 179;
+
+} // namespace Node3DEditorConstants

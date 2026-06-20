@@ -54,6 +54,7 @@
 #include "editor/inspector/editor_context_menu_plugin.h"
 #include "editor/inspector/multi_node_edit.h"
 #include "editor/scene/3d/node_3d_editor_plugin.h"
+#include "editor/scene/3d/node_3d_editor_viewport.h"
 #include "editor/scene/canvas_item_editor_plugin.h"
 #include "editor/scene/rename_dialog.h"
 #include "editor/scene/reparent_dialog.h"
@@ -652,7 +653,6 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 			// Prefer nodes that inherit from the current scene root.
 			Node *current_edited_scene_root = EditorNode::get_singleton()->get_edited_scene();
 			if (current_edited_scene_root) {
-				String root_class = current_edited_scene_root->get_class_name();
 				static Vector<String> preferred_types;
 				if (preferred_types.is_empty()) {
 					preferred_types.push_back("Control");
@@ -661,7 +661,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 				}
 
 				for (int i = 0; i < preferred_types.size(); i++) {
-					if (ClassDB::is_parent_class(root_class, preferred_types[i])) {
+					if (current_edited_scene_root->is_class(preferred_types[i])) {
 						create_dialog->set_preferred_search_result_type(preferred_types[i]);
 						break;
 					}

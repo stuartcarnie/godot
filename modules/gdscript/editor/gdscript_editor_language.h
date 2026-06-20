@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  winrt_utils.h                                                         */
+/*  gdscript_editor_language.h                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,25 +30,23 @@
 
 #pragma once
 
-#include "core/typedefs.h"
-#include "core/variant/callable.h"
-#include "core/variant/variant.h"
+#include "core/object/editor_language.h"
 
-#include <windows.h>
+class GDScriptEditorLanguage final : public EditorLanguage {
+	static GDScriptEditorLanguage *singleton;
 
-class WinRTWindowData;
-
-class WinRTUtils {
 public:
-	static bool try_show_onecore_emoji_picker();
+	_FORCE_INLINE_ static GDScriptEditorLanguage *get_singleton() { return singleton; }
 
-	static bool create_queue();
-	static void destroy_queue();
+	virtual Error complete_code(const String &p_code, const String &p_path, Object *p_owner, List<ScriptLanguage::CodeCompletionOption> *r_options, bool &r_force, String &r_call_hint) override;
 
-	static Vector<String> get_preferred_locales();
-
-	static WinRTWindowData *create_wd(HWND p_window, const Callable &p_color_cb, int64_t p_window_id);
-	static bool window_has_display_info(const WinRTWindowData *p_data);
-	static void window_get_advanced_color_info(const WinRTWindowData *p_data, bool &r_hdr_supported, float &r_min_luminance, float &r_max_luminance, float &r_max_average_luminance, float &r_sdr_white_level);
-	static void destroy_wd(WinRTWindowData *p_data);
+	GDScriptEditorLanguage() {
+		ERR_FAIL_COND(singleton != nullptr);
+		singleton = this;
+	}
+	~GDScriptEditorLanguage() {
+		if (singleton == this) {
+			singleton = nullptr;
+		}
+	}
 };
