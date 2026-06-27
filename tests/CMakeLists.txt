@@ -97,6 +97,7 @@ target_sources(tests PRIVATE
         core/variant/test_callable.cpp
         core/variant/test_dictionary.cpp
         core/variant/test_variant.cpp
+        core/variant/test_variant_initialization.cpp
         core/variant/test_variant_utility.cpp
         display_server_mock.cpp
         display_server_mock.h
@@ -124,6 +125,7 @@ target_sources(tests PRIVATE
         scene/test_flow_container.cpp
         scene/test_foldable_container.cpp
         scene/test_fontfile.cpp
+        scene/test_generic_6dof_joint_3d.cpp
         scene/test_gltf_document.cpp
         scene/test_gradient.cpp
         scene/test_gradient_texture.cpp

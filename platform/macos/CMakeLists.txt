@@ -61,6 +61,7 @@ target_sources(macos PRIVATE
         platform_thread.h
         rendering_context_driver_vulkan_macos.h
         rendering_context_driver_vulkan_macos.mm
+        stack_trace_macos.h
         tts_macos.h
         tts_macos.mm
 )

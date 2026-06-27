@@ -429,6 +429,8 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/FontFile.xml
         classes/FontVariation.xml
         classes/FramebufferCacheRD.xml
+        classes/FuzzySearch.xml
+        classes/FuzzySearchMatch.xml
         classes/GDExtension.xml
         classes/GDExtensionManager.xml
         classes/GPUParticles2D.xml
@@ -767,6 +769,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/RigidBody2D.xml
         classes/RigidBody3D.xml
         classes/RootMotionView.xml
+        classes/ScenePaint2DEditor.xml
         classes/SceneState.xml
         classes/SceneTree.xml
         classes/SceneTreeTimer.xml

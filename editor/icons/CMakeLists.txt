@@ -155,6 +155,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ClassList.svg
         Clear.svg
         Close.svg
+        CloseScene.svg
         CodeEdit.svg
         CodeFoldDownArrow.svg
         CodeFoldedRightArrow.svg
@@ -590,6 +591,15 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ModifierBoneTarget3D.svg
         Modifiers.svg
         Mouse.svg
+        MouseButtonLeft.svg
+        MouseButtonMiddle.svg
+        MouseButtonRight.svg
+        MouseButtonWheelDown.svg
+        MouseButtonWheelLeft.svg
+        MouseButtonWheelRight.svg
+        MouseButtonWheelUp.svg
+        MouseButtonXButton1.svg
+        MouseButtonXButton2.svg
         MoveDown.svg
         MoveLeft.svg
         MovePoint.svg
