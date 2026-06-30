@@ -3629,7 +3629,7 @@ void ScriptEditor::_history_back() {
 
 void ScriptEditor::_roll_back_to_pre_tab() {
 	Control *tselected = tab_container->get_current_tab_control();
-	if (history[history_pos].control != tselected) {
+	if (history_pos == -1 || history[history_pos].control != tselected) {
 		return;
 	}
 
@@ -4207,7 +4207,7 @@ ScriptEditor::ScriptEditor(WindowWrapper *p_wrapper) {
 	erase_tab_confirm->set_flag(Window::FLAG_RESIZE_DISABLED, true);
 	erase_tab_confirm->set_ok_button_text(TTRC("Save"));
 	erase_tab_confirm->add_button(TTRC("Discard"), DisplayServer::get_singleton()->get_swap_cancel_ok(), "discard");
-	erase_tab_confirm->connect(SceneStringName(confirmed), callable_mp(this, &ScriptEditor::_close_current_tab).bind(true, true));
+	erase_tab_confirm->connect(SceneStringName(confirmed), callable_mp(this, &ScriptEditor::_close_current_tab).bind(true));
 	erase_tab_confirm->connect("custom_action", callable_mp(this, &ScriptEditor::_close_discard_current_tab));
 	add_child(erase_tab_confirm);
 

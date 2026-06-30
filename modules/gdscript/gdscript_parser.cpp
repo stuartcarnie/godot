@@ -737,9 +737,8 @@ void GDScriptParser::parse_program() {
 						// Some annotations need to be resolved and applied in the parser.
 						// The root class is not in any class, so `head->outer == nullptr`.
 						annotation->apply(this, head, nullptr);
-					} else {
-						head->annotations.push_back(annotation);
 					}
+					head->annotations.push_back(annotation);
 				} else if (annotation->applies_to(AnnotationInfo::STANDALONE)) {
 					if (previous.type != GDScriptTokenizer::Token::NEWLINE) {
 						push_error(R"(Expected newline after a standalone annotation.)");
@@ -1024,6 +1023,8 @@ void GDScriptParser::parse_class_name() {
 
 void GDScriptParser::parse_extends() {
 	current_class->extends_used = true;
+	current_class->extends_start_line = previous.start_line;
+	current_class->extends_start_column = previous.start_column;
 
 	int chain_index = 0;
 
@@ -1034,6 +1035,8 @@ void GDScriptParser::parse_extends() {
 		current_class->extends_path = previous.literal;
 
 		if (!match(GDScriptTokenizer::Token::PERIOD)) {
+			current_class->extends_end_line = previous.end_line;
+			current_class->extends_end_column = previous.end_column;
 			return;
 		}
 	}
@@ -1041,6 +1044,8 @@ void GDScriptParser::parse_extends() {
 	make_completion_context(COMPLETION_INHERIT_TYPE, current_class, chain_index++);
 
 	if (!consume(GDScriptTokenizer::Token::IDENTIFIER, R"(Expected superclass name after "extends".)")) {
+		current_class->extends_end_line = previous.end_line;
+		current_class->extends_end_column = previous.end_column;
 		return;
 	}
 	current_class->extends.push_back(parse_identifier());
@@ -1048,10 +1053,15 @@ void GDScriptParser::parse_extends() {
 	while (match(GDScriptTokenizer::Token::PERIOD)) {
 		make_completion_context(COMPLETION_INHERIT_TYPE, current_class, chain_index++);
 		if (!consume(GDScriptTokenizer::Token::IDENTIFIER, R"(Expected superclass name after ".".)")) {
+			current_class->extends_end_line = previous.end_line;
+			current_class->extends_end_column = previous.end_column;
 			return;
 		}
 		current_class->extends.push_back(parse_identifier());
 	}
+
+	current_class->extends_end_line = previous.end_line;
+	current_class->extends_end_column = previous.end_column;
 }
 
 template <typename T>
