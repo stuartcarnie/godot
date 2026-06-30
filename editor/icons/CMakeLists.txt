@@ -281,6 +281,9 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         EditorResourcePicker.svg
         EditorScriptPicker.svg
         EditorSpinSlider.svg
+        EmbedDisabled.svg
+        EmbedFloating.svg
+        EmbedFused.svg
         Enum.svg
         Environment.svg
         Eraser.svg

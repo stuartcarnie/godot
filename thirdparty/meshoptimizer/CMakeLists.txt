@@ -24,6 +24,7 @@ target_sources(meshoptimizer PRIVATE
         simplifier.cpp
         spatialorder.cpp
         stripifier.cpp
+        tangentspace.cpp
         vcacheoptimizer.cpp
         vertexcodec.cpp
         vertexfilter.cpp
