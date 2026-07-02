@@ -14,6 +14,9 @@ target_sources(tests PRIVATE
         compatibility_test/src/compat_checker.c
         compatibility_test/src/compat_checker.h
         core/config/test_project_settings.cpp
+        core/crypto/test_aes_context.cpp
+        core/crypto/test_crypto.cpp
+        core/crypto/test_hashing_context.cpp
         core/input/test_input_event.cpp
         core/input/test_input_event_key.cpp
         core/input/test_input_event_mouse.cpp
@@ -87,9 +90,7 @@ target_sources(tests PRIVATE
         core/templates/test_span.cpp
         core/templates/test_vector.cpp
         core/templates/test_vset.cpp
-        core/test_crypto.cpp
         core/test_ctz.h
-        core/test_hashing_context.cpp
         core/test_time.cpp
         core/test_validate_testing.cpp
         core/threads/test_worker_thread_pool.cpp
