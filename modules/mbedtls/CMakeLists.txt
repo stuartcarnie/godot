@@ -12,6 +12,8 @@ target_sources(godot-module-mbedtls PRIVATE
         crypto_mbedtls.h
         dtls_server_mbedtls.cpp
         dtls_server_mbedtls.h
+        mbedtls_cpp_compat.c
+        mbedtls_cpp_compat.h
         packet_peer_mbed_dtls.cpp
         packet_peer_mbed_dtls.h
         register_types.cpp
@@ -20,7 +22,6 @@ target_sources(godot-module-mbedtls PRIVATE
         stream_peer_mbedtls.h
         tls_context_mbedtls.cpp
         tls_context_mbedtls.h
-
 )
 # [[[end]]]
 

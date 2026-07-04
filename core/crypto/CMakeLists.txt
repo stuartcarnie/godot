@@ -17,7 +17,7 @@ target_sources(core PRIVATE
         crypto_resource_format.h
         hashing_context.cpp
         hashing_context.h
-        ${CMAKE_SOURCE_DIR}/thirdparty/mbedtls/godot/godot_mbedtls_platform.cpp
 )
 # [[[end]]]
-target_link_libraries(core PUBLIC mbedtls)
+target_sources(core PRIVATE ${CMAKE_SOURCE_DIR}/thirdparty/mbedtls/godot/godot_mbedtls_platform.cpp)
+target_link_libraries(core PRIVATE mbedtls)
