@@ -1,143 +1,119 @@
 godot_add_library(mbedtls FOLDER thirdparty STATIC)
+
+# PSA sources
 target_sources(mbedtls PRIVATE
-        include/godot_module_mbedtls_config.h
-        include/mbedtls/aes.h
-        include/mbedtls/aria.h
-        include/mbedtls/asn1.h
-        include/mbedtls/asn1write.h
-        include/mbedtls/base64.h
-        include/mbedtls/bignum.h
-        include/mbedtls/block_cipher.h
-        include/mbedtls/build_info.h
-        include/mbedtls/camellia.h
-        include/mbedtls/ccm.h
-        include/mbedtls/chacha20.h
-        include/mbedtls/chachapoly.h
-        include/mbedtls/check_config.h
-        include/mbedtls/cipher.h
-        include/mbedtls/cmac.h
-        include/mbedtls/compat-2.x.h
-        include/mbedtls/constant_time.h
-        include/mbedtls/ctr_drbg.h
-        include/mbedtls/debug.h
-        include/mbedtls/des.h
-        include/mbedtls/dhm.h
-        include/mbedtls/ecdh.h
-        include/mbedtls/ecdsa.h
-        include/mbedtls/ecjpake.h
-        include/mbedtls/ecp.h
-        include/mbedtls/entropy.h
-        include/mbedtls/error.h
-        include/mbedtls/gcm.h
-        include/mbedtls/hkdf.h
-        include/mbedtls/hmac_drbg.h
-        include/mbedtls/md.h
-        include/mbedtls/md5.h
-        include/mbedtls/memory_buffer_alloc.h
-        include/mbedtls/net_sockets.h
-        include/mbedtls/nist_kw.h
-        include/mbedtls/oid.h
-        include/mbedtls/pem.h
-        include/mbedtls/pk.h
-        include/mbedtls/pkcs5.h
-        include/mbedtls/platform.h
-        include/mbedtls/platform_time.h
-        include/mbedtls/platform_util.h
-        include/mbedtls/poly1305.h
-        include/mbedtls/ripemd160.h
-        include/mbedtls/rsa.h
-        include/mbedtls/sha1.h
-        include/mbedtls/sha256.h
-        include/mbedtls/sha512.h
-        include/mbedtls/ssl.h
-        include/mbedtls/ssl_cache.h
-        include/mbedtls/ssl_ciphersuites.h
-        include/mbedtls/ssl_cookie.h
-        include/mbedtls/ssl_ticket.h
-        include/mbedtls/threading.h
-        include/mbedtls/timing.h
-        include/mbedtls/version.h
-        include/mbedtls/x509.h
-        include/mbedtls/x509_crl.h
-        include/mbedtls/x509_crt.h
-        include/mbedtls/x509_csr.h
-        library/aes.c
-        library/aesce.c
-        library/aesni.c
-        library/aria.c
-        library/asn1parse.c
-        library/asn1write.c
-        library/base64.c
-        library/bignum.c
-        library/bignum_core.c
-        library/bignum_mod_raw.c
-        library/camellia.c
-        library/ccm.c
-        library/chacha20.c
-        library/chachapoly.c
-        library/cipher.c
-        library/cipher_wrap.c
-        library/cmac.c
-        library/constant_time.c
-        library/ctr_drbg.c
-        library/debug.c
-        library/des.c
-        library/dhm.c
-        library/ecdh.c
-        library/ecdsa.c
-        library/ecjpake.c
-        library/ecp.c
-        library/ecp_curves.c
-        library/entropy.c
-        library/entropy_poll.c
+        # Drivers builtin
+        tf-psa-crypto/drivers/builtin/src/aes.c
+        tf-psa-crypto/drivers/builtin/src/aesce.c
+        tf-psa-crypto/drivers/builtin/src/aesni.c
+        tf-psa-crypto/drivers/builtin/src/aria.c
+        tf-psa-crypto/drivers/builtin/src/bignum.c
+        tf-psa-crypto/drivers/builtin/src/bignum_core.c
+        tf-psa-crypto/drivers/builtin/src/bignum_mod.c
+        tf-psa-crypto/drivers/builtin/src/bignum_mod_raw.c
+        tf-psa-crypto/drivers/builtin/src/block_cipher.c
+        tf-psa-crypto/drivers/builtin/src/camellia.c
+        tf-psa-crypto/drivers/builtin/src/ccm.c
+        tf-psa-crypto/drivers/builtin/src/chacha20.c
+        tf-psa-crypto/drivers/builtin/src/chacha20_neon.c
+        tf-psa-crypto/drivers/builtin/src/chachapoly.c
+        tf-psa-crypto/drivers/builtin/src/cipher.c
+        tf-psa-crypto/drivers/builtin/src/cipher_wrap.c
+        tf-psa-crypto/drivers/builtin/src/cmac.c
+        tf-psa-crypto/drivers/builtin/src/ctr_drbg.c
+        tf-psa-crypto/drivers/builtin/src/ecdsa.c
+        tf-psa-crypto/drivers/builtin/src/ecjpake.c
+        tf-psa-crypto/drivers/builtin/src/ecp.c
+        tf-psa-crypto/drivers/builtin/src/ecp_curves.c
+        tf-psa-crypto/drivers/builtin/src/ecp_curves_new.c
+        tf-psa-crypto/drivers/builtin/src/entropy.c
+        tf-psa-crypto/drivers/builtin/src/entropy_poll.c
+        tf-psa-crypto/drivers/builtin/src/gcm.c
+        tf-psa-crypto/drivers/builtin/src/hmac_drbg.c
+        tf-psa-crypto/drivers/builtin/src/md5.c
+        tf-psa-crypto/drivers/builtin/src/poly1305.c
+        tf-psa-crypto/drivers/builtin/src/psa_crypto_aead.c
+        tf-psa-crypto/drivers/builtin/src/psa_crypto_cipher.c
+        tf-psa-crypto/drivers/builtin/src/psa_crypto_ecp.c
+        tf-psa-crypto/drivers/builtin/src/psa_crypto_ffdh.c
+        tf-psa-crypto/drivers/builtin/src/psa_crypto_hash.c
+        tf-psa-crypto/drivers/builtin/src/psa_crypto_mac.c
+        tf-psa-crypto/drivers/builtin/src/psa_crypto_pake.c
+        tf-psa-crypto/drivers/builtin/src/psa_crypto_rsa.c
+        tf-psa-crypto/drivers/builtin/src/psa_crypto_xof.c
+        tf-psa-crypto/drivers/builtin/src/psa_util_internal.c
+        tf-psa-crypto/drivers/builtin/src/ripemd160.c
+        tf-psa-crypto/drivers/builtin/src/rsa.c
+        tf-psa-crypto/drivers/builtin/src/rsa_alt_helpers.c
+        tf-psa-crypto/drivers/builtin/src/sha1.c
+        tf-psa-crypto/drivers/builtin/src/sha256.c
+        tf-psa-crypto/drivers/builtin/src/sha3.c
+        tf-psa-crypto/drivers/builtin/src/sha512.c
+        # Extras
+        tf-psa-crypto/extras/lmots.c
+        tf-psa-crypto/extras/lms.c
+        tf-psa-crypto/extras/md.c
+        tf-psa-crypto/extras/nist_kw.c
+        tf-psa-crypto/extras/pk.c
+        tf-psa-crypto/extras/pk_ecc.c
+        tf-psa-crypto/extras/pk_rsa.c
+        tf-psa-crypto/extras/pk_wrap.c
+        tf-psa-crypto/extras/pkparse.c
+        tf-psa-crypto/extras/pkwrite.c
+        # Platform
+        tf-psa-crypto/platform/memory_buffer_alloc.c
+        tf-psa-crypto/platform/platform.c
+        tf-psa-crypto/platform/platform_util.c
+        tf-psa-crypto/platform/threading.c
+        # Utilities
+        tf-psa-crypto/utilities/asn1parse.c
+        tf-psa-crypto/utilities/asn1write.c
+        tf-psa-crypto/utilities/base64.c
+        tf-psa-crypto/utilities/constant_time.c
+        tf-psa-crypto/utilities/oid.c
+        tf-psa-crypto/utilities/pem.c
+        tf-psa-crypto/utilities/pkcs5.c
+        # Core
+        tf-psa-crypto/core/psa_crypto.c
+        tf-psa-crypto/core/psa_crypto_client.c
+        tf-psa-crypto/core/psa_crypto_random.c
+        tf-psa-crypto/core/psa_crypto_slot_management.c
+        tf-psa-crypto/core/psa_crypto_storage.c
+        tf-psa-crypto/core/psa_its_file.c
+        tf-psa-crypto/core/psa_util.c
+        tf-psa-crypto/core/tf_psa_crypto_config.c
+        tf-psa-crypto/core/tf_psa_crypto_version.c
+        tf-psa-crypto/core/psa_crypto_driver_wrappers_no_static.c
+)
+
+target_include_directories(mbedtls PUBLIC
+        tf-psa-crypto/drivers/builtin/src/
+        tf-psa-crypto/platform/
+        tf-psa-crypto/utilities/
+        tf-psa-crypto/extras/
+        tf-psa-crypto/dispatch/
+        tf-psa-crypto/core/
+)
+
+target_sources(mbedtls PRIVATE
+        # mbedx509
         library/error.c
-        library/gcm.c
-        library/hkdf.c
-        library/hmac_drbg.c
-        library/md.c
-        library/md5.c
-        library/memory_buffer_alloc.c
+        library/mbedtls_config.c
+        library/pkcs7.c
+        library/x509.c
+        library/x509_create.c
+        library/x509_crl.c
+        library/x509_crt.c
+        library/x509_csr.c
+        library/x509_oid.c
+        library/x509write.c
+        library/x509write_crt.c
+        library/x509write_csr.c
+        # mbedtls
+        library/debug.c
         library/mps_reader.c
         library/mps_trace.c
         library/net_sockets.c
-        library/nist_kw.c
-        library/oid.c
-        library/padlock.c
-        library/pem.c
-        library/pk.c
-        library/pk_ecc.c
-        library/pk_wrap.c
-        library/pkcs12.c
-        library/pkcs5.c
-        library/pkcs7.c
-        library/pkparse.c
-        library/pkwrite.c
-        library/platform.c
-        library/platform_util.c
-        library/poly1305.c
-        library/ripemd160.c
-        library/psa_crypto.c
-        library/psa_crypto_aead.c
-        library/psa_crypto_cipher.c
-        library/psa_crypto_client.c
-        library/psa_crypto_driver_wrappers_no_static.c
-        library/psa_crypto_ecp.c
-        library/psa_crypto_ffdh.c
-        library/psa_crypto_hash.c
-        library/psa_crypto_mac.c
-        library/psa_crypto_pake.c
-        library/psa_crypto_rsa.c
-        library/psa_crypto_se.c
-        library/psa_crypto_slot_management.c
-        library/psa_crypto_storage.c
-        library/psa_its_file.c
-        library/psa_util.c
-        library/rsa.c
-        library/rsa_alt_helpers.c
-        library/sha1.c
-        library/sha3.c
-        library/sha256.c
-        library/sha512.c
         library/ssl_cache.c
         library/ssl_ciphersuites.c
         library/ssl_client.c
@@ -148,26 +124,31 @@ target_sources(mbedtls PRIVATE
         library/ssl_tls.c
         library/ssl_tls12_client.c
         library/ssl_tls12_server.c
-        library/ssl_tls13_client.c
-        library/ssl_tls13_generic.c
         library/ssl_tls13_keys.c
         library/ssl_tls13_server.c
-        library/threading.c
+        library/ssl_tls13_client.c
+        library/ssl_tls13_generic.c
         library/timing.c
         library/version.c
         library/version_features.c
-        library/x509.c
-        library/x509_create.c
-        library/x509_crl.c
-        library/x509_crt.c
-        library/x509_csr.c
-        library/x509write.c
-        library/x509write_crt.c
-        library/x509write_csr.c
 )
-target_include_directories(mbedtls PUBLIC include)
-target_compile_definitions(mbedtls PUBLIC MBEDTLS_CONFIG_FILE="godot_module_mbedtls_config.h")
-target_link_libraries(mbedtls core)
+target_include_directories(mbedtls PRIVATE library)
+target_compile_definitions(mbedtls PUBLIC
+        TF_PSA_CRYPTO_CONFIG_FILE="godot_psa_config.h"
+        MBEDTLS_CONFIG_FILE="godot_mbedtls_config.h"
+)
+
+# Public Interface
+
+target_include_directories(mbedtls
+        PUBLIC
+        godot
+        include
+        tf-psa-crypto/include
+        tf-psa-crypto/drivers/builtin/include
+)
+
+target_link_libraries(mbedtls PRIVATE core)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(mbedtls bcrypt)
 endif()
