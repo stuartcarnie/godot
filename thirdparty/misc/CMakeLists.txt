@@ -5,8 +5,6 @@ target_sources(godot-thirdparty-misc PRIVATE
         fastlz.h
         # ifaddrs-android.cc # Disabled until we support Android
         # ifaddrs-android.h # Disabled until we support Android
-        mikktspace.c
-        mikktspace.h
         ok_color.h
         ok_color_shader.h
         pcg.cpp
