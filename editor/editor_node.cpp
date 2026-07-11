@@ -84,6 +84,7 @@
 #include "editor/gui/editor_about.h"
 #include "editor/gui/editor_bottom_panel.h"
 #include "editor/gui/editor_file_dialog.h"
+#include "editor/gui/editor_icon_manager.h"
 #include "editor/gui/editor_quick_open_dialog.h"
 #include "editor/gui/editor_title_bar.h"
 #include "editor/gui/editor_toaster.h"
@@ -8386,6 +8387,7 @@ HashMap<String, Variant> EditorNode::get_initial_settings() {
 	HashMap<String, Variant> settings;
 	settings["display/window/stretch/aspect"] = "expand";
 	settings["display/window/stretch/mode"] = "canvas_items";
+	settings["input_devices/joypads/ignore_joypad_on_unfocused_application"] = true;
 	settings["physics/3d/physics_engine"] = "Jolt Physics";
 	settings["rendering/rendering_device/driver.windows"] = "d3d12";
 	return settings;
@@ -8702,6 +8704,9 @@ EditorNode::EditorNode() {
 
 	gui_base = memnew(Panel);
 	add_child(gui_base);
+
+	icon_manager = memnew(EditorIconManager);
+	gui_base->add_child(icon_manager);
 
 	// Take up all screen.
 	gui_base->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  velocity_tracker_3d.h                                                 */
+/*  editor_icon_manager.cpp                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,28 +28,31 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "editor_icon_manager.h"
 
-#include "core/object/ref_counted.h"
+#include "editor/editor_node.h"
+#include "scene/resources/atlas_texture.h"
 
-class VelocityTracker3D : public RefCounted {
-	GDSOFTCLASS(VelocityTracker3D, RefCounted);
+void EditorIconManager::_notification(int p_what) {
+	if (p_what == NOTIFICATION_THEME_CHANGED) {
+		for (KeyValue<StringName, Ref<AtlasTexture>> &icon : icons) {
+			icon.value->set_atlas(get_editor_theme_icon(icon.key));
+		}
+	}
+}
 
-	struct PositionHistory {
-		uint64_t frame = 0;
-		Vector3 position;
-	};
+EditorIconManager::EditorIconManager() {
+	singleton = this;
+}
 
-	bool physics_step = false;
-	Vector<PositionHistory> position_history;
-	int position_history_len = 0;
-
-public:
-	void reset(const Vector3 &p_new_pos);
-	void set_track_physics_step(bool p_track_physics_step);
-	bool is_tracking_physics_step() const;
-	void update_position(const Vector3 &p_position);
-	Vector3 get_tracked_linear_velocity() const;
-
-	VelocityTracker3D();
-};
+Ref<Texture2D> EditorIconManager::get_icon(const StringName &p_icon_name) {
+	Ref<AtlasTexture> *existing = singleton->icons.getptr(p_icon_name);
+	if (existing) {
+		return *existing;
+	}
+	Ref<AtlasTexture> icon;
+	icon.instantiate();
+	icon->set_atlas(singleton->get_editor_theme_icon(p_icon_name));
+	singleton->icons[p_icon_name] = icon;
+	return icon;
+}

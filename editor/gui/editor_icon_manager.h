@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  velocity_tracker_3d.h                                                 */
+/*  editor_icon_manager.h                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,26 +30,23 @@
 
 #pragma once
 
-#include "core/object/ref_counted.h"
+#include "scene/gui/control.h"
 
-class VelocityTracker3D : public RefCounted {
-	GDSOFTCLASS(VelocityTracker3D, RefCounted);
+class AtlasTexture;
+class Texture2D;
 
-	struct PositionHistory {
-		uint64_t frame = 0;
-		Vector3 position;
-	};
+class EditorIconManager : public Control {
+	GDCLASS(EditorIconManager, Control);
 
-	bool physics_step = false;
-	Vector<PositionHistory> position_history;
-	int position_history_len = 0;
+	HashMap<StringName, Ref<AtlasTexture>> icons;
+
+	inline static EditorIconManager *singleton = nullptr;
+
+protected:
+	void _notification(int p_what);
 
 public:
-	void reset(const Vector3 &p_new_pos);
-	void set_track_physics_step(bool p_track_physics_step);
-	bool is_tracking_physics_step() const;
-	void update_position(const Vector3 &p_position);
-	Vector3 get_tracked_linear_velocity() const;
+	EditorIconManager();
 
-	VelocityTracker3D();
+	static Ref<Texture2D> get_icon(const StringName &p_icon_name);
 };
