@@ -23,6 +23,8 @@ target_sources(editor PRIVATE
         editor_dir_dialog.h
         editor_file_dialog.cpp
         editor_file_dialog.h
+        editor_icon_manager.cpp
+        editor_icon_manager.h
         editor_object_selector.cpp
         editor_object_selector.h
         editor_quick_open_dialog.cpp
