@@ -43,13 +43,13 @@ if (${WANT_OPENGL})
     if (WANT_ANGLE)
         target_link_libraries(ios PRIVATE angle)
     endif ()
-    target_compile_definitions(ios PRIVATE GLES3_ENABLED=1)
+    target_compile_definitions(ios PRIVATE GLES3_ENABLED)
 endif ()
 
 if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     target_link_libraries(ios PUBLIC driver-vulkan vulkan
             $<LINK_LIBRARY:FRAMEWORK,${MOLTENVK_FOUND}>)
-    target_compile_definitions(ios PRIVATE VULKAN_ENABLED=1)
+    target_compile_definitions(ios PRIVATE VULKAN_ENABLED)
 endif ()
 
 target_link_libraries(ios
@@ -58,10 +58,10 @@ target_link_libraries(ios
 )
 target_compile_definitions(ios
         PUBLIC
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>
-        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
-        $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
-        $<${WANT_SDL}:SDL_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED>
+        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED>
+        $<${WANT_COREMIDI}:COREMIDI_ENABLED>
+        $<${WANT_SDL}:SDL_ENABLED>
 )
 target_compile_options(ios PRIVATE
         $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:-fmodules -fcxx-modules>)

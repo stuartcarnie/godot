@@ -48,8 +48,8 @@ set_target_properties(metal PROPERTIES
 target_link_libraries(metal PUBLIC core spirv-cross metal-cpp)
 target_compile_definitions(metal
         PUBLIC
-        METAL_ENABLED=1
-        RD_ENABLED=1
+        METAL_ENABLED
+        RD_ENABLED
         PRIVATE
         METAL4_ENABLED
 )

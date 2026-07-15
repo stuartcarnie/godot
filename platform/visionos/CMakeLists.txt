@@ -40,10 +40,10 @@ target_link_libraries(visionos
 )
 target_compile_definitions(visionos
         PUBLIC
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>
-        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
-        $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
-        $<${WANT_SDL}:SDL_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED>
+        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED>
+        $<${WANT_COREMIDI}:COREMIDI_ENABLED>
+        $<${WANT_SDL}:SDL_ENABLED>
 )
 target_compile_options(visionos
         PRIVATE

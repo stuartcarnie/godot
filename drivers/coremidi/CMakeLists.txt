@@ -14,7 +14,7 @@ if(${WANT_COREMIDI})
     )
     # [[[end]]]
 
-    target_compile_definitions(coremidi PUBLIC COREMIDI_ENABLED=1)
+    target_compile_definitions(coremidi PUBLIC COREMIDI_ENABLED)
     target_link_libraries(coremidi PUBLIC core)
 
     group_target_sources(coremidi)

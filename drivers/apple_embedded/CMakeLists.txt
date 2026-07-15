@@ -43,8 +43,8 @@ target_sources(apple_embedded PRIVATE
 
 target_compile_definitions(apple_embedded
         PUBLIC
-        COREAUDIO_ENABLED=1
-        $<${WANT_SDL}:SDL_ENABLED=1>
+        COREAUDIO_ENABLED
+        $<${WANT_SDL}:SDL_ENABLED>
 )
 target_compile_features(apple_embedded PRIVATE cxx_std_20)
 set_target_properties(apple_embedded PROPERTIES

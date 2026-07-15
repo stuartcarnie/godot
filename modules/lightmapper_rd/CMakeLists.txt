@@ -50,8 +50,8 @@ target_link_libraries(godot-module-lightmapper-rd PUBLIC
 target_include_directories(godot-module-lightmapper-rd PRIVATE ${LIGHTMAPPER_GENERATED_OUTPUT_DIR})
 target_compile_definitions(godot-module-lightmapper-rd
         PRIVATE
-        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED RD_ENABLED>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED RD_ENABLED>
 )
 
 group_target_sources(godot-module-lightmapper-rd)

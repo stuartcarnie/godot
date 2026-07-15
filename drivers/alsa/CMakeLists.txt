@@ -15,13 +15,13 @@ if (${WANT_ALSA} AND ${ALSA_FOUND})
     )
     # [[[end]]]
 
-    target_compile_definitions(drivers PUBLIC ALSA_ENABLED=1 PULSEAUDIO_ENABLED=1)
+    target_compile_definitions(drivers PUBLIC ALSA_ENABLED PULSEAUDIO_ENABLED)
     target_link_libraries(drivers PUBLIC linuxbsd-headers ${ALSA_LIBRARIES})
 
     #Inform that pulse audio is available
     if (${WANT_PULSEAUDIO} AND ${PULSEAUDIO_FOUND})
         message(STATUS, "Found PulseAudio library")
-        target_compile_definitions(drivers PRIVATE "-DPULSEAUDIO_ENABLED=1")
+        target_compile_definitions(drivers PRIVATE "-DPULSEAUDIO_ENABLED")
     else ()
         message(STATUS, "Found PulseAudio missing.... disabling")
     endif ()

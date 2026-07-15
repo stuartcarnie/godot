@@ -83,22 +83,22 @@ target_include_directories(platform-linuxbsd PUBLIC ${PLATFORM_LINUXBSD_SOURCE_D
 target_link_libraries(platform-linuxbsd PUBLIC ${DBUS_LIBRARIES} drivers servers)
 
 #Required to always be enabled on linux 
-target_compile_definitions(platform-linuxbsd PUBLIC JOYDEV_ENABLED=1 ALSAMIDI_ENABLED=1)
+target_compile_definitions(platform-linuxbsd PUBLIC JOYDEV_ENABLED ALSAMIDI_ENABLED)
 
 if(${WANT_ALSA} AND ${ALSA_FOUND})
-    target_compile_definitions(platform-linuxbsd PUBLIC ALSA_ENABLED=1)
+    target_compile_definitions(platform-linuxbsd PUBLIC ALSA_ENABLED)
     target_link_libraries(platform-linuxbsd PUBLIC driver-alsa)
     target_link_libraries(platform-linuxbsd PUBLIC driver-alsa-midi)
 endif()
 
 if(${WANT_PULSEAUDIO} AND ${PULSEAUDIO_FOUND})
-    target_compile_definitions(platform-linuxbsd PUBLIC PULSEAUDIO_ENABLED=1)
+    target_compile_definitions(platform-linuxbsd PUBLIC PULSEAUDIO_ENABLED)
     target_link_libraries(platform-linuxbsd PUBLIC driver-pulseaudio)
 endif()
 
 
 if(${WANT_X11} AND ${X11_FOUND})
-    target_compile_definitions(platform-linuxbsd PUBLIC X11_ENABLED=1)
+    target_compile_definitions(platform-linuxbsd PUBLIC X11_ENABLED)
 endif()
 
 if(${FOUND_MNTENT})
@@ -106,18 +106,18 @@ if(${FOUND_MNTENT})
 endif()
 
 if(${WANT_FONTCONFIG} AND ${Fontconfig_FOUND})
-    target_compile_definitions(platform-linuxbsd PUBLIC FONTCONFIG_ENABLED=1)
+    target_compile_definitions(platform-linuxbsd PUBLIC FONTCONFIG_ENABLED)
 endif()
 
 if(${WANT_VULKAN} AND ${Vulkan_FOUND})
-    target_compile_definitions(platform-linuxbsd PUBLIC VULKAN_ENABLED=1 USE_VOLK=1)
+    target_compile_definitions(platform-linuxbsd PUBLIC VULKAN_ENABLED USE_VOLK)
     target_link_libraries(platform-linuxbsd PUBLIC vulkan glad volk)
     target_link_libraries (platform-linuxbsd PUBLIC ${Vulkan_LIBRARY})
     target_link_libraries(platform-linuxbsd PUBLIC driver-vulkan)
 endif()
 
 if(${WANT_OPENGL} AND ${OPENGL_FOUND})
-    target_compile_definitions(platform-linuxbsd PUBLIC GLES3_ENABLED=1)
+    target_compile_definitions(platform-linuxbsd PUBLIC GLES3_ENABLED)
     target_link_libraries(platform-linuxbsd PUBLIC OpenGL::GL)
     target_link_libraries(platform-linuxbsd PUBLIC gles3)
 endif()
@@ -127,5 +127,5 @@ if(${WANT_X11} AND ${X11_FOUND})
 endif()
 
 if(${WANT_DBUS} AND ${DBUS_FOUND})
-    target_compile_definitions(platform-linuxbsd PUBLIC DBUS_ENABLED=1)
+    target_compile_definitions(platform-linuxbsd PUBLIC DBUS_ENABLED)
 endif()

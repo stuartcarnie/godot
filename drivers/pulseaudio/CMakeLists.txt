@@ -16,7 +16,7 @@ if (${WANT_PULSEAUDIO} AND ${PULSEAUDIO_FOUND})
     )
     # [[[end]]]
     target_link_libraries(pulseaudio PUBLIC core)
-    target_compile_definitions(pulseaudio PUBLIC PULSEAUDIO_ENABLED=1)
+    target_compile_definitions(pulseaudio PUBLIC PULSEAUDIO_ENABLED)
 
     group_target_sources(pulseaudio)
 endif ()

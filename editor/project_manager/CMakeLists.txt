@@ -23,7 +23,7 @@ target_sources(editor PRIVATE
 # [[[end]]]
 target_compile_definitions(editor
         PRIVATE
-        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:OPENGL_FOUND}>>:GLES3_ENABLED=1>
-        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
+        $<$<AND:$<BOOL:${WANT_OPENGL}>,$<BOOL:OPENGL_FOUND}>>:GLES3_ENABLED>
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED RD_ENABLED>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED RD_ENABLED>
 )

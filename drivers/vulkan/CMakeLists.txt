@@ -21,7 +21,7 @@ if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     )
     # [[[end]]]
     target_link_libraries(driver-vulkan PUBLIC core vulkan)
-    target_compile_definitions(driver-vulkan PUBLIC VULKAN_ENABLED=1 RD_ENABLED=1)
+    target_compile_definitions(driver-vulkan PUBLIC VULKAN_ENABLED RD_ENABLED)
 
     group_target_sources(driver-vulkan)
 endif ()

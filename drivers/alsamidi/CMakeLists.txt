@@ -14,5 +14,5 @@ if (${WANT_ALSA} AND ${ALSA_FOUND})
     )
     # [[[end]]]
     target_link_libraries(alsamidi PUBLIC linuxbsd-headers ${ALSA_LIBRARIES} core)
-    target_compile_definitions(alsamidi PUBLIC ALSAMIDI_ENABLED=1)
+    target_compile_definitions(alsamidi PUBLIC ALSAMIDI_ENABLED)
 endif ()

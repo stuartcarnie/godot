@@ -99,12 +99,12 @@ if (${WANT_OPENGL} AND ${OPENGL_FOUND})
     if (WANT_ANGLE)
         target_link_libraries(macos PRIVATE angle)
     endif ()
-    target_compile_definitions(macos PRIVATE GLES3_ENABLED=1)
+    target_compile_definitions(macos PRIVATE GLES3_ENABLED)
 endif ()
 
 if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     target_link_libraries(macos PUBLIC driver-vulkan vulkan MoltenVK)
-    target_compile_definitions(macos PRIVATE VULKAN_ENABLED=1)
+    target_compile_definitions(macos PRIVATE VULKAN_ENABLED)
 endif ()
 
 target_link_libraries(macos
@@ -113,10 +113,10 @@ target_link_libraries(macos
 )
 target_compile_definitions(macos
         PUBLIC
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
-        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED=1>
-        $<${WANT_COREMIDI}:COREMIDI_ENABLED=1>
-        $<${WANT_SDL}:SDL_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED RD_ENABLED>
+        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED>
+        $<${WANT_COREMIDI}:COREMIDI_ENABLED>
+        $<${WANT_SDL}:SDL_ENABLED>
 )
 
 target_compile_options(macos PRIVATE -Wunguarded-availability)

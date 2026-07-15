@@ -145,6 +145,6 @@ set(GODOT_MODULE_GDSCRIPT_RESOURCES
 
 target_compile_definitions(godot-module-gdscript
         PRIVATE
-        $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED=1>
+        $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED>
 )
 group_target_sources(godot-module-gdscript)

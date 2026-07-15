@@ -115,8 +115,8 @@ target_compile_definitions(Godot
         PUBLIC
         NO_EDITOR_SPLASH=1
         PRIVATE
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1>
-        $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED=1>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED>
+        $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED>
         OVERRIDE_ENABLED
         OVERRIDE_PATH_ENABLED
 )

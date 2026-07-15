@@ -37,8 +37,8 @@ target_link_libraries(servers PUBLIC
 target_compile_definitions(servers
         PRIVATE
         $<$<BOOL:${WANT_DYNAMIC_CORE_SHADERS}>:DYNAMIC_CORE_SHADERS GODOT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}">
-        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED=1 RD_ENABLED=1>
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED=1 RD_ENABLED=1>
+        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED RD_ENABLED>
+        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED RD_ENABLED>
 )
 
 # This flag ensures that uninitialized stack variables are initialized to a known pattern.
