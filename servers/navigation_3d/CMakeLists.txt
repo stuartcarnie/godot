@@ -15,5 +15,7 @@ target_sources(servers PRIVATE
         navigation_server_3d.cpp
         navigation_server_3d.h
         navigation_server_3d_dummy.h
+        navigation_server_3d_manager.cpp
+        navigation_server_3d_manager.h
 )
 # [[[end]]]

@@ -17,6 +17,8 @@ target_sources(servers PRIVATE
         physics_server_3d_enums.h
         physics_server_3d_extension.cpp
         physics_server_3d_extension.h
+        physics_server_3d_manager.cpp
+        physics_server_3d_manager.h
         physics_server_3d_rendering_server_handler.cpp
         physics_server_3d_rendering_server_handler.h
         physics_server_3d_types.h

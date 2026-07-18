@@ -17,6 +17,8 @@ target_sources(servers PRIVATE
         physics_server_2d_enums.h
         physics_server_2d_extension.cpp
         physics_server_2d_extension.h
+        physics_server_2d_manager.cpp
+        physics_server_2d_manager.h
         physics_server_2d_types.h
         physics_server_2d_wrap_mt.cpp
         physics_server_2d_wrap_mt.h
