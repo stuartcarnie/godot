@@ -5639,7 +5639,7 @@ void Tree::_notification(int p_what) {
 			}
 
 			sticky_stack_end = 0;
-			if (root) {
+			if (root && !drop_mode_flags) {
 				sticky_list.clear();
 				Vector2 stick_ofs;
 				Vector2 last_ofs = stick_ofs;
@@ -7724,9 +7724,7 @@ Tree::Tree() {
 }
 
 Tree::~Tree() {
-	if (root) {
-		memdelete(root);
-	}
+	memdelete(root);
 	RenderingServer::get_singleton()->free_rid(drop_indicator_ci);
 	RenderingServer::get_singleton()->free_rid(content_ci);
 	RenderingServer::get_singleton()->free_rid(custom_ci);

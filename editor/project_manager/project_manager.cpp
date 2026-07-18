@@ -472,6 +472,12 @@ void ProjectManager::_dim_window() {
 // Quick settings.
 
 void ProjectManager::_show_quick_settings() {
+	if (!EditorPropertyNameProcessor::get_singleton()) {
+		EditorPropertyNameProcessor *epnp = memnew(EditorPropertyNameProcessor);
+		add_child(epnp);
+
+		EditorHelp::generate_doc();
+	}
 	quick_settings_dialog->popup_centered(Size2(640, 200) * EDSCALE);
 }
 
@@ -2002,6 +2008,8 @@ ProjectManager::ProjectManager() {
 ProjectManager::~ProjectManager() {
 	singleton = nullptr;
 	EditorInspector::cleanup_plugins();
+
+	EditorHelp::cleanup_doc();
 
 #if defined(MODULE_GDSCRIPT_ENABLED) || defined(MODULE_MONO_ENABLED)
 	EditorHelpHighlighter::free_singleton();
