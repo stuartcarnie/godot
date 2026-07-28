@@ -233,8 +233,12 @@ public:
 	struct Warning {
 		/// One-based.
 		int start_line = 0;
+		int start_column = -1;
+
 		/// One-based.
 		int end_line = 0;
+		int end_column = -1;
+
 		int code;
 		String string_code;
 		String message;
@@ -242,10 +246,11 @@ public:
 
 	struct ScriptError {
 		String path;
-		/// One-based.
-		int line = -1;
-		/// One-based.
-		int column = -1;
+		/// All one-based.
+		int start_line = -1;
+		int start_column = -1;
+		int end_line = -1;
+		int end_column = -1;
 		String message;
 	};
 
@@ -400,8 +405,8 @@ public:
 	virtual Vector<StackInfo> debug_get_current_stack_info() { return Vector<StackInfo>(); }
 
 	virtual void reload_all_scripts() = 0;
-	virtual void reload_scripts(const Array &p_scripts, bool p_soft_reload) = 0;
-	virtual void reload_tool_script(const Ref<Script> &p_script, bool p_soft_reload) = 0;
+	virtual void reload_scripts(const Array &p_scripts) = 0;
+	virtual void reload_tool_script(const Ref<Script> &p_script) = 0;
 	/* LOADER FUNCTIONS */
 
 	virtual void get_recognized_extensions(List<String> *p_extensions) const = 0;
