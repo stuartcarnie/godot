@@ -19,7 +19,10 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/fbx/doc_classes/FBXState.xml
         ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/@GDScript.xml
         ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/GDScript.xml
+        ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/GDScriptLanguageProtocol.xml
         ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/GDScriptSyntaxHighlighter.xml
+        ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/GDScriptTextDocument.xml
+        ${CMAKE_SOURCE_DIR}/modules/gdscript/doc_classes/GDScriptWorkspace.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/EditorSceneFormatImporterBlend.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/EditorSceneFormatImporterGLTF.xml
         ${CMAKE_SOURCE_DIR}/modules/gltf/doc_classes/GLTFAccessor.xml
@@ -64,7 +67,6 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/noise/doc_classes/NoiseTexture3D.xml
         ${CMAKE_SOURCE_DIR}/modules/ogg/doc_classes/OggPacketSequence.xml
         ${CMAKE_SOURCE_DIR}/modules/ogg/doc_classes/OggPacketSequencePlayback.xml
-        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAPIExtension.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAction.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRActionBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRActionMap.xml
@@ -72,6 +74,7 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAnalogThresholdModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAnchorTracker.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAndroidThreadSettingsExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAPIExtension.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRBindingModifierEditor.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRCompositionLayer.xml
@@ -87,13 +90,13 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRHand.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRHapticBase.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRHapticVibration.xml
-        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBinding.xml
-        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfile.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfileEditor.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfileEditorBase.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfileMetadata.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInterface.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBinding.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRMarkerTracker.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRPlaneTracker.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRRenderModel.xml
@@ -132,8 +135,128 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/text_server_adv/doc_classes/TextServerAdvanced.xml
         ${CMAKE_SOURCE_DIR}/modules/text_server_fb/doc_classes/TextServerFallback.xml
         ${CMAKE_SOURCE_DIR}/modules/theora/doc_classes/VideoStreamTheora.xml
+        ${CMAKE_SOURCE_DIR}/modules/tilemap/doc_classes/TileData.xml
+        ${CMAKE_SOURCE_DIR}/modules/tilemap/doc_classes/TileMap.xml
+        ${CMAKE_SOURCE_DIR}/modules/tilemap/doc_classes/TileMapLayer.xml
+        ${CMAKE_SOURCE_DIR}/modules/tilemap/doc_classes/TileMapPattern.xml
+        ${CMAKE_SOURCE_DIR}/modules/tilemap/doc_classes/TileSet.xml
+        ${CMAKE_SOURCE_DIR}/modules/tilemap/doc_classes/TileSetAtlasSource.xml
+        ${CMAKE_SOURCE_DIR}/modules/tilemap/doc_classes/TileSetScenesCollectionSource.xml
+        ${CMAKE_SOURCE_DIR}/modules/tilemap/doc_classes/TileSetSource.xml
         ${CMAKE_SOURCE_DIR}/modules/upnp/doc_classes/UPNP.xml
         ${CMAKE_SOURCE_DIR}/modules/upnp/doc_classes/UPNPDevice.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShader.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNode.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeBillboard.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeBooleanConstant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeBooleanParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeClamp.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeColorConstant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeColorFunc.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeColorOp.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeColorParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeComment.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeCompare.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeConstant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeCubemap.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeCubemapParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeCurveTexture.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeCurveXYZTexture.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeCustom.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeDerivativeFunc.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeDeterminant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeDistanceFade.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeDotProduct.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeExpression.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeFaceForward.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeFloatConstant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeFloatFunc.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeFloatOp.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeFloatParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeFrame.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeFresnel.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeGlobalExpression.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeGroupBase.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeIf.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeInput.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeIntConstant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeIntFunc.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeIntOp.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeIntParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeIs.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeLinearSceneDepth.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeMix.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeMultiplyAdd.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeOuterProduct.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeOutput.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParameterRef.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleAccelerator.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleBoxEmitter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleConeVelocity.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleEmit.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleEmitter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleMeshEmitter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleMultiplyByAxisAngle.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleOutput.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleRandomness.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleRingEmitter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeParticleSphereEmitter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeProximityFade.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeRandomRange.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeRemap.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeReroute.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeResizableBase.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeRotationByAxis.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSample3D.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeScreenNormalWorldSpace.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeScreenUVToSDF.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSDFRaymarch.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSDFToScreenUV.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSmoothStep.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeStep.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSwitch.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTexture.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTexture2DArray.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTexture2DArrayParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTexture2DParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTexture3D.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTexture3DParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTextureParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTextureParameterTriplanar.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTextureSDF.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTextureSDFNormal.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTransformCompose.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTransformConstant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTransformDecompose.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTransformFunc.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTransformOp.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTransformParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeTransformVecMult.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeUIntConstant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeUIntFunc.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeUIntOp.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeUIntParameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeUVFunc.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeUVPolarCoord.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVarying.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVaryingGetter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVaryingSetter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVec2Constant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVec2Parameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVec3Constant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVec3Parameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVec4Constant.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVec4Parameter.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVectorBase.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVectorCompose.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVectorDecompose.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVectorDistance.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVectorFunc.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVectorLen.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVectorOp.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeVectorRefract.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeWorldPositionFromDepth.xml
         ${CMAKE_SOURCE_DIR}/modules/vorbis/doc_classes/AudioStreamOggVorbis.xml
         ${CMAKE_SOURCE_DIR}/modules/vorbis/doc_classes/AudioStreamPlaybackOggVorbis.xml
         ${CMAKE_SOURCE_DIR}/modules/vorbis/doc_classes/ResourceImporterOggVorbis.xml
@@ -892,14 +1015,6 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Theme.xml
         classes/ThemeDB.xml
         classes/Thread.xml
-        classes/TileData.xml
-        classes/TileMap.xml
-        classes/TileMapLayer.xml
-        classes/TileMapPattern.xml
-        classes/TileSet.xml
-        classes/TileSetAtlasSource.xml
-        classes/TileSetScenesCollectionSource.xml
-        classes/TileSetSource.xml
         classes/Time.xml
         classes/Timer.xml
         classes/TorusMesh.xml

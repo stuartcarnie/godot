@@ -3,7 +3,7 @@ set(GENERATED_EDITOR_ICONS_HEADER ${CMAKE_BINARY_INCLUDE_DIR}/editor/themes/edit
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}')
-#   for file in list_files(cog, ['.', '../../modules/csg/icons', '../../modules/gdscript/icons', '../../modules/gridmap/icons', '../../modules/noise/icons', '../../modules/regex/icons'], exts=['svg']):
+#   for file in list_files(cog, ['.', '../../modules/csg/icons', '../../modules/gdscript/icons', '../../modules/gridmap/icons', '../../modules/noise/icons', '../../modules/regex/icons', '../../modules/multiplayer/icons', '../../modules/tilemap/icons'], exts=['svg']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
@@ -20,12 +20,23 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ../../modules/gdscript/icons/GDScriptInternal.svg
         ../../modules/gridmap/icons/GridMap.svg
         ../../modules/gridmap/icons/GridMapDock.svg
+        ../../modules/multiplayer/icons/MultiplayerSpawner.svg
+        ../../modules/multiplayer/icons/MultiplayerSynchronizer.svg
+        ../../modules/multiplayer/icons/ReplicationDock.svg
         ../../modules/noise/icons/FastNoiseLite.svg
         ../../modules/noise/icons/Noise.svg
         ../../modules/noise/icons/NoiseTexture2D.svg
         ../../modules/noise/icons/NoiseTexture3D.svg
         ../../modules/regex/icons/RegEx.svg
         ../../modules/regex/icons/RegExMatch.svg
+        ../../modules/tilemap/icons/TileChecked.svg
+        ../../modules/tilemap/icons/TileMap.svg
+        ../../modules/tilemap/icons/TileMapDock.svg
+        ../../modules/tilemap/icons/TileMapHighlightSelected.svg
+        ../../modules/tilemap/icons/TileMapLayer.svg
+        ../../modules/tilemap/icons/TileSelection.svg
+        ../../modules/tilemap/icons/TileSet.svg
+        ../../modules/tilemap/icons/TileUnchecked.svg
         2D.svg
         2DNodes.svg
         3D.svg
@@ -909,14 +920,6 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ThemeSelectFull.svg
         ThumbnailWait.svg
         ThumbsUp.svg
-        TileChecked.svg
-        TileMap.svg
-        TileMapDock.svg
-        TileMapHighlightSelected.svg
-        TileMapLayer.svg
-        TileSelection.svg
-        TileSet.svg
-        TileUnchecked.svg
         Time.svg
         TimelineHandle.svg
         TimelineIndicator.svg

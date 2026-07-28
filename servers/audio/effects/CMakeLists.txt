@@ -41,8 +41,6 @@ target_sources(servers PRIVATE
         audio_effect_spectrum_analyzer.h
         audio_effect_stereo_enhance.cpp
         audio_effect_stereo_enhance.h
-        audio_stream_generator.cpp
-        audio_stream_generator.h
         eq_filter.cpp
         eq_filter.h
         reverb_filter.cpp

@@ -13,7 +13,6 @@ target_sources(core PRIVATE
         a_star_grid_2d.h
         aabb.cpp
         aabb.h
-        audio_frame.h
         basis.cpp
         basis.h
         bvh.h
@@ -92,7 +91,6 @@ target_sources(core PUBLIC
         a_star.h
         a_star_grid_2d.h
         aabb.h
-        audio_frame.h
         basis.h
         bvh.h
         bvh_abb.h

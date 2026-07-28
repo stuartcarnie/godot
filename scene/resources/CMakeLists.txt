@@ -1,5 +1,6 @@
 add_subdirectory(2d)
 add_subdirectory(3d)
+add_subdirectory(audio)
 
 # [[[cog
 #   import cog
@@ -18,10 +19,6 @@ target_sources(scene PRIVATE
         animation_library.h
         atlas_texture.cpp
         atlas_texture.h
-        audio_stream_polyphonic.cpp
-        audio_stream_polyphonic.h
-        audio_stream_wav.cpp
-        audio_stream_wav.h
         bit_map.cpp
         bit_map.h
         blit_material.cpp

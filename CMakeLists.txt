@@ -32,6 +32,7 @@ else ()
     # skip setting deployment target for other platforms
 endif ()
 
+# Configure the Xcode project
 set(CMAKE_XCODE_ATTRIBUTE_OSX_DEPLOYMENT_TARGET 13.0)
 set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET 15.0)
 set(CMAKE_XCODE_ATTRIBUTE_VISIONOS_DEPLOYMENT_TARGET 26.0)
@@ -42,6 +43,10 @@ set(CMAKE_XCODE_ATTRIBUTE_GCC_WARN_64_TO_32_BIT_CONVERSION[arch=*64] "NO")
 set(CMAKE_XCODE_LINK_BUILD_PHASE_MODE KNOWN_LOCATION)
 set(CMAKE_XCODE_ATTRIBUTE_DEAD_CODE_STRIPPING "YES")
 set(CMAKE_XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_WEAK "YES")
+set(CMAKE_XCODE_ATTRIBUTE_GCC_OPTIMIZATION_LEVEL[variant=Debug] "0")
+set(CMAKE_XCODE_ATTRIBUTE_GCC_OPTIMIZATION_LEVEL[variant=RelWithDebInfo] "2")
+set(CMAKE_XCODE_ATTRIBUTE_GCC_OPTIMIZATION_LEVEL[variant=Release] "3")
+set(CMAKE_XCODE_ATTRIBUTE_GCC_OPTIMIZATION_LEVEL[variant=MinSizeRel] "s")
 set(CMAKE_XCODE_XCCONFIG godot.xcconfig)
 
 include(CMakeDependentOption)
@@ -178,7 +183,6 @@ endif ()
 unset(_godot_profiler_include_dir)
 unset(_godot_profiler_source)
 unset(_godot_profiler_path)
-
 
 
 if (DISABLE_XR)
@@ -601,3 +605,32 @@ json_set_bool(_json "${_json}" minizip TRUE)
 json_set_bool(_json "${_json}" builtin_certs TRUE)
 json_set_string(_json "${_json}" system_certs_path "")
 file(WRITE "${CMAKE_BINARY_DIR}/cmake_env.json" "${_json}\n")
+
+# IMPORTANT: Must be last, so all targets have been added
+#if (CMAKE_GENERATOR STREQUAL "Xcode")
+#    set(GODOT_XCODE_INHERITED_ATTRIBUTES
+#            GCC_OPTIMIZATION_LEVEL
+#            GCC_GENERATE_DEBUGGING_SYMBOLS
+#    )
+#    function(_xcode_inherit_attributes dir)
+#        get_property(tgts DIRECTORY ${dir} PROPERTY BUILDSYSTEM_TARGETS)
+#        foreach (t IN LISTS tgts)
+#            get_target_property(type ${t} TYPE)
+#            if (type STREQUAL "INTERFACE_LIBRARY" OR type STREQUAL "UTILITY")
+#                continue()
+#            endif ()
+#            foreach (attr IN LISTS GODOT_XCODE_INHERITED_ATTRIBUTES)
+#                get_target_property(keep ${t} GODOT_XCODE_KEEP_${attr})
+#                if (NOT keep)
+#                    set_target_properties(${t} PROPERTIES
+#                            XCODE_ATTRIBUTE_${attr} "$(inherited)")
+#                endif ()
+#            endforeach ()
+#        endforeach ()
+#        get_property(subs DIRECTORY ${dir} PROPERTY SUBDIRECTORIES)
+#        foreach (s IN LISTS subs)
+#            _xcode_inherit_attributes(${s})
+#        endforeach ()
+#    endfunction()
+#    _xcode_inherit_attributes(${CMAKE_SOURCE_DIR})
+#endif ()

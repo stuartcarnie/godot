@@ -60,10 +60,6 @@ target_sources(scene PRIVATE
         skeleton_2d.h
         sprite_2d.cpp
         sprite_2d.h
-        tile_map.cpp
-        tile_map.h
-        tile_map_layer.cpp
-        tile_map_layer.h
         visible_on_screen_notifier_2d.cpp
         visible_on_screen_notifier_2d.h
 )

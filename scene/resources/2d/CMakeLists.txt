@@ -31,8 +31,6 @@ target_sources(scene PRIVATE
         separation_ray_shape_2d.h
         shape_2d.cpp
         shape_2d.h
-        tile_set.cpp
-        tile_set.h
         world_boundary_shape_2d.cpp
         world_boundary_shape_2d.h
 )

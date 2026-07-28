@@ -15,15 +15,14 @@ target_sources(editor PRIVATE
         editor_shader_language_plugin.h
         shader_create_dialog.cpp
         shader_create_dialog.h
-        shader_editor.h
         shader_editor_plugin.cpp
         shader_editor_plugin.h
         shader_file_editor_plugin.cpp
         shader_file_editor_plugin.h
         shader_globals_editor.cpp
         shader_globals_editor.h
-        text_shader_editor.cpp
-        text_shader_editor.h
+        shader_text_editor.cpp
+        shader_text_editor.h
         text_shader_language_plugin.cpp
         text_shader_language_plugin.h
 )

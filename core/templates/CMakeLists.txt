@@ -37,7 +37,6 @@ target_sources(core PRIVATE
         safe_list.h
         safe_refcount.h
         self_list.h
-        simple_type.h
         sort_array.h
         sort_list.h
         span.h

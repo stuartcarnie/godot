@@ -1,5 +1,4 @@
 add_subdirectory(physics)
-add_subdirectory(tiles)
 
 # [[[cog
 #   import cog
