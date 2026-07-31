@@ -130,8 +130,6 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialQueryResultData.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRStructureBase.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRVisibilityMask.xml
-        ${CMAKE_SOURCE_DIR}/modules/regex/doc_classes/RegEx.xml
-        ${CMAKE_SOURCE_DIR}/modules/regex/doc_classes/RegExMatch.xml
         ${CMAKE_SOURCE_DIR}/modules/text_server_adv/doc_classes/TextServerAdvanced.xml
         ${CMAKE_SOURCE_DIR}/modules/text_server_fb/doc_classes/TextServerFallback.xml
         ${CMAKE_SOURCE_DIR}/modules/theora/doc_classes/VideoStreamTheora.xml
@@ -849,6 +847,8 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/RefCounted.xml
         classes/ReferenceRect.xml
         classes/ReflectionProbe.xml
+        classes/RegEx.xml
+        classes/RegExMatch.xml
         classes/RemoteTransform2D.xml
         classes/RemoteTransform3D.xml
         classes/RenderData.xml

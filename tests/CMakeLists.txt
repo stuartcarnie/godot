@@ -73,6 +73,7 @@ target_sources(tests PRIVATE
         core/os/test_os.cpp
         core/string/test_fuzzy_search.cpp
         core/string/test_node_path.cpp
+        core/string/test_regex.cpp
         core/string/test_string.cpp
         core/string/test_translation.cpp
         core/string/test_translation_server.cpp

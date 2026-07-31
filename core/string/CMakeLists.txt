@@ -21,6 +21,8 @@ target_sources(core PRIVATE
         plural_rules.h
         print_string.cpp
         print_string.h
+        regex.cpp
+        regex.h
         string_buffer.h
         string_builder.cpp
         string_builder.h
@@ -37,4 +39,4 @@ target_sources(core PRIVATE
         ustring.h
 )
 # [[[end]]]
-target_link_libraries(core PRIVATE godot-thirdparty-misc)
+target_link_libraries(core PRIVATE godot-thirdparty-misc pcre2_w32)

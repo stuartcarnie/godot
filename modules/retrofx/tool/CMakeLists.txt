@@ -13,6 +13,5 @@ target_link_libraries(slang-tool PUBLIC
         core
         drivers
         godot-module-slang
-        godot-module-regex
         $<LINK_LIBRARY:FRAMEWORK,Foundation.framework>
 )
