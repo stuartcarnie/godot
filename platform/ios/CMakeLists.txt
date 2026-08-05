@@ -3,17 +3,21 @@ godot_add_library(ios)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(ios PRIVATE')
-#   for file in list_files(cog, '.'):
+#   for file in list_files(cog, '.', exts=['c', 'cpp', 'h', 'mm', 'swift']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
 target_sources(ios PRIVATE
+        app_ios.swift
+        bridging_header_ios.h
         device_metrics.h
         device_metrics.mm
         display_layer_ios.h
         display_layer_ios.mm
         display_server_ios.h
         display_server_ios.mm
+        godot_app_delegate_ios.h
+        godot_app_delegate_ios.mm
         godot_view_ios.h
         godot_view_ios.mm
         ios.h
@@ -35,6 +39,7 @@ void godot_apple_embedded_plugins_deinitialize() {}
 
 target_sources(ios PRIVATE
         ${_apple_embedded_plugins_stub}
+        ${CMAKE_SOURCE_DIR}/drivers/apple_embedded/godot_swiftui_view_controller.swift
 )
 
 if (${WANT_OPENGL})
@@ -55,6 +60,8 @@ endif ()
 target_link_libraries(ios
         PUBLIC
         $<$<BOOL:${WANT_METAL}>:metal>
+        PRIVATE
+        apple_embedded
 )
 target_compile_definitions(ios
         PUBLIC
@@ -63,8 +70,13 @@ target_compile_definitions(ios
         $<${WANT_COREMIDI}:COREMIDI_ENABLED>
         $<${WANT_SDL}:SDL_ENABLED>
 )
-target_compile_options(ios PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:-fmodules -fcxx-modules>)
+target_compile_options(ios
+        PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:-fmodules -fcxx-modules>
+        $<$<COMPILE_LANGUAGE:Swift>:-import-objc-header ${CMAKE_CURRENT_SOURCE_DIR}/bridging_header_ios.h>
+        $<$<COMPILE_LANGUAGE:Swift>:-cxx-interoperability-mode=default>
+)
+
 
 #add_custom_target(libgodot
 #        COMMAND libtool -static -o libgodot.a $<TARGET_FILE:ios>

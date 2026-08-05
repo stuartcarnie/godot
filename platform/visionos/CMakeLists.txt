@@ -3,15 +3,23 @@ godot_add_library(visionos)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(visionos PRIVATE')
-#   for file in list_files(cog, '.'):
+#   for file in list_files(cog, '.', exts=['c', 'cpp', 'h', 'mm', 'swift']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
 target_sources(visionos PRIVATE
+        app_visionos.swift
+        bridging_header_visionos.h
         display_layer_visionos.h
         display_layer_visionos.mm
         display_server_visionos.h
         display_server_visionos.mm
+        godot_app_delegate_service_visionos.h
+        godot_app_delegate_service_visionos.mm
+        godot_app_delegate_visionos.h
+        godot_app_delegate_visionos.mm
+        godot_compositor_services_renderer.h
+        godot_compositor_services_renderer.mm
         godot_view_visionos.h
         godot_view_visionos.mm
         main_visionos.mm
@@ -19,6 +27,8 @@ target_sources(visionos PRIVATE
         os_visionos.mm
         platform_config.h
         platform_thread.h
+        render_mode_visionos.h
+        render_mode_visionos.mm
         visionos.h
 )
 # [[[end]]]
@@ -32,11 +42,14 @@ void godot_apple_embedded_plugins_deinitialize() {}
 
 target_sources(visionos PRIVATE
         ${_apple_embedded_plugins_stub}
+	${CMAKE_SOURCE_DIR}/drivers/apple_embedded/godot_swiftui_view_controller.swift
 )
 
 target_link_libraries(visionos
         PUBLIC
         $<$<BOOL:${WANT_METAL}>:metal>
+        PRIVATE
+        apple_embedded
 )
 target_compile_definitions(visionos
         PUBLIC

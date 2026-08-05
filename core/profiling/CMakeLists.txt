@@ -35,6 +35,6 @@ if (GODOT_CORE_PROFILER_SOURCE_FILES)
         target_link_libraries(core PUBLIC profiler)
 endif ()
 
-configure_file(profiling.gen.h.in ${CMAKE_CURRENT_SOURCE_DIR}/profiling.gen.h)
+configure_file(profiling.gen.h.in ${CMAKE_BINARY_INCLUDE_DIR}/core/profiling/profiling.gen.h)
 
 # target_include_directories(core PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")

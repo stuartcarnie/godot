@@ -3,24 +3,25 @@ godot_add_library(apple_embedded FOLDER drivers STATIC)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(apple_embedded PRIVATE')
-#   for file in list_files(cog, '.', exts=['c', 'cpp', 'h', 'mm', 'swift']):
+#   for file in list_files(cog, '.', exts=['c', 'cpp', 'h', 'mm']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
 target_sources(apple_embedded PRIVATE
-        app.swift
-        app_delegate_service.h
-        app_delegate_service.mm
         apple_embedded.h
         apple_embedded.mm
         bridging_header_apple_embedded.h
         display_layer_apple_embedded.h
         display_server_apple_embedded.h
         display_server_apple_embedded.mm
-        godot_app_delegate.h
-        godot_app_delegate.mm
+        godot_app_delegate_apple_embedded.h
+        godot_app_delegate_apple_embedded.mm
+        godot_app_delegate_service_apple_embedded.h
+        godot_app_delegate_service_apple_embedded.mm
         godot_keyboard_input_view.h
         godot_keyboard_input_view.mm
+        godot_renderer.h
+        godot_renderer.mm
         godot_view_apple_embedded.h
         godot_view_apple_embedded.mm
         godot_view_controller.h

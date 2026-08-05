@@ -129,6 +129,7 @@ target_include_directories(Godot PUBLIC
 
 if (LIBRARY_TYPE STREQUAL "executable" AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set_target_properties(Godot PROPERTIES
+            XCODE_GENERATE_SCHEME ON
             XCODE_ATTRIBUTE_INFOPLIST_FILE ${CMAKE_SOURCE_DIR}/misc/dist/macos_tools.app/Contents/Info.plist
             XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ${CMAKE_SOURCE_DIR}/misc/dist/macos/editor_debug.entitlements
             XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${APPLE_BUNDLE_IDENTIFIER}
@@ -219,6 +220,7 @@ elseif (LIBRARY_TYPE STREQUAL "executable" AND CMAKE_SYSTEM_NAME STREQUAL "iOS")
 </plist>
 ]=])
     set_target_properties(Godot PROPERTIES
+            XCODE_GENERATE_SCHEME ON
             XCODE_ATTRIBUTE_INFOPLIST_FILE "${_info_plist}"
             XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${APPLE_BUNDLE_IDENTIFIER}
             MACOSX_BUNDLE_INFO_PLIST "${_info_plist}"
@@ -346,6 +348,7 @@ elseif (LIBRARY_TYPE STREQUAL "executable" AND CMAKE_SYSTEM_NAME STREQUAL "visio
     file(WRITE "${_info_plist}" "${_plist}")
 
     set_target_properties(Godot PROPERTIES
+            XCODE_GENERATE_SCHEME ON
             XCODE_ATTRIBUTE_INFOPLIST_FILE "${_info_plist}"
             XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${APPLE_BUNDLE_IDENTIFIER}
             MACOSX_BUNDLE_INFO_PLIST "${_info_plist}"
@@ -415,6 +418,7 @@ elseif (LIBRARY_TYPE STREQUAL "executable" AND CMAKE_SYSTEM_NAME STREQUAL "tvOS"
 </plist>
 ]=])
     set_target_properties(Godot PROPERTIES
+            XCODE_GENERATE_SCHEME ON
             XCODE_ATTRIBUTE_INFOPLIST_FILE "${_info_plist}"
             XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER ${APPLE_BUNDLE_IDENTIFIER}
             MACOSX_BUNDLE_INFO_PLIST "${_info_plist}"
