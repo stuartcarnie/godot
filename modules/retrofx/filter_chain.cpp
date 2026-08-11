@@ -308,7 +308,7 @@ void FilterChain::render_final_pass(const RID p_target, const Size2 p_target_siz
 		blit_texture(dl, view);
 	} else {
 		Pass &pass = passes[last_pass_index];
-		// Direct render to the external target — use the alpha-masked variant so the
+		// Direct render to the external target - use the alpha-masked variant so the
 		// cleared opaque alpha survives regardless of what the shader writes.
 		rd->draw_list_bind_render_pipeline(dl, pass.pipeline_final);
 		rd->draw_list_set_push_constant(dl, pass.bindings.push.binding.data.ptr(), pass.bindings.push.size);
@@ -741,7 +741,7 @@ Error FilterChain::set_compiled_shader(const ShaderContainer &p_container) {
 		ERR_FAIL_COND_V_MSG(pass.pipeline.is_null(), ERR_CANT_CREATE, "Failed to create pipeline");
 
 		// Final-target pipeline: only the last pass can write directly to the external
-		// target. Mask alpha so the cleared opaque value survives — most slang shaders
+		// target. Mask alpha so the cleared opaque value survives - most slang shaders
 		// leave FragColor.a undefined, which would otherwise turn the canvas-item composite
 		// transparent.
 		if (pass_no == last_pass_index) {

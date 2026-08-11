@@ -1190,6 +1190,8 @@ void MeshStorage::update_mesh_instances() {
 		return; //nothing to do
 	}
 
+	RD::DrawCommandLabel label = RD::get_singleton()->draw_command_label("Mesh Instance Update");
+
 	//process skeletons and blend shapes
 	uint64_t frame = RSG::rasterizer->get_frame_number();
 	bool uses_motion_vectors = (RSG::viewport->get_num_viewports_with_motion_vectors() > 0) || (RendererCompositorStorage::get_singleton()->get_num_compositor_effects_with_motion_vectors() > 0);

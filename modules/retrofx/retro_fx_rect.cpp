@@ -322,7 +322,7 @@ void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
 	for (Ref<ShaderParameter> const param : params) {
 		if (intelligent_grouping) {
 			if (is_spacer_sentinel(param)) {
-				continue; // Decorative — drop entirely.
+				continue;
 			}
 			if (is_section_header_sentinel(param)) {
 				// Render as a native collapsible group covering subsequent `parameters/*` rows.

@@ -57,6 +57,7 @@
 #include "core/profiling/profiling.h"
 #include "core/register_core_types.h"
 #include "core/string/translation_server.h"
+#include "core/templates/hash_set.h"
 #include "core/variant/variant_parser.h"
 #include "core/version.h"
 #include "drivers/register_driver_types.h"
@@ -174,6 +175,11 @@ static PackedData *packed_data = nullptr;
 static ZipArchive *zip_packed_data = nullptr;
 #endif
 static MessageQueue *message_queue = nullptr;
+#if DEV_ENABLED
+static HashSet<String> recorded_project_setting_env_overrides;
+static bool list_env_vars = false;
+static String list_env_vars_filter;
+#endif
 
 #if defined(STEAMAPI_ENABLED)
 static SteamTracker *steam_tracker = nullptr;
@@ -366,6 +372,128 @@ void finalize_theme_db() {
 	theme_db = nullptr;
 }
 
+#if DEV_ENABLED
+static const char *PROJECT_SETTING_ENV_NOT_SETTABLE = "<not settable>";
+
+static String get_project_setting_env_var_name(const String &p_setting) {
+	return "GODOT_P_" + p_setting.replace("/", "__");
+}
+
+static bool parse_project_setting_env_value(const String &p_setting, const String &p_env_value, Variant &r_value, String &r_error) {
+	const Variant::Type setting_type = ProjectSettings::get_singleton()->get_setting(p_setting).get_type();
+
+	switch (setting_type) {
+		case Variant::NIL:
+		case Variant::RID:
+		case Variant::OBJECT:
+		case Variant::CALLABLE:
+		case Variant::SIGNAL:
+			r_error = "Project setting '" + p_setting + "' cannot be set using a GODOT_P_ environment variable.";
+			return false;
+		case Variant::STRING:
+			r_value = p_env_value;
+			return true;
+		case Variant::STRING_NAME:
+			r_value = StringName(p_env_value);
+			return true;
+		case Variant::NODE_PATH:
+			r_value = NodePath(p_env_value);
+			return true;
+		default: {
+			VariantParser::StreamString stream;
+			stream.s = p_env_value;
+			int err_line = 0;
+			Error err = VariantParser::parse(&stream, r_value, r_error, err_line);
+			if (err != OK) {
+				r_error = "Environment variable for project setting '" + p_setting + "' could not be parsed: " + r_error;
+			}
+			return err == OK;
+		}
+	}
+}
+
+static bool project_setting_env_value_to_string(const Variant &p_value, String &r_value) {
+	switch (p_value.get_type()) {
+		case Variant::NIL:
+		case Variant::RID:
+		case Variant::OBJECT:
+		case Variant::CALLABLE:
+		case Variant::SIGNAL:
+			return false;
+		case Variant::STRING:
+			r_value = p_value.operator String();
+			break;
+		case Variant::STRING_NAME:
+			r_value = String(p_value.operator StringName());
+			break;
+		case Variant::NODE_PATH:
+			r_value = String(p_value.operator NodePath());
+			break;
+		default: {
+			Error err = VariantWriter::write_to_string(p_value, r_value);
+			if (err != OK) {
+				return false;
+			}
+		} break;
+	}
+
+	return !r_value.contains_char('\n') && !r_value.contains_char('\r');
+}
+
+static void apply_project_setting_env_overrides(HashSet<String> &r_recorded_env_overrides, const bool p_warn_invalid) {
+	extern char **environ;
+	for (char **env = environ; *env; ++env) {
+		if (strncasecmp(*env, "GODOT_P_", 8) == 0) {
+			String env_var = String::ascii(Span(*env, strchr(*env, '=') - *env));
+			String env_val = OS::get_singleton()->get_environment(env_var);
+			env_var = env_var.substr(8, env_var.length() - 8);
+			env_var = env_var.replace("__", "/");
+			if (ProjectSettings::get_singleton()->has_setting(env_var)) {
+				Variant parsed_value;
+				String parse_error;
+				if (!parse_project_setting_env_value(env_var, env_val, parsed_value, parse_error)) {
+					if (p_warn_invalid && !r_recorded_env_overrides.has(env_var)) {
+						WARN_PRINT(parse_error);
+						r_recorded_env_overrides.insert(env_var);
+					}
+					continue;
+				}
+				if (!r_recorded_env_overrides.has(env_var)) {
+					print_line("Override setting '" + env_var + "' to '" + env_val + "'");
+					r_recorded_env_overrides.insert(env_var);
+				}
+				ProjectSettings::get_singleton()->set_setting(env_var, parsed_value);
+			} else if (p_warn_invalid && !r_recorded_env_overrides.has(env_var)) {
+				WARN_PRINT("Environment variable '" + env_var + "' is not a valid project setting");
+				r_recorded_env_overrides.insert(env_var);
+			}
+		}
+	}
+}
+
+static void print_env_vars(const String &p_filter) {
+	List<PropertyInfo> settings;
+	ProjectSettings::get_singleton()->get_property_list(&settings);
+
+	for (const PropertyInfo &setting_info : settings) {
+		const String setting_name = setting_info.name;
+		if (!ProjectSettings::get_singleton()->has_setting(setting_name)) {
+			continue;
+		}
+		if (!p_filter.is_empty() && !setting_name.match(p_filter)) {
+			continue;
+		}
+
+		String value;
+		if (!project_setting_env_value_to_string(ProjectSettings::get_singleton()->get_setting(setting_name), value)) {
+			value = PROJECT_SETTING_ENV_NOT_SETTABLE;
+		}
+
+		print_line(get_project_setting_env_var_name(setting_name) + "=" + value);
+	}
+}
+#endif
+
 //#define DEBUG_INIT
 #ifdef DEBUG_INIT
 #define MAIN_PRINT(m_txt) print_line(m_txt)
@@ -443,6 +571,9 @@ void Main::print_help_option(const char *p_option, const char *p_description, CL
 			case CLI_OPTION_AVAILABILITY_TEMPLATE_RELEASE:
 				availability_badge = "\u001b[1;92mR";
 				break;
+			case CLI_OPTION_AVAILABILITY_DEV:
+				availability_badge = "\u001b[1;95mV";
+				break;
 			case CLI_OPTION_AVAILABILITY_HIDDEN:
 				// Use for multiline option names (but not when the option name is empty).
 				availability_badge = " ";
@@ -482,6 +613,7 @@ void Main::print_help(const char *p_binary) {
 #ifdef DEBUG_ENABLED
 	OS::get_singleton()->print("  \u001b[1;94mD\u001b[0m  Available in editor builds and debug export templates only.\n");
 #endif
+	OS::get_singleton()->print("  \u001b[1;95mV\u001b[0m  Only available in dev builds.\n");
 #if defined(OVERRIDE_PATH_ENABLED)
 	OS::get_singleton()->print("  \u001b[1;93mX\u001b[0m  Only available in editor builds, and export templates compiled with `disable_path_overrides=false`.\n");
 #endif
@@ -633,6 +765,7 @@ void Main::print_help(const char *p_binary) {
 
 #if defined(OVERRIDE_PATH_ENABLED) || defined(TESTS_ENABLED)
 	print_help_title("Standalone tools");
+	print_help_option("--list-env-vars [glob]", "List project settings matching the optional glob as GODOT_P_ environment variable assignments, then quit.\n", CLI_OPTION_AVAILABILITY_DEV);
 #endif // defined(OVERRIDE_PATH_ENABLED) || defined(TESTS_ENABLED)
 #if defined(OVERRIDE_PATH_ENABLED)
 	print_help_option("-s, --script <script>", "Run a script.\n", CLI_OPTION_AVAILABILITY_TEMPLATE_UNSAFE);
@@ -1000,6 +1133,12 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	input_map = memnew(InputMap);
 	globals = memnew(ProjectSettings);
+
+#if DEV_ENABLED
+	recorded_project_setting_env_overrides.clear();
+	list_env_vars = false;
+	list_env_vars_filter = String();
+#endif
 
 	register_core_settings(); //here globals are present
 
@@ -1721,6 +1860,23 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 #endif // MODULE_GDSCRIPT_ENABLED
 #endif // TOOLS_ENABLED
 
+		} else if (arg == "--list-env-vars") {
+#if DEV_ENABLED
+			cmdline_tool = true;
+			list_env_vars = true;
+			audio_driver = NULL_AUDIO_DRIVER;
+			display_driver = NULL_DISPLAY_DRIVER;
+			Engine::get_singleton()->_print_header = false;
+			main_args.push_back(arg);
+			if (N && !N->get().begins_with("-")) {
+				list_env_vars_filter = N->get();
+				N = N->next();
+			}
+#else
+			OS::get_singleton()->print("Environment variable listing is only available in dev builds, aborting.\n");
+			goto error;
+#endif
+
 		} else if (arg == "--path") { // set path of project to start or edit
 #if defined(OVERRIDE_PATH_ENABLED)
 			if (N) {
@@ -2102,6 +2258,10 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		goto error;
 #endif
 	}
+
+#if DEV_ENABLED
+	apply_project_setting_env_overrides(recorded_project_setting_env_overrides, false);
+#endif
 
 	if (clear_shader_cache && !project_path.is_empty()) {
 		const String cache_path = project_path.path_join(".godot").path_join("shader_cache");
@@ -3900,21 +4060,7 @@ Error Main::setup2(bool p_show_boot_logo) {
 	OS::get_singleton()->benchmark_end_measure("Startup", "Main::Setup2");
 
 #if DEV_ENABLED
-	extern char **environ;
-	for (char **env = environ; *env; ++env) {
-		if (strncasecmp(*env, "GODOT_P_", 8) == 0) {
-			String env_var = String::ascii(Span(*env, strchr(*env, '=') - *env));
-			String env_val = OS::get_singleton()->get_environment(env_var);
-			env_var = env_var.substr(8, env_var.length() - 8);
-			env_var = env_var.replace("__", "/");
-			if (ProjectSettings::get_singleton()->has_setting(env_var)) {
-				print_line("Override setting '" + env_var + "' to '" + env_val + "'");
-				ProjectSettings::get_singleton()->set_setting(env_var, env_val);
-			} else {
-				WARN_PRINT("Environment variable '" + env_var + "' is not a valid project setting");
-			}
-		}
-	}
+	apply_project_setting_env_overrides(recorded_project_setting_env_overrides, true);
 #endif
 
 	return OK;
@@ -4320,6 +4466,13 @@ int Main::start() {
 #endif // DISABLE_DEPRECATED
 
 #endif // TOOLS_ENABLED
+
+#if DEV_ENABLED
+	if (list_env_vars) {
+		print_env_vars(list_env_vars_filter);
+		return EXIT_SUCCESS;
+	}
+#endif
 
 #if defined(OVERRIDE_PATH_ENABLED)
 #ifndef TOOLS_ENABLED

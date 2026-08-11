@@ -948,6 +948,10 @@ public:
 	};
 
 	virtual void set_object_name(ObjectType p_type, ID p_driver_id, const String &p_name) = 0;
+	// Returns the debug name for a resource, or an empty String if the driver does not retain one.
+	// Used by the rendering device graph dumper for human-readable visualization labels.
+	virtual String get_resource_name(BufferID p_buffer) { return String(); }
+	virtual String get_resource_name(TextureID p_texture) { return String(); }
 	virtual uint64_t get_resource_native_handle(DriverResource p_type, ID p_driver_id) = 0;
 	virtual uint64_t get_total_memory_used() = 0;
 	virtual uint64_t get_lazily_memory_used() = 0;
