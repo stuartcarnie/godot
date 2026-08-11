@@ -1,5 +1,12 @@
-# run:
-# fd 'modules/.*/doc_classes/.*\.xml$' -p | sed -e 's/^/        ${CMAKE_SOURCE_DIR}\//' | sort | pbcopy
+# [[[cog
+#   import cog
+#   from cmake_builders import list_files
+#   cog.outl('set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE')
+#   for file in list_files(cog, '../modules', exts=['xml'], recursive=True):
+#       if file.parent.name == 'doc_classes':
+#           cog.outl(f'        ${{CMAKE_SOURCE_DIR}}/{file.as_posix().removeprefix("../")}')
+#   cog.outl(')')
+# ]]]
 set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/csg/doc_classes/CSGBox3D.xml
         ${CMAKE_SOURCE_DIR}/modules/csg/doc_classes/CSGCombiner3D.xml
@@ -67,6 +74,7 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/noise/doc_classes/NoiseTexture3D.xml
         ${CMAKE_SOURCE_DIR}/modules/ogg/doc_classes/OggPacketSequence.xml
         ${CMAKE_SOURCE_DIR}/modules/ogg/doc_classes/OggPacketSequencePlayback.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAPIExtension.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAction.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRActionBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRActionMap.xml
@@ -74,7 +82,6 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAnalogThresholdModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAnchorTracker.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAndroidThreadSettingsExtension.xml
-        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRAPIExtension.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRBindingModifierEditor.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRCompositionLayer.xml
@@ -90,13 +97,13 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRHand.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRHapticBase.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRHapticVibration.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBinding.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfile.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfileEditor.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfileEditorBase.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInteractionProfileMetadata.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRInterface.xml
-        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBinding.xml
-        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRIPBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRMarkerTracker.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRPlaneTracker.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRRenderModel.xml
@@ -143,6 +150,7 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/tilemap/doc_classes/TileSetSource.xml
         ${CMAKE_SOURCE_DIR}/modules/upnp/doc_classes/UPNP.xml
         ${CMAKE_SOURCE_DIR}/modules/upnp/doc_classes/UPNPDevice.xml
+        ${CMAKE_SOURCE_DIR}/modules/visionos_xr/doc_classes/VisionOSXRInterface.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShader.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNode.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeBillboard.xml
@@ -206,11 +214,11 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeReroute.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeResizableBase.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeRotationByAxis.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSDFRaymarch.xml
+        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSDFToScreenUV.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSample3D.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeScreenNormalWorldSpace.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeScreenUVToSDF.xml
-        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSDFRaymarch.xml
-        ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSDFToScreenUV.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSmoothStep.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeStep.xml
         ${CMAKE_SOURCE_DIR}/modules/visual_shader/doc_classes/VisualShaderNodeSwitch.xml
@@ -269,12 +277,14 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/zip/doc_classes/ZIPPacker.xml
         ${CMAKE_SOURCE_DIR}/modules/zip/doc_classes/ZIPReader.xml
 )
+# [[[end]]]
 
 set(GODOT_SOURCE_PLATFORM_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/platform/android/doc_classes/EditorExportPlatformAndroid.xml
         ${CMAKE_SOURCE_DIR}/platform/ios/doc_classes/EditorExportPlatformIOS.xml
         ${CMAKE_SOURCE_DIR}/platform/linuxbsd/doc_classes/EditorExportPlatformLinuxBSD.xml
         ${CMAKE_SOURCE_DIR}/platform/macos/doc_classes/EditorExportPlatformMacOS.xml
+        ${CMAKE_SOURCE_DIR}/platform/visionos/doc_classes/EditorExportPlatformVisionOS.xml
         ${CMAKE_SOURCE_DIR}/platform/web/doc_classes/EditorExportPlatformWeb.xml
         ${CMAKE_SOURCE_DIR}/platform/windows/doc_classes/EditorExportPlatformWindows.xml
 )

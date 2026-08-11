@@ -101,13 +101,14 @@ endfunction()
 
 function(generate_documentation_compressed _input _output _tempFileOutput)
     list(JOIN _input "\n" JOINED_INPUT)
-    file(WRITE ${_tempFileOutput} ${JOINED_INPUT})
+    file(WRITE ${_tempFileOutput}.in ${JOINED_INPUT})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_tempFileOutput}.in ${_tempFileOutput})
 
     add_custom_command(
             OUTPUT ${_output}
             COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
             ARGS --env ${GODOT_ENV_FILE} make_documentation_header_compressed --output ${_output} --input ${_tempFileOutput}
-            DEPENDS ${_input}
+            DEPENDS ${_input} ${_tempFileOutput}
             COMMENT "Generating documentation compressed to ${_output}"
             VERBATIM
     )
@@ -115,13 +116,14 @@ endfunction()
 
 function(generate_editor_icons_header _input _output _tempFileOutput)
     list(JOIN _input "\n" JOINED_INPUT)
-    file(WRITE ${_tempFileOutput} ${JOINED_INPUT})
+    file(WRITE ${_tempFileOutput}.in ${JOINED_INPUT})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_tempFileOutput}.in ${_tempFileOutput})
 
     add_custom_command(
             OUTPUT ${_output}
             COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
             ARGS --env ${GODOT_ENV_FILE} make_editor_icons_action --output ${_output} --input ${_tempFileOutput}
-            DEPENDS ${_input}
+            DEPENDS ${_input} ${_tempFileOutput}
             COMMENT "Generating documentation compressed to  ${_output}"
             VERBATIM
     )
@@ -129,13 +131,14 @@ endfunction()
 
 function(generate_editor_themes_fonts _input _output _tempFileOutput)
     list(JOIN _input "\n" JOINED_INPUT)
-    file(WRITE ${_tempFileOutput} ${JOINED_INPUT})
+    file(WRITE ${_tempFileOutput}.in ${JOINED_INPUT})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_tempFileOutput}.in ${_tempFileOutput})
 
     add_custom_command(
             OUTPUT ${_output}
             COMMAND ${Python3_EXECUTABLE} ${GODOT_GENERATOR_SCRIPT}
             ARGS --env ${GODOT_ENV_FILE} make_editor_themes_fonts --output ${_output} --input ${_tempFileOutput}
-            DEPENDS ${_input}
+            DEPENDS ${_input} ${_tempFileOutput}
             COMMENT "Generating documentation compressed to  ${_output}"
             VERBATIM
     )

@@ -17,5 +17,21 @@ target_sources(godot-module-mp3 PRIVATE
 )
 # [[[end]]]
 
+if (WANT_EDITOR)
+    # [[[cog
+    #   import cog
+    #   from cmake_builders import list_files
+    #   cog.outl('target_sources(godot-module-mp3 PRIVATE')
+    #   for file in list_files(cog, 'editor'):
+    #       cog.outl(f'        {file}')
+    #   cog.outl(')')
+    # ]]]
+    target_sources(godot-module-mp3 PRIVATE
+            editor/audio_stream_mp3_editor_plugin.cpp
+            editor/audio_stream_mp3_editor_plugin.h
+    )
+    # [[[end]]]
+endif ()
+
 target_link_libraries(godot-module-mp3 PUBLIC core)
 group_target_sources(godot-module-mp3)

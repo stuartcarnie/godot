@@ -80,6 +80,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         AudioBusLayout.svg
         AudioBusMute.svg
         AudioBusSolo.svg
+        AudioEffect.svg
         AudioListener2D.svg
         AudioListener3D.svg
         AudioMute.svg
