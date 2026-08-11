@@ -765,7 +765,9 @@ void ShaderTextEditor::_notification(int p_what) {
 			Ref<StyleBoxFlat> tab_style = get_theme_stylebox(SNAME("tab_selected"), "TabBar");
 			Ref<StyleBoxFlat> preview_style = memnew(StyleBoxFlat);
 			preview_style->set_bg_color(get_theme_color(SNAME("dark_color_1"), EditorStringName(Editor)));
-			preview_style->set_corner_radius_all(tab_style->get_corner_radius(CORNER_TOP_LEFT));
+			if (tab_style.is_valid()) {
+				preview_style->set_corner_radius_all(tab_style->get_corner_radius(CORNER_TOP_LEFT));
+			}
 			preview_panel->add_theme_style_override(SceneStringName(panel), preview_style);
 
 			update_params_btn->set_button_icon(get_editor_theme_icon(SNAME("Reload")));
@@ -937,6 +939,11 @@ static void _complete_include_paths(List<ScriptLanguage::CodeCompletionOption> *
 }
 
 void ShaderTextEditor::_code_complete_script(const String &p_code, List<ScriptLanguage::CodeCompletionOption> *r_options, bool &r_force) {
+	CodeEdit *editor = code_editor->get_text_editor();
+	if (editor->is_in_comment(editor->get_caret_line(), editor->get_caret_column()) != -1) {
+		return;
+	}
+
 	List<ScriptLanguage::CodeCompletionOption> pp_options;
 	List<ScriptLanguage::CodeCompletionOption> pp_defines;
 	ShaderPreprocessor preprocessor;
