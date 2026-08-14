@@ -538,6 +538,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         KeyboardError.svg
         KeyboardLabel.svg
         KeyboardPhysical.svg
+        KeyboardTab.svg
         Keyword.svg
         KinematicCollision2D.svg
         KinematicCollision3D.svg
