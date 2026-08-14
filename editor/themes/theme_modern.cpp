@@ -1140,7 +1140,7 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 		Ref<StyleBoxFlat> grabber_hl_style = p_config.base_style->duplicate();
 		grabber_hl_style->set_bg_color(p_config.mono_color * Color(1, 1, 1, 0.5));
 
-		int scroll_margin = EDSCALE_RND(p_config.enable_touch_optimizations ? 10 : 3);
+		int scroll_margin = EDSCALE_RND(p_config.enable_touch_optimizations ? 13 : 3);
 
 		// HScrollBar.
 
@@ -1999,6 +1999,13 @@ void ThemeModern::populate_editor_styles(const Ref<EditorTheme> &p_theme, Editor
 			p_theme->set_stylebox(SceneStringName(hover), "EditorLogFilterButton", p_config.flat_button_hover);
 			p_theme->set_stylebox(SceneStringName(pressed), "EditorLogFilterButton", p_config.flat_button_pressed);
 			p_theme->set_stylebox("hover_pressed", "EditorLogFilterButton", p_config.flat_button_hover_pressed);
+
+			p_theme->set_type_variation("TouchActionsPanelButton", "FlatButtonNoIconTint");
+			Ref<StyleBoxFlat> tap_button_hover = p_config.flat_button_hover->duplicate();
+			Color hover_color = p_config.flat_button_hover_color;
+			hover_color.a = 0.25f;
+			tap_button_hover->set_bg_color(hover_color);
+			p_theme->set_stylebox(SceneStringName(hover), "TouchActionsPanelButton", tap_button_hover);
 		}
 
 		// Checkbox.

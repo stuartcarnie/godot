@@ -192,7 +192,8 @@ private:
 
 	void _update_popup();
 	void _focusable_focused(int p_index);
-	int _get_v_separation() const { return bottom_editor && bottom_editor_seperation ? theme_cache.vertical_separation : 0; }
+	int _get_v_separation() const { return bottom_editor && bottom_editor_separation ? theme_cache.vertical_separation : 0; }
+	Dictionary _get_context_data();
 
 	bool selectable = true;
 	bool selected = false;
@@ -219,7 +220,7 @@ private:
 protected:
 	bool has_borders = false;
 	bool can_override = false;
-	bool bottom_editor_seperation = false;
+	bool bottom_editor_separation = false;
 
 	void _notification(int p_what);
 	static void _bind_methods();
@@ -270,6 +271,7 @@ public:
 
 	virtual void make_passthrough(bool p_passthrough);
 	virtual void update_property();
+	virtual void update_properties_recursive();
 	void update_editor_property_status();
 
 	virtual bool use_keying_next() const;
@@ -938,6 +940,7 @@ public:
 
 	void update_tree();
 	void update_property(const String &p_prop);
+	void update_properties_recursive();
 	void edit(Object *p_object);
 	Object *get_edited_object();
 	Object *get_next_edited_object();

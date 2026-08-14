@@ -281,7 +281,6 @@ public:
 		}
 	};
 
-	void get_core_type_words(List<String> *p_core_type_words) const;
 	virtual Vector<String> get_reserved_words() const = 0;
 	virtual bool is_control_flow_keyword(const String &p_string) const = 0;
 	virtual Vector<String> get_comment_delimiters() const = 0;
@@ -373,7 +372,6 @@ public:
 		TypedArray<int> charac;
 	};
 
-	virtual void auto_indent_code(String &p_code, int p_from_line, int p_to_line) const = 0;
 	virtual void add_global_constant(const StringName &p_variable, const Variant &p_value) = 0;
 	virtual void add_named_global_constant(const StringName &p_name, const Variant &p_value) {}
 	virtual void remove_named_global_constant(const StringName &p_name) {}

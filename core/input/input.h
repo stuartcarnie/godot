@@ -181,6 +181,7 @@ private:
 		bool sensors_enabled : 1;
 		bool calibrating : 1;
 		bool calibrated : 1;
+		bool auto_calibration_enabled : 1;
 		float sensor_data_rate = 0.0f;
 		uint64_t last_timestamp = 0;
 		GamepadMotion *gamepad_motion = nullptr;
@@ -189,6 +190,7 @@ private:
 			sensors_enabled = false;
 			calibrating = false;
 			calibrated = false;
+			auto_calibration_enabled = true;
 		}
 	};
 
@@ -375,8 +377,8 @@ public:
 	bool is_action_pressed(const StringName &p_action, bool p_exact = false) const;
 	bool is_action_just_pressed(const StringName &p_action, bool p_exact = false) const;
 	bool is_action_just_released(const StringName &p_action, bool p_exact = false) const;
-	bool is_action_just_pressed_by_event(const StringName &p_action, RequiredParam<InputEvent> rp_event, bool p_exact = false) const;
-	bool is_action_just_released_by_event(const StringName &p_action, RequiredParam<InputEvent> rp_event, bool p_exact = false) const;
+	bool is_action_just_pressed_by_event(const StringName &p_action, RequiredParam<InputEvent> p_event, bool p_exact = false) const;
+	bool is_action_just_released_by_event(const StringName &p_action, RequiredParam<InputEvent> p_event, bool p_exact = false) const;
 	float get_action_strength(const StringName &p_action, bool p_exact = false) const;
 	float get_action_raw_strength(const StringName &p_action, bool p_exact = false) const;
 
@@ -409,7 +411,7 @@ public:
 	void warp_mouse(const Vector2 &p_position);
 	Point2 warp_mouse_motion(const Ref<InputEventMouseMotion> &p_motion, const Rect2 &p_rect);
 
-	void parse_input_event(RequiredParam<InputEvent> rp_event);
+	void parse_input_event(RequiredParam<InputEvent> p_event);
 
 	void set_gravity(const Vector3 &p_gravity);
 	void set_accelerometer(const Vector3 &p_accel);
@@ -441,6 +443,9 @@ public:
 
 	bool is_joy_motion_sensors_calibrating(int p_device) const;
 	bool is_joy_motion_sensors_calibrated(int p_device) const;
+
+	void set_joy_motion_sensors_auto_calibration_enabled(int p_device, bool p_enable);
+	bool is_joy_motion_sensors_auto_calibration_enabled(int p_device) const;
 
 	void set_joy_motion_sensors_rate(int p_device, float p_rate);
 
