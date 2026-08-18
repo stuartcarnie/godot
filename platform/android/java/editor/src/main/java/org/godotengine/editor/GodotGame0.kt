@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_object_selector.h                                              */
+/*  GodotGame0.kt                                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+package org.godotengine.editor
 
-#include "scene/gui/button.h"
-#include "scene/gui/label.h"
-#include "scene/gui/popup_menu.h"
-#include "scene/gui/texture_rect.h"
-
-class EditorSelectionHistory;
-class MarginContainer;
-
-class EditorObjectSelector : public Button {
-	GDCLASS(EditorObjectSelector, Button);
-
-	EditorSelectionHistory *history = nullptr;
-
-	MarginContainer *main_mc = nullptr;
-	TextureRect *current_object_icon = nullptr;
-	Label *current_object_label = nullptr;
-	TextureRect *sub_objects_icon = nullptr;
-	PopupMenu *sub_objects_menu = nullptr;
-
-	Vector<ObjectID> objects;
-
-	void _show_popup();
-	void _id_pressed(int p_idx);
-	void _about_to_show();
-	void _add_children_to_popup(Object *p_obj, int p_depth = 0);
-
-protected:
-	void _notification(int p_what);
-
-public:
-	virtual Size2 get_minimum_size() const override;
-
-	void update_path();
-	void clear_path();
-	void enable_path();
-
-	EditorObjectSelector(EditorSelectionHistory *p_history);
-};
+/**
+ * First instance for the Game window. Typically, this is the default instance launched when multi-instance is not
+ * enabled / supported.
+ */
+class GodotGame0: GodotGame() {
+	override fun getEditorWindowInfo() = RUN_GAME_INFO_0
+}

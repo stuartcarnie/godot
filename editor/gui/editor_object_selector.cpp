@@ -38,9 +38,7 @@
 #include "scene/gui/margin_container.h"
 
 Size2 EditorObjectSelector::get_minimum_size() const {
-	Ref<Font> font = get_theme_font(SceneStringName(font));
-	int font_size = get_theme_font_size(SceneStringName(font_size));
-	return Button::get_minimum_size() + Size2(0, font->get_height(font_size));
+	return main_mc->get_minimum_size();
 }
 
 void EditorObjectSelector::_add_children_to_popup(Object *p_obj, int p_depth) {
@@ -195,7 +193,7 @@ void EditorObjectSelector::_notification(int p_what) {
 			int icon_size = get_theme_constant(SNAME("class_icon_size"), EditorStringName(Editor));
 
 			current_object_icon->set_custom_minimum_size(Size2(icon_size, icon_size));
-			current_object_label->add_theme_font_override(SceneStringName(font), get_theme_font(SNAME("main"), EditorStringName(EditorFonts)));
+			current_object_label->add_theme_font_override(SceneStringName(font), get_theme_font(SNAME("bold"), EditorStringName(EditorFonts)));
 			sub_objects_icon->set_texture(get_theme_icon(SNAME("arrow"), SNAME("OptionButton")));
 			sub_objects_menu->add_theme_constant_override("icon_max_width", icon_size);
 		} break;
@@ -209,7 +207,7 @@ void EditorObjectSelector::_notification(int p_what) {
 EditorObjectSelector::EditorObjectSelector(EditorSelectionHistory *p_history) {
 	history = p_history;
 
-	MarginContainer *main_mc = memnew(MarginContainer);
+	main_mc = memnew(MarginContainer);
 	main_mc->set_theme_type_variation("ObjectSelectorMargin");
 	main_mc->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
 	add_child(main_mc);
