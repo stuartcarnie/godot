@@ -57,8 +57,6 @@ target_sources(godot-module-gdscript PRIVATE
         gdscript_parser.h
         gdscript_resource_format.cpp
         gdscript_resource_format.h
-        gdscript_rpc_callable.cpp
-        gdscript_rpc_callable.h
         gdscript_tokenizer.cpp
         gdscript_tokenizer.h
         gdscript_tokenizer_buffer.cpp

@@ -573,6 +573,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Marker3D.svg
         MarkerSelected.svg
         MatchCase.svg
+        MatchWord.svg
         MaterialPreviewCube.svg
         MaterialPreviewLight1.svg
         MaterialPreviewLight2.svg
@@ -649,7 +650,6 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         NodeWarnings2.svg
         NodeWarnings3.svg
         NodeWarnings4Plus.svg
-        NonFavorite.svg
         Notification.svg
         NotificationDisabled.svg
         ORMMaterial3D.svg
