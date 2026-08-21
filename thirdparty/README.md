@@ -1091,7 +1091,7 @@ Patches:
 ## tinyexr
 
 - Upstream: https://github.com/syoyo/tinyexr
-- Version: 1.0.13 (4946b5d92e13bcc8102ac2c8efd129596a90bf75, 2026)
+- Version: 3.2.0 (6f470c9ab24bf3992bc512ce07e8ecb00d9bf105, 2026)
 - License: BSD-3-Clause
 
 Files extracted from upstream source:
@@ -1109,7 +1109,7 @@ Patches:
 ## ufbx
 
 - Upstream: https://github.com/ufbx/ufbx
-- Version: 0.21.3 (83bc7cf44f76bc8622de63b809a42b5d557cd733, 2026)
+- Version: 0.23.0 (fcc5d6ba444cfd3eb80677dba5e37e493941abe5, 2026)
 - License: MIT
 
 Files extracted from upstream source:

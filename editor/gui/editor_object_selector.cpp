@@ -155,7 +155,7 @@ void EditorObjectSelector::update_path() {
 			}
 
 			current_object_label->set_text(name);
-			set_tooltip_text(obj->get_class());
+			set_tooltip_text(name + "\n" + vformat(TTR("Type: %s"), obj->get_class()) + "\n" + TTR("Click to open a list of sub-resources."));
 		}
 	}
 }
@@ -198,6 +198,10 @@ void EditorObjectSelector::_notification(int p_what) {
 			sub_objects_menu->add_theme_constant_override("icon_max_width", icon_size);
 		} break;
 
+		case NOTIFICATION_TRANSLATION_CHANGED: {
+			update_path();
+		} break;
+
 		case NOTIFICATION_READY: {
 			connect(SceneStringName(pressed), callable_mp(this, &EditorObjectSelector::_show_popup));
 		} break;
@@ -226,7 +230,6 @@ EditorObjectSelector::EditorObjectSelector(EditorSelectionHistory *p_history) {
 	current_object_label->set_text_overrun_behavior(TextServer::OVERRUN_TRIM_ELLIPSIS);
 	current_object_label->set_h_size_flags(SIZE_EXPAND_FILL);
 	current_object_label->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
-	current_object_label->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	main_hb->add_child(current_object_label);
 
 	sub_objects_icon = memnew(TextureRect);
@@ -236,10 +239,9 @@ EditorObjectSelector::EditorObjectSelector(EditorSelectionHistory *p_history) {
 
 	sub_objects_menu = memnew(PopupMenu);
 	sub_objects_menu->set_shrink_width(false);
-	sub_objects_menu->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	add_child(sub_objects_menu);
 	sub_objects_menu->connect("about_to_popup", callable_mp(this, &EditorObjectSelector::_about_to_show));
 	sub_objects_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorObjectSelector::_id_pressed));
 
-	set_tooltip_text(TTR("Open a list of sub-resources."));
+	set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 }

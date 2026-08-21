@@ -635,7 +635,7 @@ DocumentList::DocumentList(ScriptEditor *p_script_editor) {
 
 	item_list = memnew(ItemList);
 	item_list->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
-	item_list->set_custom_minimum_size(Size2(100, 60) * EDSCALE);
+	item_list->set_custom_minimum_size(Size2(60, 40) * EDSCALE);
 	item_list->set_v_size_flags(SIZE_EXPAND_FILL);
 	item_list->set_theme_type_variation("ItemListSecondary");
 	item_list->set_allow_rmb_select(true);
@@ -853,7 +853,7 @@ DocumentOutline::DocumentOutline(ScriptEditor *p_script_editor) {
 	tree->set_allow_rmb_select(true);
 	tree->set_hide_root(true);
 	tree->set_hide_folding(true);
-	tree->set_custom_minimum_size(Size2(0, 60) * EDSCALE);
+	tree->set_custom_minimum_size(Size2(0, 40 * EDSCALE));
 	tree->set_v_size_flags(SIZE_EXPAND_FILL);
 	tree->connect(SceneStringName(item_selected), callable_mp(this, &DocumentOutline::_tree_selected));
 	add_child(tree);
@@ -3956,7 +3956,7 @@ void ScriptEditor::_on_find_in_files_result_selected(const String &fpath, int li
 		if (fpath.has_extension("gdshader") || fpath.has_extension("gdshaderinc")) {
 			ShaderEditorPlugin *shader_editor = Object::cast_to<ShaderEditorPlugin>(EditorNode::get_editor_data().get_editor_by_name("Shader"));
 			shader_editor->edit(res.ptr());
-			shader_editor->make_visible(true);
+			shader_editor->set_current();
 			if (ShaderTextEditor *shader_te = Object::cast_to<ShaderTextEditor>(ScriptEditor::get_bottom_script_editor()->get_resource_editor(res))) {
 				shader_te->goto_line_selection(line_number - 1, begin, end);
 			}
