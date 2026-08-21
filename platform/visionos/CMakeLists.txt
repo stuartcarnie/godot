@@ -14,6 +14,8 @@ target_sources(visionos PRIVATE
         display_layer_visionos.mm
         display_server_visionos.h
         display_server_visionos.mm
+        gc_keyboard_handler.h
+        gc_keyboard_handler.mm
         godot_app_delegate_service_visionos.h
         godot_app_delegate_service_visionos.mm
         godot_app_delegate_visionos.h

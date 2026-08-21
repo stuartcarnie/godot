@@ -663,6 +663,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/LightmapperRD.xml
         classes/LimitAngularVelocityModifier3D.xml
         classes/Line2D.xml
+        classes/Line3D.xml
         classes/LineEdit.xml
         classes/LinkButton.xml
         classes/Logger.xml
@@ -1029,6 +1030,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/Timer.xml
         classes/TorusMesh.xml
         classes/TouchScreenButton.xml
+        classes/Trail3D.xml
         classes/Transform2D.xml
         classes/Transform3D.xml
         classes/Translation.xml

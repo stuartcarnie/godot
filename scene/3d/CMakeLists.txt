@@ -68,6 +68,8 @@ target_sources(scene PRIVATE
         lightmapper.h
         limit_angular_velocity_modifier_3d.cpp
         limit_angular_velocity_modifier_3d.h
+        line_3d.cpp
+        line_3d.h
         look_at_modifier_3d.cpp
         look_at_modifier_3d.h
         marker_3d.cpp
@@ -110,6 +112,8 @@ target_sources(scene PRIVATE
         spring_bone_simulator_3d.h
         sprite_3d.cpp
         sprite_3d.h
+        trail_3d.cpp
+        trail_3d.h
         two_bone_ik_3d.cpp
         two_bone_ik_3d.h
         velocity_tracker_3d.cpp

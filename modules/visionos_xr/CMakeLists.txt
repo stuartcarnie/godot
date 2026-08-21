@@ -10,6 +10,11 @@ godot_add_library(godot-module-visionos_xr FOLDER modules STATIC)
 target_sources(godot-module-visionos_xr PRIVATE
         register_types.h
         register_types.mm
+        visionos_controller_tracking.h
+        visionos_controller_tracking.mm
+        visionos_definitions.h
+        visionos_hand_tracking.h
+        visionos_hand_tracking.mm
         visionos_simd_helpers.h
         visionos_xr_interface.h
         visionos_xr_interface.mm
