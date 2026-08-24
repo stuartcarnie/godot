@@ -1323,7 +1323,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 
 				ScriptEditor::get_singleton()->goto_help("class_name:" + class_name);
 			}
-			EditorNode::get_singleton()->get_editor_main_screen()->select(EditorMainScreen::EDITOR_SCRIPT);
+			ScriptEditor::get_singleton()->focus_editor();
 		} break;
 		case TOOL_AUTO_EXPAND: {
 			scene_tree->set_auto_expand_selected(!EDITOR_GET("docks/scene_tree/auto_expand_to_selected"), true);
@@ -3458,6 +3458,7 @@ bool SceneTreeDock::_check_node_recursive(Variant &r_variant, Node *p_node, Node
 
 void SceneTreeDock::set_edited_scene(Node *p_scene) {
 	edited_scene = p_scene;
+	scene_tree->set_selected(nullptr, false);
 	_update_create_root_dialog_visibility();
 }
 
