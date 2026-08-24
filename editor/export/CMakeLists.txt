@@ -7,6 +7,8 @@
 #   cog.outl(')')
 # ]]]
 target_sources(editor PRIVATE
+        android_sdk_manager.cpp
+        android_sdk_manager.h
         codesign.cpp
         codesign.h
         dedicated_server_export_plugin.cpp

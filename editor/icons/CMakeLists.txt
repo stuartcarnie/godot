@@ -123,6 +123,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         BoneMapperHandle.svg
         BoneMapperHandleCircle.svg
         BoneMapperHandleSelected.svg
+        BoneSpreader3D.svg
         BoneTwistDisperser3D.svg
         BoxContainer.svg
         BoxMesh.svg

@@ -325,6 +325,10 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/AnimationNodeBlendSpace2D.xml
         classes/AnimationNodeBlendTree.xml
         classes/AnimationNodeExtension.xml
+        classes/AnimationNodeObserver.xml
+        classes/AnimationNodeObserverBlendSpace.xml
+        classes/AnimationNodeObserverOneShot.xml
+        classes/AnimationNodeObserverTransition.xml
         classes/AnimationNodeOneShot.xml
         classes/AnimationNodeOutput.xml
         classes/AnimationNodeStateMachine.xml
@@ -406,6 +410,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/BoneAttachment3D.xml
         classes/BoneConstraint3D.xml
         classes/BoneMap.xml
+        classes/BoneSpreader3D.xml
         classes/BoneTwistDisperser3D.xml
         classes/BoxContainer.xml
         classes/BoxMesh.xml
