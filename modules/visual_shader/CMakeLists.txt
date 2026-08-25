@@ -10,8 +10,12 @@ godot_add_library(godot-module-visual_shader FOLDER modules STATIC)
 target_sources(godot-module-visual_shader PRIVATE
         register_types.cpp
         register_types.h
+        shader_graph.cpp
+        shader_graph.h
         visual_shader.cpp
         visual_shader.h
+        visual_shader_group.cpp
+        visual_shader_group.h
         vs_nodes/visual_shader_nodes.cpp
         vs_nodes/visual_shader_nodes.h
         vs_nodes/visual_shader_particle_nodes.cpp

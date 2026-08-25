@@ -1009,6 +1009,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         VisualInstance3D.svg
         VisualShader.svg
         VisualShaderGraphTextureUniform.svg
+        VisualShaderGroup.svg
         VisualShaderNodeBooleanUniform.svg
         VisualShaderNodeColorConstant.svg
         VisualShaderNodeColorOp.svg

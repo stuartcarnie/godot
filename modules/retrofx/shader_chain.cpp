@@ -35,11 +35,11 @@ void ShaderChain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_parameter_value_by_index", "index", "value"), &ShaderChain::set_parameter_value_by_index);
 	ClassDB::bind_method(D_METHOD("set_parameter_value_by_name", "name", "value"), &ShaderChain::set_parameter_value_by_name);
 	ClassDB::bind_method(D_METHOD("render", "source", "source_size", "target", "target_size"), &ShaderChain::render);
-	ClassDB::bind_method(D_METHOD("has_shader_loaded"), &ShaderChain::has_shader_loaded);
+	ClassDB::bind_method(D_METHOD("get_has_shader_loaded"), &ShaderChain::has_shader_loaded);
 
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2I, "drawable_size"), "set_drawable_size", "get_drawable_size");
 	ADD_PROPERTY(PropertyInfo(Variant::RECT2I, "output_bounds"), "", "get_output_bounds");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "has_shader_loaded"), "", "has_shader_loaded");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "has_shader_loaded"), "", "get_has_shader_loaded");
 }
 
 Error ShaderChain::load_from_file(const String &p_path) {

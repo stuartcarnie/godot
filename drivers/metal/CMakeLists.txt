@@ -14,6 +14,8 @@ target_sources(metal PRIVATE
         metal3_objects.h
         metal4_objects.cpp
         metal4_objects.h
+        metal_allocator.cpp
+        metal_allocator.h
         metal_device_profile.cpp
         metal_device_profile.h
         metal_device_properties.cpp

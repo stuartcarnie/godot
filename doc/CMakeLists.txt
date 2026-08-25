@@ -1078,6 +1078,10 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/VisibleOnScreenNotifier2D.xml
         classes/VisibleOnScreenNotifier3D.xml
         classes/VisualInstance3D.xml
+        classes/VisualShaderGroup.xml
+        classes/VisualShaderNodeGroup.xml
+        classes/VisualShaderNodeGroupInput.xml
+        classes/VisualShaderNodeGroupOutput.xml
         classes/VoxelGI.xml
         classes/VoxelGIData.xml
         classes/WeakRef.xml
