@@ -101,6 +101,8 @@ target_sources(scene PRIVATE
         sky.h
         sprite_frames.cpp
         sprite_frames.h
+        streamed_texture.cpp
+        streamed_texture.h
         style_box.cpp
         style_box.h
         style_box_flat.cpp

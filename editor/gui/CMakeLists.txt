@@ -35,6 +35,8 @@ target_sources(editor PRIVATE
         editor_title_bar.h
         editor_toaster.cpp
         editor_toaster.h
+        editor_toolbar_group.cpp
+        editor_toolbar_group.h
         editor_validation_panel.cpp
         editor_validation_panel.h
         editor_variant_type_selectors.cpp

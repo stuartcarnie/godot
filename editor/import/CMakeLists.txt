@@ -37,6 +37,8 @@ target_sources(editor PRIVATE
         resource_importer_layered_texture.h
         resource_importer_shader_file.cpp
         resource_importer_shader_file.h
+        resource_importer_streamed_texture.cpp
+        resource_importer_streamed_texture.h
         resource_importer_svg.cpp
         resource_importer_svg.h
         resource_importer_texture.cpp

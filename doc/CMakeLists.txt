@@ -894,6 +894,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/ResourceImporterSVG.xml
         classes/ResourceImporterScene.xml
         classes/ResourceImporterShaderFile.xml
+        classes/ResourceImporterStreamedTexture.xml
         classes/ResourceImporterTexture.xml
         classes/ResourceImporterTextureAtlas.xml
         classes/ResourceImporterWAV.xml
@@ -989,6 +990,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/StreamPeerTCP.xml
         classes/StreamPeerTLS.xml
         classes/StreamPeerUDS.xml
+        classes/StreamedTexture2D.xml
         classes/String.xml
         classes/StringName.xml
         classes/StyleBox.xml
@@ -1028,6 +1030,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/TextureLayeredRD.xml
         classes/TextureProgressBar.xml
         classes/TextureRect.xml
+        classes/TextureStreaming.xml
         classes/Theme.xml
         classes/ThemeDB.xml
         classes/Thread.xml
