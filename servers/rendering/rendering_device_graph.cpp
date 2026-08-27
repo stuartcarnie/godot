@@ -39,12 +39,11 @@
 #define PRINT_DRAW_LIST_STATS 0
 
 RenderingDeviceGraph::RenderingDeviceGraph() {
-	_reorder_commands = false;
-	_full_barriers = false;
-	_debug_utils_enabled = false;
 	driver_honors_barriers = false;
 	driver_buffer_clears_with_copy_engine = false;
 	driver_texture_clears_with_copy_engine = false;
+	driver_buffers_require_transitions = false;
+	driver_textures_require_layout_transitions = false;
 }
 
 RenderingDeviceGraph::~RenderingDeviceGraph() {
@@ -1269,7 +1268,7 @@ void RenderingDeviceGraph::_run_render_commands(int32_t p_level, const RecordedC
 }
 
 void RenderingDeviceGraph::_run_label_command_change(RDD::CommandBufferID p_command_buffer, int32_t p_new_label_index, int32_t p_new_level, bool p_ignore_previous_value, bool p_use_label_for_empty, const RecordedCommandSort *p_sorted_commands, uint32_t p_sorted_commands_count, int32_t &r_current_label_index, int32_t &r_current_label_level) {
-	if (!_debug_utils_enabled || command_label_count == 0) {
+	if (command_label_count == 0) {
 		// Ignore any label operations if no labels were pushed.
 		return;
 	}
@@ -1395,7 +1394,7 @@ void RenderingDeviceGraph::_boost_priority_for_render_commands(RecordedCommandSo
 	}
 }
 
-void RenderingDeviceGraph::_group_barriers_for_render_commands(RDD::CommandBufferID p_command_buffer, const RecordedCommandSort *p_sorted_commands, uint32_t p_sorted_commands_count) {
+void RenderingDeviceGraph::_group_barriers_for_render_commands(RDD::CommandBufferID p_command_buffer, const RecordedCommandSort *p_sorted_commands, uint32_t p_sorted_commands_count, bool p_full_memory_barrier) {
 	if (!driver_honors_barriers) {
 		return;
 	}
@@ -1453,7 +1452,7 @@ void RenderingDeviceGraph::_group_barriers_for_render_commands(RDD::CommandBuffe
 		}
 	}
 
-	if (_full_barriers) {
+	if (p_full_memory_barrier) {
 		barrier_group.src_stages = RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT;
 		barrier_group.dst_stages = RDD::PIPELINE_STAGE_ALL_COMMANDS_BIT;
 		barrier_group.memory_barrier.src_access = RDD::BARRIER_ACCESS_MEMORY_READ_BIT | RDD::BARRIER_ACCESS_MEMORY_WRITE_BIT;
@@ -1755,7 +1754,7 @@ void RenderingDeviceGraph::_print_compute_list(const uint8_t *p_instruction_data
 	}
 }
 
-void RenderingDeviceGraph::initialize(RDD *p_driver, RenderPassCreationFunction p_render_pass_creation_function, uint32_t p_frame_count, RDD::CommandQueueFamilyID p_secondary_command_queue_family, uint32_t p_secondary_command_buffers_per_frame, bool p_reorder_commands, bool p_full_barriers, bool p_debug_utils_enabled) {
+void RenderingDeviceGraph::initialize(RDD *p_driver, RenderPassCreationFunction p_render_pass_creation_function, uint32_t p_frame_count, RDD::CommandQueueFamilyID p_secondary_command_queue_family, uint32_t p_secondary_command_buffers_per_frame) {
 	DEV_ASSERT(p_driver != nullptr);
 	DEV_ASSERT(p_render_pass_creation_function != nullptr);
 	DEV_ASSERT(p_frame_count > 0);
@@ -1776,9 +1775,6 @@ void RenderingDeviceGraph::initialize(RDD *p_driver, RenderPassCreationFunction 
 		}
 	}
 
-	_reorder_commands = p_reorder_commands;
-	_full_barriers = p_full_barriers;
-	_debug_utils_enabled = p_debug_utils_enabled;
 	driver_honors_barriers = driver->api_trait_get(RDD::API_TRAIT_HONORS_PIPELINE_BARRIERS);
 	driver_buffer_clears_with_copy_engine = driver->api_trait_get(RDD::API_TRAIT_BUFFER_CLEARS_WITH_COPY_ENGINE);
 	driver_texture_clears_with_copy_engine = driver->api_trait_get(RDD::API_TRAIT_TEXTURE_CLEARS_WITH_COPY_ENGINE);
@@ -2635,14 +2631,14 @@ void RenderingDeviceGraph::end_label() {
 	command_label_index = -1;
 }
 
-void RenderingDeviceGraph::end(RDD::CommandBufferID &r_command_buffer, CommandBufferPool &r_command_buffer_pool) {
+void RenderingDeviceGraph::end(bool p_reorder_commands, bool p_full_barriers, RDD::CommandBufferID &r_command_buffer, CommandBufferPool &r_command_buffer_pool) {
 	if (command_count == 0) {
 		// No commands have been logged, do nothing.
 		return;
 	}
 
 	thread_local LocalVector<RecordedCommandSort> commands_sorted;
-	if (_reorder_commands) {
+	if (p_reorder_commands) {
 		thread_local LocalVector<int64_t> command_stack;
 		thread_local LocalVector<int32_t> sorted_command_indices;
 		thread_local LocalVector<uint32_t> command_degrees;
@@ -2767,7 +2763,7 @@ void RenderingDeviceGraph::end(RDD::CommandBufferID &r_command_buffer, CommandBu
 		draw_list_total_size = 0;
 #endif
 
-		if (_reorder_commands) {
+		if (p_reorder_commands) {
 #if PRINT_RENDER_GRAPH
 			print_line("BEFORE SORT");
 			_print_render_commands(commands_sorted.ptr(), command_count);
@@ -2792,7 +2788,7 @@ void RenderingDeviceGraph::end(RDD::CommandBufferID &r_command_buffer, CommandBu
 					RecordedCommandSort *level_command_ptr = &commands_sorted[current_level_start];
 					uint32_t level_command_count = i - current_level_start;
 					_boost_priority_for_render_commands(level_command_ptr, level_command_count, boosted_priority);
-					_group_barriers_for_render_commands(r_command_buffer, level_command_ptr, level_command_count);
+					_group_barriers_for_render_commands(r_command_buffer, level_command_ptr, level_command_count, p_full_barriers);
 					_run_render_commands(current_level, level_command_ptr, level_command_count, r_command_buffer, r_command_buffer_pool, current_label_index, current_label_level);
 					current_level = commands_sorted[i].level;
 					current_level_start = i;
@@ -2802,7 +2798,7 @@ void RenderingDeviceGraph::end(RDD::CommandBufferID &r_command_buffer, CommandBu
 			RecordedCommandSort *level_command_ptr = &commands_sorted[current_level_start];
 			uint32_t level_command_count = command_count - current_level_start;
 			_boost_priority_for_render_commands(level_command_ptr, level_command_count, boosted_priority);
-			_group_barriers_for_render_commands(r_command_buffer, level_command_ptr, level_command_count);
+			_group_barriers_for_render_commands(r_command_buffer, level_command_ptr, level_command_count, p_full_barriers);
 			_run_render_commands(current_level, level_command_ptr, level_command_count, r_command_buffer, r_command_buffer_pool, current_label_index, current_label_level);
 
 #if PRINT_RENDER_GRAPH
@@ -2810,7 +2806,7 @@ void RenderingDeviceGraph::end(RDD::CommandBufferID &r_command_buffer, CommandBu
 #endif
 		} else {
 			for (uint32_t i = 0; i < command_count; i++) {
-				_group_barriers_for_render_commands(r_command_buffer, &commands_sorted[i], 1);
+				_group_barriers_for_render_commands(r_command_buffer, &commands_sorted[i], 1, p_full_barriers);
 				_run_render_commands(i, &commands_sorted[i], 1, r_command_buffer, r_command_buffer_pool, current_label_index, current_label_level);
 			}
 		}
