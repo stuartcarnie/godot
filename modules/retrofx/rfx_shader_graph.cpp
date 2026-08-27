@@ -2,22 +2,22 @@
 // Created by Stuart Carnie on 8/8/2024.
 //
 
-#include "shader_graph.h"
+#include "rfx_shader_graph.h"
 
 #include "core/object/class_db.h"
 #include "core/variant/typed_array.h"
 
-void ShaderGraph::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_shader_passes", "passes"), &ShaderGraph::set_shader_passes);
-	ClassDB::bind_method(D_METHOD("get_shader_passes"), &ShaderGraph::get_shader_passes);
+void RFXShaderGraph::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_shader_passes", "passes"), &RFXShaderGraph::set_shader_passes);
+	ClassDB::bind_method(D_METHOD("get_shader_passes"), &RFXShaderGraph::get_shader_passes);
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "passes", PROPERTY_HINT_ARRAY_TYPE, MAKE_RESOURCE_TYPE_HINT("ShaderPass")), "set_shader_passes", "get_shader_passes");
 
-	ClassDB::bind_method(D_METHOD("set_luts", "passes"), &ShaderGraph::set_luts);
-	ClassDB::bind_method(D_METHOD("get_luts"), &ShaderGraph::get_luts);
+	ClassDB::bind_method(D_METHOD("set_luts", "passes"), &RFXShaderGraph::set_luts);
+	ClassDB::bind_method(D_METHOD("get_luts"), &RFXShaderGraph::get_luts);
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "luts", PROPERTY_HINT_ARRAY_TYPE, MAKE_RESOURCE_TYPE_HINT("ShaderLUT")), "set_luts", "get_luts");
 }
 
-void ShaderGraph::set_shader_passes(const TypedArray<ShaderPass> &p_passes) {
+void RFXShaderGraph::set_shader_passes(const TypedArray<ShaderPass> &p_passes) {
 	passes.clear();
 
 	for (int i = 0; i < p_passes.size(); i++) {
@@ -27,7 +27,7 @@ void ShaderGraph::set_shader_passes(const TypedArray<ShaderPass> &p_passes) {
 	}
 }
 
-TypedArray<ShaderPass> ShaderGraph::get_shader_passes() const {
+TypedArray<ShaderPass> RFXShaderGraph::get_shader_passes() const {
 	TypedArray<ShaderPass> res;
 
 	for (int i = 0; i < passes.size(); i++) {
@@ -37,7 +37,7 @@ TypedArray<ShaderPass> ShaderGraph::get_shader_passes() const {
 	return res;
 }
 
-void ShaderGraph::set_luts(const TypedArray<ShaderLUT> &p_luts) {
+void RFXShaderGraph::set_luts(const TypedArray<ShaderLUT> &p_luts) {
 	luts.clear();
 
 	for (int i = 0; i < p_luts.size(); i++) {
@@ -46,7 +46,7 @@ void ShaderGraph::set_luts(const TypedArray<ShaderLUT> &p_luts) {
 	}
 }
 
-TypedArray<ShaderLUT> ShaderGraph::get_luts() const {
+TypedArray<ShaderLUT> RFXShaderGraph::get_luts() const {
 	TypedArray<ShaderLUT> res;
 
 	for (int i = 0; i < luts.size(); i++) {

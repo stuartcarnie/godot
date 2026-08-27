@@ -61,8 +61,8 @@ private:
 	float scale_y;
 };
 
-class ShaderGraph : public Resource {
-	GDCLASS(ShaderGraph, Resource);
+class RFXShaderGraph : public Resource {
+	GDCLASS(RFXShaderGraph, Resource);
 
 public:
 #ifdef TOOLS_ENABLED

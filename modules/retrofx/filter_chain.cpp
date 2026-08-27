@@ -1006,9 +1006,6 @@ FilterChain::~FilterChain() {
 		}
 	}
 
-	if (pipeline_state.uniform_set.is_valid()) {
-		rd->free_rid(pipeline_state.uniform_set);
-	}
 	rd->free_rid(pipeline_state.vertex_array);
 	rd->free_rid(pipeline_state.vertex_buffer);
 	rd->free_rid(pipeline_state.pipeline);

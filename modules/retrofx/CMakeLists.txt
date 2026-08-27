@@ -38,12 +38,12 @@ target_sources(godot-module-retrofx PRIVATE
         register_types.h
         retro_fx_rect.cpp
         retro_fx_rect.h
+        rfx_shader_graph.cpp
+        rfx_shader_graph.h
         shader_chain.cpp
         shader_chain.h
         shader_container.cpp
         shader_container.h
-        shader_graph.cpp
-        shader_graph.h
         shader_pass_bindings.cpp
         shader_pass_bindings.h
         shader_pass_semantics.cpp

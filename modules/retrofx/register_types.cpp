@@ -32,7 +32,7 @@
 
 #include "retro_fx_rect.h"
 #include "shader_chain.h"
-#include "shader_graph.h"
+#include "rfx_shader_graph.h"
 #include "slang_shader.h"
 
 #include "core/object/class_db.h"
@@ -59,7 +59,7 @@ void initialize_retrofx_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(RetroFXRect);
 
 		GDREGISTER_CLASS(SlangShader);
-		GDREGISTER_CLASS(ShaderGraph);
+		GDREGISTER_CLASS(RFXShaderGraph);
 		GDREGISTER_CLASS(ShaderPass);
 		GDREGISTER_CLASS(ShaderLUT);
 
