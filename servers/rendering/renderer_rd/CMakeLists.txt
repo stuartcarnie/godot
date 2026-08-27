@@ -107,6 +107,7 @@ generate_shader_sources(glsl "${RENDERER_RD_SERVER_SHADERS}" "${RENDERER_RD_SERV
 # ]]]
 set_abs(RENDERER_RD_SERVER_SHADERS_INC ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/area_lights_inc.glsl
+        shaders/bicubic_filter_inc.glsl
         shaders/canvas_uniforms_inc.glsl
         shaders/cluster_data_inc.glsl
         shaders/decal_data_inc.glsl
