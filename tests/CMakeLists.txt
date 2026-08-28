@@ -35,6 +35,7 @@ target_sources(tests PRIVATE
         core/io/test_pck_packer.cpp
         core/io/test_resource.cpp
         core/io/test_resource_uid.cpp
+        core/io/test_scenes.cpp
         core/io/test_stream_peer.cpp
         core/io/test_stream_peer_buffer.cpp
         core/io/test_stream_peer_gzip.cpp
