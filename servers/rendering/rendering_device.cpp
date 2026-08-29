@@ -7957,8 +7957,7 @@ void RenderingDevice::texture_replace_rid(RID p_old_texture, RID p_new_texture) 
 		us->driver_id = new_us->driver_id;
 		us->format = new_us->format;
 		us->attachable_textures = new_us->attachable_textures;
-		us->draw_trackers = new_us->draw_trackers;
-		us->draw_trackers_usage = new_us->draw_trackers_usage;
+		us->draw_tracked_resources = new_us->draw_tracked_resources;
 		us->untracked_usage = new_us->untracked_usage;
 		us->shared_textures_to_update = new_us->shared_textures_to_update;
 		us->pending_clear_textures = new_us->pending_clear_textures;
