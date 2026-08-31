@@ -95,6 +95,7 @@ protected:
 #ifndef DISABLE_DEPRECATED
 	RID _shader_create_from_bytecode_bind_compat_79606(const Vector<uint8_t> &p_shader_binary);
 	RID _texture_create_from_extension_bind_compat_105570(TextureType p_type, DataFormat p_format, TextureSamples p_samples, BitField<RenderingDevice::TextureUsageBits> p_usage, uint64_t p_image, uint64_t p_width, uint64_t p_height, uint64_t p_depth, uint64_t p_layers);
+	RID _texture_create_shared_from_slice_bind_compat_121937(const Ref<RDTextureView> &p_view, RID p_with_texture, uint32_t p_layer, uint32_t p_mipmap, uint32_t p_mipmaps = 1, TextureSliceType p_slice_type = TEXTURE_SLICE_2D);
 	static void _bind_compatibility_methods();
 #endif
 
@@ -1758,6 +1759,13 @@ private:
 
 	RenderingDeviceGraph draw_graph;
 
+#ifdef DEBUG_ENABLED
+	bool draw_graph_reorder_commands = true;
+	bool draw_graph_full_barriers = false;
+
+	void _configure_draw_graph_flags();
+#endif
+
 	/**************************/
 	/**** QUEUE MANAGEMENT ****/
 	/**************************/
@@ -2063,7 +2071,7 @@ private:
 
 	RID _texture_create(const Ref<RDTextureFormat> &p_format, const Ref<RDTextureView> &p_view, const TypedArray<PackedByteArray> &p_data = Array());
 	RID _texture_create_shared(const Ref<RDTextureView> &p_view, RID p_with_texture);
-	RID _texture_create_shared_from_slice(const Ref<RDTextureView> &p_view, RID p_with_texture, uint32_t p_layer, uint32_t p_mipmap, uint32_t p_mipmaps = 1, TextureSliceType p_slice_type = TEXTURE_SLICE_2D);
+	RID _texture_create_shared_from_slice(const Ref<RDTextureView> &p_view, RID p_with_texture, uint32_t p_layer, uint32_t p_mipmap, uint32_t p_mipmaps = 1, TextureSliceType p_slice_type = TEXTURE_SLICE_2D, uint32_t p_layers = 0);
 	Ref<RDTextureFormat> _texture_get_format(RID p_rd_texture);
 
 	FramebufferFormatID _framebuffer_format_create(const TypedArray<RDAttachmentFormat> &p_attachments, uint32_t p_view_count);
