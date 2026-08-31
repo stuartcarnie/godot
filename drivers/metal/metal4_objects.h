@@ -110,12 +110,14 @@ private:
 	// Used by render_clear_attachments
 	NS::SharedPtr<MTL4::ArgumentTable> _args_clear;
 
-	void _end_compute_dispatch();
+	void _end_compute();
 	void _end_inline_render();
-	void _end_blit();
 	void _pop_active_encoder_labels();
 	void _set_inline_render_encoder(MTL4::RenderCommandEncoder *p_encoder);
-	MTL4::ComputeCommandEncoder *_ensure_blit_encoder();
+	// Metal 4 folds blit commands into the compute encoder, so one encoder serves
+	// every compute list and transfer in a graph level. It opens on first use and
+	// closes at the level boundary (command_group_end) or when a render pass starts.
+	MTL4::ComputeCommandEncoder *_ensure_compute_encoder();
 
 	enum class CopySource {
 		Buffer,
@@ -297,6 +299,8 @@ public:
 		// Bit mask of the uniform sets that are dirty, to prevent redundant binding.
 		uint64_t uniform_set_mask = 0;
 
+		// Clears the per-list bindings but keeps the encoder open.
+		_FORCE_INLINE_ void reset_bindings();
 		_FORCE_INLINE_ void reset();
 		void end_encoding();
 
@@ -320,14 +324,6 @@ public:
 			encoder.reset();
 		}
 	} inline_render;
-
-	// State specific to a blit pass.
-	struct {
-		NS::SharedPtr<MTL4::ComputeCommandEncoder> encoder;
-		_FORCE_INLINE_ void reset() {
-			encoder.reset();
-		}
-	} blit;
 
 	_FORCE_INLINE_ MTL4::CommandBuffer *get_command_buffer() const {
 		return command_buffer.get();

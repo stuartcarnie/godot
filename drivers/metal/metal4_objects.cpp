@@ -96,10 +96,8 @@ void MDCommandBuffer::begin_label(const char *p_label_name, const Color &p_color
 			inline_render.encoder->pushDebugGroup(s.get());
 			break;
 		case MDCommandBufferStateType::Compute:
+		case MDCommandBufferStateType::Blit: // Blit shares the compute encoder on Metal 4.
 			compute.encoder->pushDebugGroup(s.get());
-			break;
-		case MDCommandBufferStateType::Blit:
-			blit.encoder->pushDebugGroup(s.get());
 			break;
 	}
 	label_stack.push_back({ type, false });
@@ -125,10 +123,8 @@ void MDCommandBuffer::end_label() {
 			inline_render.encoder->popDebugGroup();
 			break;
 		case MDCommandBufferStateType::Compute:
+		case MDCommandBufferStateType::Blit: // Blit shares the compute encoder on Metal 4.
 			compute.encoder->popDebugGroup();
-			break;
-		case MDCommandBufferStateType::Blit:
-			blit.encoder->popDebugGroup();
 			break;
 	}
 }
@@ -150,10 +146,8 @@ void MDCommandBuffer::_pop_active_encoder_labels() {
 				inline_render.encoder->popDebugGroup();
 				break;
 			case MDCommandBufferStateType::Compute:
+			case MDCommandBufferStateType::Blit: // Blit shares the compute encoder on Metal 4.
 				compute.encoder->popDebugGroup();
-				break;
-			case MDCommandBufferStateType::Blit:
-				blit.encoder->popDebugGroup();
 				break;
 			case MDCommandBufferStateType::None:
 				break;
@@ -183,9 +177,8 @@ void MDCommandBuffer::_end() {
 		case MDCommandBufferStateType::InlineRender:
 			return _end_inline_render();
 		case MDCommandBufferStateType::Compute:
-			return _end_compute_dispatch();
 		case MDCommandBufferStateType::Blit:
-			return _end_blit();
+			return _end_compute();
 	}
 }
 
@@ -259,8 +252,6 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 	// End current encoder if it doesn't match the incoming pipeline type.
 	if (type == MDCommandBufferStateType::InlineRender) {
 		_end_inline_render();
-	} else if (type == MDCommandBufferStateType::Blit) {
-		_end_blit();
 	}
 
 	if (p->type == MDPipelineType::Render) {
@@ -321,7 +312,7 @@ void MDCommandBuffer::mark_push_constants_dirty() {
 	}
 }
 
-MTL4::ComputeCommandEncoder *MDCommandBuffer::_ensure_blit_encoder() {
+MTL4::ComputeCommandEncoder *MDCommandBuffer::_ensure_compute_encoder() {
 	switch (type) {
 		case MDCommandBufferStateType::None:
 			break;
@@ -332,16 +323,14 @@ MTL4::ComputeCommandEncoder *MDCommandBuffer::_ensure_blit_encoder() {
 			_end_inline_render();
 			break;
 		case MDCommandBufferStateType::Compute:
-			compute_end_pass();
-			break;
 		case MDCommandBufferStateType::Blit:
-			return blit.encoder.get();
+			return compute.encoder.get();
 	}
 
-	type = MDCommandBufferStateType::Blit;
-	blit.encoder = NS::RetainPtr(command_buffer->computeCommandEncoder());
-	_fence_wait(blit.encoder.get());
-	return blit.encoder.get();
+	type = MDCommandBufferStateType::Compute;
+	compute.encoder = NS::RetainPtr(command_buffer->computeCommandEncoder());
+	_fence_wait(compute.encoder.get());
+	return compute.encoder.get();
 }
 
 void MDCommandBuffer::resolve_texture(RDD::TextureID p_src_texture, RDD::TextureLayout p_src_texture_layout, uint32_t p_src_layer, uint32_t p_src_mipmap, RDD::TextureID p_dst_texture, RDD::TextureLayout p_dst_texture_layout, uint32_t p_dst_layer, uint32_t p_dst_mipmap) {
@@ -452,7 +441,7 @@ void MDCommandBuffer::clear_color_texture(RDD::TextureID p_texture, RDD::Texture
 }
 
 void MDCommandBuffer::clear_buffer(RDD::BufferID p_buffer, uint64_t p_offset, uint64_t p_size) {
-	MTL4::ComputeCommandEncoder *blit_enc = _ensure_blit_encoder();
+	MTL4::ComputeCommandEncoder *blit_enc = _ensure_compute_encoder();
 	const RDM::BufferInfo *buffer = (const RDM::BufferInfo *)p_buffer.id;
 
 	blit_enc->fillBuffer(buffer->buffer.get(), NS::Range(p_offset, p_size), 0);
@@ -590,7 +579,7 @@ void MDCommandBuffer::copy_buffer(RDD::BufferID p_src_buffer, RDD::BufferID p_ds
 	const RDM::BufferInfo *src = (const RDM::BufferInfo *)p_src_buffer.id;
 	const RDM::BufferInfo *dst = (const RDM::BufferInfo *)p_dst_buffer.id;
 
-	MTL4::ComputeCommandEncoder *enc = _ensure_blit_encoder();
+	MTL4::ComputeCommandEncoder *enc = _ensure_compute_encoder();
 
 	for (uint32_t i = 0; i < p_regions.size(); i++) {
 		RDD::BufferCopyRegion region = p_regions[i];
@@ -602,7 +591,7 @@ void MDCommandBuffer::copy_texture(RDD::TextureID p_src_texture, RDD::TextureID 
 	MTL::Texture *src = rid::get<RDM::TextureInfo>(p_src_texture)->texture.get();
 	MTL::Texture *dst = rid::get<RDM::TextureInfo>(p_dst_texture)->texture.get();
 
-	MTL4::ComputeCommandEncoder *enc = _ensure_blit_encoder();
+	MTL4::ComputeCommandEncoder *enc = _ensure_compute_encoder();
 	PixelFormats &pf = device_driver->get_pixel_formats();
 
 	MTL::PixelFormat src_fmt = src->pixelFormat();
@@ -696,7 +685,7 @@ void MDCommandBuffer::_copy_texture_buffer(CopySource p_source,
 	const RDM::BufferInfo *buffer = (const RDM::BufferInfo *)p_buffer.id;
 	MTL::Texture *texture = rid::get<RDM::TextureInfo>(p_texture)->texture.get();
 
-	MTL4::ComputeCommandEncoder *enc = _ensure_blit_encoder();
+	MTL4::ComputeCommandEncoder *enc = _ensure_compute_encoder();
 
 	PixelFormats &pf = device_driver->get_pixel_formats();
 	MTL::PixelFormat mtlPixFmt = texture->pixelFormat();
@@ -768,10 +757,8 @@ MTL4::RenderCommandEncoder *MDCommandBuffer::get_new_render_encoder_with_descrip
 			_end_inline_render();
 			break;
 		case MDCommandBufferStateType::Compute:
-			_end_compute_dispatch();
-			break;
 		case MDCommandBufferStateType::Blit:
-			_end_blit();
+			_end_compute();
 			break;
 	}
 
@@ -1360,23 +1347,19 @@ void MDCommandBuffer::ComputeState::end_encoding() {
 void MDCommandBuffer::compute_begin_pass() {
 	ERR_FAIL_COND_MSG(type == MDCommandBufferStateType::Render, "Compute pass cannot begin while a render pass is active.");
 
-	if (type == MDCommandBufferStateType::InlineRender) {
-		_end_inline_render();
-	} else if (type == MDCommandBufferStateType::Blit) {
-		_end_blit();
-	}
-
-	type = MDCommandBufferStateType::Compute;
-	if (!compute.encoder) {
-		compute.encoder = NS::RetainPtr(command_buffer->computeCommandEncoder());
-		_fence_wait(compute.encoder.get());
-	}
+	_ensure_compute_encoder();
 }
 
 void MDCommandBuffer::compute_end_pass() {
-	if (type == MDCommandBufferStateType::Compute) {
-		_end_compute_dispatch();
+	if (type != MDCommandBufferStateType::Compute) {
+		return;
 	}
+	// Commands in one graph level are independent and a Metal 4 compute pass
+	// runs them concurrently anyway, so the encoder stays open for the next
+	// list or transfer. command_group_end closes it at the level boundary.
+	compute.reset_bindings();
+	push_constant_shader = nullptr;
+	push_constant_data_len = 0;
 }
 
 void MDCommandBuffer::_compute_set_dirty_state() {
@@ -1434,13 +1417,17 @@ void MDCommandBuffer::_compute_bind_uniform_sets() {
 	compute.encoder->setArgumentTable(compute.args.get());
 }
 
-void MDCommandBuffer::ComputeState::reset() {
+void MDCommandBuffer::ComputeState::reset_bindings() {
 	pipeline = nullptr;
-	encoder.reset();
 	dirty = DIRTY_NONE;
 	uniform_sets.clear();
 	dynamic_offsets = 0;
 	uniform_set_mask = 0;
+}
+
+void MDCommandBuffer::ComputeState::reset() {
+	reset_bindings();
+	encoder.reset();
 }
 
 void MDCommandBuffer::compute_bind_uniform_sets(VectorView<RDD::UniformSetID> p_uniform_sets, RDD::ShaderID p_shader, uint32_t p_first_set_index, uint32_t p_set_count, uint32_t p_dynamic_offsets) {
@@ -1509,7 +1496,7 @@ void MDCommandBuffer::reset() {
 	type = MDCommandBufferStateType::None;
 }
 
-void MDCommandBuffer::_end_compute_dispatch() {
+void MDCommandBuffer::_end_compute() {
 	DEV_ASSERT(type == MDCommandBufferStateType::Compute);
 
 	_pop_active_encoder_labels();
@@ -1535,16 +1522,6 @@ void MDCommandBuffer::_end_inline_render() {
 	_fence_update(inline_render.encoder.get());
 	inline_render.encoder->endEncoding();
 	inline_render.reset();
-	reset();
-}
-
-void MDCommandBuffer::_end_blit() {
-	DEV_ASSERT(type == MDCommandBufferStateType::Blit);
-
-	_pop_active_encoder_labels();
-	_fence_update(blit.encoder.get());
-	blit.encoder->endEncoding();
-	blit.reset();
 	reset();
 }
 
