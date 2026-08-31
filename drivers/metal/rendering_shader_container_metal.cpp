@@ -710,6 +710,10 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const ReflectShader &p_
 			}
 		}
 
+		if (push_constant_resource_binding.desc_set == ResourceBindingPushConstantDescriptorSet) {
+			stage_data.uses_push_constants = compiler.is_msl_resource_binding_used(execution_model, ResourceBindingPushConstantDescriptorSet, ResourceBindingPushConstantBinding);
+		}
+
 		stage_data.is_position_invariant = compiler.is_position_invariant();
 		stage_data.supports_fast_math = !entry_point.flags.get(spv::ExecutionModeSignedZeroInfNanPreserve);
 		stage_data.hash = SHA256Digest(source.c_str(), source.length());

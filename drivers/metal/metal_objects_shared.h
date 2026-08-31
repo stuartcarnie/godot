@@ -86,6 +86,18 @@ struct ClearAttKey {
 	_FORCE_INLINE_ void enable_layered_rendering() { flags::set(flags, CLEAR_FLAGS_LAYERED); }
 
 	_FORCE_INLINE_ bool is_enabled(uint32_t p_idx) const { return pixel_formats[p_idx] != 0; }
+
+	// True when at least one color attachment is enabled. The generated clear fragment
+	// function only reads its clear color buffer when it has a color output, so a
+	// depth-only clear must not bind one.
+	_FORCE_INLINE_ bool has_color_attachment() const {
+		for (uint32_t i = 0; i < COLOR_COUNT; i++) {
+			if (is_enabled(i)) {
+				return true;
+			}
+		}
+		return false;
+	}
 	_FORCE_INLINE_ bool is_depth_enabled() const { return pixel_formats[DEPTH_INDEX] != 0; }
 	_FORCE_INLINE_ bool is_stencil_enabled() const { return pixel_formats[STENCIL_INDEX] != 0; }
 	_FORCE_INLINE_ bool is_layered_rendering_enabled() const { return flags::any(flags, CLEAR_FLAGS_LAYERED); }
@@ -534,6 +546,8 @@ _FORCE_INLINE_ static bool operator==(MTL::Size p_a, MTL::Size p_b) {
 
 #pragma mark - Command Buffer Base
 
+class MDShader;
+
 enum class MDCommandBufferStateType {
 	None, // No encoder is currently active.
 	Render, // A render pass encoder opened by the regular render-pass flow is active.
@@ -578,7 +592,10 @@ protected:
 
 	uint8_t push_constant_data[MAX_PUSH_CONSTANT_SIZE] = {};
 	uint32_t push_constant_data_len = 0;
-	uint32_t push_constant_binding = UINT32_MAX;
+	// The shader the push constant bytes were captured for. The binding index and stage
+	// mask are read from it at emit time, so a stale shader's mask can never be applied to
+	// a different pipeline. Only ever compared, never dereferenced.
+	const MDShader *push_constant_shader = nullptr;
 
 	::RenderingDeviceDriverMetal *device_driver = nullptr;
 
@@ -770,6 +787,12 @@ struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) UniformS
 	LocalVector<UniformInfo> uniforms;
 	LocalVector<uint32_t> dynamic_uniforms;
 	uint32_t buffer_size = 0;
+	/// Stages whose generated MSL declares this set's argument buffer.
+	///
+	/// Only meaningful when the shader uses argument buffers; binding the argument
+	/// buffer to a stage outside this mask is a no-op the debug layer reports as an
+	/// unused binding.
+	BitField<RDD::ShaderStage> active_stages = {};
 };
 
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(2.0)) DynamicOffsetLayout {
@@ -978,7 +1001,7 @@ public:
 	NS::SharedPtr<MTL::DepthStencilState> depth_stencil;
 	SampleCount sample_count = SampleCount1;
 
-	struct {
+	struct RasterState {
 		MTL::CullMode cull_mode = MTL::CullModeNone;
 		MTL::TriangleFillMode fill_mode = MTL::TriangleFillModeFill;
 		MTL::DepthClipMode clip_mode = MTL::DepthClipModeClip;
@@ -989,22 +1012,37 @@ public:
 			bool enabled = false;
 		} depth_test;
 
-		struct {
+		struct DepthBias {
 			bool enabled = false;
 			float depth_bias = 0.0;
 			float slope_scale = 0.0;
 			float clamp = 0.0;
 
+			// Metal has no depth bias enable, so a disabled bias must be written as zero. Simply
+			// not writing leaves setDepthBias, which is sticky encoder state, holding whatever the
+			// previous pipeline set.
 			template <typename T>
 			_FORCE_INLINE_ void apply(T *p_enc) const {
-				if (!enabled) {
-					return;
+				if (enabled) {
+					p_enc->setDepthBias(depth_bias, slope_scale, clamp);
+				} else {
+					p_enc->setDepthBias(0.0, 0.0, 0.0);
 				}
-				p_enc->setDepthBias(depth_bias, slope_scale, clamp);
+			}
+
+			// Compares the effective bias. The pipeline builder copies the factors even when the
+			// bias is disabled, so the raw fields are meaningless in that case and two disabled
+			// biases must compare equal whatever they hold.
+			_FORCE_INLINE_ bool operator==(const DepthBias &p_rhs) const {
+				if (!enabled && !p_rhs.enabled) {
+					return true;
+				}
+				return enabled == p_rhs.enabled && depth_bias == p_rhs.depth_bias &&
+						slope_scale == p_rhs.slope_scale && clamp == p_rhs.clamp;
 			}
 		} depth_bias;
 
-		struct {
+		struct Stencil {
 			bool enabled = false;
 			uint32_t front_reference = 0;
 			uint32_t back_reference = 0;
@@ -1016,9 +1054,14 @@ public:
 				}
 				p_enc->setStencilReferenceValues(front_reference, back_reference);
 			}
+
+			_FORCE_INLINE_ bool operator==(const Stencil &p_rhs) const {
+				// `enabled` is a write gate, not encoded state, so it is excluded.
+				return front_reference == p_rhs.front_reference && back_reference == p_rhs.back_reference;
+			}
 		} stencil;
 
-		struct {
+		struct Blend {
 			bool enabled = false;
 			float r = 0.0;
 			float g = 0.0;
@@ -1029,20 +1072,66 @@ public:
 			_FORCE_INLINE_ void apply(T *p_enc) const {
 				p_enc->setBlendColor(r, g, b, a);
 			}
+
+			_FORCE_INLINE_ bool has_color(const Color &p_color) const {
+				return r == p_color.r && g == p_color.g && b == p_color.b && a == p_color.a;
+			}
+
+			_FORCE_INLINE_ void set_color(const Color &p_color) {
+				r = p_color.r;
+				g = p_color.g;
+				b = p_color.b;
+				a = p_color.a;
+			}
+
+			// `enabled` selects the dynamic blend constant path in bind_pipeline; it does not
+			// change what apply() writes, so it is excluded from the encoded-state comparison.
+			_FORCE_INLINE_ bool operator==(const Blend &p_rhs) const {
+				return r == p_rhs.r && g == p_rhs.g && b == p_rhs.b && a == p_rhs.a;
+			}
 		} blend;
 
+		// Encodes only the setters whose value differs from r_last, which describes the state
+		// already programmed on the encoder, and updates r_last to match.
+		//
+		// `enabled` on stencil is a write gate: when false this pipeline states no opinion, the
+		// encoder keeps whatever the previous pipeline wrote, and r_last is left alone so that
+		// it keeps modelling the encoder honestly. Depth bias has no such gate because Metal
+		// has no bias enable; see DepthBias::apply.
 		template <typename T>
-		_FORCE_INLINE_ void apply(T *p_enc) const {
-			p_enc->setCullMode(cull_mode);
-			p_enc->setTriangleFillMode(fill_mode);
-			p_enc->setDepthClipMode(clip_mode);
-			p_enc->setFrontFacingWinding(winding);
-			depth_bias.apply(p_enc);
-			stencil.apply(p_enc);
-			blend.apply(p_enc);
+		_FORCE_INLINE_ void apply(T *p_enc, RasterState &r_last) const {
+			if (cull_mode != r_last.cull_mode) {
+				p_enc->setCullMode(cull_mode);
+				r_last.cull_mode = cull_mode;
+			}
+			if (fill_mode != r_last.fill_mode) {
+				p_enc->setTriangleFillMode(fill_mode);
+				r_last.fill_mode = fill_mode;
+			}
+			if (clip_mode != r_last.clip_mode) {
+				p_enc->setDepthClipMode(clip_mode);
+				r_last.clip_mode = clip_mode;
+			}
+			if (winding != r_last.winding) {
+				p_enc->setFrontFacingWinding(winding);
+				r_last.winding = winding;
+			}
+			if (!(depth_bias == r_last.depth_bias)) {
+				depth_bias.apply(p_enc);
+				r_last.depth_bias = depth_bias;
+			}
+			if (stencil.enabled && !(stencil == r_last.stencil)) {
+				stencil.apply(p_enc);
+				r_last.stencil = stencil;
+			}
+			if (!(blend == r_last.blend)) {
+				blend.apply(p_enc);
+				r_last.blend = blend;
+			}
 		}
+	};
 
-	} raster_state;
+	RasterState raster_state;
 
 	MDRenderShader *shader = nullptr;
 

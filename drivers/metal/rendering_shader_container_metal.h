@@ -129,6 +129,12 @@ public:
 		uint32_t vertex_input_binding_mask = 0;
 		uint32_t is_position_invariant = 0; ///< <c>true</c> if the position output is invariant
 		uint32_t supports_fast_math = 0;
+		/// <c>true</c> if the generated MSL declares the push constant buffer.
+		///
+		/// SPIR-V reflection cannot answer this: it reports the block declared in the module,
+		/// while SPIRV-Cross omits an unused one from the entry point. Descriptor sets need no
+		/// such flag because force_active_argument_buffer_resources keeps them all live.
+		uint32_t uses_push_constants = 0;
 		SHA256Digest hash; ///< SHA 256 hash of the shader code
 		uint32_t source_size = 0; ///< size of the source code in the returned bytes
 		uint32_t library_size = 0; ///< size of the compiled library in the returned bytes, 0 if it is not compiled
@@ -197,7 +203,7 @@ private:
 	MetalDeviceProfile::MinimumRequirements inspect_spirv(const ReflectShader &p_shader);
 
 public:
-	static constexpr uint32_t FORMAT_VERSION = 2;
+	static constexpr uint32_t FORMAT_VERSION = 3;
 
 	void set_export_mode(bool p_export_mode) { export_mode = p_export_mode; }
 	void set_device_profile(const MetalDeviceProfile *p_device_profile) { device_profile = p_device_profile; }

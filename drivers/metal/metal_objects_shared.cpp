@@ -705,9 +705,11 @@ void MDCommandBufferBase::encode_push_constant_data(RDD::ShaderID p_shader, Vect
 		case MDCommandBufferStateType::Compute: {
 			MDShader *shader = (MDShader *)(p_shader.id);
 			if (shader->push_constants.binding == UINT32_MAX) {
+				// Positively invalidate, so a later pipeline cannot match a stale record.
+				push_constant_shader = nullptr;
 				return;
 			}
-			push_constant_binding = shader->push_constants.binding;
+			push_constant_shader = shader;
 			const void *ptr = p_data.ptr();
 			uint32_t data_len = p_data.size() * sizeof(uint32_t);
 			// Round buffer length up to 16 bytes. SPIRV-Cross's MSL backend pads the

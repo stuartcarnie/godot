@@ -276,6 +276,7 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 			render.desc->setDefaultRasterSampleCount(static_cast<NS::UInteger>(rp->sample_count));
 
 			render.encoder = NS::RetainPtr(command_buffer->renderCommandEncoder(render.desc.get()));
+			render.encoder_raster = MDRenderPipeline::RasterState();
 			_fence_wait(render.encoder.get());
 		}
 
@@ -907,6 +908,13 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 	enc->popDebugGroup();
 
 	render.dirty.set_flag((RenderState::DirtyFlag)(RenderState::DIRTY_PIPELINE | RenderState::DIRTY_DEPTH | RenderState::DIRTY_RASTER));
+	// Record the raster state written directly above, so the next draw re-encodes only what
+	// actually differs. Depth clip mode, winding and blend color were not touched.
+	render.encoder_raster.cull_mode = MTL::CullModeNone;
+	render.encoder_raster.fill_mode = MTL::TriangleFillModeFill;
+	render.encoder_raster.depth_bias = MDRenderPipeline::RasterState::DepthBias();
+	render.encoder_raster.stencil.front_reference = stencil_value;
+	render.encoder_raster.stencil.back_reference = stencil_value;
 	render.mark_uniforms_dirty({ 0 }); // Mark index 0 dirty, if there is already a binding for index 0.
 	render.mark_viewport_dirty();
 	render.mark_scissors_dirty();
@@ -918,10 +926,14 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	_render_bind_uniform_sets();
 
 	if (render.dirty.has_flag(RenderState::DIRTY_PUSH)) {
-		if (push_constant_binding != UINT32_MAX) {
+		// Read the binding from the bound pipeline, not from command buffer state: DIRTY_PUSH
+		// is also re-armed by DIRTY_ALL on a new subpass, long after the data was captured, and
+		// a stale binding index could overwrite an unrelated argument table slot.
+		const MDRenderShader *shader = render.pipeline->shader;
+		if (push_constant_shader == shader && push_constant_data_len > 0) {
 			MDRingBuffer::Allocation dst = _scratch.allocate(push_constant_data_len);
 			memcpy(dst.ptr, &push_constant_data, push_constant_data_len);
-			render.args->setAddress(dst.gpu_address, push_constant_binding);
+			render.args->setAddress(dst.gpu_address, shader->push_constants.binding);
 		}
 	}
 
@@ -950,7 +962,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_RASTER)) {
-		render.pipeline->raster_state.apply(enc);
+		render.pipeline->raster_state.apply(enc, render.encoder_raster);
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_SCISSOR) && !render.scissors.is_empty()) {
@@ -962,8 +974,13 @@ void MDCommandBuffer::_render_set_dirty_state() {
 		enc->setScissorRects(rects, len);
 	}
 
-	if (render.dirty.has_flag(RenderState::DIRTY_BLEND) && render.blend_constants.has_value()) {
+	// The dynamic blend constant overrides the pipeline's static one, which raster_state
+	// applied above, so the encoder mirror has to be updated or it stops describing the
+	// encoder and a later apply() would compare against a stale baseline.
+	if (render.dirty.has_flag(RenderState::DIRTY_BLEND) && render.blend_constants.has_value() &&
+			!render.encoder_raster.blend.has_color(*render.blend_constants)) {
 		enc->setBlendColor(render.blend_constants->r, render.blend_constants->g, render.blend_constants->b, render.blend_constants->a);
+		render.encoder_raster.blend.set_color(*render.blend_constants);
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_VERTEX)) {
@@ -1128,6 +1145,7 @@ void MDCommandBuffer::render_next_subpass() {
 		render.desc = desc;
 	} else {
 		render.encoder = NS::RetainPtr(command_buffer->renderCommandEncoder(desc.get()));
+		render.encoder_raster = MDRenderPipeline::RasterState();
 		_fence_wait(render.encoder.get());
 
 		if (!render.is_rendering_entire_area) {
@@ -1315,6 +1333,7 @@ void MDCommandBuffer::RenderState::reset() {
 	vertex_buffers.clear();
 	bzero(vertex_offsets.ptr(), sizeof(NS::UInteger) * vertex_offsets.size());
 	vertex_offsets.clear();
+	encoder_raster = MDRenderPipeline::RasterState();
 }
 
 void MDCommandBuffer::RenderState::end_encoding() {
@@ -1372,10 +1391,11 @@ void MDCommandBuffer::_compute_set_dirty_state() {
 	_compute_bind_uniform_sets();
 
 	if (compute.dirty.has_flag(ComputeState::DIRTY_PUSH) && push_constant_data_len) {
-		if (push_constant_binding != UINT32_MAX) {
+		const MDComputeShader *shader = compute.pipeline->shader;
+		if (push_constant_shader == shader) {
 			MDRingBuffer::Allocation dst = _scratch.allocate(push_constant_data_len);
 			memcpy(dst.ptr, &push_constant_data, push_constant_data_len);
-			compute.args->setAddress(dst.gpu_address, push_constant_binding);
+			compute.args->setAddress(dst.gpu_address, shader->push_constants.binding);
 		}
 	}
 
@@ -1484,7 +1504,7 @@ void MDCommandBuffer::compute_dispatch_indirect(RDD::BufferID p_indirect_buffer,
 }
 
 void MDCommandBuffer::reset() {
-	push_constant_binding = UINT32_MAX;
+	push_constant_shader = nullptr;
 	push_constant_data_len = 0;
 	type = MDCommandBufferStateType::None;
 }

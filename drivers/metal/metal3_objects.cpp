@@ -404,6 +404,8 @@ void MDCommandBuffer::bind_pipeline(RDD::PipelineID p_pipeline) {
 			render.desc->setDefaultRasterSampleCount(static_cast<NS::UInteger>(rp->sample_count));
 
 			render.encoder = NS::RetainPtr(command_buffer()->renderCommandEncoder(render.desc.get()));
+			render.clear_arg_buffer_cache();
+			render.encoder_raster = MDRenderPipeline::RasterState();
 			_encode_residency(render.encoder.get());
 			_fence_wait(render.encoder.get());
 		}
@@ -1024,14 +1026,24 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 	enc->setScissorRect(MTL::ScissorRect{ 0, 0, (NS::UInteger)size.width, (NS::UInteger)size.height });
 
 	enc->setVertexBytes(clear_colors, sizeof(clear_colors), 0);
-	enc->setFragmentBytes(clear_colors, sizeof(clear_colors), 0);
+	if (key.has_color_attachment()) {
+		enc->setFragmentBytes(clear_colors, sizeof(clear_colors), 0);
+	}
 	enc->setVertexBytes(vertices, vertex_count * sizeof(vertices[0]), device_driver->get_metal_buffer_index_for_vertex_attribute_binding(VERT_CONTENT_BUFFER_INDEX));
 
 	enc->drawPrimitives(MTL::PrimitiveTypeTriangle, (NS::UInteger)0, vertex_count);
 	enc->popDebugGroup();
 
 	render.dirty.set_flag((RenderState::DirtyFlag)(RenderState::DIRTY_PIPELINE | RenderState::DIRTY_DEPTH | RenderState::DIRTY_RASTER));
+	// Record the raster state written directly above, so the next draw re-encodes only what
+	// actually differs. Depth clip mode, winding and blend color were not touched.
+	render.encoder_raster.cull_mode = MTL::CullModeNone;
+	render.encoder_raster.fill_mode = MTL::TriangleFillModeFill;
+	render.encoder_raster.depth_bias = MDRenderPipeline::RasterState::DepthBias();
+	render.encoder_raster.stencil.front_reference = stencil_value;
+	render.encoder_raster.stencil.back_reference = stencil_value;
 	binding_cache.clear();
+	render.clear_arg_buffer_cache();
 	render.mark_uniforms_dirty({ 0 }); // Mark index 0 dirty, if there is already a binding for index 0.
 	render.mark_viewport_dirty();
 	render.mark_scissors_dirty();
@@ -1043,9 +1055,17 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	_render_bind_uniform_sets();
 
 	if (render.dirty.has_flag(RenderState::DIRTY_PUSH)) {
-		if (push_constant_binding != UINT32_MAX) {
-			render.encoder->setVertexBytes(push_constant_data, push_constant_data_len, push_constant_binding);
-			render.encoder->setFragmentBytes(push_constant_data, push_constant_data_len, push_constant_binding);
+		// Read the binding and stages from the bound pipeline, not from command buffer state:
+		// DIRTY_PUSH is also re-armed by DIRTY_ALL on a new subpass, long after the data was
+		// captured, and a mismatch means the bound shader does not consume push constants.
+		const MDRenderShader *shader = render.pipeline->shader;
+		if (push_constant_shader == shader && push_constant_data_len > 0) {
+			if (shader->push_constants.stages.has_flag(RDD::SHADER_STAGE_VERTEX_BIT)) {
+				render.encoder->setVertexBytes(push_constant_data, push_constant_data_len, shader->push_constants.binding);
+			}
+			if (shader->push_constants.stages.has_flag(RDD::SHADER_STAGE_FRAGMENT_BIT)) {
+				render.encoder->setFragmentBytes(push_constant_data, push_constant_data_len, shader->push_constants.binding);
+			}
 		}
 	}
 
@@ -1069,7 +1089,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_RASTER)) {
-		render.pipeline->raster_state.apply(render.encoder.get());
+		render.pipeline->raster_state.apply(render.encoder.get(), render.encoder_raster);
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_SCISSOR) && !render.scissors.is_empty()) {
@@ -1081,8 +1101,13 @@ void MDCommandBuffer::_render_set_dirty_state() {
 		render.encoder->setScissorRects(rects, len);
 	}
 
-	if (render.dirty.has_flag(RenderState::DIRTY_BLEND) && render.blend_constants.has_value()) {
+	// The dynamic blend constant overrides the pipeline's static one, which raster_state
+	// applied above, so the encoder mirror has to be updated or it stops describing the
+	// encoder and a later apply() would compare against a stale baseline.
+	if (render.dirty.has_flag(RenderState::DIRTY_BLEND) && render.blend_constants.has_value() &&
+			!render.encoder_raster.blend.has_color(*render.blend_constants)) {
 		render.encoder->setBlendColor(render.blend_constants->r, render.blend_constants->g, render.blend_constants->b, render.blend_constants->a);
+		render.encoder_raster.blend.set_color(*render.blend_constants);
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_VERTEX)) {
@@ -1377,6 +1402,8 @@ void MDCommandBuffer::render_next_subpass() {
 		render.desc = desc;
 	} else {
 		render.encoder = NS::RetainPtr(command_buffer()->renderCommandEncoder(desc.get()));
+		render.clear_arg_buffer_cache();
+		render.encoder_raster = MDRenderPipeline::RasterState();
 		_encode_residency(render.encoder.get());
 		_fence_wait(render.encoder.get());
 
@@ -1541,6 +1568,8 @@ void MDCommandBuffer::render_end_pass() {
 #pragma mark - RenderState
 
 void MDCommandBuffer::RenderState::reset() {
+	clear_arg_buffer_cache();
+	encoder_raster = MDRenderPipeline::RasterState();
 	pass = nullptr;
 	frameBuffer = nullptr;
 	pipeline = nullptr;
@@ -1624,8 +1653,10 @@ void MDCommandBuffer::_compute_set_dirty_state() {
 	_compute_bind_uniform_sets();
 
 	if (compute.dirty.has_flag(ComputeState::DIRTY_PUSH)) {
-		if (push_constant_binding != UINT32_MAX) {
-			compute.encoder->setBytes(push_constant_data, push_constant_data_len, push_constant_binding);
+		const MDComputeShader *shader = compute.pipeline->shader;
+		if (push_constant_shader == shader && push_constant_data_len > 0 &&
+				shader->push_constants.stages.has_flag(RDD::SHADER_STAGE_COMPUTE_BIT)) {
+			compute.encoder->setBytes(push_constant_data, push_constant_data_len, shader->push_constants.binding);
 		}
 	}
 
@@ -1737,7 +1768,7 @@ void MDCommandBuffer::compute_dispatch_indirect(RDD::BufferID p_indirect_buffer,
 }
 
 void MDCommandBuffer::reset() {
-	push_constant_binding = UINT32_MAX;
+	push_constant_shader = nullptr;
 	push_constant_data_len = 0;
 	type = MDCommandBufferStateType::None;
 	binding_cache.clear();
@@ -1866,6 +1897,19 @@ void DirectEncoder::set(MTL::SamplerState **p_samplers, NS::Range p_range) {
 
 GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability-new")
 
+// Binds a set's top-level argument buffer to the stages that declare it. Stages outside
+// the set's mask have no matching entry point argument, so binding there is dead work.
+void MDCommandBuffer::_set_arg_buffer(MTL::RenderCommandEncoder *p_enc, const UniformSet &p_shader_set, MTL::Buffer *p_buffer, uint32_t p_offset, uint32_t p_set_index) {
+	if (p_shader_set.active_stages.has_flag(RDD::SHADER_STAGE_VERTEX_BIT) &&
+			render.arg_buffer_cache[RenderState::ARG_BUFFER_STAGE_VERTEX].update(p_buffer, p_offset, p_set_index)) {
+		p_enc->setVertexBuffer(p_buffer, p_offset, p_set_index);
+	}
+	if (p_shader_set.active_stages.has_flag(RDD::SHADER_STAGE_FRAGMENT_BIT) &&
+			render.arg_buffer_cache[RenderState::ARG_BUFFER_STAGE_FRAGMENT].update(p_buffer, p_offset, p_set_index)) {
+		p_enc->setFragmentBuffer(p_buffer, p_offset, p_set_index);
+	}
+}
+
 void MDCommandBuffer::_bind_uniforms_argument_buffers(MDUniformSet *p_set, MDShader *p_shader, uint32_t p_set_index, uint32_t p_dynamic_offsets) {
 	DEV_ASSERT(p_shader->uses_argument_buffers);
 	DEV_ASSERT(render.encoder.get() != nullptr);
@@ -1903,11 +1947,9 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers(MDUniformSet *p_set, MDSha
 			*(uint64_t *)(ptr + idx.buffer) = gpu_address;
 		}
 
-		enc->setVertexBuffer(alloc.buffer, alloc.offset, p_set_index);
-		enc->setFragmentBuffer(alloc.buffer, alloc.offset, p_set_index);
+		_set_arg_buffer(enc, shader_set, alloc.buffer, alloc.offset, p_set_index);
 	} else {
-		enc->setVertexBuffer(p_set->arg_buffer.buffer.get(), 0, p_set_index);
-		enc->setFragmentBuffer(p_set->arg_buffer.buffer.get(), 0, p_set_index);
+		_set_arg_buffer(enc, shader_set, p_set->arg_buffer.buffer.get(), 0, p_set_index);
 	}
 }
 
@@ -2030,6 +2072,10 @@ void MDCommandBuffer::_bind_uniforms_argument_buffers_compute(MDUniformSet *p_se
 	compute.resource_tracker.merge_from(p_set->usage_to_resources);
 
 	const UniformSet &shader_set = p_shader->sets[p_set_index];
+	if (!shader_set.active_stages.has_flag(RDD::SHADER_STAGE_COMPUTE_BIT)) {
+		// The generated MSL does not declare this set's argument buffer.
+		return;
+	}
 
 	// Check if this set has dynamic uniforms.
 	if (!shader_set.dynamic_uniforms.is_empty()) {

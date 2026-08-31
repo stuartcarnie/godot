@@ -248,6 +248,14 @@ bool RenderingDeviceDriverMetal::is_valid_linear(const TextureFormat &p_format) 
 			&& p_format.samples == TEXTURE_SAMPLES_1; // Linear textures must have 1 sample.
 }
 
+// Placement-heap resources are made resident through their heap, but Metal does not resolve
+// residency that way for render pass attachments; it reports the attachment as not resident.
+// Textures that can be attachments are therefore added to the residency set individually.
+// Only Metal 4 creates a residency set.
+static bool _texture_needs_explicit_residency(MTL::TextureUsage p_usage) {
+	return p_usage & MTL::TextureUsageRenderTarget;
+}
+
 RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p_format, const TextureView &p_view) {
 	NS::SharedPtr<MTL::TextureDescriptor> desc = NS::TransferPtr(MTL::TextureDescriptor::alloc()->init());
 	desc->setTextureType(TEXTURE_TYPE[p_format.texture_type]);
@@ -427,6 +435,10 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 		ERR_FAIL_V_MSG(TextureID(), "Unable to create texture.");
 	}
 
+	if (main_residency_set && _texture_needs_explicit_residency(usage)) {
+		main_residency_set->addAllocation(tex_info->texture.get());
+		main_residency_set->commit();
+	}
 	return TextureID(tex_info);
 }
 
@@ -582,11 +594,11 @@ void RenderingDeviceDriverMetal::texture_free(TextureID p_texture) {
 	if (tex_info->imported) {
 		MutexLock lock(imported_textures_mutex);
 		imported_textures.erase(tex_info->texture.get());
-
-		if (main_residency_set) {
-			main_residency_set->removeAllocation(tex_info->texture.get());
-			main_residency_set->commit();
-		}
+	}
+	if (main_residency_set && !tex_info->rasterization_rate_map &&
+			(tex_info->imported || _texture_needs_explicit_residency(tex_info->texture->usage()))) {
+		main_residency_set->removeAllocation(tex_info->texture.get());
+		main_residency_set->commit();
 	}
 	allocator->free_texture(*tex_info);
 	allocator->free_buffer(tex_info->linear_backing);
@@ -1297,6 +1309,10 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 			++iter;
 			update_uniform_info(bind, ui);
 			ui.binding = uniform.binding;
+			// A stage's generated MSL declares this set's argument buffer if the stage's SPIR-V
+			// declares any resource in the set, whether or not the resource is read, because
+			// force_active_argument_buffer_resources keeps them all live.
+			set.active_stages.set_flag(ui.active_stages);
 
 			if (ui.arg_buffer.texture == UINT32_MAX && ui.arg_buffer.buffer == UINT32_MAX && ui.arg_buffer.sampler == UINT32_MAX) {
 				// No bindings.
@@ -1312,6 +1328,15 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 		if (dynamic_count > 0) {
 			dynamic_offset_layout.set_offset_count(i, dynamic_offset, dynamic_count);
 			dynamic_offset += dynamic_count;
+		}
+	}
+
+	// Resolve which stages the generated MSL declares the push constants in. Writing them to
+	// a stage outside the mask is dead work the debug layer reports as an unused binding.
+	BitField<RDD::ShaderStage> push_constant_stages = {};
+	for (uint32_t i = 0; i < (uint32_t)shaders.size(); i++) {
+		if (mtl_shaders.ptr()[i].uses_push_constants) {
+			push_constant_stages.set_flag((RDD::ShaderStage)(1 << shaders.ptr()[i].shader_stage));
 		}
 	}
 
@@ -1336,7 +1361,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 		shader = rs;
 	}
 
-	shader->push_constants.stages = refl.push_constant_stages;
+	shader->push_constants.stages = push_constant_stages;
 	shader->push_constants.size = refl.push_constant_size;
 	shader->push_constants.binding = mtl_reflection_data.push_constant_binding;
 	shader->dynamic_offset_layout = dynamic_offset_layout;
