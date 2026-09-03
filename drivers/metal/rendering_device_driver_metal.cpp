@@ -2547,6 +2547,7 @@ void RenderingDeviceDriverMetal::gpu_capture_end() {
 void RenderingDeviceDriverMetal::begin_segment(uint32_t p_frame_index, uint32_t p_frames_drawn) {
 	_frame_index = p_frame_index;
 	_frames_drawn = p_frames_drawn;
+	allocator->next_frame(p_frames_drawn);
 }
 
 void RenderingDeviceDriverMetal::end_segment() {
@@ -3076,7 +3077,7 @@ Error RenderingDeviceDriverMetal::_initialize(uint32_t p_device_index, uint32_t 
 	// on Metal 3 it is the residency mechanism (useHeaps), and Metal 4 always
 	// runs barriers.
 	bool use_heaps = sync_mode == Barriers;
-	allocator = MetalAllocator::create(device, use_heaps);
+	allocator = MetalAllocator::create(device, use_heaps, p_frame_count);
 	if (use_heaps) {
 		print_verbose("Metal: heap suballocation enabled.");
 	}
