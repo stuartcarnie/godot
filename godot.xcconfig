@@ -1,5 +1,10 @@
 GCC_GENERATE_DEBUGGING_SYMBOLS=YES
-DEBUG_INFORMATION_FORMAT=dwarf-with-dsym
+DEBUG_INFORMATION_FORMAT=dwarf
 ONLY_ACTIVE_ARCH=YES
 CODE_SIGNING_ALLOWED=YES
 // GCC_PREPROCESSOR_DEFINITIONS=TSAN_ENABLED
+// -no_deduplicate: disables linker identical-code folding, which Xcode only turns off in Debug.
+// Needed for symbolicated crash backtraces in Release builds: folding put ~140k .cold stubs at one address,
+// making CoreSymbolication (atos, lldb, Instruments) take minutes to index the binary.
+// Increases binary size considerably (~188 MB to ~227 MB).
+OTHER_LDFLAGS=$(inherited) -Wl,-no_deduplicate

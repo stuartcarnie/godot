@@ -231,7 +231,28 @@ def check_output(func):
             except:
                 log.error(f'Unable to create directory: {output_dir.as_posix()}')
                 return 1
-        return func(args)
+        # Snapshot outputs so unchanged content keeps its mtime and Xcode skips dependents.
+        outputs = args.output if isinstance(args.output, list) else [args.output]
+        if getattr(args, 'output2', None):
+            outputs = outputs + [args.output2]
+        before = {}
+        for out in outputs:
+            try:
+                with open(out, 'rb') as f:
+                    before[out] = (f.read(), os.stat(out))
+            except OSError:
+                pass
+
+        result = func(args)
+
+        for out, (data, st) in before.items():
+            try:
+                with open(out, 'rb') as f:
+                    if f.read() == data:
+                        os.utime(out, ns=(st.st_atime_ns, st.st_mtime_ns))
+            except OSError:
+                pass
+        return result
 
     return wrapper
 
