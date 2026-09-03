@@ -46,8 +46,9 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 	struct Fence {
 		NS::SharedPtr<MTL::SharedEvent> event;
 		uint64_t value = 0;
-		Fence(NS::SharedPtr<MTL::SharedEvent> p_event) :
-				event(p_event) {}
+		MTL::CommandBufferHandler completed_handler = nullptr;
+		explicit Fence(NS::SharedPtr<MTL::SharedEvent> p_event);
+		~Fence();
 		void signal(MTL::CommandBuffer *p_cb);
 		Error wait(uint32_t p_timeout_ms);
 	};
