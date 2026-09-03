@@ -32,12 +32,11 @@
 
 #include "core/os/spin_lock.h"
 #include "core/templates/local_vector.h"
+#include "core/templates/safe_refcount.h"
 
 #include <thirdparty/offset_allocator/offsetAllocator.hpp>
 
 #include <Metal/Metal.hpp>
-
-#include <atomic>
 
 /// Opaque allocation handle. POOL entries reference a pool block plus the
 /// OffsetAllocator range (in 256-byte units); DEDICATED entries own a
@@ -97,23 +96,29 @@ struct MetalAllocatorStats {
 /// single instance selected by sync mode.
 class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MetalAllocator {
 public:
-	static MetalAllocator *create(MTL::Device *p_device, bool p_use_heaps);
+	static MetalAllocator *create(MTL::Device *p_device, bool p_use_heaps, uint32_t p_frame_count);
 	virtual ~MetalAllocator() = default;
+
+	void next_frame(uint64_t p_frames_drawn) { frames_drawn.set(p_frames_drawn); }
 
 	virtual MetalBuffer new_buffer(NS::UInteger p_length, MTL::ResourceOptions p_options) = 0;
 	virtual MetalTexture new_texture(const MTL::TextureDescriptor *p_desc) = 0;
 	virtual void free_buffer(MetalBuffer &p_buffer) = 0;
 	virtual void free_texture(MetalTexture &p_texture) = 0;
 
-	/// Appends all live heaps to r_heaps and returns the generation the
-	/// snapshot corresponds to. The generation increments whenever a heap is
-	/// created or destroyed; callers cache their heap arrays against it.
+	/// Appends all heaps with live allocations to r_heaps and returns the
+	/// generation the snapshot corresponds to. The generation increments
+	/// whenever a heap enters or leaves that set; callers cache their heap
+	/// arrays against it.
 	virtual uint64_t get_heaps(LocalVector<MTL::Heap *> &r_heaps) = 0;
 	virtual uint64_t get_heap_generation() const = 0;
 
 #ifdef DEBUG_ENABLED
 	virtual void get_stats(MetalAllocatorStats &r_stats) = 0;
 #endif
+
+protected:
+	SafeNumeric<uint64_t> frames_drawn;
 };
 
 /// Passthrough: forwards to MTL::Device, returns empty allocation handles.
@@ -170,25 +175,36 @@ private:
 	struct Block {
 		NS::SharedPtr<MTL::Heap> heap;
 		OffsetAllocator::Allocator *metadata = nullptr;
+		// frames_drawn when live last reached 0. Empty blocks are reused by
+		// _pool_allocate and reclaimed by a later free once frame_count frames
+		// have passed, so no in-flight command buffer still lists the heap.
+		uint64_t empty_since = 0;
 		// The number of live allocations in this block.
 		uint32_t live = 0;
+	};
+
+	struct RetiredHeap {
+		NS::SharedPtr<MTL::Heap> heap;
+		uint64_t retired_frame = 0;
 	};
 
 	struct Pool {
 		SpinLock mutex;
 		LocalVector<Block> blocks;
 		LocalVector<MTL::Heap *> dedicated_heaps; // Owned (+1) refs, for get_heaps enumeration.
+		LocalVector<RetiredHeap> retired_dedicated; // Freed, released by a later free.
+		uint32_t empty_blocks = 0; // Blocks with live == 0, so _reclaim_heaps can skip the scan.
 #ifdef DEBUG_ENABLED
 		MetalAllocatorStats::Pool stats;
 #endif
-		uint32_t empty_blocks = 0;
 	};
 
 	MTL::Device *device = nullptr;
 	Pool pools[POOL_COUNT];
+	uint32_t frame_count = 1;
 	/// Incremented each time a heap is created or destroyed so clients know when to update
 	/// their own state and refresh residency.
-	std::atomic<uint64_t> generation = 1;
+	SafeNumeric<uint64_t> generation = SafeNumeric<uint64_t>(1);
 
 	static uint64_t _preferred_block_size(uint32_t p_pool);
 	static uint32_t _pool_for_options(MTL::ResourceOptions p_options);
@@ -200,10 +216,14 @@ private:
 	/// Creates a dedicated single-resource heap (Kind::DEDICATED).
 	bool _dedicated_allocate(uint32_t p_pool, uint64_t p_size, MetalAllocation &r_allocation, MTL::Heap *&r_heap);
 	void _free_allocation(MetalAllocation &p_allocation);
+	/// Releases p_pool's empty blocks and retired dedicated heaps that have
+	/// aged at least p_min_age frames. Takes the pool lock per heap and
+	/// releases outside it. Call without the lock held.
+	void _reclaim_heaps(Pool &p_pool, uint64_t p_min_age);
 
 public:
-	explicit MetalHeapAllocator(MTL::Device *p_device) :
-			device(p_device) {}
+	MetalHeapAllocator(MTL::Device *p_device, uint32_t p_frame_count) :
+			device(p_device), frame_count(p_frame_count) {}
 	~MetalHeapAllocator() override;
 
 	MetalBuffer new_buffer(NS::UInteger p_length, MTL::ResourceOptions p_options) override;
