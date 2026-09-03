@@ -57,6 +57,8 @@ static void handle_crash(int sig) {
 	signal(SIGFPE, SIG_DFL);
 	signal(SIGILL, SIG_DFL);
 	signal(SIGTRAP, SIG_DFL);
+	signal(SIGABRT, SIG_DFL);
+	signal(SIGBUS, SIG_DFL);
 
 	if (OS::get_singleton() == nullptr) {
 		abort();
@@ -216,6 +218,8 @@ void CrashHandler::disable() {
 	signal(SIGFPE, SIG_DFL);
 	signal(SIGILL, SIG_DFL);
 	signal(SIGTRAP, SIG_DFL);
+	signal(SIGABRT, SIG_DFL);
+	signal(SIGBUS, SIG_DFL);
 #endif
 
 	disabled = true;
@@ -227,5 +231,7 @@ void CrashHandler::initialize() {
 	signal(SIGFPE, handle_crash);
 	signal(SIGILL, handle_crash);
 	signal(SIGTRAP, handle_crash);
+	signal(SIGABRT, handle_crash);
+	signal(SIGBUS, handle_crash);
 #endif
 }

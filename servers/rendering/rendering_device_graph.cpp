@@ -331,7 +331,7 @@ RenderingDeviceGraph::RecordedCommand *RenderingDeviceGraph::_allocate_command(u
 #ifdef BACKTRACE_ENABLED
 	// Capture backtrace for debugging purposes.
 	void *backtrace_frames[BACKTRACE_MAX_FRAMES];
-	int backtrace_frame_count = backtrace(backtrace_frames, BACKTRACE_MAX_FRAMES, 3);
+	int backtrace_frame_count = apple_backtrace(backtrace_frames, BACKTRACE_MAX_FRAMES, 3);
 	uint32_t extra_size = sizeof(void *) * backtrace_frame_count + sizeof(uint32_t);
 #else
 	const uint32_t extra_size = 0;
@@ -358,7 +358,7 @@ RenderingDeviceGraph::DrawListInstruction *RenderingDeviceGraph::_allocate_draw_
 #ifdef BACKTRACE_ENABLED
 	// Capture backtrace for debugging purposes.
 	void *backtrace_frames[BACKTRACE_MAX_FRAMES];
-	int backtrace_frame_count = backtrace(backtrace_frames, BACKTRACE_MAX_FRAMES, 3);
+	int backtrace_frame_count = apple_backtrace(backtrace_frames, BACKTRACE_MAX_FRAMES, 3);
 	uint32_t extra_size = sizeof(void *) * backtrace_frame_count + sizeof(uint32_t);
 #else
 	const uint32_t extra_size = 0;
@@ -381,7 +381,7 @@ RenderingDeviceGraph::ComputeListInstruction *RenderingDeviceGraph::_allocate_co
 #ifdef BACKTRACE_ENABLED
 	// Capture backtrace for debugging purposes.
 	void *backtrace_frames[BACKTRACE_MAX_FRAMES];
-	int backtrace_frame_count = backtrace(backtrace_frames, BACKTRACE_MAX_FRAMES, 3);
+	int backtrace_frame_count = apple_backtrace(backtrace_frames, BACKTRACE_MAX_FRAMES, 3);
 	uint32_t extra_size = sizeof(void *) * backtrace_frame_count + sizeof(uint32_t);
 #else
 	const uint32_t extra_size = 0;
