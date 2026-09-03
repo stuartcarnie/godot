@@ -12,7 +12,8 @@
       "cacheVariables": {
         "APPLE_BUNDLE_IDENTIFIER": "org.stuartcarnie.godot",
         "DEV_BUILD_LEVEL": "debug",
-        "ENABLE_RETROFX": true
+        "ENABLE_RETROFX": true,
+        "CMAKE_SUPPRESS_REGENERATION": true
       }
     },
     {

@@ -265,7 +265,7 @@ void MDCommandBuffer::_commit() {
 MTL::CommandBuffer *MDCommandBuffer::command_buffer() {
 	DEV_ASSERT(state_begin);
 	if (!commandBuffer) {
-		commandBuffer = NS::RetainPtr(queue->commandBuffer());
+		commandBuffer = NS::RetainPtr(queue->commandBufferWithUnretainedReferences());
 	}
 	return commandBuffer.get();
 }

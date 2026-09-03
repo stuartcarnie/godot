@@ -30,6 +30,10 @@
 
 #include "drivers/metal/metal_allocator.h"
 
+#include "drivers/metal/metal_utils.h"
+
+#include <os/signpost.h>
+
 namespace {
 
 class SpinLockGuard {
@@ -49,9 +53,9 @@ public:
 
 #pragma mark - MetalAllocator
 
-MetalAllocator *MetalAllocator::create(MTL::Device *p_device, bool p_use_heaps) {
+MetalAllocator *MetalAllocator::create(MTL::Device *p_device, bool p_use_heaps, uint32_t p_frame_count) {
 	if (p_use_heaps) {
-		return memnew(MetalHeapAllocator(p_device));
+		return memnew(MetalHeapAllocator(p_device, p_frame_count));
 	}
 	return memnew(MetalDeviceAllocator(p_device));
 }
@@ -97,6 +101,20 @@ void MetalDeviceAllocator::get_stats(MetalAllocatorStats &r_stats) {
 #pragma mark - MetalHeapAllocator
 
 namespace {
+// Signpost names must be literals, so one name per pool.
+#define HEAP_SIGNPOST_EVENT(m_pool, m_event, m_size) \
+	switch (m_pool) { \
+		case MetalHeapAllocator::POOL_PRIVATE: \
+			os_signpost_event_emit(LOG_DRIVER, OS_SIGNPOST_ID_EXCLUSIVE, m_event ":PRIVATE", "size=%{public,name=size,xcode:size-in-bytes}llu", (uint64_t)(m_size)); \
+			break; \
+		case MetalHeapAllocator::POOL_SHARED: \
+			os_signpost_event_emit(LOG_DRIVER, OS_SIGNPOST_ID_EXCLUSIVE, m_event ":SHARED", "size=%{public,name=size,xcode:size-in-bytes}llu", (uint64_t)(m_size)); \
+			break; \
+		case MetalHeapAllocator::POOL_SHARED_WC: \
+			os_signpost_event_emit(LOG_DRIVER, OS_SIGNPOST_ID_EXCLUSIVE, m_event ":SHARED_WRITE_COMBINED", "size=%{public,name=size,xcode:size-in-bytes}llu", (uint64_t)(m_size)); \
+			break; \
+	}
+
 constexpr NS::UInteger RESOURCE_CPU_CACHE_MODE_SHIFT = 0;
 constexpr NS::UInteger RESOURCE_CPU_CACHE_MODE_MASK = 0xFull << RESOURCE_CPU_CACHE_MODE_SHIFT;
 constexpr NS::UInteger RESOURCE_STORAGE_MODE_SHIFT = 4;
@@ -139,6 +157,7 @@ NS::SharedPtr<MTL::Heap> MetalHeapAllocator::_create_heap(uint32_t p_pool, uint6
 	desc->setCpuCacheMode(p_pool == POOL_SHARED_WC ? MTL::CPUCacheModeWriteCombined : MTL::CPUCacheModeDefaultCache);
 	desc->setHazardTrackingMode(MTL::HazardTrackingModeUntracked);
 	desc->setSize(p_size);
+	HEAP_SIGNPOST_EVENT(p_pool, "heap_alloc", p_size);
 	return NS::TransferPtr(device->newHeap(desc.get()));
 }
 
@@ -150,6 +169,7 @@ bool MetalHeapAllocator::_pool_allocate(uint32_t p_pool, uint64_t p_size, uint64
 	SpinLockGuard lock(pool.mutex);
 
 	uint32_t block_index = UINT32_MAX;
+	bool created = false;
 	OffsetAllocator::Allocation alloc{};
 	for (uint32_t i = 0; i < pool.blocks.size(); i++) {
 		if (pool.blocks[i].metadata == nullptr) {
@@ -189,15 +209,21 @@ bool MetalHeapAllocator::_pool_allocate(uint32_t p_pool, uint64_t p_size, uint64
 		pool.stats.block_count++;
 		pool.stats.reserved_bytes += heap->size();
 #endif
-		generation.fetch_add(1, std::memory_order_relaxed);
+		created = true;
 
 		alloc = pool.blocks[block_index].metadata->allocate(units);
 		ERR_FAIL_COND_V(alloc.offset == OffsetAllocator::Allocation::NO_SPACE, false);
 	}
 
 	Block &block = pool.blocks[block_index];
-	if (block.live == 0 && pool.empty_blocks > 0) {
-		pool.empty_blocks--;
+	if (block.live == 0) {
+		// Empty or new block enters get_heaps.
+		generation.increment();
+		// If the block wasn't created, we reused an existing block that
+		// that was reclaimable, but still live.
+		if (!created) {
+			pool.empty_blocks--;
+		}
 	}
 	block.live++;
 #ifdef DEBUG_ENABLED
@@ -227,7 +253,7 @@ bool MetalHeapAllocator::_dedicated_allocate(uint32_t p_pool, uint64_t p_size, M
 	pool.stats.dedicated_count++;
 	pool.stats.dedicated_bytes += heap->size();
 #endif
-	generation.fetch_add(1, std::memory_order_relaxed);
+	generation.increment();
 
 	r_heap = heap.get();
 	r_allocation.kind = MetalAllocation::Kind::DEDICATED;
@@ -238,55 +264,53 @@ bool MetalHeapAllocator::_dedicated_allocate(uint32_t p_pool, uint64_t p_size, M
 }
 
 void MetalHeapAllocator::_free_allocation(MetalAllocation &p_allocation) {
-	// old_heap takes ownership of the MTL::Heap, so it is released outside any locks.
-	NS::SharedPtr<MTL::Heap> old_heap;
-
 	switch (p_allocation.kind) {
 		case MetalAllocation::Kind::INVALID:
 			break;
 		case MetalAllocation::Kind::POOL: {
 			Pool &pool = pools[p_allocation.pool];
-			SpinLockGuard lock(pool.mutex);
-			Block &block = pool.blocks[p_allocation.block];
+			{
+				SpinLockGuard lock(pool.mutex);
+				Block &block = pool.blocks[p_allocation.block];
 #ifdef DEBUG_ENABLED
-			uint64_t freed_bytes = (uint64_t)block.metadata->allocationSize(p_allocation.alloc) * UNIT;
-			pool.stats.allocation_count--;
-			pool.stats.used_bytes -= freed_bytes;
+				uint64_t freed_bytes = (uint64_t)block.metadata->allocationSize(p_allocation.alloc) * UNIT;
+				pool.stats.allocation_count--;
+				pool.stats.used_bytes -= freed_bytes;
 #endif
-			block.metadata->free(p_allocation.alloc);
-			block.live--;
-			if (block.live == 0) {
-				pool.empty_blocks++;
-				// Keep one empty block cached; reclaim beyond that.
-				if (pool.empty_blocks > 1) {
-#ifdef DEBUG_ENABLED
-					pool.stats.block_count--;
-					pool.stats.reserved_bytes -= block.heap->size();
-#endif
-					memdelete(block.metadata);
-					block.metadata = nullptr;
-					old_heap = std::move(block.heap);
-					pool.empty_blocks--;
-					generation.fetch_add(1, std::memory_order_relaxed);
+				block.metadata->free(p_allocation.alloc);
+				block.live--;
+				if (block.live == 0) {
+					// Leaves get_heaps now; the heap itself stays until a later free reclaims it.
+					block.empty_since = frames_drawn.get();
+					pool.empty_blocks++;
+					generation.increment();
 				}
 			}
+			_reclaim_heaps(pool, frame_count);
 		} break;
 		case MetalAllocation::Kind::DEDICATED: {
 			Pool &pool = pools[p_allocation.pool];
-			SpinLockGuard lock(pool.mutex);
-			int64_t idx = pool.dedicated_heaps.find(p_allocation.heap);
-			DEV_ASSERT(idx >= 0);
-			if (likely(idx >= 0)) {
+			{
+				SpinLockGuard lock(pool.mutex);
+				int64_t idx = pool.dedicated_heaps.find(p_allocation.heap);
+				DEV_ASSERT(idx >= 0);
+				if (likely(idx >= 0)) {
 #ifdef DEBUG_ENABLED
-				pool.stats.dedicated_count--;
-				pool.stats.dedicated_bytes -= p_allocation.heap->size();
+					pool.stats.dedicated_count--;
+					pool.stats.dedicated_bytes -= p_allocation.heap->size();
 #endif
-				pool.dedicated_heaps[idx]->release(); // not released here, as p_allocation also has a reference
-				pool.dedicated_heaps.remove_at_unordered(idx);
+					pool.dedicated_heaps[idx]->release(); // not released here, as p_allocation also has a reference
+					pool.dedicated_heaps.remove_at_unordered(idx);
+				}
+				// Leaves get_heaps now; reclaimed by a later free once no command buffer lists it.
+				RetiredHeap retired;
+				retired.heap = NS::TransferPtr(p_allocation.heap);
+				retired.retired_frame = frames_drawn.get();
+				pool.retired_dedicated.push_back(retired);
+				p_allocation.heap = nullptr;
+				generation.increment();
 			}
-			old_heap = NS::TransferPtr(p_allocation.heap);
-			p_allocation.heap = nullptr;
-			generation.fetch_add(1, std::memory_order_relaxed);
+			_reclaim_heaps(pool, frame_count);
 		} break;
 	}
 	p_allocation.invalidate();
@@ -353,13 +377,54 @@ void MetalHeapAllocator::free_texture(MetalTexture &p_texture) {
 	_free_allocation(p_texture.allocation);
 }
 
+void MetalHeapAllocator::_reclaim_heaps(Pool &p_pool, uint64_t p_min_age) {
+	uint64_t now = frames_drawn.get();
+	while (true) {
+		// Take one heap under the lock, release it outside.
+		NS::SharedPtr<MTL::Heap> heap;
+		{
+			SpinLockGuard lock(p_pool.mutex);
+			if (p_pool.empty_blocks > 0) {
+				for (Block &block : p_pool.blocks) {
+					if (block.metadata == nullptr || block.live != 0 || now - block.empty_since < p_min_age) {
+						continue;
+					}
+#ifdef DEBUG_ENABLED
+					p_pool.stats.block_count--;
+					p_pool.stats.reserved_bytes -= block.heap->size();
+#endif
+					memdelete(block.metadata);
+					block.metadata = nullptr;
+					p_pool.empty_blocks--;
+					heap = std::move(block.heap);
+					break;
+				}
+			}
+			if (!heap) {
+				for (uint32_t i = 0; i < p_pool.retired_dedicated.size(); i++) {
+					if (now - p_pool.retired_dedicated[i].retired_frame < p_min_age) {
+						continue;
+					}
+					heap = std::move(p_pool.retired_dedicated[i].heap);
+					p_pool.retired_dedicated.remove_at_unordered(i);
+					break;
+				}
+			}
+			if (!heap) {
+				return;
+			}
+		}
+		HEAP_SIGNPOST_EVENT(&p_pool - pools, "heap_free", heap->size());
+	}
+}
+
 uint64_t MetalHeapAllocator::get_heaps(LocalVector<MTL::Heap *> &r_heaps) {
-	uint64_t gen = generation.load(std::memory_order_relaxed);
+	uint64_t gen = generation.get();
 	for (uint32_t p = 0; p < POOL_COUNT; p++) {
 		Pool &pool = pools[p];
 		SpinLockGuard lock(pool.mutex);
 		for (const Block &block : pool.blocks) {
-			if (block.heap.get() != nullptr) {
+			if (block.live != 0) {
 				r_heaps.push_back(block.heap.get());
 			}
 		}
@@ -371,7 +436,7 @@ uint64_t MetalHeapAllocator::get_heaps(LocalVector<MTL::Heap *> &r_heaps) {
 }
 
 uint64_t MetalHeapAllocator::get_heap_generation() const {
-	return generation.load(std::memory_order_relaxed);
+	return generation.get();
 }
 
 #ifdef DEBUG_ENABLED
@@ -386,6 +451,7 @@ void MetalHeapAllocator::get_stats(MetalAllocatorStats &r_stats) {
 MetalHeapAllocator::~MetalHeapAllocator() {
 	for (uint32_t p = 0; p < POOL_COUNT; p++) {
 		Pool &pool = pools[p];
+		_reclaim_heaps(pool, 0);
 		for (Block &block : pool.blocks) {
 			if (block.metadata != nullptr) {
 				memdelete(block.metadata);

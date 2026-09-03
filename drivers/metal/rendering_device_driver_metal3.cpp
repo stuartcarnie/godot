@@ -36,14 +36,29 @@
 #include "drivers/metal/pixel_formats.h"
 #include "drivers/metal/rendering_context_driver_metal.h"
 
+#include <Block.h>
+
 namespace MTL3 {
 
 #pragma mark - Fence
 
+RenderingDeviceDriverMetal::Fence::Fence(NS::SharedPtr<MTL::SharedEvent> p_event) :
+		event(p_event) {
+	completed_handler = Block_copy(^(MTL::CommandBuffer *) {
+		event->setSignaledValue(value);
+	});
+}
+
+RenderingDeviceDriverMetal::Fence::~Fence() {
+	Block_release(completed_handler);
+}
+
 void RenderingDeviceDriverMetal::Fence::signal(MTL::CommandBuffer *p_cb) {
 	if (p_cb) {
+		// The previous signal must have completed.
+		DEV_ASSERT(event->signaledValue() == value);
 		value++;
-		p_cb->encodeSignalEvent(event.get(), value);
+		p_cb->addCompletedHandler(completed_handler);
 	}
 }
 
