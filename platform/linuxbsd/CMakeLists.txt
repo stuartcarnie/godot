@@ -85,19 +85,19 @@ target_link_libraries(platform-linuxbsd PUBLIC ${DBUS_LIBRARIES} drivers servers
 #Required to always be enabled on linux 
 target_compile_definitions(platform-linuxbsd PUBLIC JOYDEV_ENABLED ALSAMIDI_ENABLED)
 
-if(${WANT_ALSA} AND ${ALSA_FOUND})
+if(ENABLE_ALSA AND ALSA_FOUND)
     target_compile_definitions(platform-linuxbsd PUBLIC ALSA_ENABLED)
     target_link_libraries(platform-linuxbsd PUBLIC driver-alsa)
     target_link_libraries(platform-linuxbsd PUBLIC driver-alsa-midi)
 endif()
 
-if(${WANT_PULSEAUDIO} AND ${PULSEAUDIO_FOUND})
+if(ENABLE_PULSEAUDIO AND PULSEAUDIO_FOUND)
     target_compile_definitions(platform-linuxbsd PUBLIC PULSEAUDIO_ENABLED)
     target_link_libraries(platform-linuxbsd PUBLIC driver-pulseaudio)
 endif()
 
 
-if(${WANT_X11} AND ${X11_FOUND})
+if(ENABLE_X11 AND X11_FOUND)
     target_compile_definitions(platform-linuxbsd PUBLIC X11_ENABLED)
 endif()
 
@@ -105,27 +105,27 @@ if(${FOUND_MNTENT})
     target_compile_definitions(platform-linuxbsd PUBLIC HAVE_MNTENT=1)
 endif()
 
-if(${WANT_FONTCONFIG} AND ${Fontconfig_FOUND})
+if(ENABLE_FONTCONFIG AND Fontconfig_FOUND)
     target_compile_definitions(platform-linuxbsd PUBLIC FONTCONFIG_ENABLED)
 endif()
 
-if(${WANT_VULKAN} AND ${Vulkan_FOUND})
+if(ENABLE_VULKAN AND Vulkan_FOUND)
     target_compile_definitions(platform-linuxbsd PUBLIC VULKAN_ENABLED USE_VOLK)
     target_link_libraries(platform-linuxbsd PUBLIC vulkan glad volk)
     target_link_libraries (platform-linuxbsd PUBLIC ${Vulkan_LIBRARY})
     target_link_libraries(platform-linuxbsd PUBLIC driver-vulkan)
 endif()
 
-if(${WANT_OPENGL} AND ${OPENGL_FOUND})
+if(ENABLE_OPENGL AND OPENGL_FOUND)
     target_compile_definitions(platform-linuxbsd PUBLIC GLES3_ENABLED)
     target_link_libraries(platform-linuxbsd PUBLIC OpenGL::GL)
     target_link_libraries(platform-linuxbsd PUBLIC gles3)
 endif()
 
-if(${WANT_X11} AND ${X11_FOUND})
+if(ENABLE_X11 AND X11_FOUND)
     target_link_libraries(platform-linuxbsd PUBLIC ${X11_LIBRARIES})
 endif()
 
-if(${WANT_DBUS} AND ${DBUS_FOUND})
+if(ENABLE_DBUS AND DBUS_FOUND)
     target_compile_definitions(platform-linuxbsd PUBLIC DBUS_ENABLED)
 endif()

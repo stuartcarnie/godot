@@ -106,7 +106,7 @@ if (WANT_EDITOR)
     )
     # [[[end]]]
 endif ()
-if (WANT_TESTS)
+if (ENABLE_TESTS)
     # [[[cog
     #   import cog
     #   from cmake_builders import list_files
@@ -143,6 +143,6 @@ set(GODOT_MODULE_GDSCRIPT_RESOURCES
 
 target_compile_definitions(godot-module-gdscript
         PRIVATE
-        $<$<BOOL:${WANT_TESTS}>:TESTS_ENABLED>
+        $<$<BOOL:${ENABLE_TESTS}>:TESTS_ENABLED>
 )
 group_target_sources(godot-module-gdscript)

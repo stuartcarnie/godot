@@ -93,30 +93,31 @@ endif ()
 
 # target_link_libraries(servers PRIVATE $<$<BOOL:${WANT_PROFILER}>:profiler>)
 
-if (${WANT_OPENGL} AND ${OPENGL_FOUND})
+if (ENABLE_OPENGL AND OPENGL_FOUND)
     target_link_libraries(macos PUBLIC OpenGL::GL)
     target_link_libraries(macos PUBLIC gles3 glad)
-    if (WANT_ANGLE)
+    if (ENABLE_ANGLE)
         target_link_libraries(macos PRIVATE angle)
     endif ()
     target_compile_definitions(macos PRIVATE GLES3_ENABLED)
 endif ()
 
-if (${WANT_VULKAN} AND ${VULKAN_FOUND})
+if (ENABLE_VULKAN AND VULKAN_FOUND)
     target_link_libraries(macos PUBLIC driver-vulkan vulkan MoltenVK)
     target_compile_definitions(macos PRIVATE VULKAN_ENABLED)
 endif ()
 
 target_link_libraries(macos
         PUBLIC
-        $<$<BOOL:${WANT_METAL}>:metal>
+        $<$<BOOL:${ENABLE_METAL}>:metal>
 )
 target_compile_definitions(macos
         PUBLIC
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED RD_ENABLED>
-        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED>
-        $<${WANT_COREMIDI}:COREMIDI_ENABLED>
-        $<${WANT_SDL}:SDL_ENABLED>
+        $<$<BOOL:${ENABLE_RENDERING_DEVICE}>:RD_ENABLED>
+        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED>
+        $<$<BOOL:${ENABLE_COREAUDIO}>:COREAUDIO_ENABLED>
+        $<$<BOOL:${ENABLE_COREMIDI}>:COREMIDI_ENABLED>
+        $<$<BOOL:${ENABLE_SDL}>:SDL_ENABLED>
 )
 
 target_compile_options(macos PRIVATE -Wunguarded-availability)
@@ -140,7 +141,7 @@ target_link_libraries(macos PUBLIC
         $<LINK_LIBRARY:FRAMEWORK,MetalFX.framework>
         $<LINK_LIBRARY:FRAMEWORK,IOSurface.framework>
         $<LINK_LIBRARY:FRAMEWORK,UniformTypeIdentifiers.framework>
-        $<$<BOOL:${WANT_SDL}>:$<LINK_LIBRARY:FRAMEWORK,ForceFeedback.framework>>
+        $<$<BOOL:${ENABLE_SDL}>:$<LINK_LIBRARY:FRAMEWORK,ForceFeedback.framework>>
 )
 
 group_target_sources(macos)

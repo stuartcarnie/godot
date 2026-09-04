@@ -51,7 +51,7 @@ target_include_directories(ktx PUBLIC
         external
 )
 
-if (WANT_VULKAN)
+if (ENABLE_VULKAN)
     target_link_libraries(ktx PRIVATE vulkan)
 else ()
     # Falls back on bundled `vkformat_enum.h`.

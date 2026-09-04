@@ -73,9 +73,13 @@ option(ENABLE_ENGINE_UPDATE_CHECK "Enable engine update checks in the Project Ma
 
 set(PRECISION "single" CACHE STRING "Set the floating-point precision level")
 set_property(CACHE PRECISION PROPERTY STRINGS single double)
+option(ENABLE_RENDERING_DEVICE "Enable RenderingDevice abstraction for modern graphics APIs (use the `vulkan`, `d3d12`, and `metal` options to toggle individual drivers)" ON)
+cmake_dependent_option(ENABLE_FORWARD_PLUS_RENDERER "Enable the Forward+ renderer" ON "ENABLE_RENDERING_DEVICE" OFF)
+cmake_dependent_option(ENABLE_MOBILE_RENDERER "Enable the Mobile renderer" ON "ENABLE_RENDERING_DEVICE" OFF)
 option(ENABLE_MINIZIP "Enable ZIP archive support using minizip" ON)
 option(ENABLE_BROTLI "Enable Brotli for decompresson and WOFF2 fonts support" ON)
 option(ENABLE_SDL "Enable the SDL3 input driver" ON)
+option(ENABLE_TESTS "Build unit tests" OFF)
 option(DISABLE_EXCEPTIONS "Force disabling exception handling code" ON)
 
 option(DISABLE_3D "Disable 3D nodes for a smaller executable" OFF)
@@ -193,18 +197,6 @@ endif ()
 
 option(ENABLE_RETROFX "Enable RetroFX module" OFF)
 
-if (ENABLE_RETROFX)
-    set(WANT_RETROFX 1)
-else ()
-    set(WANT_RETROFX 0)
-endif ()
-
-if (ENABLE_SDL AND CMAKE_SYSTEM_NAME MATCHES "^(Linux|Windows|Darwin|iOS|tvOS|visionOS)$")
-    set(WANT_SDL 1)
-else ()
-    set(WANT_SDL 0)
-endif ()
-
 # Advanced options
 
 set(DEV_BUILD_LEVEL none CACHE STRING "Developer build with dev-only debugging code (DEV_ENABLED)")
@@ -218,12 +210,6 @@ mark_as_advanced(APPLE_BUNDLE_IDENTIFIER)
 option(ENABLE_DYNAMIC_CORE_SHADERS "Load core shaders from disk instead of embedding them" OFF)
 set(GODOT_PCK_FILE "" CACHE FILEPATH "Path to a Godot .pck file to bundle with the app (iOS/visionOS)")
 
-if (ENABLE_DYNAMIC_CORE_SHADERS)
-    set(WANT_DYNAMIC_CORE_SHADERS 1)
-else ()
-    set(WANT_DYNAMIC_CORE_SHADERS 0)
-endif ()
-
 # Third party libraries
 
 cmake_dependent_option(BUILTIN_BROTLI "Use the built-in Brotli library" ON "ENABLE_BROTLI" OFF)
@@ -231,18 +217,6 @@ cmake_dependent_option(BUILTIN_BROTLI "Use the built-in Brotli library" ON "ENAB
 #########
 # Configure variables and build from options
 #########
-
-if (ENABLE_TESTS)
-    set(WANT_TESTS 1)
-else ()
-    set(WANT_TESTS 0)
-endif ()
-
-if (ENABLE_THREADS)
-    set(WANT_THREADS 1)
-else ()
-    set(WANT_THREADS 0)
-endif ()
 
 if (DEV_BUILD_LEVEL STREQUAL "none")
     set(WANT_DEV_BUILD 0)
@@ -371,12 +345,6 @@ else ()
     set(WANT_EDITOR 0)
 endif ()
 
-if (ENABLE_ENGINE_UPDATE_CHECK AND WANT_EDITOR)
-    set(WANT_ENGINE_UPDATE_CHECK 1)
-else ()
-    set(WANT_ENGINE_UPDATE_CHECK 0)
-endif ()
-
 if (GODOT_TARGET MATCHES "^(editor|template_debug)$")
     message(STATUS "Enabling debug features")
     set(WANT_DEBUG_FEATURES 1)
@@ -427,7 +395,7 @@ endif ()
 
 add_compile_definitions(
         $<${WANT_EDITOR}:TOOLS_ENABLED>
-        $<${WANT_THREADS}:THREADS_ENABLED>
+        $<$<BOOL:${ENABLE_THREADS}>:THREADS_ENABLED>
         $<${WANT_DEBUG_FEATURES}:DEBUG_ENABLED>
         $<${WANT_LIBGODOT}:LIBGODOT_ENABLED>
 )
@@ -470,7 +438,7 @@ else ()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif ()
 
-if (${WANT_VULKAN})
+if (ENABLE_VULKAN)
     if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
         find_package(Vulkan REQUIRED)
     elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -500,7 +468,7 @@ else ()
     set(VULKAN_FOUND 0)
 endif ()
 
-if (${WANT_OPENGL})
+if (ENABLE_OPENGL)
     if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         find_package(OpenGL REQUIRED)
     elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
@@ -511,23 +479,23 @@ else ()
     set(OPENGL_FOUND 0)
 endif ()
 
-if (${WANT_DBUS})
+if (ENABLE_DBUS)
     find_package(DBUS)
 endif ()
 
-if (${WANT_ALSA})
+if (ENABLE_ALSA)
     find_package(ALSA)
 endif ()
 
-if (${WANT_PULSEAUDIO})
+if (ENABLE_PULSEAUDIO)
     find_package(PulseAudio)
 endif ()
 
-if (${WANT_X11})
+if (ENABLE_X11)
     find_package(X11)
 endif ()
 
-if (${WANT_FONTCONFIG})
+if (ENABLE_FONTCONFIG)
     find_package(Fontconfig)
 endif ()
 
@@ -564,13 +532,13 @@ add_subdirectory(platform/ios/api)
 add_subdirectory(platform/visionos/api)
 add_subdirectory(platform/android/api)
 add_subdirectory(platform/web/api)
-if (WANT_TESTS)
+if (ENABLE_TESTS)
     add_subdirectory(tests)
 endif ()
 add_subdirectory(main)
 
 function(json_set_bool OUT_VAR JSON_STR MEMBER BOOL_VAL)
-    if (${BOOL_VAL})
+    if (BOOL_VAL)
         string(JSON _json SET "${JSON_STR}" ${MEMBER} true)
     else ()
         string(JSON _json SET "${JSON_STR}" ${MEMBER} false)
@@ -587,20 +555,21 @@ set(_json "{}")
 json_set_string(_json "${_json}" platform "${GODOT_PLATFORM}")
 json_set_string(_json "${_json}" arch "${OS_ARCH}")
 json_set_string(_json "${_json}" library_type "${LIBRARY_TYPE}")
-json_set_bool(_json "${_json}" editor_build ${WANT_EDITOR})
+json_set_bool(_json "${_json}" editor_build "${WANT_EDITOR}")
 json_set_bool(_json "${_json}" modules_enabled_by_default TRUE)
 json_set_bool(_json "${_json}" disable_3d FALSE)
 json_set_bool(_json "${_json}" disable_2d FALSE)
-json_set_bool(_json "${_json}" disable_physics_2d ${DISABLE_PHYSICS_2D})
-json_set_bool(_json "${_json}" disable_physics_3d ${DISABLE_PHYSICS_3D})
-json_set_bool(_json "${_json}" disable_navigation_2d ${DISABLE_NAVIGATION_2D})
-json_set_bool(_json "${_json}" disable_navigation_3d ${DISABLE_NAVIGATION_3D})
-json_set_bool(_json "${_json}" disable_xr ${DISABLE_XR})
-json_set_bool(_json "${_json}" vulkan ${WANT_VULKAN})
+json_set_bool(_json "${_json}" disable_physics_2d "${DISABLE_PHYSICS_2D}")
+json_set_bool(_json "${_json}" disable_physics_3d "${DISABLE_PHYSICS_3D}")
+json_set_bool(_json "${_json}" disable_navigation_2d "${DISABLE_NAVIGATION_2D}")
+json_set_bool(_json "${_json}" disable_navigation_3d "${DISABLE_NAVIGATION_3D}")
+json_set_bool(_json "${_json}" disable_xr "${DISABLE_XR}")
+json_set_bool(_json "${_json}" rendering_device "${ENABLE_RENDERING_DEVICE}")
+json_set_bool(_json "${_json}" vulkan "${ENABLE_VULKAN}")
 json_set_bool(_json "${_json}" d3d12 FALSE)
-json_set_bool(_json "${_json}" metal ${WANT_METAL})
-json_set_bool(_json "${_json}" openxr ${WANT_OPENXR})
-json_set_bool(_json "${_json}" module_retrofx_enabled ${WANT_RETROFX})
+json_set_bool(_json "${_json}" metal "${ENABLE_METAL}")
+json_set_bool(_json "${_json}" openxr "${ENABLE_OPENXR}")
+json_set_bool(_json "${_json}" module_retrofx_enabled "${ENABLE_RETROFX}")
 json_set_bool(_json "${_json}" opengl3 TRUE)
 json_set_bool(_json "${_json}" minizip TRUE)
 json_set_bool(_json "${_json}" builtin_certs TRUE)

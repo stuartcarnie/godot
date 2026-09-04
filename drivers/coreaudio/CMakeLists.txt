@@ -1,4 +1,4 @@
-if(${WANT_COREAUDIO})
+if(ENABLE_COREAUDIO)
     godot_add_library(coreaudio FOLDER drivers STATIC)
     # [[[cog
     #   import cog

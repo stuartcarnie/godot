@@ -90,7 +90,7 @@ target_include_directories(editor PRIVATE
         ${CMAKE_BINARY_INCLUDE_DIR}/editor
         ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(editor PRIVATE
-        $<$<BOOL:${WANT_ENGINE_UPDATE_CHECK}>:ENGINE_UPDATE_CHECK_ENABLED>
+        $<$<BOOL:${ENABLE_ENGINE_UPDATE_CHECK}>:ENGINE_UPDATE_CHECK_ENABLED>
 )
 set_property(TARGET editor PROPERTY CXX_STANDARD 17)
 

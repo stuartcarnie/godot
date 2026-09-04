@@ -1,4 +1,4 @@
-add_compile_definitions($<$<BOOL:${WANT_METAL}>:METAL_ENABLED>)
+add_compile_definitions($<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED>)
 
 add_subdirectory(dummy)
 add_subdirectory(renderer_rd)

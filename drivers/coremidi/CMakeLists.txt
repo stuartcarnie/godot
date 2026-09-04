@@ -1,4 +1,4 @@
-if(${WANT_COREMIDI})
+if(ENABLE_COREMIDI)
     godot_add_library(coremidi FOLDER drivers STATIC)
     # [[[cog
     #   import cog

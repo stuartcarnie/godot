@@ -45,14 +45,15 @@ target_sources(godot-module-betsy PRIVATE
 
 target_link_libraries(godot-module-betsy PUBLIC
         core
-        $<$<BOOL:${WANT_VULKAN}>:vulkan>
-        $<$<BOOL:${WANT_METAL}>:metal>
+        $<$<BOOL:${ENABLE_VULKAN}>:vulkan>
+        $<$<BOOL:${ENABLE_METAL}>:metal>
 )
 target_include_directories(godot-module-betsy PRIVATE ${BETSY_GENERATED_OUTPUT_DIR})
 target_compile_definitions(godot-module-betsy
         PRIVATE
-        $<$<AND:$<BOOL:${WANT_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED RD_ENABLED>
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED RD_ENABLED>
+        $<$<BOOL:${ENABLE_RENDERING_DEVICE}>:RD_ENABLED>
+        $<$<AND:$<BOOL:${ENABLE_VULKAN}>,$<BOOL:${VULKAN_FOUND}>>:VULKAN_ENABLED>
+        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED>
 )
 
 group_target_sources(godot-module-betsy)

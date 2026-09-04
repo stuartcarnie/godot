@@ -1,4 +1,4 @@
-if (${WANT_VULKAN} AND ${VULKAN_FOUND})
+if (ENABLE_VULKAN AND VULKAN_FOUND)
     godot_add_library(vulkan FOLDER thirdparty STATIC)
     target_sources(vulkan PRIVATE
             include/vulkan/vulkan_ggp.h
@@ -54,7 +54,7 @@ if (${WANT_VULKAN} AND ${VULKAN_FOUND})
     else ()
         message(ERROR "Vulkan not supported correctly on this platform. Revise CMakeLists.txt for thirdparty/vulkan.")
     endif ()
-    if (WANT_VOLK)
+    if (ENABLE_VOLK)
         target_link_libraries(vulkan PUBLIC volk)
     endif ()
 endif ()

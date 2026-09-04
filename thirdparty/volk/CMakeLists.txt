@@ -1,4 +1,4 @@
-if(${WANT_VOLK} AND ${WANT_VULKAN} AND ${VULKAN_FOUND})
+if(ENABLE_VOLK AND ENABLE_VULKAN AND VULKAN_FOUND)
     godot_add_library(volk FOLDER thirdparty STATIC)
     target_sources(volk PRIVATE
             volk.c

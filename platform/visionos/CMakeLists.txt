@@ -49,16 +49,16 @@ target_sources(visionos PRIVATE
 
 target_link_libraries(visionos
         PUBLIC
-        $<$<BOOL:${WANT_METAL}>:metal>
+        $<$<BOOL:${ENABLE_METAL}>:metal>
         PRIVATE
         apple_embedded
 )
 target_compile_definitions(visionos
         PUBLIC
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED>
-        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED>
-        $<${WANT_COREMIDI}:COREMIDI_ENABLED>
-        $<${WANT_SDL}:SDL_ENABLED>
+        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED>
+        $<$<BOOL:${ENABLE_COREAUDIO}>:COREAUDIO_ENABLED>
+        $<$<BOOL:${ENABLE_COREMIDI}>:COREMIDI_ENABLED>
+        $<$<BOOL:${ENABLE_SDL}>:SDL_ENABLED>
 )
 target_compile_options(visionos
         PRIVATE

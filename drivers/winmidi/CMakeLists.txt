@@ -1,4 +1,4 @@
-if (${WANT_WINMIDI})
+if (ENABLE_WINMIDI)
     godot_add_library(driver-winmidi FOLDER drivers STATIC)
     # [[[cog
     #   import cog

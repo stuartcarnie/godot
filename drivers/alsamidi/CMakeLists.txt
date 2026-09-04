@@ -1,4 +1,4 @@
-if (${WANT_ALSA} AND ${ALSA_FOUND})
+if (ENABLE_ALSA AND ALSA_FOUND)
     godot_add_library(alsamidi STATIC)
     # [[[cog
     #   import cog

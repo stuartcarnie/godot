@@ -1,4 +1,4 @@
-if (${WANT_PULSEAUDIO} AND ${PULSEAUDIO_FOUND})
+if (ENABLE_PULSEAUDIO AND PULSEAUDIO_FOUND)
     godot_add_library(pulseaudio FOLDER drivers STATIC)
     # [[[cog
     #   import cog

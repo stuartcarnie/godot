@@ -1,4 +1,4 @@
-if (${WANT_VULKAN} AND ${VULKAN_FOUND})
+if (ENABLE_VULKAN AND VULKAN_FOUND)
     godot_add_library(driver-vulkan FOLDER drivers STATIC)
     # [[[cog
     #   import cog

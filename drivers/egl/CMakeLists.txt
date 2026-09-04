@@ -13,6 +13,6 @@ target_sources(egl PRIVATE
 )
 # [[[end]]]
 
-target_link_libraries(egl PUBLIC core $<${WANT_GLAD}:glad>)
+target_link_libraries(egl PUBLIC core $<$<BOOL:${ENABLE_GLAD}>:glad>)
 
 group_target_sources(egl)

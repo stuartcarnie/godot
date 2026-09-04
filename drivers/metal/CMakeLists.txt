@@ -47,7 +47,7 @@ set_target_properties(metal PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON
 )
-target_link_libraries(metal PUBLIC core spirv-cross metal-cpp)
+target_link_libraries(metal PUBLIC core spirv-cross metal-cpp offset-allocator)
 target_compile_definitions(metal
         PUBLIC
         METAL_ENABLED

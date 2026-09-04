@@ -11,6 +11,8 @@ target_sources(manifold PRIVATE
         include/manifold/common.h
         include/manifold/linalg.h
         include/manifold/manifold.h
+        include/manifold/math.h
+        include/manifold/mesh.h
         include/manifold/optional_assert.h
         include/manifold/polygon.h
         include/manifold/vec_view.h
@@ -23,6 +25,8 @@ target_sources(manifold PRIVATE
         src/csg_tree.h
         src/disjoint_sets.h
         src/edge_op.cpp
+        src/execution_impl.cpp
+        src/execution_impl.h
         src/face_op.cpp
         src/hashtable.h
         src/impl.cpp
@@ -30,8 +34,10 @@ target_sources(manifold PRIVATE
         src/iters.h
         src/manifold.cpp
         src/mesh_fixes.h
+        src/minkowski.cpp
         src/parallel.h
         src/polygon.cpp
+        src/polygon_internal.h
         src/properties.cpp
         src/quickhull.cpp
         src/quickhull.h

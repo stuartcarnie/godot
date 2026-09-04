@@ -1,3 +1,5 @@
+add_subdirectory(shader_baker)
+
 # [[[cog
 #   import cog
 #   from cmake_builders import list_files
@@ -41,8 +43,6 @@ target_sources(editor PRIVATE
         project_zip_packer.cpp
         project_zip_packer.h
         register_exporters.h
-        shader_baker_export_plugin.cpp
-        shader_baker_export_plugin.h
 )
 # [[[end]]]
 

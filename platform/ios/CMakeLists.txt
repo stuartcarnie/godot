@@ -42,16 +42,16 @@ target_sources(ios PRIVATE
         ${CMAKE_SOURCE_DIR}/drivers/apple_embedded/godot_swiftui_view_controller.swift
 )
 
-if (${WANT_OPENGL})
+if (ENABLE_OPENGL)
     target_link_libraries(ios PUBLIC OpenGLES3::ES3)
     target_link_libraries(ios PUBLIC gles3)
-    if (WANT_ANGLE)
+    if (ENABLE_ANGLE)
         target_link_libraries(ios PRIVATE angle)
     endif ()
     target_compile_definitions(ios PRIVATE GLES3_ENABLED)
 endif ()
 
-if (${WANT_VULKAN} AND ${VULKAN_FOUND})
+if (ENABLE_VULKAN AND VULKAN_FOUND)
     target_link_libraries(ios PUBLIC driver-vulkan vulkan
             $<LINK_LIBRARY:FRAMEWORK,${MOLTENVK_FOUND}>)
     target_compile_definitions(ios PRIVATE VULKAN_ENABLED)
@@ -59,16 +59,16 @@ endif ()
 
 target_link_libraries(ios
         PUBLIC
-        $<$<BOOL:${WANT_METAL}>:metal>
+        $<$<BOOL:${ENABLE_METAL}>:metal>
         PRIVATE
         apple_embedded
 )
 target_compile_definitions(ios
         PUBLIC
-        $<$<BOOL:${WANT_METAL}>:METAL_ENABLED>
-        $<${WANT_COREAUDIO}:COREAUDIO_ENABLED>
-        $<${WANT_COREMIDI}:COREMIDI_ENABLED>
-        $<${WANT_SDL}:SDL_ENABLED>
+        $<$<BOOL:${ENABLE_METAL}>:METAL_ENABLED>
+        $<$<BOOL:${ENABLE_COREAUDIO}>:COREAUDIO_ENABLED>
+        $<$<BOOL:${ENABLE_COREMIDI}>:COREMIDI_ENABLED>
+        $<$<BOOL:${ENABLE_SDL}>:SDL_ENABLED>
 )
 target_compile_options(ios
         PRIVATE

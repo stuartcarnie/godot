@@ -1,4 +1,4 @@
-if (${WANT_ALSA} AND ${ALSA_FOUND})
+if (ENABLE_ALSA AND ALSA_FOUND)
     # [[[cog
     #   import cog
     #   from cmake_builders import list_files
@@ -19,7 +19,7 @@ if (${WANT_ALSA} AND ${ALSA_FOUND})
     target_link_libraries(drivers PUBLIC linuxbsd-headers ${ALSA_LIBRARIES})
 
     #Inform that pulse audio is available
-    if (${WANT_PULSEAUDIO} AND ${PULSEAUDIO_FOUND})
+    if (ENABLE_PULSEAUDIO AND PULSEAUDIO_FOUND)
         message(STATUS, "Found PulseAudio library")
         target_compile_definitions(drivers PRIVATE "-DPULSEAUDIO_ENABLED")
     else ()

@@ -1,4 +1,4 @@
-if (${WANT_OPENGL} AND ${OPENGL_FOUND})
+if (ENABLE_OPENGL AND OPENGL_FOUND)
     godot_add_library(glad FOLDER thirdparty STATIC)
     target_sources(glad PRIVATE
             glad/glx.h

@@ -54,12 +54,12 @@ target_link_libraries(platform-windows PUBLIC driver-windows driver-wasapi zlib)
 # Libraries provided by Windows SDK and DirectX
 target_link_libraries(platform-windows PUBLIC dinput8 dxguid dwrite avrt dwmapi imm32 wbemuuid)
 
-if(${WANT_OPENGL} AND ${OPENGL_FOUND})
+if(ENABLE_OPENGL AND OPENGL_FOUND)
     target_link_libraries(platform-windows PUBLIC OpenGL::GL)
 	target_link_libraries(platform-windows PUBLIC gles3)
 endif()
 
-if(${WANT_VULKAN} AND ${VULKAN_FOUND})
+if(ENABLE_VULKAN AND VULKAN_FOUND)
     target_link_libraries(platform-windows PUBLIC vulkan glad volk)
 	target_link_libraries(platform-windows PUBLIC driver-vulkan)
 

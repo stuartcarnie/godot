@@ -1,4 +1,4 @@
-if (${WANT_WASAPI})
+if (ENABLE_WASAPI)
     godot_add_library(driver-wasapi FOLDER drivers STATIC)
     # [[[cog
     #   import cog
