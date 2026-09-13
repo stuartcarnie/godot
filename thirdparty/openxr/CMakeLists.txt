@@ -22,6 +22,7 @@ target_sources(openxr PRIVATE
         src/common/hex_and_handles.h
         src/common/object_info.cpp
         src/common/object_info.h
+        src/common/platform_exports.h
         src/common/platform_utils.hpp
         src/common/stdfs_conditions.h
         src/common/unique_asset.h

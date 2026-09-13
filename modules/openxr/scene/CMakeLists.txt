@@ -15,6 +15,8 @@ target_sources(godot-module-openxr PRIVATE
         openxr_composition_layer_equirect.h
         openxr_composition_layer_quad.cpp
         openxr_composition_layer_quad.h
+        openxr_foveated_inset_viewport.cpp
+        openxr_foveated_inset_viewport.h
         openxr_hand.cpp
         openxr_hand.h
         openxr_render_model.cpp

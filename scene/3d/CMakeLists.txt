@@ -24,8 +24,8 @@ target_sources(scene PRIVATE
         bone_attachment_3d.h
         bone_constraint_3d.cpp
         bone_constraint_3d.h
-        bone_spreader_3d.cpp
-        bone_spreader_3d.h
+        bone_space_adjuster_3d.cpp
+        bone_space_adjuster_3d.h
         bone_twist_disperser_3d.cpp
         bone_twist_disperser_3d.h
         camera_3d.cpp

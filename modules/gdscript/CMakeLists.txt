@@ -53,6 +53,8 @@ target_sources(godot-module-gdscript PRIVATE
         gdscript_function.h
         gdscript_lambda_callable.cpp
         gdscript_lambda_callable.h
+        gdscript_linter.cpp
+        gdscript_linter.h
         gdscript_parser.cpp
         gdscript_parser.h
         gdscript_resource_format.cpp

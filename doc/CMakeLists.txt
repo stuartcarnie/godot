@@ -91,6 +91,7 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRDpadBindingModifier.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRExtensionWrapper.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRExtensionWrapperExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRFoveatedInsetViewport.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRFrameSynthesisExtension.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRFutureExtension.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRFutureResult.xml
@@ -129,6 +130,9 @@ set(GODOT_SOURCE_CLASS_MODULE_DOCUMENTATION_SOURCE
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentPlaneAlignmentList.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentPlaneSemanticLabelList.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialComponentPolygon2DList.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialContainerExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialContainerSelfRenderingExtension.xml
+        ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialContainerState.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialContextPersistenceConfig.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialEntityExtension.xml
         ${CMAKE_SOURCE_DIR}/modules/openxr/doc_classes/OpenXRSpatialEntityTracker.xml
@@ -410,7 +414,7 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/BoneAttachment3D.xml
         classes/BoneConstraint3D.xml
         classes/BoneMap.xml
-        classes/BoneSpreader3D.xml
+        classes/BoneSpaceAdjuster3D.xml
         classes/BoneTwistDisperser3D.xml
         classes/BoxContainer.xml
         classes/BoxMesh.xml

@@ -16,5 +16,9 @@ target_sources(godot-module-etcpak PRIVATE
         register_types.h
 )
 # [[[end]]]
+target_compile_definitions(godot-module-etcpak
+        PUBLIC
+        $<${WANT_EDITOR}:ETCPAK_COMPRESS_ENABLED>
+)
 target_link_libraries(godot-module-etcpak PUBLIC core etcpak)
 group_target_sources(godot-module-etcpak)

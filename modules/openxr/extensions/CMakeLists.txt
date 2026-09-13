@@ -30,6 +30,8 @@ target_sources(godot-module-openxr PRIVATE
         openxr_fb_foveation_extension.h
         openxr_fb_update_swapchain_extension.cpp
         openxr_fb_update_swapchain_extension.h
+        openxr_foveated_inset_extension.cpp
+        openxr_foveated_inset_extension.h
         openxr_frame_synthesis_extension.cpp
         openxr_frame_synthesis_extension.h
         openxr_future_extension.cpp
