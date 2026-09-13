@@ -4729,7 +4729,7 @@ RID RenderingDevice::uniform_set_create(const VectorView<RD::Uniform> &p_uniform
 
 						if (set_uniform.writable) {
 							draw_trackers_usage.push_back(RDG::RESOURCE_USAGE_TEXTURE_BUFFER_READ_WRITE);
-						} else {
+					} else {
 							draw_trackers_usage.push_back(RDG::RESOURCE_USAGE_TEXTURE_BUFFER_READ);
 						}
 					} else {
@@ -7957,7 +7957,8 @@ void RenderingDevice::texture_replace_rid(RID p_old_texture, RID p_new_texture) 
 		us->driver_id = new_us->driver_id;
 		us->format = new_us->format;
 		us->attachable_textures = new_us->attachable_textures;
-		us->draw_tracked_resources = new_us->draw_tracked_resources;
+		us->draw_trackers = new_us->draw_trackers;
+		us->draw_trackers_usage = new_us->draw_trackers_usage;
 		us->untracked_usage = new_us->untracked_usage;
 		us->shared_textures_to_update = new_us->shared_textures_to_update;
 		us->pending_clear_textures = new_us->pending_clear_textures;
@@ -8159,9 +8160,22 @@ void RenderingDevice::submit() {
 	ERR_FAIL_COND_MSG(is_main_instance, "Only local devices can submit and sync.");
 	ERR_FAIL_COND_MSG(local_device_processing, "device already submitted, call sync to wait until done.");
 
+	if (gpu_capture_state == GPU_CAPTURE_STATE_BEGINNING_SUBMIT) {
+		gpu_capture_state = GPU_CAPTURE_STATE_CAPTURING_SUBMIT;
+		driver->gpu_capture_begin();
+	}
+
 	_end_frame();
 	_execute_frame(false);
 	local_device_processing = true;
+
+	if (unlikely(gpu_capture_state == GPU_CAPTURE_STATE_CAPTURING_SUBMIT)) {
+		gpu_capture_count--;
+		if (gpu_capture_count == 0) {
+			gpu_capture_state = GPU_CAPTURE_STATE_IDLE;
+			driver->gpu_capture_end();
+		}
+	}
 }
 
 void RenderingDevice::sync() {
@@ -8432,11 +8446,6 @@ void RenderingDevice::execute_chained_cmds(bool p_present_swap_chain, RenderingD
 	thread_local LocalVector<RDD::SemaphoreID> wait_semaphores;
 	wait_semaphores = frames[frame].semaphores_to_wait_on;
 
-	if (gpu_capture_state == GPU_CAPTURE_STATE_BEGINNING_SUBMIT) {
-		gpu_capture_state = GPU_CAPTURE_STATE_CAPTURING_SUBMIT;
-		driver->gpu_capture_begin();
-	}
-
 	for (uint32_t i = 0; i < command_buffer_count; i++) {
 		RDD::CommandBufferID command_buffer;
 		RDD::SemaphoreID signal_semaphore;
@@ -8468,14 +8477,6 @@ void RenderingDevice::execute_chained_cmds(bool p_present_swap_chain, RenderingD
 		// Make the next command buffer wait on the semaphore signaled by this one.
 		wait_semaphores.resize(1);
 		wait_semaphores[0] = signal_semaphore;
-
-		if (UNLIKELY(gpu_capture_state == GPU_CAPTURE_STATE_CAPTURING_SUBMIT)) {
-			gpu_capture_count--;
-			if (gpu_capture_count == 0) {
-				gpu_capture_state = GPU_CAPTURE_STATE_IDLE;
-				driver->gpu_capture_end();
-			}
-		}
 	}
 
 	frames[frame].semaphores_to_wait_on.clear();
@@ -9523,6 +9524,8 @@ void RenderingDevice::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_captured_timestamp_cpu_time", "index"), &RenderingDevice::get_captured_timestamp_cpu_time);
 	ClassDB::bind_method(D_METHOD("get_captured_timestamp_name", "index"), &RenderingDevice::get_captured_timestamp_name);
 
+	ClassDB::bind_method(D_METHOD("gpu_capture_begin", "type", "count"), &RenderingDevice::gpu_capture_begin, DEFVAL(GPU_CAPTURE_PER_FRAME), DEFVAL(1));
+
 	ClassDB::bind_method(D_METHOD("has_feature", "feature"), &RenderingDevice::has_feature);
 	ClassDB::bind_method(D_METHOD("limit_get", "limit"), &RenderingDevice::limit_get);
 	ClassDB::bind_method(D_METHOD("get_frame_delay"), &RenderingDevice::get_frame_delay);
@@ -10188,6 +10191,9 @@ void RenderingDevice::_bind_methods() {
 	BIND_BITFIELD_FLAG(DRAW_IGNORE_STENCIL);
 	BIND_BITFIELD_FLAG(DRAW_CLEAR_ALL);
 	BIND_BITFIELD_FLAG(DRAW_IGNORE_ALL);
+
+	BIND_ENUM_CONSTANT(GPU_CAPTURE_PER_FRAME);
+	BIND_ENUM_CONSTANT(GPU_CAPTURE_PER_SUBMIT);
 }
 
 void RenderingDevice::make_current() {
@@ -10203,7 +10209,6 @@ RenderingDevice::~RenderingDevice() {
 }
 
 RenderingDevice::RenderingDevice() {
-	configure_render_graph_flags();
 	if (singleton == nullptr) {
 		singleton = this;
 	}

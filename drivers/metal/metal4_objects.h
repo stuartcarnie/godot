@@ -55,9 +55,10 @@
 
 #include "servers/rendering/rendering_device_driver.h"
 
-#include <zlib.h>
 #include <Foundation/Foundation.hpp>
 #include <Metal/Metal.hpp>
+#include <zlib.h>
+
 #include <initializer_list>
 #include <optional>
 
@@ -92,14 +93,12 @@ private:
 	/// Default size for the per-frame scratch buffers is 2MiB.
 	static constexpr uint32_t DEFAULT_SCRATCH_SIZE = 1024 * 1024 * 2;
 
-	enum {
-		STAGE_RENDER,
-		STAGE_COMPUTE,
-		STAGE_MAX,
-	};
-	MTL::Stages pending_after_stages[STAGE_MAX] = { 0, 0 };
-	MTL::Stages pending_before_queue_stages[STAGE_MAX] = { 0, 0 };
-	void _encode_barrier(MTL4::CommandEncoder *p_enc);
+	// Level-fence hooks. Called once per encoder: _fence_wait right after
+	// creation, _fence_update immediately before endEncoding.
+	void _fence_wait(MTL4::RenderCommandEncoder *p_enc);
+	void _fence_wait(MTL4::ComputeCommandEncoder *p_enc);
+	void _fence_update(MTL4::RenderCommandEncoder *p_enc);
+	void _fence_update(MTL4::ComputeCommandEncoder *p_enc);
 
 	void reset();
 
@@ -107,22 +106,18 @@ private:
 	NS::SharedPtr<MTL4::CommandBuffer> command_buffer;
 	bool state_begin = false;
 
-	struct PendingBarrier {
-		MTL::Stages src_stages;
-		MTL::Stages dst_stages;
-		MTL4::VisibilityOptions visibility;
-	};
-
-	struct {
-		NS::SharedPtr<MTL::ResidencySet> rs;
-	} _frame_state;
-
 	MDRingBuffer _scratch;
 	// Used by render_clear_attachments
 	NS::SharedPtr<MTL4::ArgumentTable> _args_clear;
 
-	void _end_compute_dispatch();
-	MTL4::ComputeCommandEncoder *_ensure_blit_encoder();
+	void _end_compute();
+	void _end_inline_render();
+	void _pop_active_encoder_labels();
+	void _set_inline_render_encoder(MTL4::RenderCommandEncoder *p_encoder);
+	// Metal 4 folds blit commands into the compute encoder, so one encoder serves
+	// every compute list and transfer in a graph level. It opens on first use and
+	// closes at the level boundary (command_group_end) or when a render pass starts.
+	MTL4::ComputeCommandEncoder *_ensure_compute_encoder();
 
 	enum class CopySource {
 		Buffer,
@@ -155,7 +150,10 @@ protected:
 	const MDSubpass &get_current_subpass() const override { return render.get_subpass(); }
 	LocalVector<RDD::RenderPassClearValue> &get_clear_values() override { return render.clear_values; }
 	const Rect2i &get_render_area() const override { return render.render_area; }
-	void end_render_encoding() override { render.end_encoding(); }
+	void end_render_encoding() override {
+		_fence_update(render.encoder.get());
+		render.end_encoding();
+	}
 
 public:
 	struct RenderState : public RenderStateBase {
@@ -163,7 +161,7 @@ public:
 		MDFrameBuffer *frameBuffer = nullptr;
 		MDRenderPipeline *pipeline = nullptr;
 		LocalVector<RDD::RenderPassClearValue> clear_values;
-		uint32_t current_subpass = UINT32_MAX;
+		MDSubpass *current_subpass = nullptr;
 		Rect2i render_area = {};
 		bool is_rendering_entire_area = false;
 		NS::SharedPtr<MTL4::RenderPassDescriptor> desc;
@@ -182,12 +180,22 @@ public:
 		// Bit mask of the uniform sets that are dirty, to prevent redundant binding.
 		uint64_t uniform_set_mask = 0;
 
+		// Mirror of the raster state currently programmed into the active encoder. A freshly
+		// created render command encoder starts at Metal's defaults (fill Fill, clip Clip,
+		// winding Clockwise, cull None, bias 0, stencil ref 0, blend 0), which are exactly the
+		// defaults of RasterState, so no "valid" flag is needed. Reset it whenever a new
+		// encoder is created, and update it anywhere raster state is written directly.
+		MDRenderPipeline::RasterState encoder_raster;
+
+		// Raster state for the next draw: the bound pipeline's, with dynamic state overlaid.
+		MDRenderPipeline::RasterState raster_state;
+
 		_FORCE_INLINE_ void reset();
 		void end_encoding();
 
 		_ALWAYS_INLINE_ const MDSubpass &get_subpass() const {
-			DEV_ASSERT(pass != nullptr);
-			return pass->subpasses[current_subpass];
+			DEV_ASSERT(current_subpass != nullptr);
+			return *current_subpass;
 		}
 
 		_FORCE_INLINE_ void mark_viewport_dirty() {
@@ -233,13 +241,6 @@ public:
 				}
 			}
 			dirty.set_flag(DirtyFlag::DIRTY_UNIFORMS);
-		}
-
-		_FORCE_INLINE_ void mark_blend_dirty() {
-			if (!blend_constants.has_value()) {
-				return;
-			}
-			dirty.set_flag(DirtyFlag::DIRTY_BLEND);
 		}
 
 		MTL::ScissorRect clip_to_render_area(MTL::ScissorRect p_rect) const {
@@ -294,6 +295,8 @@ public:
 		// Bit mask of the uniform sets that are dirty, to prevent redundant binding.
 		uint64_t uniform_set_mask = 0;
 
+		// Clears the per-list bindings but keeps the encoder open.
+		_FORCE_INLINE_ void reset_bindings();
 		_FORCE_INLINE_ void reset();
 		void end_encoding();
 
@@ -310,13 +313,21 @@ public:
 		}
 	} compute;
 
+	struct {
+		NS::SharedPtr<MTL4::RenderCommandEncoder> encoder;
+
+		_FORCE_INLINE_ void reset() {
+			encoder.reset();
+		}
+	} inline_render;
+
 	_FORCE_INLINE_ MTL4::CommandBuffer *get_command_buffer() const {
 		return command_buffer.get();
 	}
 
-	void begin() override;
-	void commit() override;
-	void end() override;
+	void _begin() override;
+	void _commit() override;
+	void _end() override;
 
 	void bind_pipeline(RDD::PipelineID p_pipeline) override;
 
@@ -352,6 +363,8 @@ public:
 
 #pragma mark - Compute Commands
 
+	void compute_begin_pass() override;
+	void compute_end_pass() override;
 	void compute_bind_uniform_sets(VectorView<RDD::UniformSetID> p_uniform_sets, RDD::ShaderID p_shader, uint32_t p_first_set_index, uint32_t p_set_count, uint32_t p_dynamic_offsets) override;
 	void compute_dispatch(uint32_t p_x_groups, uint32_t p_y_groups, uint32_t p_z_groups) override;
 	void compute_dispatch_indirect(RDD::BufferID p_indirect_buffer, uint64_t p_offset) override;

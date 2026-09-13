@@ -30,6 +30,8 @@
 
 #include "rendering_device_graph.h"
 
+#include "core/os/os.h"
+
 #ifdef __APPLE__
 #include "drivers/apple/apple_tracing.h"
 
@@ -1294,7 +1296,7 @@ void RenderingDeviceGraph::_run_render_commands(int32_t p_level, const RecordedC
 		const uint32_t command_index = p_sorted_commands[i].index;
 		const uint32_t command_data_offset = command_data_offsets[command_index];
 		const RecordedCommand *command = reinterpret_cast<const RecordedCommand *>(&command_data[command_data_offset]);
-		_run_label_command_change(r_command_buffer, command->label_index, p_level, false, true, &p_sorted_commands[i], p_sorted_commands_count - i, r_current_label_index, r_current_label_level);
+		_run_label_command_change(r_command_buffer, command->label_index, p_level, false, r_current_label_index, r_current_label_level);
 
 		switch (command->type) {
 			case RecordedCommand::TYPE_BOTTOM_LEVEL_ACCELERATION_STRUCTURE_BUILD: {
@@ -1444,167 +1446,76 @@ void RenderingDeviceGraph::_run_render_commands(int32_t p_level, const RecordedC
 	driver->command_group_end(r_command_buffer);
 }
 
-// Sentinel value indicating "Command Graph" empty label is active on the GPU stack.
-static constexpr int32_t LABEL_INDEX_EMPTY = -2;
-
-void RenderingDeviceGraph::_run_label_command_change(RDD::CommandBufferID p_command_buffer, int32_t p_new_label_index, int32_t p_new_level, bool p_ignore_previous_value, bool p_use_label_for_empty, const RecordedCommandSort *p_sorted_commands, uint32_t p_sorted_commands_count, int32_t &r_current_label_index, int32_t &r_current_label_level) {
-	if (command_label_count == 0 && !p_use_label_for_empty) {
-		// Ignore any label operations if no labels were pushed and we don't need an empty label.
+void RenderingDeviceGraph::_run_label_command_change(RDD::CommandBufferID p_command_buffer, int32_t p_new_label_index, int32_t p_new_level, bool p_ignore_previous_value, int32_t &r_current_label_index, int32_t &r_current_label_level) {
+	if (command_label_count == 0) {
+		// Ignore any label operations if no labels were pushed.
+		return;
+	}
+	if (!p_ignore_previous_value && p_new_label_index == r_current_label_index && p_new_level == r_current_label_level) {
 		return;
 	}
 
-	// Determine target label index: use sentinel for empty label case.
-	int32_t target_label_index = p_new_label_index;
-	if (p_new_label_index < 0 && p_use_label_for_empty) {
-		target_label_index = LABEL_INDEX_EMPTY;
-	}
-
-	if (!p_ignore_previous_value && target_label_index == r_current_label_index && p_new_level == r_current_label_level) {
-		// No change needed.
-		return;
-	}
-
-	// Build path from root to current label.
 	thread_local LocalVector<int32_t> current_path;
 	thread_local LocalVector<int32_t> new_path;
-
 	current_path.clear();
 	new_path.clear();
 
-	if (!p_ignore_previous_value) {
-		// Check if "Command Graph" empty label is active.
-		if (r_current_label_index == LABEL_INDEX_EMPTY) {
-			current_path.push_back(LABEL_INDEX_EMPTY);
-		} else {
-			// Build current path (innermost to root).
-			for (int32_t idx = r_current_label_index; idx >= 0; idx = command_label_parents[idx]) {
-				current_path.push_back(idx);
-			}
-			// Reverse to get root-to-leaf order.
-			for (uint32_t i = 0; i < current_path.size() / 2; i++) {
-				SWAP(current_path[i], current_path[current_path.size() - 1 - i]);
-			}
-		}
-	}
+	const bool had_level = !p_ignore_previous_value && r_current_label_level >= 0;
+	const bool need_level = p_new_level >= 0;
+	const bool level_changed = p_ignore_previous_value || p_new_level != r_current_label_level;
 
-	// Build new path.
-	if (target_label_index == LABEL_INDEX_EMPTY) {
-		new_path.push_back(LABEL_INDEX_EMPTY);
-	} else if (p_new_label_index >= 0) {
-		// Build new path (innermost to root).
-		for (int32_t idx = p_new_label_index; idx >= 0; idx = command_label_parents[idx]) {
-			new_path.push_back(idx);
+	auto build_path = [&](int32_t leaf, LocalVector<int32_t> &out) {
+		if (leaf < 0) {
+			return;
 		}
-		// Reverse to get root-to-leaf order.
-		for (uint32_t i = 0; i < new_path.size() / 2; i++) {
-			SWAP(new_path[i], new_path[new_path.size() - 1 - i]);
+		for (int32_t idx = leaf; idx >= 0; idx = command_label_parents[idx]) {
+			out.push_back(idx);
 		}
-	}
+		for (uint32_t i = 0; i < out.size() / 2; i++) {
+			SWAP(out[i], out[out.size() - 1 - i]);
+		}
+	};
 
-	// Find common prefix length.
+	if (had_level) {
+		build_path(r_current_label_index, current_path);
+	}
+	build_path(p_new_label_index, new_path);
+
 	uint32_t common_len = 0;
-	while (common_len < current_path.size() && common_len < new_path.size() &&
-			current_path[common_len] == new_path[common_len]) {
-		common_len++;
+	if (!level_changed) {
+		while (common_len < current_path.size() && common_len < new_path.size() &&
+				current_path[common_len] == new_path[common_len]) {
+			common_len++;
+		}
 	}
 
-	// Pop labels from current down to common ancestor.
-	for (uint32_t i = current_path.size(); i > common_len; i--) {
+	const uint32_t labels_to_pop = level_changed ? current_path.size() : current_path.size() - common_len;
+	for (uint32_t i = 0; i < labels_to_pop; i++) {
 		driver->command_end_label(p_command_buffer);
 	}
 
-	// Push labels from common ancestor up to new label.
-	for (uint32_t i = common_len; i < new_path.size(); i++) {
-		int32_t label_idx = new_path[i];
+	if (level_changed && had_level) {
+		driver->command_end_label(p_command_buffer);
+	}
 
-		// Handle "Command Graph" empty label.
-		if (label_idx == LABEL_INDEX_EMPTY) {
-			driver->command_begin_label(p_command_buffer, "Command Graph", Color(1, 1, 1, 1));
-			continue;
-		}
+	if (level_changed && need_level) {
+		String level_name = "Level " + itos(p_new_level);
+		CharString level_name_utf8 = level_name.utf8();
 
-		const char *label_chars = &command_label_chars[command_label_offsets[label_idx]];
-		Color label_color = command_label_colors[label_idx];
+		driver->command_begin_label(p_command_buffer, level_name_utf8.get_data(), Color(1, 1, 1, 1));
+	}
 
-		// For the innermost (leaf) label, add level and operation type annotations.
-		if (i == new_path.size() - 1) {
-			String label_name;
-			label_name.append_utf8(label_chars);
-			label_name += " (L" + itos(p_new_level) + ")";
-
-			if (p_sorted_commands != nullptr && p_sorted_commands_count > 0) {
-				// Analyze the commands in the level that have the same label to detect what type of operations are performed.
-				bool copy_commands = false;
-				bool compute_commands = false;
-				bool draw_commands = false;
-				bool custom_commands = false;
-				for (uint32_t j = 0; j < p_sorted_commands_count; j++) {
-					const uint32_t command_index = p_sorted_commands[j].index;
-					const uint32_t command_data_offset = command_data_offsets[command_index];
-					const RecordedCommand *command = reinterpret_cast<RecordedCommand *>(&command_data[command_data_offset]);
-					if (command->label_index != p_new_label_index) {
-						break;
-					}
-
-					switch (command->type) {
-						case RecordedCommand::TYPE_BUFFER_CLEAR:
-						case RecordedCommand::TYPE_BUFFER_COPY:
-						case RecordedCommand::TYPE_BUFFER_GET_DATA:
-						case RecordedCommand::TYPE_BUFFER_UPDATE:
-						case RecordedCommand::TYPE_TEXTURE_CLEAR_COLOR:
-						case RecordedCommand::TYPE_TEXTURE_CLEAR_DEPTH_STENCIL:
-						case RecordedCommand::TYPE_TEXTURE_COPY:
-						case RecordedCommand::TYPE_TEXTURE_GET_DATA:
-						case RecordedCommand::TYPE_TEXTURE_RESOLVE:
-						case RecordedCommand::TYPE_TEXTURE_UPDATE: {
-							copy_commands = true;
-						} break;
-						case RecordedCommand::TYPE_COMPUTE_LIST: {
-							compute_commands = true;
-						} break;
-						case RecordedCommand::TYPE_DRAW_LIST: {
-							draw_commands = true;
-						} break;
-						case RecordedCommand::TYPE_DRIVER_CALLBACK: {
-							custom_commands = true;
-						} break;
-						default: {
-							// Ignore command.
-						} break;
-					}
-
-					if (copy_commands && compute_commands && draw_commands && custom_commands) {
-						// There's no more command types to find.
-						break;
-					}
-				}
-
-				if (copy_commands || compute_commands || draw_commands || custom_commands) {
-					// Add the operations to the name.
-					bool plus_after_copy = copy_commands && (compute_commands || draw_commands || custom_commands);
-					bool plus_after_compute = compute_commands && (draw_commands || custom_commands);
-					bool plus_after_draw = draw_commands && custom_commands;
-					label_name += " (";
-					label_name += copy_commands ? "Copy" : "";
-					label_name += plus_after_copy ? "+" : "";
-					label_name += compute_commands ? "Compute" : "";
-					label_name += plus_after_compute ? "+" : "";
-					label_name += draw_commands ? "Draw" : "";
-					label_name += plus_after_draw ? "+" : "";
-					label_name += custom_commands ? "Custom" : "";
-					label_name += ")";
-				}
-			}
-
-			CharString label_name_utf8 = label_name.utf8();
-			driver->command_begin_label(p_command_buffer, label_name_utf8.get_data(), label_color);
-		} else {
-			// Intermediate labels: emit as-is.
+	if (need_level) {
+		const uint32_t push_start = level_changed ? 0 : common_len;
+		for (uint32_t i = push_start; i < new_path.size(); i++) {
+			const int32_t label_idx = new_path[i];
+			const char *label_chars = &command_label_chars[command_label_offsets[label_idx]];
+			Color label_color = command_label_colors[label_idx];
 			driver->command_begin_label(p_command_buffer, label_chars, label_color);
 		}
 	}
 
-	r_current_label_index = target_label_index;
+	r_current_label_index = p_new_label_index;
 	r_current_label_level = p_new_level;
 }
 
@@ -2350,7 +2261,7 @@ void RenderingDeviceGraph::add_compute_list_dispatch_indirect(RDD::BufferID p_bu
 	instruction->type = ComputeListInstruction::TYPE_DISPATCH_INDIRECT;
 	instruction->buffer = p_buffer;
 	instruction->offset = p_offset;
-	compute_instruction_list.stages.set_flag(RDD::PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+	compute_instruction_list.stages.set_flag(RDD::PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 }
 
 void RenderingDeviceGraph::add_compute_list_set_push_constant(RDD::ShaderID p_shader, const void *p_data, uint32_t p_data_size) {
@@ -2996,7 +2907,7 @@ void RenderingDeviceGraph::end(bool p_reorder_commands, bool p_full_barriers, RD
 	if (command_count > 0) {
 		int32_t current_label_index = -1;
 		int32_t current_label_level = -1;
-		_run_label_command_change(r_command_buffer, -1, -1, true, true, nullptr, 0, current_label_index, current_label_level);
+		_run_label_command_change(r_command_buffer, -1, -1, true, current_label_index, current_label_level);
 
 		if (driver_workarounds.avoid_compute_after_draw) {
 			// Reset the state of the workaround.
@@ -3051,11 +2962,11 @@ void RenderingDeviceGraph::end(bool p_reorder_commands, bool p_full_barriers, RD
 		} else {
 			for (uint32_t i = 0; i < command_count; i++) {
 				_group_barriers_for_render_commands(r_command_buffer, &commands_sorted[i], 1, p_full_barriers);
-				_run_render_commands(i, &commands_sorted[i], 1, r_command_buffer, r_command_buffer_pool, current_label_index, current_label_level);
+				_run_render_commands(-1, &commands_sorted[i], 1, r_command_buffer, r_command_buffer_pool, current_label_index, current_label_level);
 			}
 		}
 
-		_run_label_command_change(r_command_buffer, -1, -1, false, false, nullptr, 0, current_label_index, current_label_level);
+		_run_label_command_change(r_command_buffer, -1, -1, false, current_label_index, current_label_level);
 
 #if PRINT_DRAW_LIST_STATS
 		print_line(vformat("Draw list %d bytes", draw_list_total_size));

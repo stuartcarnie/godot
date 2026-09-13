@@ -1779,7 +1779,7 @@ void SSEffects::screen_space_contact_shadows(Ref<RenderSceneBuffersRD> p_render_
 	MaterialStorage *material_storage = MaterialStorage::get_singleton();
 	ERR_FAIL_NULL(material_storage);
 
-	RD::get_singleton()->draw_command_begin_label("SSCS Main");
+	RD::DrawCommandLabel label = RD::get_singleton()->draw_command_label("SSCS Main");
 
 	uint32_t view_count = p_render_buffers->get_view_count();
 	RID sscs_shader = sscs.sscs_shader.version_get_shader(sscs.sscs_shader_version, 0);
@@ -1858,8 +1858,6 @@ void SSEffects::screen_space_contact_shadows(Ref<RenderSceneBuffersRD> p_render_
 		RD::get_singleton()->compute_list_dispatch(compute_list, wave_size, bound_size.x, bound_size.y);
 		RD::get_singleton()->compute_list_end();
 	}
-
-	RD::get_singleton()->draw_command_end_label();
 }
 
 /* Subsurface scattering */

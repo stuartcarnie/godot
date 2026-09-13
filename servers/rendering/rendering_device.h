@@ -2148,6 +2148,7 @@ VARIANT_BITFIELD_CAST(RenderingDevice::DrawFlags);
 VARIANT_BITFIELD_CAST(RenderingDevice::BarrierMask);
 VARIANT_ENUM_CAST(RenderingDevice::InitialAction)
 VARIANT_ENUM_CAST(RenderingDevice::FinalAction)
+VARIANT_ENUM_CAST(RenderingDevice::GpuCaptureType)
 #endif
 
 typedef RenderingDevice RD;
