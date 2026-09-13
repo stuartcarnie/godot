@@ -35,7 +35,6 @@
 #include "pixel_formats.h"
 #include "rendering_context_driver_metal.h"
 
-#include "core/config/project_settings.h"
 #include "core/string/ustring.h"
 
 namespace API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MTL4 {
@@ -94,21 +93,7 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 	// If we have swap chains to present, this must be the device_queue.
 	DEV_ASSERT((p_swap_chains.size() > 0 && queue == device_queue.get()) || p_swap_chains.size() == 0);
 
-	bool changed = false;
-	MTL::ResidencySet *mrs = main_residency_set.get();
-	if (!_residency_add.is_empty()) {
-		mrs->addAllocations(reinterpret_cast<const MTL::Allocation *const *>(_residency_add.ptr()), _residency_add.size());
-		_residency_add.clear();
-		changed = true;
-	}
-	if (!_residency_del.is_empty()) {
-		mrs->removeAllocations(reinterpret_cast<const MTL::Allocation *const *>(_residency_del.ptr()), _residency_del.size());
-		_residency_del.clear();
-		changed = true;
-	}
-	if (changed) {
-		mrs->commit();
-	}
+	_update_heap_residency();
 
 	uint32_t size = p_cmd_buffers.size();
 	if (size == 0) {
@@ -195,6 +180,33 @@ void RenderingDeviceDriverMetal::add_residency_set_to_main_queue(MTL::ResidencyS
 
 void RenderingDeviceDriverMetal::remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) {
 	device_queue->removeResidencySet(p_set);
+}
+
+void RenderingDeviceDriverMetal::_update_heap_residency() {
+	if (allocator->get_heap_generation() == resident_heap_generation) {
+		return;
+	}
+	LocalVector<MTL::Heap *> heaps;
+	resident_heap_generation = allocator->get_heaps(heaps);
+
+	MTL::ResidencySet *mrs = main_residency_set.get();
+	bool changed = false;
+	for (MTL::Heap *heap : heaps) {
+		if (resident_heaps.find(heap) < 0) {
+			mrs->addAllocation(heap);
+			changed = true;
+		}
+	}
+	for (MTL::Heap *heap : resident_heaps) {
+		if (heaps.find(heap) < 0) {
+			mrs->removeAllocation(heap);
+			changed = true;
+		}
+	}
+	if (changed) {
+		mrs->commit();
+	}
+	resident_heaps = heaps;
 }
 
 #pragma mark - Command Buffers
@@ -309,13 +321,19 @@ Error RenderingDeviceDriverMetal::_create_device() {
 	return OK;
 }
 
+void RenderingDeviceDriverMetal::_resolve_sync_mode() {
+	// Metal 4's driver path requires explicit synchronization rather than native hazard tracking.
+	if (sync_mode == HazardTracking) {
+		WARN_PRINT("Metal 4: Hazard tracking is not supported for Metal 4. Falling back to barriers.");
+		sync_mode = Barriers;
+	}
+	base_hazard_tracking = MTL::ResourceHazardTrackingModeUntracked;
+}
+
 Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p_frame_count) {
 	// Call base class shared initialization.
 	Error err = _initialize(p_device_index, p_frame_count);
 	ERR_FAIL_COND_V(err, err);
-
-	use_barriers = true;
-	base_hazard_tracking = MTL::ResourceHazardTrackingModeUntracked;
 
 	{
 		NS::SharedPtr<MTL4::CompilerDescriptor> desc = NS::TransferPtr(MTL4::CompilerDescriptor::alloc()->init());
