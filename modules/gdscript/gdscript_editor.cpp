@@ -30,6 +30,7 @@
 
 #include "gdscript.h"
 #include "gdscript_analyzer.h"
+#include "gdscript_linter.h"
 #include "gdscript_parser.h"
 #include "gdscript_tokenizer.h"
 #include "gdscript_utility_functions.h"
@@ -176,6 +177,12 @@ bool GDScriptEditorLanguage::validate(const String &p_script, const String &p_pa
 	if (err == OK) {
 		err = analyzer.analyze();
 	}
+
+	if (err == OK) {
+		GDScriptLinter linter(parser);
+		err = linter.lint();
+	}
+
 #ifdef DEBUG_ENABLED
 	if (r_warnings) {
 		for (const GDScriptWarning &E : parser.get_warnings()) {
@@ -831,10 +838,10 @@ static String _make_arguments_hint(const GDScriptParser::FunctionNode *p_functio
 	if (p_just_args) {
 		arghint = "(";
 	} else {
-		if (p_function->return_type_constraint.builtin_type == Variant::NIL) {
+		if (p_function->return_type_constraint.is_hard_type() && p_function->return_type_constraint.builtin_type == Variant::NIL) {
 			arghint = "void " + p_function->identifier->name + "(";
 		} else {
-			arghint = p_function->return_type_constraint.to_string() + " " + p_function->identifier->name + "(";
+			arghint = p_function->return_type_constraint.to_string_strict() + " " + p_function->identifier->name + "(";
 		}
 	}
 
@@ -1007,16 +1014,13 @@ static void _find_annotation_arguments(const GDScriptParser::AnnotationNode *p_a
 		r_arghint = _make_arguments_hint(p_annotation->info->info, p_argument, true);
 	}
 	if (p_annotation->name == SNAME("@export_range")) {
-		if (p_argument == 3 || p_argument == 4 || p_argument == 5) {
+		if (p_argument >= 3) {
 			// Slider hint.
-			EditorLanguage::CompletionOption slider1 = _calculate_string_insertion(existing_argument, "or_greater");
-			r_result.insert(slider1.display, slider1);
-			EditorLanguage::CompletionOption slider2 = _calculate_string_insertion(existing_argument, "or_less");
-			r_result.insert(slider2.display, slider2);
-			EditorLanguage::CompletionOption slider3 = _calculate_string_insertion(existing_argument, "prefer_slider");
-			r_result.insert(slider3.display, slider3);
-			EditorLanguage::CompletionOption slider4 = _calculate_string_insertion(existing_argument, "hide_control");
-			r_result.insert(slider4.display, slider4);
+			static const char *sliders[] = { "or_greater", "or_less", "prefer_slider", "hide_control", "exp", "radians_as_degrees", "degrees", "suffix:unit" };
+			for (const char *slider : sliders) {
+				EditorLanguage::CompletionOption option = _calculate_string_insertion(existing_argument, slider);
+				r_result.insert(option.display, option);
+			}
 		}
 	} else if (p_annotation->name == SNAME("@export_exp_easing")) {
 		if (p_argument == 0 || p_argument == 1) {
@@ -3946,22 +3950,16 @@ void GDScriptEditorLanguage::format_code(String &r_code, uint32_t p_from_line, u
 			}
 		}
 
-		if (i >= p_from_line) {
-			l = indent.repeat(indent_stack.size()) + st;
-		} else if (i > p_to_line) {
+		if (i > p_to_line) {
 			break;
+		} else if (i >= p_from_line) {
+			l = indent.repeat(indent_stack.size()) + st;
 		}
 
 		lines.write[i] = l;
 	}
 
-	r_code = String();
-	for (int i = 0; i < lines.size(); i++) {
-		if (i > 0) {
-			r_code += "\n";
-		}
-		r_code += lines[i];
-	}
+	r_code = String("\n").join(lines);
 }
 
 static Error _lookup_symbol_from_base(const GDScriptParser::DataType &p_base, const String &p_symbol, EditorLanguage::LookupResult &r_result) {

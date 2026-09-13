@@ -1391,6 +1391,7 @@ void GDScriptParser::parse_property_setter(VariableNode *p_variable) {
 		case VariableNode::PROP_INLINE: {
 			FunctionNode *function = alloc_node<FunctionNode>();
 			IdentifierNode *identifier = alloc_node<IdentifierNode>();
+			set_synthetic_extents(identifier);
 			complete_extents(identifier);
 			identifier->name = "@" + p_variable->identifier->name + "_setter";
 			function->identifier = identifier;
@@ -1454,6 +1455,7 @@ void GDScriptParser::parse_property_getter(VariableNode *p_variable) {
 			function->header_end_column = previous.start_column;
 
 			IdentifierNode *identifier = alloc_node<IdentifierNode>();
+			set_synthetic_extents(identifier);
 			complete_extents(identifier);
 			identifier->name = "@" + p_variable->identifier->name + "_getter";
 			function->identifier = identifier;
@@ -2829,14 +2831,7 @@ GDScriptParser::ExpressionNode *GDScriptParser::parse_expression(bool p_can_assi
 }
 
 GDScriptParser::IdentifierNode *GDScriptParser::parse_identifier() {
-	IdentifierNode *identifier = static_cast<IdentifierNode *>(parse_identifier(nullptr, false));
-#ifdef DEBUG_ENABLED
-	// Check for spoofing here (if available in TextServer) since this isn't called inside expressions. This is only relevant for declarations.
-	if (identifier && TS->has_feature(TextServer::FEATURE_UNICODE_SECURITY) && TS->spoof_check(identifier->name)) {
-		push_warning(identifier, GDScriptWarning::CONFUSABLE_IDENTIFIER, identifier->name.string());
-	}
-#endif
-	return identifier;
+	return static_cast<IdentifierNode *>(parse_identifier(nullptr, false));
 }
 
 GDScriptParser::ExpressionNode *GDScriptParser::parse_identifier(ExpressionNode *p_previous_operand, bool p_can_assign) {
@@ -3946,6 +3941,8 @@ static void _process_doc_line(const String &p_line, String &r_text, const String
 				// We want to replace `[br][br]` with `\n` (paragraph), so we move the trailing `[br]` here.
 				r_text = r_text.left(-4); // `-len("[br]")`.
 				line = "[br]" + line;
+			} else if (!r_text.ends_with("\n") && line.is_empty()) {
+				line_join = "\n";
 			} else if (!r_text.ends_with("\n")) {
 				line_join = " ";
 			}

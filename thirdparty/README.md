@@ -436,6 +436,7 @@ Patches:
 
 - `0001-apple-disable-absolute-paths.patch` ([GH-92010](https://github.com/godotengine/godot/pull/92010))
 - `0002-apple-m1-msaa-fix.patch` ([GH-115893](https://github.com/godotengine/godot/issues/115893))
+- `0003-preprocessor-token-name-memcpy.patch` ([GH-123319](https://github.com/godotengine/godot/pull/123319))
 
 
 ## graphite
@@ -469,7 +470,7 @@ Patches:
 ## harfbuzz
 
 - Upstream: https://github.com/harfbuzz/harfbuzz
-- Version: 14.2.0 (b0ffab42d473eb380ad0fcf42730e0f1868cbc97, 2026)
+- Version: 14.4.0 (36cb489cb02ce4b92099669ba9f9bea348eff93f, 2026)
 - License: MIT
 
 Files extracted from upstream source:
@@ -713,6 +714,10 @@ Update instructions:
 - Download latest metal-cpp ZIP from https://developer.apple.com/metal/cpp/:
 - Run `update-metal-cpp.sh <path to the downloaded zip>` to extract the relevant files and apply patches.
 
+Patches:
+
+* 0002-sharedptr-nil-safe-retain-release.patch ([GH-123439](https://github.com/godotengine/godot/pull/123439))
+
 
 ## meshoptimizer
 
@@ -901,7 +906,7 @@ Files extracted from upstream source:
 ## openxr
 
 - Upstream: https://github.com/KhronosGroup/OpenXR-SDK
-- Version: 1.1.60 (64f2b37c8c6da3d83c9b4d11865ba1fb752cb8ec, 2026)
+- Version: 1.1.63 (f2448a8797c85814aa892efc1ab8707900fbcc78, 2026)
 - License: Apache 2.0
 
 Files extracted from upstream source:
@@ -928,10 +933,13 @@ Exclude:
 Additional:
 - Update `openxrLoaderVersion` in `platform/android/java/app/config.gradle`
 
+Patches:
+
+- `0001-remove-try-catch.patch` ([GH-123123](https://github.com/godotengine/godot/pull/123123))
 
 ## pcre2
 
-- Upstream: http://www.pcre.org
+- Upstream: https://pcre2project.github.io/pcre2/
 - Version: 10.47 (f454e231fe5006dd7ff8f4693fd2b8eb94333429, 2025)
 - License: BSD-3-Clause
 
