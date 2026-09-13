@@ -4,7 +4,7 @@ add_subdirectory(spatial_entities)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(godot-module-openxr PRIVATE')
-#   for file in list_files(cog, '.'):
+#   for file in list_files(cog, ['.', 'spatial_container', 'spatial_entities']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
@@ -74,5 +74,21 @@ target_sources(godot-module-openxr PRIVATE
         openxr_visibility_mask_extension.h
         openxr_wmr_controller_extension.cpp
         openxr_wmr_controller_extension.h
+        spatial_container/openxr_spatial_container_extension.cpp
+        spatial_container/openxr_spatial_container_extension.h
+        spatial_container/openxr_spatial_container_self_rendering_extension.cpp
+        spatial_container/openxr_spatial_container_self_rendering_extension.h
+        spatial_container/openxr_spatial_container_state.cpp
+        spatial_container/openxr_spatial_container_state.h
+        spatial_entities/openxr_spatial_anchor.cpp
+        spatial_entities/openxr_spatial_anchor.h
+        spatial_entities/openxr_spatial_entities.cpp
+        spatial_entities/openxr_spatial_entities.h
+        spatial_entities/openxr_spatial_entity_extension.cpp
+        spatial_entities/openxr_spatial_entity_extension.h
+        spatial_entities/openxr_spatial_marker_tracking.cpp
+        spatial_entities/openxr_spatial_marker_tracking.h
+        spatial_entities/openxr_spatial_plane_tracking.cpp
+        spatial_entities/openxr_spatial_plane_tracking.h
 )
 # [[[end]]]
