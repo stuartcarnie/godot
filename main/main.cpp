@@ -41,11 +41,13 @@
 #include "core/extension/gdextension_manager.h"
 #include "core/input/input.h"
 #include "core/input/input_map.h"
+#include "core/io/config_file.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access_pack.h"
 #include "core/io/file_access_zip.h"
 #include "core/io/image.h"
 #include "core/io/image_loader.h"
+#include "core/io/json.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/object/class_db.h"
@@ -57,6 +59,7 @@
 #include "core/profiling/profiling.h"
 #include "core/register_core_types.h"
 #include "core/string/translation_server.h"
+#include "core/templates/hash_set.h"
 #include "core/variant/variant_parser.h"
 #include "core/version.h"
 #include "drivers/register_driver_types.h"
@@ -174,6 +177,14 @@ static PackedData *packed_data = nullptr;
 static ZipArchive *zip_packed_data = nullptr;
 #endif
 static MessageQueue *message_queue = nullptr;
+#if DEV_ENABLED
+static bool list_project_settings = false;
+static bool list_project_settings_json = false;
+static String list_project_settings_filter;
+static String override_cfg_path;
+// Override files that were loaded on top of the project file, in load order.
+static Vector<String> project_setting_override_files;
+#endif
 
 #if defined(STEAMAPI_ENABLED)
 static SteamTracker *steam_tracker = nullptr;
@@ -317,6 +328,46 @@ static String unescape_cmdline(const String &p_str) {
 	return p_str.replace("%20", " ");
 }
 
+#if DEV_ENABLED
+// Splits a string into arguments at whitespace. Single and double quotes group text, and a
+// backslash keeps the next character.
+static Vector<String> split_cmdline(const String &p_str) {
+	Vector<String> result;
+	String current;
+	bool in_argument = false;
+	char32_t quote = 0;
+	for (int i = 0; i < p_str.length(); i++) {
+		const char32_t c = p_str[i];
+		if (c == '\\' && i + 1 < p_str.length()) {
+			current += p_str[++i];
+			in_argument = true;
+		} else if (quote != 0) {
+			if (c == quote) {
+				quote = 0;
+			} else {
+				current += c;
+			}
+		} else if (c == '"' || c == '\'') {
+			quote = c;
+			in_argument = true;
+		} else if (is_whitespace(c)) {
+			if (in_argument) {
+				result.push_back(current);
+				current = String();
+				in_argument = false;
+			}
+		} else {
+			current += c;
+			in_argument = true;
+		}
+	}
+	if (in_argument) {
+		result.push_back(current);
+	}
+	return result;
+}
+#endif
+
 static String get_full_version_string() {
 	String hash = String(GODOT_VERSION_HASH);
 	if (!hash.is_empty()) {
@@ -373,6 +424,152 @@ void finalize_theme_db() {
 	memdelete(theme_db);
 	theme_db = nullptr;
 }
+
+#if DEV_ENABLED
+// Records the override files that ProjectSettings::setup() loaded, in load order, so the listing
+// can report which file set a value. Follows the lookup in ProjectSettings::_setup().
+static void record_project_setting_override_files(const String &p_main_pack) {
+	if (editor || GLOBAL_GET("application/config/disable_project_settings_override")) {
+		return;
+	}
+
+	Vector<String> candidates;
+	if (!p_main_pack.is_empty()) {
+		candidates.push_back(p_main_pack.get_base_dir().path_join("override.cfg"));
+	} else {
+		candidates.push_back("res://override.cfg");
+		if (ProjectSettings::get_singleton()->is_using_datapack()) {
+			candidates.push_back(OS::get_singleton()->get_executable_path().get_base_dir().path_join("override.cfg"));
+		}
+	}
+	const String custom_settings = GLOBAL_GET("application/config/project_settings_override");
+	if (!custom_settings.is_empty()) {
+		candidates.push_back(custom_settings);
+	}
+
+	for (const String &candidate : candidates) {
+		if (FileAccess::exists(candidate)) {
+			project_setting_override_files.push_back(candidate);
+		}
+	}
+}
+
+struct ProjectSettingListEntry {
+	String name;
+	String value;
+	// False when the value has no text form.
+	bool writable = false;
+	// The override file that set the value, or empty.
+	String override_file;
+
+	bool operator<(const ProjectSettingListEntry &p_other) const { return name < p_other.name; }
+};
+
+// Returns the project settings that match the optional glob, sorted by name.
+static Vector<ProjectSettingListEntry> get_project_setting_list(const String &p_filter) {
+	// A later file replaces an earlier one, as it did when the files were loaded.
+	HashMap<String, String> override_files;
+	HashMap<String, Variant> override_values;
+	for (const String &path : project_setting_override_files) {
+		Ref<ConfigFile> config;
+		config.instantiate();
+		if (config->load(path) != OK) {
+			continue;
+		}
+		for (const String &section : config->get_sections()) {
+			for (const String &key : config->get_section_keys(section)) {
+				const String setting_name = section.is_empty() ? key : section + "/" + key;
+				override_files[setting_name] = path;
+				override_values[setting_name] = config->get_value(section, key);
+			}
+		}
+	}
+
+	List<PropertyInfo> settings;
+	ProjectSettings::get_singleton()->get_property_list(&settings);
+
+	Vector<ProjectSettingListEntry> entries;
+	for (const PropertyInfo &setting_info : settings) {
+		const String setting_name = setting_info.name;
+		if (!ProjectSettings::get_singleton()->has_setting(setting_name)) {
+			continue;
+		}
+		if (!p_filter.is_empty() && !setting_name.match(p_filter)) {
+			continue;
+		}
+
+		const Variant value = ProjectSettings::get_singleton()->get_setting(setting_name);
+		ProjectSettingListEntry entry;
+		entry.name = setting_name;
+		entry.writable = VariantWriter::write_to_string(value, entry.value) == OK;
+		// Report the file only when the setting still holds the file's value. The file may not have
+		// been applied, or something may have changed the setting since.
+		const String *override_file = override_files.getptr(setting_name);
+		if (override_file && override_values[setting_name] == value) {
+			entry.override_file = *override_file;
+		}
+		entries.push_back(entry);
+	}
+	entries.sort();
+
+	return entries;
+}
+
+// Prints the settings in the syntax of project.godot and override.cfg.
+static void print_project_settings(const String &p_filter) {
+	String current_section;
+	for (const ProjectSettingListEntry &entry : get_project_setting_list(p_filter)) {
+		if (!entry.writable) {
+			continue;
+		}
+		const int slash = entry.name.find_char('/');
+		// A file cannot hold a setting without a section after the first section, and no built-in
+		// setting is named that way.
+		if (slash == -1) {
+			continue;
+		}
+		const String section = entry.name.substr(0, slash);
+		if (section != current_section) {
+			if (!current_section.is_empty()) {
+				print_line("");
+			}
+			print_line("[" + section + "]");
+			print_line("");
+			current_section = section;
+		}
+		if (!entry.override_file.is_empty()) {
+			print_line("; override: " + entry.override_file);
+		}
+		print_line(entry.name.substr(slash + 1).property_name_encode() + "=" + entry.value);
+	}
+}
+
+static void print_project_settings_json(const String &p_filter) {
+	HashMap<String, String> descriptions;
+#ifdef TOOLS_ENABLED
+	DocTools doc;
+	EditorHelp::load_builtin_doc(doc);
+	if (const DocData::ClassDoc *class_doc = doc.class_list.getptr("ProjectSettings")) {
+		for (const DocData::PropertyDoc &property : class_doc->properties) {
+			descriptions[property.name] = property.description.dedent().strip_edges();
+		}
+	}
+#endif
+
+	Array result;
+	for (const ProjectSettingListEntry &entry : get_project_setting_list(p_filter)) {
+		Dictionary item;
+		item["name"] = entry.name;
+		// Null when the value has no text form.
+		item["value"] = entry.writable ? Variant(entry.value) : Variant();
+		// True when an override file set the value.
+		item["override"] = !entry.override_file.is_empty();
+		item["description"] = descriptions.has(entry.name) ? descriptions[entry.name] : String();
+		result.push_back(item);
+	}
+	print_line(JSON::stringify(result, "\t", false));
+}
+#endif
 
 //#define DEBUG_INIT
 #ifdef DEBUG_INIT
@@ -451,6 +648,9 @@ void Main::print_help_option(const char *p_option, const char *p_description, CL
 			case CLI_OPTION_AVAILABILITY_TEMPLATE_RELEASE:
 				availability_badge = "\u001b[1;92mR";
 				break;
+			case CLI_OPTION_AVAILABILITY_DEV:
+				availability_badge = "\u001b[1;95mV";
+				break;
 			case CLI_OPTION_AVAILABILITY_HIDDEN:
 				// Use for multiline option names (but not when the option name is empty).
 				availability_badge = " ";
@@ -490,6 +690,7 @@ void Main::print_help(const char *p_binary) {
 #ifdef DEBUG_ENABLED
 	OS::get_singleton()->print("  \u001b[1;94mD\u001b[0m  Available in editor builds and debug export templates only.\n");
 #endif
+	OS::get_singleton()->print("  \u001b[1;95mV\u001b[0m  Only available in dev builds.\n");
 #if defined(OVERRIDE_PATH_ENABLED)
 	OS::get_singleton()->print("  \u001b[1;93mX\u001b[0m  Only available in editor builds, and export templates compiled with `disable_path_overrides=false`.\n");
 #endif
@@ -640,6 +841,8 @@ void Main::print_help(const char *p_binary) {
 
 #if defined(OVERRIDE_PATH_ENABLED) || defined(TESTS_ENABLED)
 	print_help_title("Standalone tools");
+	print_help_option("--list-project-settings [glob]", "List project settings matching the optional glob in override.cfg syntax, then quit.\n", CLI_OPTION_AVAILABILITY_DEV);
+	print_help_option("--list-project-settings-json [glob]", "Same as --list-project-settings, but output a JSON array with name, description, value and override file.\n", CLI_OPTION_AVAILABILITY_DEV);
 #endif // defined(OVERRIDE_PATH_ENABLED) || defined(TESTS_ENABLED)
 #if defined(OVERRIDE_PATH_ENABLED)
 	print_help_option("-s, --script <script>", "Run a script.\n", CLI_OPTION_AVAILABILITY_TEMPLATE_UNSAFE);
@@ -1024,6 +1227,14 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	input_map = memnew(InputMap);
 	globals = memnew(ProjectSettings);
 
+#if DEV_ENABLED
+	list_project_settings = false;
+	list_project_settings_json = false;
+	list_project_settings_filter = String();
+	override_cfg_path = String();
+	project_setting_override_files.clear();
+#endif
+
 	register_core_settings(); //here globals are present
 
 	translation_server = memnew(TranslationServer);
@@ -1045,6 +1256,16 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	bool adding_user_args = false;
 	List<String> platform_args = OS::get_singleton()->get_cmdline_platform_args();
 
+#if DEV_ENABLED
+	// Arguments from the GODOT_ARGS environment variable go first, so the command line can replace
+	// their values.
+	for (const String &arg : split_cmdline(OS::get_singleton()->get_environment("GODOT_ARGS"))) {
+		args.push_back(arg);
+	}
+	// Processes started from this one, such as a project run from the editor, must not get them again.
+	OS::get_singleton()->unset_environment("GODOT_ARGS");
+#endif
+
 	// Add command line arguments.
 	for (int i = 0; i < argc; i++) {
 		args.push_back(String::utf8(argv[i]));
@@ -1064,6 +1285,10 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	String audio_driver = "";
 	String project_path = ".";
+#if DEV_ENABLED
+	// --path changes the working directory while arguments are parsed.
+	const String launch_dir = OS::get_singleton()->get_cwd();
+#endif
 
 #ifdef DEBUG_ENABLED
 	String debug_uri = "";
@@ -1745,6 +1970,37 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 #endif // MODULE_GDSCRIPT_ENABLED
 #endif // TOOLS_ENABLED
 
+		} else if (arg == "--override-cfg") {
+#if DEV_ENABLED
+			if (N) {
+				override_cfg_path = N->get().is_relative_path() ? launch_dir.path_join(N->get()) : N->get();
+				N = N->next();
+			} else {
+				OS::get_singleton()->print("Missing override file path, aborting.\n");
+				goto error;
+			}
+#else
+			OS::get_singleton()->print("--override-cfg is only available in dev builds, aborting.\n");
+			goto error;
+#endif
+		} else if (arg == "--list-project-settings" || arg == "--list-project-settings-json") {
+#if DEV_ENABLED
+			cmdline_tool = true;
+			list_project_settings = true;
+			list_project_settings_json = arg == "--list-project-settings-json";
+			audio_driver = NULL_AUDIO_DRIVER;
+			display_driver = NULL_DISPLAY_DRIVER;
+			Engine::get_singleton()->_print_header = false;
+			main_args.push_back(arg);
+			if (N && !N->get().begins_with("-")) {
+				list_project_settings_filter = N->get();
+				N = N->next();
+			}
+#else
+			OS::get_singleton()->print("Project setting listing is only available in dev builds, aborting.\n");
+			goto error;
+#endif
+
 		} else if (arg == "--path") { // set path of project to start or edit
 #if defined(OVERRIDE_PATH_ENABLED)
 			if (N) {
@@ -2107,6 +2363,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 #ifdef TOOLS_ENABLED
 		found_project = true;
 #endif
+#if DEV_ENABLED
+		record_project_setting_override_files(main_pack);
+#endif
 	} else {
 #ifdef TOOLS_ENABLED
 		editor = false;
@@ -2133,6 +2392,21 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		goto error;
 #endif
 	}
+
+#if DEV_ENABLED
+	if (!override_cfg_path.is_empty()) {
+		// The editor would write the overridden values to project.godot when it saves the settings.
+		if (editor || project_manager) {
+			OS::get_singleton()->print("--override-cfg cannot be used with the editor or the project manager, aborting.\n");
+			goto error;
+		}
+		if (globals->load_custom(override_cfg_path) != OK) {
+			OS::get_singleton()->print("Could not load override file \"%s\", aborting.\n", override_cfg_path.utf8().get_data());
+			goto error;
+		}
+		project_setting_override_files.push_back(override_cfg_path);
+	}
+#endif
 
 	if (clear_shader_cache && !project_path.is_empty()) {
 		const String cache_path = project_path.path_join(".godot").path_join("shader_cache");
@@ -3973,24 +4247,6 @@ Error Main::setup2(bool p_show_boot_logo) {
 
 	OS::get_singleton()->benchmark_end_measure("Startup", "Main::Setup2");
 
-#if DEV_ENABLED
-	extern char **environ;
-	for (char **env = environ; *env; ++env) {
-		if (strncasecmp(*env, "GODOT_P_", 8) == 0) {
-			String env_var = String::ascii(Span(*env, strchr(*env, '=') - *env));
-			String env_val = OS::get_singleton()->get_environment(env_var);
-			env_var = env_var.substr(8, env_var.length() - 8);
-			env_var = env_var.replace("__", "/");
-			if (ProjectSettings::get_singleton()->has_setting(env_var)) {
-				print_line("Override setting '" + env_var + "' to '" + env_val + "'");
-				ProjectSettings::get_singleton()->set_setting(env_var, env_val);
-			} else {
-				WARN_PRINT("Environment variable '" + env_var + "' is not a valid project setting");
-			}
-		}
-	}
-#endif
-
 	return OK;
 }
 
@@ -4394,6 +4650,17 @@ int Main::start() {
 #endif // DISABLE_DEPRECATED
 
 #endif // TOOLS_ENABLED
+
+#if DEV_ENABLED
+	if (list_project_settings) {
+		if (list_project_settings_json) {
+			print_project_settings_json(list_project_settings_filter);
+		} else {
+			print_project_settings(list_project_settings_filter);
+		}
+		return EXIT_SUCCESS;
+	}
+#endif
 
 #if defined(OVERRIDE_PATH_ENABLED)
 #ifndef TOOLS_ENABLED

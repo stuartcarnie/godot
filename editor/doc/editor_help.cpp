@@ -3122,9 +3122,13 @@ void EditorHelp::_load_doc_thread(void *p_udata) {
 	OS::get_singleton()->benchmark_end_measure("EditorHelp", vformat("Generate Documentation (Run %d)", doc_generation_count));
 }
 
+void EditorHelp::load_builtin_doc(DocTools &r_doc) {
+	r_doc.load_compressed(_doc_data_compressed, _doc_data_compressed_size, _doc_data_uncompressed_size);
+}
+
 void EditorHelp::_gen_doc_thread(void *p_udata) {
 	DocTools compdoc;
-	compdoc.load_compressed(_doc_data_compressed, _doc_data_compressed_size, _doc_data_uncompressed_size);
+	load_builtin_doc(compdoc);
 	doc->merge_from(compdoc); // Ensure all is up to date.
 
 	Ref<Resource> cache_res;

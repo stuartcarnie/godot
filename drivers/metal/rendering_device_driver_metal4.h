@@ -48,9 +48,17 @@ class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) Renderin
 	NS::SharedPtr<MTL4::CommandQueue> transfer_queue;
 	NS::SharedPtr<MTL4::Compiler> compiler;
 
-	Error _create_device() override;
+	/// Generation of `allocator`'s heap set last synced to `main_residency_set`.
+	uint64_t resident_heap_generation = 0;
+	/// Heaps currently added to `main_residency_set`, as of `resident_heap_generation`.
+	LocalVector<MTL::Heap *> resident_heaps;
+	/// Syncs `main_residency_set` with the allocator's current heap set, if the
+	/// allocator's heap generation has changed since the last sync.
+	void _update_heap_residency();
 
 protected:
+	Error _create_device() override;
+	void _resolve_sync_mode() override;
 	MTL::CommandQueue *get_command_queue() const override { return reinterpret_cast<MTL::CommandQueue *>(device_queue.get()); }
 	void add_residency_set_to_main_queue(MTL::ResidencySet *p_set) override;
 	void remove_residency_set_to_main_queue(MTL::ResidencySet *p_set) override;
