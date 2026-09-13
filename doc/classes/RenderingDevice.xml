@@ -710,6 +710,14 @@
 				This is only used by Vulkan in debug builds. Godot must also be started with the [code]--extra-gpu-memory-tracking[/code] [url=$DOCS_URL/tutorials/editor/command_line_tutorial.html]command line argument[/url].
 			</description>
 		</method>
+		<method name="gpu_capture_begin">
+			<return type="int" enum="Error" />
+			<param index="0" name="type" type="int" enum="RenderingDevice.GpuCaptureType" default="0" />
+			<param index="1" name="count" type="int" default="1" />
+			<description>
+				Begins a GPU capture for debugging purposes. The [param type] parameter specifies the capture granularity, and [param count] specifies the number of frames or submissions to capture.
+			</description>
+		</method>
 		<method name="has_feature" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="feature" type="int" enum="RenderingDevice.Features" />
@@ -2746,6 +2754,12 @@
 		<constant name="FINAL_ACTION_READ" value="0" enum="FinalAction" deprecated="Final actions are solved automatically by RenderingDevice.">
 		</constant>
 		<constant name="FINAL_ACTION_CONTINUE" value="0" enum="FinalAction" deprecated="Final actions are solved automatically by RenderingDevice.">
+		</constant>
+		<constant name="GPU_CAPTURE_PER_FRAME" value="0" enum="GpuCaptureType">
+			Capture at the end of a frame.
+		</constant>
+		<constant name="GPU_CAPTURE_PER_SUBMIT" value="1" enum="GpuCaptureType">
+			Capture at the end of a submission.
 		</constant>
 		<constant name="SHADER_STAGE_VERTEX" value="0" enum="ShaderStage">
 			Vertex shader stage. This can be used to manipulate vertices from a shader (but not create new vertices).
