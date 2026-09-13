@@ -2493,7 +2493,9 @@ Error RenderingDeviceDriverMetal::gpu_capture_begin() {
 	MTL::CaptureManager *capture_manager = MTL::CaptureManager::sharedCaptureManager();
 	NS::SharedPtr<MTL::CaptureDescriptor> desc = NS::TransferPtr(MTL::CaptureDescriptor::alloc()->init());
 	desc->setCaptureObject(device);
-	if (capture_manager->supportsDestination(MTL::CaptureDestinationDeveloperTools)) {
+	String capture_path_env = OS::get_singleton()->get_environment("GODOT_GPU_CAPTURE_PATH");
+	bool force_file = !capture_path_env.is_empty();
+	if (!force_file && capture_manager->supportsDestination(MTL::CaptureDestinationDeveloperTools)) {
 		desc->setDestination(MTL::CaptureDestinationDeveloperTools);
 	} else {
 		desc->setDestination(MTL::CaptureDestinationGPUTraceDocument);
@@ -2503,10 +2505,23 @@ Error RenderingDeviceDriverMetal::gpu_capture_begin() {
 		project_name.append_ascii(".");
 		project_name.append_utf32((itos(OS::get_singleton()->get_unix_time())).span());
 		project_name.append_ascii(".gputrace");
-		NS::Dictionary *env = NS::ProcessInfo::processInfo()->environment();
-		NS::String *tmpdir = static_cast<NS::String *>(env->object(MTLSTR("TMPDIR")));
-		NS::SharedPtr<NS::URL> tmp_dir = NS::TransferPtr(NS::URL::alloc()->initFileURLWithPath(tmpdir));
-		NS::SharedPtr<NS::String> output_path = NS::TransferPtr(NS::String::alloc()->init(vformat("%s/%s", tmp_dir->fileSystemRepresentation(), project_name).utf8().get_data(), NS::UTF8StringEncoding));
+
+		String dir_path;
+		if (!capture_path_env.is_empty()) {
+			if (capture_path_env.begins_with("res://") || capture_path_env.begins_with("user://")) {
+				dir_path = ProjectSettings::get_singleton()->globalize_path(capture_path_env);
+			} else {
+				dir_path = OS::get_singleton()->expand_path(capture_path_env);
+			}
+		} else {
+			NS::Dictionary *env = NS::ProcessInfo::processInfo()->environment();
+			NS::String *tmpdir = static_cast<NS::String *>(env->object(MTLSTR("TMPDIR")));
+			NS::SharedPtr<NS::URL> tmp_dir = NS::TransferPtr(NS::URL::alloc()->initFileURLWithPath(tmpdir));
+			dir_path = String::utf8(tmp_dir->fileSystemRepresentation());
+		}
+
+		String full_path = vformat("%s/%s", dir_path, project_name);
+		NS::SharedPtr<NS::String> output_path = NS::TransferPtr(NS::String::alloc()->init(full_path.utf8().get_data(), NS::UTF8StringEncoding));
 		NS::SharedPtr<NS::URL> output_url = NS::TransferPtr(NS::URL::alloc()->initFileURLWithPath(output_path.get()));
 		desc->setOutputURL(output_url.get());
 		print_line(vformat("Xcode not detected, capturing to file: %s", output_url->fileSystemRepresentation()));

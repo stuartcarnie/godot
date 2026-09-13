@@ -37,7 +37,6 @@
 #include "drivers/metal/rendering_device_driver_metal4.h"
 #include "servers/rendering/renderer_rd/storage_rd/render_scene_buffers_rd.h"
 
-#include <objc/runtime.h>
 #include <MetalFX/MetalFX.hpp>
 
 using namespace RendererRD;
@@ -128,11 +127,6 @@ MFXSpatialContext *MFXSpatialEffect::create_context(CreateParams p_params) const
 	MFXSpatialContext *context = memnew(MFXSpatialContext);
 	if (MTL4::RenderingDeviceDriverMetal *dd = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); dd) {
 		MTL4FX::SpatialScaler *scaler = desc->newSpatialScaler(dev, dd->get_compiler());
-		Ivar ivar = class_getInstanceVariable(object_getClass(scaler), "_outputTextureBarrierStages");
-		if (ivar) {
-			uint64_t *ptr = (uint64_t *)((char *)scaler + ivar_getOffset(ivar));
-			*ptr = MTL::StageAll;
-		}
 		context->scaler = static_cast<MTLFX::SpatialScalerBase *>(scaler);
 		context->is_metal_4 = true;
 	} else {
@@ -184,13 +178,6 @@ MFXTemporalContext *MFXTemporalEffect::create_context(CreateParams p_params) con
 	MFXTemporalContext *context = memnew(MFXTemporalContext);
 	if (MTL4::RenderingDeviceDriverMetal *mtl4 = dynamic_cast<MTL4::RenderingDeviceDriverMetal *>(rdd); mtl4) {
 		MTL4FX::TemporalScaler *scaler = desc->newTemporalScaler(dev, mtl4->get_compiler());
-		Ivar ivar = class_getInstanceVariable(object_getClass(scaler), "_outputTextureBarrierStages");
-		if (ivar) {
-			uint64_t *ptr = (uint64_t *)((char *)scaler + ivar_getOffset(ivar));
-			*ptr = MTL::StageAll;
-		} else {
-			print_error("Failed to set _outputTextureBarrierStages on MTL4FXTemporalScaler.");
-		}
 		context->scaler = static_cast<MTLFX::TemporalScalerBase *>(scaler);
 		context->is_metal_4 = true;
 	} else {
