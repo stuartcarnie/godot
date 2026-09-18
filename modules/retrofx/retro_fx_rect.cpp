@@ -173,6 +173,9 @@ void RetroFXRect::_update_shader_chain() {
 	}
 
 	RD *rd = RD::get_singleton();
+	if (rd == nullptr) {
+		return;
+	}
 
 	const Size2 size = get_size();
 	shader_chain->set_drawable_size(size);
@@ -319,7 +322,7 @@ void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
 	p_list->push_back(PropertyInfo(Variant::CALLABLE, "parameters/_pause", PROPERTY_HINT_TOOL_BUTTON, "Toggle Pause", PROPERTY_USAGE_EDITOR));
 
 	TypedArray<ShaderParameter> params = shader_chain->get_parameters();
-	for (Ref<ShaderParameter> const param : params) {
+	for (const Ref<ShaderParameter> param : params) {
 		if (intelligent_grouping) {
 			if (is_spacer_sentinel(param)) {
 				continue;
@@ -538,6 +541,11 @@ RetroFXRect::RetroFXRect() {
 	shader_chain.instantiate();
 	output_texture.instantiate();
 
+	RD *rd = RD::get_singleton();
+	if (rd == nullptr) {
+		return; // No RenderingDevice, such as when running headless or generating documentation.
+	}
+
 	Vector<RD::AttachmentFormat> attachments;
 	{
 		RD::AttachmentFormat att;
@@ -545,7 +553,7 @@ RetroFXRect::RetroFXRect() {
 		att.usage_flags = RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT;
 		attachments.push_back(att);
 	}
-	fb_format = RD::get_singleton()->framebuffer_format_create(attachments);
+	fb_format = rd->framebuffer_format_create(attachments);
 }
 
 RetroFXRect::~RetroFXRect() {

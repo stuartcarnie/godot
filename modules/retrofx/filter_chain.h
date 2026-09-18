@@ -175,7 +175,7 @@ class FilterChain {
 	int frame_direction = 1;
 
 	/// Render target pipeline state
-	FinalBlitShaderRD final_blit_shader;
+	FinalBlitShaderRD *final_blit_shader = nullptr;
 	RID shader_version;
 	struct {
 		RID shader;

@@ -596,6 +596,7 @@ RD::DataFormat to_data_format(compiled::OutputFormat p_format) {
 }
 
 Error FilterChain::set_compiled_shader(const ShaderContainer &p_container) {
+	ERR_FAIL_NULL_V_MSG(final_blit_shader, ERR_UNAVAILABLE, "RenderingDevice is not available.");
 	RD *rd = RD::get_singleton();
 
 	free_resources(rd);
@@ -824,7 +825,7 @@ Error FilterChain::init_bindings(
 	auto add_uniforms = [&](uint32_t p_size, shader::pass::BufferBinding &p_bind, const std::vector<compiled::BufferUniformDescriptor> &p_uniforms) {
 		p_bind.data.resize((p_size + 0xf) & ~0xf); // round up to nearest 16 bytes
 
-		for (compiled::BufferUniformDescriptor const &u : p_uniforms) {
+		for (const compiled::BufferUniformDescriptor &u : p_uniforms) {
 			switch (u.semantic) {
 				case compiled::ShaderBufferSemantic::FLOAT_PARAMETER: {
 					if (auto param = p_sem.get_float_parameter(u.index.value()); param.has_value()) {
@@ -921,17 +922,24 @@ void FilterChain::init_history() {
 }
 
 FilterChain::FilterChain() {
+	memset(textures, 0, sizeof(textures));
+	set_rotation(0);
+
 	RD *rd = RD::get_singleton();
-	ERR_FAIL_NULL_MSG(rd, "RenderingDevice singleton is not available.");
+	if (rd == nullptr) {
+		// No RenderingDevice, such as when running headless or generating documentation.
+		return;
+	}
 
 	// initialize shader and pipeline
 	{
 		Vector<String> defines;
 		defines.push_back("");
-		final_blit_shader.initialize(defines);
+		final_blit_shader = memnew(FinalBlitShaderRD);
+		final_blit_shader->initialize(defines);
 
-		shader_version = final_blit_shader.version_create();
-		pipeline_state.shader = final_blit_shader.version_get_shader(shader_version, 0);
+		shader_version = final_blit_shader->version_create();
+		pipeline_state.shader = final_blit_shader->version_get_shader(shader_version, 0);
 
 		{
 			Vector<RD::AttachmentFormat> attachments;
@@ -984,14 +992,15 @@ FilterChain::FilterChain() {
 		pipeline_state.vertex_array = rd->vertex_array_create(4, pipeline_state.vert_format, { pipeline_state.vertex_buffer, pipeline_state.vertex_buffer });
 	}
 
-	memset(textures, 0, sizeof(textures));
-
 	init_samplers();
-	set_rotation(0);
 	set_default_filtering_linear(false);
 }
 
 FilterChain::~FilterChain() {
+	if (final_blit_shader == nullptr) {
+		return; // No GPU resources were created.
+	}
+
 	RD *rd = RD::get_singleton();
 
 	free_resources(rd);
@@ -1009,7 +1018,8 @@ FilterChain::~FilterChain() {
 	rd->free_rid(pipeline_state.vertex_array);
 	rd->free_rid(pipeline_state.vertex_buffer);
 	rd->free_rid(pipeline_state.pipeline);
-	final_blit_shader.version_free(shader_version);
+	final_blit_shader->version_free(shader_version);
+	memdelete(final_blit_shader);
 	if (checker_texture.is_valid()) {
 		rd->free_rid(checker_texture);
 	}
