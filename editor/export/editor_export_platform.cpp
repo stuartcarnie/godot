@@ -594,6 +594,86 @@ Ref<Texture2D> EditorExportPlatform::get_option_icon(int p_index) const {
 	return theme->get_icon(SNAME("Play"), EditorStringName(EditorIcons));
 }
 
+// Compares in chunks, so large files don't have to be held in memory twice.
+static bool _file_contents_match(Ref<FileAccess> p_file, const uint8_t *p_data, uint64_t p_size) {
+	if (p_file->get_length() != p_size) {
+		return false;
+	}
+
+	constexpr uint64_t CHUNK_SIZE = 64 * 1024;
+	LocalVector<uint8_t> chunk;
+	chunk.resize(MIN(CHUNK_SIZE, p_size));
+
+	for (uint64_t offset = 0; offset < p_size; offset += CHUNK_SIZE) {
+		const uint64_t read_size = MIN(CHUNK_SIZE, p_size - offset);
+		if ((uint64_t)p_file->get_buffer(chunk.ptr(), read_size) != read_size) {
+			return false;
+		}
+		if (memcmp(chunk.ptr(), p_data + offset, read_size) != 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
+Error EditorExportPlatform::store_file_if_changed(const String &p_path, const uint8_t *p_data, uint64_t p_size) {
+	{
+		Ref<FileAccess> current = FileAccess::open(p_path, FileAccess::READ);
+		if (current.is_valid() && _file_contents_match(current, p_data, p_size)) {
+			return OK;
+		}
+	}
+
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::WRITE);
+	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_CREATE, vformat("Cannot create file '%s'.", p_path));
+	f->store_buffer(p_data, p_size);
+	return f->get_error();
+}
+
+Error EditorExportPlatform::store_file_if_changed(const String &p_path, const Vector<uint8_t> &p_data) {
+	return store_file_if_changed(p_path, p_data.ptr(), p_data.size());
+}
+
+Error EditorExportPlatform::store_string_if_changed(const String &p_path, const String &p_string) {
+	const CharString utf8 = p_string.utf8();
+	return store_file_if_changed(p_path, (const uint8_t *)utf8.get_data(), utf8.length());
+}
+
+Error EditorExportPlatform::copy_file_if_changed(const String &p_from, const String &p_to) {
+	Ref<FileAccess> source = FileAccess::open(p_from, FileAccess::READ);
+	ERR_FAIL_COND_V_MSG(source.is_null(), ERR_FILE_CANT_OPEN, vformat("Cannot open file '%s'.", p_from));
+
+	{
+		Ref<FileAccess> current = FileAccess::open(p_to, FileAccess::READ);
+		if (current.is_valid() && current->get_length() == source->get_length()) {
+			constexpr uint64_t CHUNK_SIZE = 64 * 1024;
+			LocalVector<uint8_t> from_chunk;
+			LocalVector<uint8_t> to_chunk;
+			from_chunk.resize(CHUNK_SIZE);
+			to_chunk.resize(CHUNK_SIZE);
+
+			bool matches = true;
+			const uint64_t size = source->get_length();
+			for (uint64_t offset = 0; offset < size; offset += CHUNK_SIZE) {
+				const uint64_t read_size = MIN(CHUNK_SIZE, size - offset);
+				source->get_buffer(from_chunk.ptr(), read_size);
+				current->get_buffer(to_chunk.ptr(), read_size);
+				if (memcmp(from_chunk.ptr(), to_chunk.ptr(), read_size) != 0) {
+					matches = false;
+					break;
+				}
+			}
+			if (matches) {
+				return OK;
+			}
+		}
+	}
+
+	Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+	ERR_FAIL_COND_V(da.is_null(), ERR_CANT_CREATE);
+	return da->copy(p_from, p_to);
+}
+
 String EditorExportPlatform::find_export_template(const String &template_file_name, String *err) const {
 	String current_version = GODOT_VERSION_FULL_CONFIG;
 	String template_path = EditorPaths::get_singleton()->get_export_templates_dir().path_join(current_version).path_join(template_file_name);

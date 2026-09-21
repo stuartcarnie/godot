@@ -352,9 +352,18 @@ public:
 	virtual String get_option_label(int p_device) const { return ""; }
 	virtual String get_option_tooltip(int p_device) const { return ""; }
 	virtual String get_device_architecture(int p_device) const { return ""; }
+	// Write only when the contents differ, so unchanged files keep their modification time and
+	// incremental builds do not redo work for them.
+	static Error store_file_if_changed(const String &p_path, const uint8_t *p_data, uint64_t p_size);
+	static Error store_file_if_changed(const String &p_path, const Vector<uint8_t> &p_data);
+	static Error store_string_if_changed(const String &p_path, const String &p_string);
+	static Error copy_file_if_changed(const String &p_from, const String &p_to);
 
 	virtual void cleanup() {}
 	virtual Error run(const Ref<EditorExportPreset> &p_preset, int p_device, BitField<EditorExportPlatform::DebugFlags> p_debug_flags) { return OK; }
+	// Stops what the matching `run()` started. The option keeps its index for the editor session,
+	// so this is the same index `run()` was given.
+	virtual void stop_run(int p_device) {}
 	virtual Ref<Texture2D> get_run_icon() const { return get_logo(); }
 
 	virtual bool can_export(const Ref<EditorExportPreset> &p_preset, String &r_error, bool &r_missing_templates, bool p_debug = false) const;
@@ -370,6 +379,8 @@ public:
 	virtual void get_platform_features(List<String> *r_features) const = 0;
 	virtual void resolve_platform_feature_priorities(const Ref<EditorExportPreset> &p_preset, HashSet<String> &p_features) {}
 	virtual String get_debug_protocol() const { return "tcp://"; }
+	// Address the device uses to reach the editor's debugger. Empty uses `network/debug/remote_host`.
+	virtual String get_device_debug_host(int p_device) { return String(); }
 	virtual HashMap<String, Variant> get_custom_project_settings(const Ref<EditorExportPreset> &p_preset) const { return HashMap<String, Variant>(); }
 
 	virtual void initialize() {}
