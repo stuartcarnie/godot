@@ -3590,7 +3590,7 @@ void EditorInspectorArray::_setup() {
 			ae.move_texture_rect->set_default_cursor_shape(Control::CURSOR_MOVE);
 
 			if (is_inside_tree()) {
-				ae.move_texture_rect->set_texture(get_editor_theme_icon(SNAME("TripleBar")));
+				ae.move_texture_rect->set_texture(get_editor_theme_icon(SNAME("DragHandle")));
 			}
 			move_vbox->add_child(ae.move_texture_rect);
 
@@ -3736,7 +3736,7 @@ void EditorInspectorArray::_notification(int p_what) {
 
 			for (ArrayElement &ae : array_elements) {
 				if (ae.move_texture_rect) {
-					ae.move_texture_rect->set_texture(get_editor_theme_icon(SNAME("TripleBar")));
+					ae.move_texture_rect->set_texture(get_editor_theme_icon(SNAME("DragHandle")));
 				}
 				if (ae.move_up) {
 					ae.move_up->set_button_icon(get_editor_theme_icon(SNAME("MoveUp")));
@@ -6195,9 +6195,7 @@ void EditorInspector::_clear_current_favorites() {
 void EditorInspector::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_TRANSLATION_CHANGED: {
-			if (property_name_style == EditorPropertyNameProcessor::STYLE_LOCALIZED) {
-				update_tree_pending = true;
-			}
+			update_tree_pending = true;
 		} break;
 
 		case NOTIFICATION_THEME_CHANGED: {
