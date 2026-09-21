@@ -605,6 +605,7 @@ void GameView::_play_pressed() {
 	if (current_process_id == 0) {
 		return;
 	}
+	local_process_running = true;
 
 	if (!window_wrapper->get_window_enabled()) {
 		screen_index_before_start = EditorNode::get_singleton()->get_editor_main_screen()->get_current_tab();
@@ -637,8 +638,15 @@ void GameView::_stop_pressed() {
 		return;
 	}
 
-	_detach_script_debugger();
 	paused = false;
+
+	if (!local_process_running) {
+		// Remote deploy: _play_pressed() returned early, so nothing below was set up.
+		return;
+	}
+	local_process_running = false;
+
+	_detach_script_debugger();
 
 	EditorNode::get_singleton()->set_unfocused_low_processor_usage_mode_enabled(true);
 	embedded_process->reset();

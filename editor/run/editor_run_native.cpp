@@ -34,6 +34,7 @@
 #include "editor/editor_node.h"
 #include "editor/export/editor_export.h"
 #include "editor/export/editor_export_platform.h"
+#include "editor/run/editor_run_bar.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
 
@@ -125,7 +126,7 @@ Error EditorRunNative::start_run_native(int p_id) {
 	preset->update_value_overrides();
 
 	if (eep->is_option_runnable(idx)) {
-		emit_signal(SNAME("native_run"), preset);
+		emit_signal(SNAME("native_run"), preset, idx);
 	}
 
 	BitField<EditorExportPlatform::DebugFlags> flags = 0;
@@ -150,6 +151,12 @@ Error EditorRunNative::start_run_native(int p_id) {
 
 	eep->clear_messages();
 	Error err = eep->run(preset, idx, flags);
+	if (err == OK) {
+		running_id = p_id;
+	} else {
+		// Nothing is running, so undo what starting the run set up.
+		EditorRunBar::get_singleton()->stop_playing();
+	}
 	result_dialog_log->clear();
 	if (eep->fill_log_messages(result_dialog_log, err)) {
 		if (eep->get_worst_message_type() >= EditorExportPlatform::EXPORT_MESSAGE_ERROR) {
@@ -159,12 +166,24 @@ Error EditorRunNative::start_run_native(int p_id) {
 	return err;
 }
 
+void EditorRunNative::stop_run_native() {
+	if (running_id < 0) {
+		return;
+	}
+
+	Ref<EditorExportPlatform> eep = EditorExport::get_singleton()->get_export_platform(EditorExport::decode_platform_from_id(running_id));
+	if (eep.is_valid()) {
+		eep->stop_run(EditorExport::decode_device_from_id(running_id));
+	}
+	running_id = -1;
+}
+
 void EditorRunNative::resume_run_native() {
 	start_run_native(resume_id);
 }
 
 void EditorRunNative::_bind_methods() {
-	ADD_SIGNAL(MethodInfo("native_run", PropertyInfo(Variant::OBJECT, "preset", PROPERTY_HINT_RESOURCE_TYPE, EditorExportPreset::get_class_static())));
+	ADD_SIGNAL(MethodInfo("native_run", PropertyInfo(Variant::OBJECT, "preset", PROPERTY_HINT_RESOURCE_TYPE, EditorExportPreset::get_class_static()), PropertyInfo(Variant::INT, "device")));
 }
 
 bool EditorRunNative::is_deploy_debug_remote_enabled() const {

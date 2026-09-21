@@ -36,6 +36,7 @@
 #include "core/io/zip_io.h"
 #include "core/os/os.h"
 #include "core/string/translation_server.h"
+#include "core/version.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/export/editor_export.h"
@@ -48,6 +49,7 @@
 #include "modules/svg/image_loader_svg.h"
 
 #ifdef MACOS_ENABLED
+#include "core/io/ip.h"
 #include "core/io/json.h"
 #include "core/object/callable_mp.h"
 #include "core/os/process_id.h"
@@ -292,6 +294,8 @@ void EditorExportPlatformAppleEmbedded::get_export_options(List<ExportOption> *r
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "application/icon_interpolation", PROPERTY_HINT_ENUM, "Nearest neighbor,Bilinear,Cubic,Trilinear,Lanczos"), 4));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "application/export_project_only"), false));
+	// Requires a debug export template built with `disable_path_overrides=no`, so the app accepts `--main-pack`.
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "application/fast_deploy"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "application/delete_old_export_files_unconditionally"), false));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "modules/camera"), false));
@@ -1059,15 +1063,12 @@ Error EditorExportPlatformAppleEmbedded::_convert_to_framework(const String &p_s
 		}
 		String info_plist = plist->save_text();
 
-		Ref<FileAccess> f = FileAccess::open(p_destination.path_join("Info.plist"), FileAccess::WRITE);
-		if (f.is_valid()) {
-			f->store_string(info_plist);
-		}
+		store_string_if_changed(p_destination.path_join("Info.plist"), info_plist);
 	} else {
 		String file_name = p_destination.get_basename().get_file();
 		String framework_name = file_name + ".framework";
 
-		da->copy(p_source, p_destination.path_join(file_name));
+		copy_file_if_changed(p_source, p_destination.path_join(file_name));
 
 		// Performing `install_name_tool -id @rpath/{name}.framework/{name} ./{name}` on dylib
 		{
@@ -1119,10 +1120,7 @@ Error EditorExportPlatformAppleEmbedded::_convert_to_framework(const String &p_s
 
 			String info_plist = info_plist_format.replace("$id", p_id).replace("$name", file_name).replace("$cl_name", lib_clean_name);
 
-			Ref<FileAccess> f = FileAccess::open(p_destination.path_join("Info.plist"), FileAccess::WRITE);
-			if (f.is_valid()) {
-				f->store_string(info_plist);
-			}
+			store_string_if_changed(p_destination.path_join("Info.plist"), info_plist);
 		}
 	}
 
@@ -1296,7 +1294,7 @@ Error EditorExportPlatformAppleEmbedded::_copy_asset(const Ref<EditorExportPrese
 			if (!filesystem_da->dir_exists(destination_dir)) {
 				RETURN_IF_ERROR(filesystem_da->make_dir_recursive(destination_dir));
 			}
-			RETURN_IF_ERROR(dir_exists ? da->copy_dir(p_asset, destination) : da->copy(p_asset, destination));
+			RETURN_IF_ERROR(dir_exists ? da->copy_dir(p_asset, destination) : copy_file_if_changed(p_asset, destination));
 		}
 	} else if (p_is_framework && asset.ends_with(".framework")) {
 		// Framework.
@@ -1318,7 +1316,7 @@ Error EditorExportPlatformAppleEmbedded::_copy_asset(const Ref<EditorExportPrese
 		if (!filesystem_da->dir_exists(destination_dir)) {
 			RETURN_IF_ERROR(filesystem_da->make_dir_recursive(destination_dir));
 		}
-		RETURN_IF_ERROR(dir_exists ? da->copy_dir(p_asset, destination) : da->copy(p_asset, destination));
+		RETURN_IF_ERROR(dir_exists ? da->copy_dir(p_asset, destination) : copy_file_if_changed(p_asset, destination));
 	} else {
 		// Unknown resource.
 		asset_path = base_dir;
@@ -1339,7 +1337,7 @@ Error EditorExportPlatformAppleEmbedded::_copy_asset(const Ref<EditorExportPrese
 		if (!filesystem_da->dir_exists(destination_dir)) {
 			RETURN_IF_ERROR(filesystem_da->make_dir_recursive(destination_dir));
 		}
-		RETURN_IF_ERROR(dir_exists ? da->copy_dir(p_asset, destination) : da->copy(p_asset, destination));
+		RETURN_IF_ERROR(dir_exists ? da->copy_dir(p_asset, destination) : copy_file_if_changed(p_asset, destination));
 	}
 
 	if (asset_path.ends_with("/")) {
@@ -1772,7 +1770,9 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 			String current_dir = da->get_current_dir();
 
 			// Remove leftovers from last export so they don't interfere in case some files are no longer needed.
-			if (da->change_dir(binary_dir + ".xcodeproj") == OK) {
+			// Remote deploy reuses its own directory every run, and keeping the files there lets Xcode
+			// build incrementally, so only exports to a user-chosen directory are cleared.
+			if (!p_oneclick && da->change_dir(binary_dir + ".xcodeproj") == OK) {
 				// Check directory content before deleting.
 				int expected_files = 0;
 				int total_files = 0;
@@ -1803,7 +1803,7 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 			}
 			da->change_dir(current_dir);
 
-			if (da->change_dir(binary_dir) == OK) {
+			if (!p_oneclick && da->change_dir(binary_dir) == OK) {
 				// Check directory content before deleting.
 				int expected_files = 0;
 				int total_files = 0;
@@ -1963,6 +1963,12 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 		launch_screen_image_file_name = "SplashImage" + launch_image_hash;
 	}
 
+	// Files the export generates later. Writing the template's copy as well would change their
+	// modification time on every export, which makes Xcode rebuild everything.
+	HashSet<String> files_to_skip;
+	files_to_skip.insert(project_file);
+	_add_generated_template_files(files_to_skip);
+
 	//export rest of the files
 	int ret = unzGoToFirstFile(src_pkg_zip);
 	Vector<uint8_t> project_file_data;
@@ -2028,6 +2034,11 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 			project_file_data = data;
 		}
 
+		if (files_to_skip.has(file)) {
+			ret = unzGoToNextFile(src_pkg_zip);
+			continue;
+		}
+
 		///@TODO need to parse logo files
 
 		if (data.size() > 0) {
@@ -2051,14 +2062,10 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 			}
 
 			/* write the file */
-			{
-				Ref<FileAccess> f = FileAccess::open(file, FileAccess::WRITE);
-				if (f.is_null()) {
-					unzClose(src_pkg_zip);
-					add_message(EXPORT_MESSAGE_ERROR, TTR("Export"), vformat(TTR("Could not write to a file at path \"%s\"."), file));
-					return ERR_CANT_CREATE;
-				};
-				f->store_buffer(data.ptr(), data.size());
+			if (store_file_if_changed(file, data) != OK) {
+				unzClose(src_pkg_zip);
+				add_message(EXPORT_MESSAGE_ERROR, TTR("Export"), vformat(TTR("Could not write to a file at path \"%s\"."), file));
+				return ERR_CANT_CREATE;
 			}
 
 #if defined(MACOS_ENABLED) || defined(LINUXBSD_ENABLED)
@@ -2094,13 +2101,12 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 		{
 			String fname = binary_dir + "/en.lproj";
 			tmp_app_path->make_dir_recursive(fname);
-			Ref<FileAccess> f = FileAccess::open(fname + "/InfoPlist.strings", FileAccess::WRITE);
-			f->store_line("/* Localized versions of Info.plist keys */");
-			f->store_line("");
-			f->store_line("CFBundleDisplayName = \"" + project_name.xml_escape(true) + "\";");
+			String strings = "/* Localized versions of Info.plist keys */\n\n";
+			strings += "CFBundleDisplayName = \"" + project_name.xml_escape(true) + "\";\n";
 			for (const UsageDescription &usage_description : usage_descriptions) {
-				f->store_line(usage_description.plist_key + " = \"" + p_preset->get(usage_description.preset_key).operator String().xml_escape(true) + "\";");
+				strings += usage_description.plist_key + " = \"" + p_preset->get(usage_description.preset_key).operator String().xml_escape(true) + "\";\n";
 			}
+			store_string_if_changed(fname + "/InfoPlist.strings", strings);
 		}
 
 		for (const String &lang : locales) {
@@ -2110,26 +2116,25 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 
 			String fname = binary_dir + "/" + lang + ".lproj";
 			tmp_app_path->make_dir_recursive(fname);
-			Ref<FileAccess> f = FileAccess::open(fname + "/InfoPlist.strings", FileAccess::WRITE);
-			f->store_line("/* Localized versions of Info.plist keys */");
-			f->store_line("");
+			String strings = "/* Localized versions of Info.plist keys */\n\n";
 
 			if (appnames.is_empty()) {
 				domain->set_locale_override(lang);
 				String name = domain->translate(project_name, String());
 				if (name != project_name) {
-					f->store_line("CFBundleDisplayName = \"" + name.xml_escape(true) + "\";");
+					strings += "CFBundleDisplayName = \"" + name.xml_escape(true) + "\";\n";
 				}
 			} else if (appnames.has(lang)) {
-				f->store_line("CFBundleDisplayName = \"" + appnames[lang].operator String().xml_escape(true) + "\";");
+				strings += "CFBundleDisplayName = \"" + appnames[lang].operator String().xml_escape(true) + "\";\n";
 			}
 
 			for (const UsageDescription &usage_description : usage_descriptions) {
 				Dictionary localized = p_preset->get(usage_description.preset_key + "_localized");
 				if (localized.has(lang)) {
-					f->store_line(usage_description.plist_key + " = \"" + localized[lang].operator String().xml_escape(true) + "\";");
+					strings += usage_description.plist_key + " = \"" + localized[lang].operator String().xml_escape(true) + "\";\n";
 				}
 			}
+			store_string_if_changed(fname + "/InfoPlist.strings", strings);
 		}
 	}
 
@@ -2140,7 +2145,7 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 		for (int j = 0; j < project_static_libs.size(); j++) {
 			const String &static_lib_path = project_static_libs[j];
 			String dest_lib_file_path = dest_dir + static_lib_path.get_file();
-			Error lib_copy_err = tmp_app_path->copy(static_lib_path, dest_lib_file_path);
+			Error lib_copy_err = copy_file_if_changed(static_lib_path, dest_lib_file_path);
 			if (lib_copy_err != OK) {
 				add_message(EXPORT_MESSAGE_ERROR, TTR("Export"), vformat(TTR("Could not copy a file at path \"%s\" to \"%s\"."), static_lib_path, dest_lib_file_path));
 				return lib_copy_err;
@@ -2190,13 +2195,9 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 	_export_additional_assets(p_preset, binary_dir, libraries, assets);
 	_add_assets_to_project(dest_dir, p_preset, project_file_data, assets);
 	String project_file_name = binary_dir + ".xcodeproj/project.pbxproj";
-	{
-		Ref<FileAccess> f = FileAccess::open(project_file_name, FileAccess::WRITE);
-		if (f.is_null()) {
-			add_message(EXPORT_MESSAGE_ERROR, TTR("Export"), vformat(TTR("Could not write to a file at path \"%s\"."), project_file_name));
-			return ERR_CANT_CREATE;
-		};
-		f->store_buffer(project_file_data.ptr(), project_file_data.size());
+	if (store_file_if_changed(project_file_name, project_file_data) != OK) {
+		add_message(EXPORT_MESSAGE_ERROR, TTR("Export"), vformat(TTR("Could not write to a file at path \"%s\"."), project_file_name));
+		return ERR_CANT_CREATE;
 	}
 
 #ifdef MACOS_ENABLED
@@ -2224,7 +2225,11 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 		return OK;
 	}
 
-	if (ep.step("Making .xcarchive", 3)) {
+	// Remote deploy only needs the app bundle, and the `archive` action never builds incrementally,
+	// so it builds the app directly instead.
+	const bool build_app_only = p_oneclick && !oneclick_build_dir.is_empty();
+
+	if (ep.step(build_app_only ? "Building app" : "Making .xcarchive", 3)) {
 		return ERR_SKIP;
 	}
 
@@ -2240,17 +2245,28 @@ Error EditorExportPlatformAppleEmbedded::_export_project_helper(const Ref<Editor
 	archive_args.push_back(p_debug ? "Debug" : "Release");
 	archive_args.push_back("-destination");
 	archive_args.push_back("generic/platform=" + get_platform_name());
-	archive_args.push_back("archive");
-	archive_args.push_back("-allowProvisioningUpdates");
-	archive_args.push_back("-archivePath");
-	archive_args.push_back(archive_path);
+	if (build_app_only) {
+		archive_args.push_back("build");
+		archive_args.push_back("-allowProvisioningUpdates");
+		// Keep Xcode's build state beside the project instead of in the shared DerivedData folder,
+		// so repeat deploys build incrementally.
+		archive_args.push_back("-derivedDataPath");
+		archive_args.push_back(oneclick_build_dir.path_join("DerivedData"));
+		archive_args.push_back("CONFIGURATION_BUILD_DIR=" + oneclick_build_dir.path_join("Products"));
+	} else {
+		archive_args.push_back("archive");
+		archive_args.push_back("-allowProvisioningUpdates");
+		archive_args.push_back("-archivePath");
+		archive_args.push_back(archive_path);
+	}
 
+	const String success_message = build_app_only ? "** BUILD SUCCEEDED **" : "** ARCHIVE SUCCEEDED **";
 	bool archive_succeeded = false;
-	int result = _execute("xcodebuild", archive_args, [&archive_succeeded](const String &p_data) {
+	int result = _execute("xcodebuild", archive_args, [&archive_succeeded, &success_message](const String &p_data) {
 		print_line(p_data);
 		DisplayServer::get_singleton()->process_events();
 		Main::iteration();
-		if (!archive_succeeded && p_data.contains("** ARCHIVE SUCCEEDED **")) {
+		if (!archive_succeeded && p_data.contains(success_message)) {
 			archive_succeeded = true;
 		}
 	});
@@ -2376,6 +2392,13 @@ bool EditorExportPlatformAppleEmbedded::has_valid_export_configuration(const Ref
 #endif // !(MODULE_MONO_ENABLED && !MACOS_ENABLED)
 }
 
+// Saves only when the encoded image differs, so unchanged images keep their modification time.
+Error EditorExportPlatformAppleEmbedded::_save_png_if_changed(const Ref<Image> &p_image, const String &p_path) {
+	const Vector<uint8_t> png = p_image->save_png_to_buffer();
+	ERR_FAIL_COND_V(png.is_empty(), ERR_CANT_CREATE);
+	return EditorExportPlatform::store_file_if_changed(p_path, png);
+}
+
 Error EditorExportPlatformAppleEmbedded::_export_icons(const Ref<EditorExportPreset> &p_preset, const String &p_iconset_dir) {
 	String json_description = "{\"images\":[";
 	String sizes;
@@ -2440,10 +2463,10 @@ Error EditorExportPlatformAppleEmbedded::_export_icons(const Ref<EditorExportPre
 					Ref<Image> new_img = Image::create_empty(side_size, side_size, false, Image::FORMAT_RGBA8);
 					new_img->fill(boot_bg_color);
 					_blend_and_rotate(new_img, img, false);
-					err = new_img->save_png(p_iconset_dir + exp_name);
+					err = _save_png_if_changed(new_img, p_iconset_dir + exp_name);
 				} else {
 					img->resize(side_size, side_size, (Image::Interpolation)(p_preset->get("application/icon_interpolation").operator int()));
-					err = img->save_png(p_iconset_dir + exp_name);
+					err = _save_png_if_changed(img, p_iconset_dir + exp_name);
 				}
 				if (err) {
 					add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat("Failed to export icon (%s): '%s'.", info.preset_key, icon_path));
@@ -2464,17 +2487,17 @@ Error EditorExportPlatformAppleEmbedded::_export_icons(const Ref<EditorExportPre
 					Ref<Image> new_img = Image::create_empty(side_size, side_size, false, Image::FORMAT_RGBA8);
 					new_img->fill(boot_bg_color);
 					_blend_and_rotate(new_img, img, false);
-					err = new_img->save_png(p_iconset_dir + exp_name);
+					err = _save_png_if_changed(new_img, p_iconset_dir + exp_name);
 				} else if (img->get_width() != side_size || img->get_height() != side_size) {
 					if (resize_waning) {
 						add_message(EXPORT_MESSAGE_WARNING, TTR("Export Icons"), vformat("Icon (%s): '%s' has incorrect size %s and was automatically resized to %s.", info.preset_key, icon_path, img->get_size(), Vector2i(side_size, side_size)));
 					}
 					img->resize(side_size, side_size, (Image::Interpolation)(p_preset->get("application/icon_interpolation").operator int()));
-					err = img->save_png(p_iconset_dir + exp_name);
+					err = _save_png_if_changed(img, p_iconset_dir + exp_name);
 				} else if (!icon_path.ends_with(".png")) {
-					err = img->save_png(p_iconset_dir + exp_name);
+					err = _save_png_if_changed(img, p_iconset_dir + exp_name);
 				} else {
-					err = da->copy(icon_path, p_iconset_dir + exp_name);
+					err = copy_file_if_changed(icon_path, p_iconset_dir + exp_name);
 				}
 
 				if (err) {
@@ -2511,23 +2534,15 @@ Error EditorExportPlatformAppleEmbedded::_export_icons(const Ref<EditorExportPre
 	}
 	json_description += "],\"info\":{\"author\":\"xcode\",\"version\":1}}";
 
-	Ref<FileAccess> json_file = FileAccess::open(p_iconset_dir + "Contents.json", FileAccess::WRITE);
-	if (json_file.is_null()) {
+	if (store_string_if_changed(p_iconset_dir + "Contents.json", json_description) != OK) {
 		add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat(TTR("Could not write to a file at path \"%s\"."), p_iconset_dir + "Contents.json"));
 		return ERR_CANT_CREATE;
 	}
 
-	CharString json_utf8 = json_description.utf8();
-	json_file->store_buffer((const uint8_t *)json_utf8.get_data(), json_utf8.length());
-
-	Ref<FileAccess> sizes_file = FileAccess::open(p_iconset_dir + "sizes", FileAccess::WRITE);
-	if (sizes_file.is_null()) {
+	if (store_string_if_changed(p_iconset_dir + "sizes", sizes) != OK) {
 		add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat(TTR("Could not write to a file at path \"%s\"."), p_iconset_dir + "sizes"));
 		return ERR_CANT_CREATE;
 	}
-
-	CharString sizes_utf8 = sizes.utf8();
-	sizes_file->store_buffer((const uint8_t *)sizes_utf8.get_data(), sizes_utf8.length());
 
 	return OK;
 }
@@ -2593,9 +2608,16 @@ Ref<Texture2D> EditorExportPlatformAppleEmbedded::get_option_icon(int p_index) c
 }
 
 String EditorExportPlatformAppleEmbedded::get_option_label(int p_index) const {
-	ERR_FAIL_INDEX_V(p_index, devices.size(), "");
 	MutexLock lock(device_lock);
-	return devices[p_index].name;
+	ERR_FAIL_INDEX_V(p_index, devices.size(), "");
+	const Device &dev = devices[p_index];
+	return dev.available ? dev.name : vformat(TTR("%s (disconnected)"), dev.name);
+}
+
+bool EditorExportPlatformAppleEmbedded::is_option_runnable(int p_index) const {
+	MutexLock lock(device_lock);
+	ERR_FAIL_INDEX_V(p_index, devices.size(), false);
+	return devices[p_index].available;
 }
 
 String EditorExportPlatformAppleEmbedded::get_option_tooltip(int p_index) const {
@@ -2710,6 +2732,7 @@ void EditorExportPlatformAppleEmbedded::_check_for_changes_poll_thread(void *ud)
 							nd.id = device_info["identifier"];
 							nd.name = dev_props.get("name", "").operator String() + " (devicectl, " + ((conn_props.get("transportType", "") == "localNetwork") ? "network" : "wired") + ")";
 							nd.wifi = conn_props.get("transportType", "") == "localNetwork";
+							nd.tunnel_ip = conn_props.get("tunnelIPAddress", "");
 							ldevices.push_back(nd);
 						}
 					}
@@ -2717,25 +2740,48 @@ void EditorExportPlatformAppleEmbedded::_check_for_changes_poll_thread(void *ud)
 			}
 		}
 
-		// Update device list.
+		// Update device list. Entries keep their position for the editor session, so the index the run
+		// menu hands back stays valid even when devices come and go; a device that is gone is kept and
+		// marked unavailable instead of being removed.
 		{
 			MutexLock lock(ea->device_lock);
 
 			bool different = false;
 
-			if (ea->devices.size() != ldevices.size()) {
-				different = true;
-			} else {
-				for (int i = 0; i < ea->devices.size(); i++) {
-					if (ea->devices[i].id != ldevices[i].id) {
+			for (Device &dev : ea->devices) {
+				bool found = false;
+				for (const Device &nd : ldevices) {
+					if (nd.id != dev.id) {
+						continue;
+					}
+					found = true;
+					if (dev.name != nd.name || dev.wifi != nd.wifi || dev.tunnel_ip != nd.tunnel_ip || !dev.available) {
+						dev = nd;
 						different = true;
+					}
+					break;
+				}
+				if (!found && dev.available) {
+					dev.available = false;
+					different = true;
+				}
+			}
+
+			for (const Device &nd : ldevices) {
+				bool known = false;
+				for (const Device &dev : ea->devices) {
+					if (dev.id == nd.id) {
+						known = true;
 						break;
 					}
+				}
+				if (!known) {
+					ea->devices.push_back(nd);
+					different = true;
 				}
 			}
 
 			if (different) {
-				ea->devices = ldevices;
 				ea->devices_changed.set();
 			}
 		}
@@ -2870,11 +2916,83 @@ int EditorExportPlatformAppleEmbedded::_execute(const String &p_path, const List
 	return OS::get_singleton()->get_process_exit_code(pid);
 }
 
+String EditorExportPlatformAppleEmbedded::_get_host_tunnel_address(const String &p_device_tunnel_ip) {
+	IPAddress device_ip(p_device_tunnel_ip);
+	if (!device_ip.is_valid() || device_ip.is_ipv4()) {
+		return String();
+	}
+
+	// The host end of the tunnel is the local address in the same /64 as the device.
+	HashMap<String, IP::Interface_Info> interfaces;
+	IP::get_singleton()->get_local_interfaces(&interfaces);
+	for (const KeyValue<String, IP::Interface_Info> &E : interfaces) {
+		for (const IPAddress &ip : E.value.ip_addresses) {
+			if (ip.is_ipv4() || ip == device_ip) {
+				continue;
+			}
+			if (memcmp(ip.get_ipv6(), device_ip.get_ipv6(), 8) == 0) {
+				return String(ip);
+			}
+		}
+	}
+	return String();
+}
+
 #endif
+
+String EditorExportPlatformAppleEmbedded::_get_deploy_hash(const Ref<EditorExportPreset> &p_preset) const {
+	// Everything the installed app is built from, so a change to any of it forces a full build.
+	String inputs = GODOT_VERSION_FULL_CONFIG;
+
+	for (const KeyValue<StringName, PropertyInfo> &E : p_preset->get_properties()) {
+		inputs += "\n" + String(E.key) + "=" + String(p_preset->get(E.key));
+	}
+
+	String template_path = p_preset->get("custom_template/debug");
+	if (template_path.is_empty()) {
+		template_path = find_export_template(get_platform_name() + ".zip");
+	}
+	inputs += "\ntemplate=" + template_path + ":" + itos(FileAccess::get_modified_time(template_path));
+
+	for (const PluginConfigAppleEmbedded &plugin : get_plugins(get_platform_name())) {
+		inputs += "\nplugin=" + plugin.name + ":" + itos(plugin.last_updated);
+	}
+
+	return inputs.md5_text();
+}
+
+String EditorExportPlatformAppleEmbedded::get_device_debug_host(int p_device) {
+#ifdef MACOS_ENABLED
+	// A wired device cannot reach the host loopback address; use the host end of the CoreDevice tunnel.
+	const String remote_host = EDITOR_GET("network/debug/remote_host");
+	if (remote_host != "127.0.0.1" && remote_host != "::1" && remote_host != "localhost") {
+		return String();
+	}
+
+	MutexLock lock(device_lock);
+	ERR_FAIL_INDEX_V(p_device, devices.size(), String());
+	const Device &dev = devices[p_device];
+	if (dev.wifi || !dev.available) {
+		return String();
+	}
+	return _get_host_tunnel_address(dev.tunnel_ip);
+#else
+	return String();
+#endif
+}
 
 Error EditorExportPlatformAppleEmbedded::run(const Ref<EditorExportPreset> &p_preset, int p_device, BitField<EditorExportPlatform::DebugFlags> p_debug_flags) {
 #ifdef MACOS_ENABLED
-	ERR_FAIL_INDEX_V(p_device, devices.size(), ERR_INVALID_PARAMETER);
+	Device dev;
+	{
+		MutexLock lock(device_lock);
+		ERR_FAIL_INDEX_V(p_device, devices.size(), ERR_INVALID_PARAMETER);
+		dev = devices[p_device];
+	}
+	if (!dev.available) {
+		add_message(EXPORT_MESSAGE_ERROR, TTR("Run"), TTR("The selected device is no longer connected."));
+		return ERR_INVALID_PARAMETER;
+	}
 
 	String can_export_error;
 	bool can_export_missing_templates;
@@ -2883,35 +3001,39 @@ Error EditorExportPlatformAppleEmbedded::run(const Ref<EditorExportPreset> &p_pr
 		return ERR_UNCONFIGURED;
 	}
 
-	MutexLock lock(device_lock);
+	EditorProgress ep("run", vformat(TTR("Running on %s"), dev.name), 3);
 
-	EditorProgress ep("run", vformat(TTR("Running on %s"), devices[p_device].name), 3);
-
-	String id = "tmpexport." + uitos(OS::get_singleton()->get_unix_time());
+	// One directory per preset inside the project, kept between runs so Xcode can build incrementally.
+	// The build output is a sibling of the project, because the generated project searches
+	// `$(PROJECT_DIR)/**` for frameworks; build output below it changes the search paths every build,
+	// which makes Xcode rebuild everything.
+	const String base_dir = ProjectSettings::get_singleton()->globalize_path(EditorPaths::get_singleton()->get_project_data_dir()).path_join("exports").path_join("apple_embedded").path_join(get_platform_name() + "." + p_preset->get_name().md5_text());
+	const String export_dir = base_dir.path_join("project");
+	oneclick_build_dir = base_dir.path_join("build");
 
 	Ref<DirAccess> filesystem_da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
-	ERR_FAIL_COND_V_MSG(filesystem_da.is_null(), ERR_CANT_CREATE, "Cannot create DirAccess for path '" + EditorPaths::get_singleton()->get_temp_dir() + "'.");
-	filesystem_da->make_dir_recursive(EditorPaths::get_singleton()->get_temp_dir().path_join(id));
-	String tmp_export_path = EditorPaths::get_singleton()->get_temp_dir().path_join(id).path_join("export.ipa");
+	ERR_FAIL_COND_V_MSG(filesystem_da.is_null(), ERR_CANT_CREATE, "Cannot create DirAccess for path '" + export_dir + "'.");
+	Error dir_err = filesystem_da->make_dir_recursive(export_dir);
+	ERR_FAIL_COND_V_MSG(dir_err != OK && dir_err != ERR_ALREADY_EXISTS, dir_err, "Cannot create export directory '" + export_dir + "'.");
+	dir_err = filesystem_da->make_dir_recursive(oneclick_build_dir);
+	ERR_FAIL_COND_V_MSG(dir_err != OK && dir_err != ERR_ALREADY_EXISTS, dir_err, "Cannot create build directory '" + oneclick_build_dir + "'.");
+	String tmp_export_path = export_dir.path_join("export.ipa");
 
-#define CLEANUP_AND_RETURN(m_err) \
-	{ \
-		if (filesystem_da->change_dir(EditorPaths::get_singleton()->get_temp_dir().path_join(id)) == OK) { \
-			filesystem_da->erase_contents_recursive(); \
-			filesystem_da->change_dir(".."); \
-			filesystem_da->remove(id); \
-		} \
-		return m_err; \
-	} \
-	((void)0)
+	// The installed app can be reused when only project files changed, which skips the Xcode build.
+	const String deploy_hash = _get_deploy_hash(p_preset);
+	const String deploy_hash_key = "installed_hash_" + dev.id;
+	const bool pack_only = p_preset->get("application/fast_deploy") &&
+			!p_debug_flags.has_flag(DEBUG_FLAG_DUMB_CLIENT) &&
+			EditorSettings::get_singleton()->get_project_metadata("apple_embedded_deploy", deploy_hash_key, String()) == deploy_hash;
 
-	Device dev = devices[p_device];
-
-	// Export before sending to device.
-	Error err = _export_project_helper(p_preset, true, tmp_export_path, p_debug_flags, true, true);
+	Error err = OK;
+	if (!pack_only) {
+		// Export before sending to device.
+		err = _export_project_helper(p_preset, true, tmp_export_path, p_debug_flags, true, true);
+	}
 
 	if (err != OK) {
-		CLEANUP_AND_RETURN(err);
+		return err;
 	}
 
 	Vector<String> cmd_args_list;
@@ -2920,6 +3042,11 @@ Error EditorExportPlatformAppleEmbedded::run(const Ref<EditorExportPreset> &p_pr
 
 	if (p_debug_flags.has_flag(DEBUG_FLAG_REMOTE_DEBUG_LOCALHOST)) {
 		host = "localhost";
+	}
+
+	const String device_host = get_device_debug_host(p_device);
+	if (!device_host.is_empty()) {
+		host = device_host;
 	}
 
 	if (p_debug_flags.has_flag(DEBUG_FLAG_DUMB_CLIENT)) {
@@ -2963,8 +3090,48 @@ Error EditorExportPlatformAppleEmbedded::run(const Ref<EditorExportPreset> &p_pr
 		cmd_args_list.push_back("--debug-navigation");
 	}
 
-	if (ep.step("Installing to device...", 3)) {
-		CLEANUP_AND_RETURN(ERR_SKIP);
+	if (pack_only) {
+		// Send only the project data, which the installed app loads instead of its bundled pack.
+		if (ep.step("Exporting project data...", 3)) {
+			return ERR_SKIP;
+		}
+
+		const String pack_path = oneclick_build_dir.path_join(APPLE_EMBEDDED_DEPLOY_PACK_NAME);
+		err = export_pack(p_preset, true, pack_path, p_debug_flags);
+		if (err != OK) {
+			return err;
+		}
+
+		List<String> args;
+		args.push_back("devicectl");
+		args.push_back("device");
+		args.push_back("copy");
+		args.push_back("to");
+		args.push_back("-d");
+		args.push_back(dev.id);
+		args.push_back("--domain-type");
+		args.push_back("appDataContainer");
+		args.push_back("--domain-identifier");
+		args.push_back(p_preset->get("application/bundle_identifier"));
+		args.push_back("--source");
+		args.push_back(pack_path);
+		args.push_back("--destination");
+		args.push_back(String("Documents/") + APPLE_EMBEDDED_DEPLOY_PACK_NAME);
+
+		String log;
+		int ec = _execute("xcrun", args, [&log](const String &p_data) {
+			log.append_utf32(p_data.span());
+		});
+		if (ec != 0) {
+			print_line("device copy:\n" + log);
+			add_message(EXPORT_MESSAGE_ERROR, TTR("Run"), TTR("Sending the project data failed, see editor log for details."));
+			return ERR_UNCONFIGURED;
+		}
+
+		cmd_args_list.push_back("--main-pack");
+		cmd_args_list.push_back(String("user://") + APPLE_EMBEDDED_DEPLOY_PACK_NAME);
+	} else if (ep.step("Installing to device...", 3)) {
+		return ERR_SKIP;
 	} else {
 		List<String> args;
 		args.push_back("devicectl");
@@ -2973,7 +3140,7 @@ Error EditorExportPlatformAppleEmbedded::run(const Ref<EditorExportPreset> &p_pr
 		args.push_back("app");
 		args.push_back("-d");
 		args.push_back(dev.id);
-		args.push_back(EditorPaths::get_singleton()->get_temp_dir().path_join(id).path_join("export.xcarchive/Products/Applications/export.app"));
+		args.push_back(oneclick_build_dir.path_join("Products").path_join("export.app"));
 
 		String log;
 		int ec = _execute("xcrun", args, [&log](const String &p_data) {
@@ -2982,19 +3149,26 @@ Error EditorExportPlatformAppleEmbedded::run(const Ref<EditorExportPreset> &p_pr
 		if (ec != 0) {
 			print_line("device install:\n" + log);
 			add_message(EXPORT_MESSAGE_ERROR, TTR("Run"), TTR("Installation failed, see editor log for details."));
-			CLEANUP_AND_RETURN(ERR_UNCONFIGURED);
+			return ERR_UNCONFIGURED;
 		}
+
+		// The app on the device now matches these inputs, so the next run can send only the project data.
+		EditorSettings::get_singleton()->set_project_metadata("apple_embedded_deploy", deploy_hash_key, deploy_hash);
 	}
 
 	if (ep.step("Running on device...", 4)) {
-		CLEANUP_AND_RETURN(ERR_SKIP);
+		return ERR_SKIP;
 	} else {
+		const String launch_json_path = oneclick_build_dir.path_join("launch.json");
+
 		List<String> args;
 		args.push_back("devicectl");
 		args.push_back("device");
 		args.push_back("process");
 		args.push_back("launch");
 		args.push_back("--terminate-existing");
+		args.push_back("--json-output");
+		args.push_back(launch_json_path);
 		args.push_back("-d");
 		args.push_back(dev.id);
 		args.push_back(p_preset->get("application/bundle_identifier"));
@@ -3009,14 +3183,73 @@ Error EditorExportPlatformAppleEmbedded::run(const Ref<EditorExportPreset> &p_pr
 		if (ec != 0) {
 			print_line("devicectl launch:\n" + log);
 			add_message(EXPORT_MESSAGE_ERROR, TTR("Run"), TTR("Running failed, see editor log for details."));
+		} else {
+			// Remember the process so it can be stopped later.
+			MutexLock lock(device_lock);
+			running_processes.erase(dev.id);
+
+			Ref<FileAccess> launch_json = FileAccess::open(launch_json_path, FileAccess::READ);
+			if (launch_json.is_valid()) {
+				Ref<JSON> json;
+				json.instantiate();
+				if (json->parse(launch_json->get_as_text()) == OK) {
+					const Dictionary &data = json->get_data();
+					const Dictionary &result = data.get("result", Dictionary());
+					const Dictionary &process = result.get("process", Dictionary());
+					if (process.has("processIdentifier")) {
+						running_processes[dev.id] = process["processIdentifier"];
+					}
+				}
+			}
 		}
 	}
 
-	CLEANUP_AND_RETURN(OK);
+	return OK;
 
-#undef CLEANUP_AND_RETURN
 #else
 	return ERR_UNCONFIGURED;
+#endif
+}
+
+void EditorExportPlatformAppleEmbedded::stop_run(int p_device) {
+#ifdef MACOS_ENABLED
+	String dev_id;
+	{
+		MutexLock lock(device_lock);
+		ERR_FAIL_INDEX(p_device, devices.size());
+		dev_id = devices[p_device].id;
+	}
+
+	int pid = 0;
+	{
+		MutexLock lock(device_lock);
+		const int *running_pid = running_processes.getptr(dev_id);
+		if (running_pid == nullptr) {
+			return;
+		}
+		pid = *running_pid;
+		running_processes.erase(dev_id);
+	}
+
+	// The device may be gone, so give up rather than blocking the editor.
+	List<String> args;
+	args.push_back("devicectl");
+	args.push_back("device");
+	args.push_back("process");
+	args.push_back("terminate");
+	args.push_back("--timeout");
+	args.push_back("5");
+	args.push_back("-d");
+	args.push_back(dev_id);
+	args.push_back("--pid");
+	args.push_back(itos(pid));
+
+	String output;
+	int ec = 0;
+	Error err = OS::get_singleton()->execute("xcrun", args, &output, &ec, true);
+	if (err != OK || ec != 0) {
+		print_line("devicectl terminate:\n" + output);
+	}
 #endif
 }
 
