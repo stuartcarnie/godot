@@ -46,6 +46,7 @@ target_sources(sdl3 PRIVATE
         libm/s_scalbn.c
         libm/s_sin.c
         libm/s_tan.c
+        misc/SDL_libusb.c
         sensor/SDL_sensor.c
         sensor/dummy/SDL_dummysensor.c
         stdlib/SDL_crc16.c
@@ -67,25 +68,36 @@ target_sources(sdl3 PRIVATE
         timer/SDL_timer.c
 
         # HIDAPI
+        haptic/hidapi/SDL_hidapihaptic_lg4ff.c
+        haptic/hidapi/SDL_hidapihaptic.c
         hidapi/SDL_hidapi.c
+        joystick/hidapi/SDL_hidapi_8bitdo.c
         joystick/hidapi/SDL_hidapi_combined.c
+        joystick/hidapi/SDL_hidapi_flydigi.c
         joystick/hidapi/SDL_hidapi_gamecube.c
-        joystick/hidapi/SDL_hidapijoystick.c
+        joystick/hidapi/SDL_hidapi_gip.c
+        joystick/hidapi/SDL_hidapi_lg4ff.c
         joystick/hidapi/SDL_hidapi_luna.c
         joystick/hidapi/SDL_hidapi_ps3.c
         joystick/hidapi/SDL_hidapi_ps4.c
         joystick/hidapi/SDL_hidapi_ps5.c
         joystick/hidapi/SDL_hidapi_rumble.c
         joystick/hidapi/SDL_hidapi_shield.c
+        joystick/hidapi/SDL_hidapi_sinput.c
         joystick/hidapi/SDL_hidapi_stadia.c
         joystick/hidapi/SDL_hidapi_steam.c
         joystick/hidapi/SDL_hidapi_steamdeck.c
         joystick/hidapi/SDL_hidapi_steam_hori.c
+        joystick/hidapi/SDL_hidapi_steam_triton.c
         joystick/hidapi/SDL_hidapi_switch.c
+        joystick/hidapi/SDL_hidapi_switch2.c
         joystick/hidapi/SDL_hidapi_wii.c
         joystick/hidapi/SDL_hidapi_xbox360.c
         joystick/hidapi/SDL_hidapi_xbox360w.c
         joystick/hidapi/SDL_hidapi_xboxone.c
+        joystick/hidapi/SDL_hidapi_zuiki.c
+        joystick/hidapi/SDL_hidapijoystick.c
+        joystick/hidapi/SDL_report_descriptor.c
 )
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -94,10 +106,6 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
             core/linux/SDL_evdev.c
             core/linux/SDL_evdev_capabilities.c
             core/linux/SDL_evdev_kbd.c
-            core/linux/SDL_fcitx.c
-            core/linux/SDL_ibus.c
-            core/linux/SDL_ime.c
-            core/linux/SDL_system_theme.c
             core/linux/SDL_threadprio.c
             core/linux/SDL_udev.c
             core/unix/SDL_appid.c
@@ -144,12 +152,14 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "^(iOS|tvOS|visionOS)$")
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(sdl3 PRIVATE
-            core/windows/SDL_gameinput.c
             core/windows/SDL_hid.c
             core/windows/SDL_immdevice.c
             core/windows/SDL_windows.c
             core/windows/SDL_xinput.c
             core/windows/pch.c
+            filesystem/SDL_filesystem.c  # Only used by Windows joystick driver at the moment.
+            filesystem/windows/SDL_sysfilesystem.c
+            filesystem/windows/SDL_sysfsops.c
             haptic/windows/SDL_dinputhaptic.c
             haptic/windows/SDL_windowshaptic.c
             joystick/windows/SDL_dinputjoystick.c
@@ -159,12 +169,14 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Windows")
             joystick/windows/SDL_xinputjoystick.c
             thread/generic/SDL_syscond.c
             thread/generic/SDL_sysrwlock.c
+            sensor/windows/SDL_windowssensor.c
             thread/windows/SDL_syscond_cv.c
             thread/windows/SDL_sysmutex.c
             thread/windows/SDL_sysrwlock_srw.c
             thread/windows/SDL_syssem.c
             thread/windows/SDL_systhread.c
             thread/windows/SDL_systls.c
+            time/SDL_time.c  # Only used by Windows filesystem driver at the moment.
             timer/windows/SDL_systimer.c
     )
 else ()

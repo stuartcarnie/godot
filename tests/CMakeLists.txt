@@ -70,6 +70,7 @@ target_sources(tests PRIVATE
         core/object/test_class_db.cpp
         core/object/test_method_bind.cpp
         core/object/test_object.cpp
+        core/object/test_placeholder_script_instance.cpp
         core/object/test_undo_redo.cpp
         core/os/test_os.cpp
         core/string/test_fuzzy_search.cpp
