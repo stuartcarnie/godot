@@ -838,6 +838,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ShapeCast3D.svg
         Shortcut.svg
         ShowInFileSystem.svg
+        SidebarLeft.svg
         Signal.svg
         Signals.svg
         SignalsAndGroups.svg

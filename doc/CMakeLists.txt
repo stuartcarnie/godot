@@ -779,6 +779,10 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/PhysicalSkyMaterial.xml
         classes/PhysicsBody2D.xml
         classes/PhysicsBody3D.xml
+        classes/PhysicsCastMotionResult2D.xml
+        classes/PhysicsCastMotionResult3D.xml
+        classes/PhysicsCollideShapeResult2D.xml
+        classes/PhysicsCollideShapeResult3D.xml
         classes/PhysicsDirectBodyState2D.xml
         classes/PhysicsDirectBodyState2DExtension.xml
         classes/PhysicsDirectBodyState3D.xml
@@ -787,6 +791,14 @@ set_abs(GODOT_SOURCE_CLASS_DOCUMENTATION_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         classes/PhysicsDirectSpaceState2DExtension.xml
         classes/PhysicsDirectSpaceState3D.xml
         classes/PhysicsDirectSpaceState3DExtension.xml
+        classes/PhysicsGetRestInfoResult2D.xml
+        classes/PhysicsGetRestInfoResult3D.xml
+        classes/PhysicsIntersectPointResult2D.xml
+        classes/PhysicsIntersectPointResult3D.xml
+        classes/PhysicsIntersectRayResult2D.xml
+        classes/PhysicsIntersectRayResult3D.xml
+        classes/PhysicsIntersectShapeResult2D.xml
+        classes/PhysicsIntersectShapeResult3D.xml
         classes/PhysicsMaterial.xml
         classes/PhysicsPointQueryParameters2D.xml
         classes/PhysicsPointQueryParameters3D.xml

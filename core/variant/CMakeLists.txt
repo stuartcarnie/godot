@@ -14,6 +14,7 @@ target_sources(core PRIVATE
         callable.h
         callable_bind.cpp
         callable_bind.h
+        container_type_validate.cpp
         container_type_validate.h
         dictionary.cpp
         dictionary.h
