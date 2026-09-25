@@ -7,6 +7,10 @@
 #   cog.outl(')')
 # ]]]
 target_sources(scene PRIVATE
+        canvas_item_manipulator.cpp
+        canvas_item_manipulator.h
+        debugger_helpers.cpp
+        debugger_helpers.h
         runtime_node_select.cpp
         runtime_node_select.h
         scene_debugger.cpp

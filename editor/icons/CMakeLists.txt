@@ -260,6 +260,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         DirectionalLight2D.svg
         DirectionalLight3D.svg
         DistractionFree.svg
+        Download.svg
         DragHandle.svg
         DrawableTexture2D.svg
         Duplicate.svg
