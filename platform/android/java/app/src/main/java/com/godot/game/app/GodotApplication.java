@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  web_tools_editor_plugin.h                                             */
+/*  GodotApplication.java                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,18 +28,21 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+package com.godot.game.app;
 
-#include "editor/plugins/editor_plugin.h"
+import android.app.Application;
+import android.util.Log;
 
-class WebToolsEditorPlugin : public EditorPlugin {
-	GDCLASS(WebToolsEditorPlugin, EditorPlugin);
-
-private:
-	void _download_zip();
-
-public:
-	static void initialize();
-
-	WebToolsEditorPlugin();
-};
+public class GodotApplication extends Application {
+	static {
+		// .NET libraries.
+		if (BuildConfig.FLAVOR.equals("mono")) {
+			try {
+				Log.v("GODOT", "Loading System.Security.Cryptography.Native.Android library");
+				System.loadLibrary("System.Security.Cryptography.Native.Android");
+			} catch (UnsatisfiedLinkError e) {
+				Log.e("GODOT", "Unable to load System.Security.Cryptography.Native.Android library");
+			}
+		}
+	}
+}

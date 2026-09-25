@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  web_tools_editor_plugin.cpp                                           */
+/*  editor_debugger_server_messageport.cpp                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,52 +28,70 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "web_tools_editor_plugin.h"
+#include "editor_debugger_server_messageport.h"
 
-#include "core/config/engine.h"
-#include "core/io/dir_access.h"
-#include "core/io/file_access.h"
-#include "core/object/callable_mp.h"
+#include "editor/editor_log.h"
 #include "editor/editor_node.h"
-#include "editor/export/project_zip_packer.h"
 
-#include <emscripten/emscripten.h>
-
-// Web functions defined in library_godot_editor_tools.js
 extern "C" {
-extern void godot_js_os_download_buffer(const uint8_t *p_buf, int p_buf_size, const char *p_name, const char *p_mime);
+bool godot_js_editor_debugger_active();
+void godot_js_editor_debugger_cb(void (*p_callback)(int p_id));
 }
 
-static void _web_editor_init_callback() {
-	EditorNode::get_singleton()->add_editor_plugin(memnew(WebToolsEditorPlugin));
+EditorDebuggerServerMessagePort *EditorDebuggerServerMessagePort::singleton = nullptr;
+
+void EditorDebuggerServerMessagePort::_add_session(int p_session) {
+	ERR_FAIL_NULL(singleton);
+	singleton->pending.push_back(p_session);
 }
 
-void WebToolsEditorPlugin::initialize() {
-	EditorNode::add_init_callback(_web_editor_init_callback);
+void EditorDebuggerServerMessagePort::initialize() {
+	EditorDebuggerServer::register_protocol_handler("messageport://", EditorDebuggerServerMessagePort::create);
 }
 
-WebToolsEditorPlugin::WebToolsEditorPlugin() {
-	add_tool_menu_item("Download Project Source", callable_mp(this, &WebToolsEditorPlugin::_download_zip));
+void EditorDebuggerServerMessagePort::poll() {
 }
 
-void WebToolsEditorPlugin::_download_zip() {
-	if (!Engine::get_singleton() || !Engine::get_singleton()->is_editor_hint()) {
-		ERR_PRINT("Downloading the project as a ZIP archive is only available in Editor mode.");
-		return;
-	}
-	const String output_name = ProjectZIPPacker::get_project_zip_safe_name();
-	const String output_path = String("/tmp").path_join(output_name);
-	ProjectZIPPacker::pack_project_zip(output_path);
+String EditorDebuggerServerMessagePort::get_uri() const {
+	return "messageport://";
+}
 
-	{
-		Ref<FileAccess> f = FileAccess::open(output_path, FileAccess::READ);
-		ERR_FAIL_COND_MSG(f.is_null(), "Unable to create ZIP file.");
-		Vector<uint8_t> buf;
-		buf.resize(f->get_length());
-		f->get_buffer(buf.ptrw(), buf.size());
-		godot_js_os_download_buffer(buf.ptr(), buf.size(), output_name.utf8().get_data(), "application/zip");
-	}
+Error EditorDebuggerServerMessagePort::start(const String &p_uri) {
+	godot_js_editor_debugger_cb(&_add_session);
+	return OK;
+}
 
-	// Remove the temporary file since it was sent to the user's native filesystem as a download.
-	DirAccess::remove_file_or_error(output_path);
+void EditorDebuggerServerMessagePort::stop() {
+	godot_js_editor_debugger_cb(nullptr);
+	pending.clear();
+}
+
+bool EditorDebuggerServerMessagePort::is_active() const {
+	return godot_js_editor_debugger_active();
+}
+
+bool EditorDebuggerServerMessagePort::is_connection_available() const {
+	return pending.size();
+}
+
+Ref<RemoteDebuggerPeer> EditorDebuggerServerMessagePort::take_connection() {
+	ERR_FAIL_COND_V(!is_connection_available(), Ref<RemoteDebuggerPeer>());
+	Ref<RemoteDebuggerPeerMessagePort> peer = memnew(RemoteDebuggerPeerMessagePort(pending.front()->get()));
+	pending.pop_front();
+	return peer;
+}
+
+EditorDebuggerServerMessagePort::EditorDebuggerServerMessagePort() {
+	ERR_FAIL_COND(singleton != nullptr);
+	singleton = this;
+}
+
+EditorDebuggerServerMessagePort::~EditorDebuggerServerMessagePort() {
+	stop();
+	singleton = nullptr;
+}
+
+Ref<EditorDebuggerServer> EditorDebuggerServerMessagePort::create(const String &p_protocol) {
+	ERR_FAIL_COND_V(p_protocol != "messageport://", nullptr);
+	return memnew(EditorDebuggerServerMessagePort);
 }
