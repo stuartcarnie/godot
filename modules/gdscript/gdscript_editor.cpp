@@ -212,6 +212,12 @@ bool GDScriptEditorLanguage::validate(const String &p_script, const String &p_pa
 			}
 
 			for (KeyValue<String, Ref<GDScriptParserRef>> E : parser.get_depended_parsers()) {
+				if (GDScript::is_canonically_equal_paths(E.key, p_path)) {
+					// HACK: A bug in the analyzer can lead to it depending on itself, which pulls an outdated parser from the cache.
+					// The errors from this parser are irrelevant and the wrong positions could lead to crashes down the line.
+					continue;
+				}
+
 				GDScriptParser *depended_parser = E.value->get_parser();
 				for (const GDScriptParser::ParserError &pe : depended_parser->get_errors()) {
 					ScriptError e;
@@ -1117,11 +1123,51 @@ static void _find_annotation_arguments(const GDScriptParser::AnnotationNode *p_a
 			r_result.insert(warning.display, warning);
 		}
 	} else if (p_annotation->name == SNAME("@rpc")) {
-		if (p_argument == 0 || p_argument == 1 || p_argument == 2) {
-			static const char *options[7] = { "call_local", "call_remote", "any_peer", "authority", "reliable", "unreliable", "unreliable_ordered" };
-			for (int i = 0; i < 7; i++) {
-				EditorLanguage::CompletionOption option = _calculate_string_insertion(existing_argument, options[i]);
-				r_result.insert(option.display, option);
+		if (p_argument <= 2) {
+			// @rpc arguments can be specified in any order, but only once per category.
+			static const char *mode_options[] = { "any_peer", "authority" };
+			static const char *sync_options[] = { "call_remote", "call_local" };
+			static const char *transfer_mode_options[] = { "unreliable", "unreliable_ordered", "reliable" };
+
+			bool mode_used = false;
+			bool sync_used = false;
+			bool transfer_mode_used = false;
+
+			for (uint32_t i = 0; i < p_argument && i < p_annotation->arguments.size(); i++) {
+				const GDScriptParser::Node *arg = p_annotation->arguments[i];
+				if (arg == nullptr || arg->type != GDScriptParser::Node::LITERAL) {
+					continue;
+				}
+				const Variant &value = static_cast<const GDScriptParser::LiteralNode *>(arg)->value;
+				if (!value.is_string()) {
+					continue;
+				}
+				if (value == "any_peer" || value == "authority") {
+					mode_used = true;
+				} else if (value == "call_remote" || value == "call_local") {
+					sync_used = true;
+				} else if (value == "unreliable" || value == "unreliable_ordered" || value == "reliable") {
+					transfer_mode_used = true;
+				}
+			}
+
+			if (!mode_used) {
+				for (const char *option_name : mode_options) {
+					EditorLanguage::CompletionOption option = _calculate_string_insertion(existing_argument, option_name);
+					r_result.insert(option.display, option);
+				}
+			}
+			if (!sync_used) {
+				for (const char *option_name : sync_options) {
+					EditorLanguage::CompletionOption option = _calculate_string_insertion(existing_argument, option_name);
+					r_result.insert(option.display, option);
+				}
+			}
+			if (!transfer_mode_used) {
+				for (const char *option_name : transfer_mode_options) {
+					EditorLanguage::CompletionOption option = _calculate_string_insertion(existing_argument, option_name);
+					r_result.insert(option.display, option);
+				}
 			}
 		}
 	}
@@ -1177,30 +1223,40 @@ static void _list_available_types(bool p_inherit_only, GDScriptParser::Completio
 			}
 		}
 		// Check current class for potential types.
-		// TODO: Also check classes the current class inherits from.
 		const GDScriptParser::ClassNode *current = p_context.current_class;
 		int location_offset = 0;
 		while (current) {
-			for (const GDScriptParser::ClassNode::Member &member : current->members) {
-				switch (member.type) {
-					case GDScriptParser::ClassNode::Member::CLASS: {
-						EditorLanguage::CompletionOption option(member.m_class->identifier->name, EditorLanguage::CompletionKind::CLASS, EditorLanguage::CompletionLocation::LOCAL + location_offset);
-						r_result.insert(option.display, option);
-					} break;
-					case GDScriptParser::ClassNode::Member::ENUM: {
-						if (!p_inherit_only) {
-							EditorLanguage::CompletionOption option(member.m_enum->identifier->name, EditorLanguage::CompletionKind::ENUM, EditorLanguage::CompletionLocation::LOCAL + location_offset);
+			const GDScriptParser::ClassNode *base = current;
+			while (base) {
+				for (const GDScriptParser::ClassNode::Member &member : base->members) {
+					switch (member.type) {
+						case GDScriptParser::ClassNode::Member::CLASS: {
+							if (p_inherit_only && member.m_class == p_context.current_class) {
+								break;
+							}
+							EditorLanguage::CompletionOption option(member.m_class->identifier->name, EditorLanguage::CompletionKind::CLASS, EditorLanguage::CompletionLocation::LOCAL + location_offset);
 							r_result.insert(option.display, option);
-						}
-					} break;
-					case GDScriptParser::ClassNode::Member::CONSTANT: {
-						if (member.constant->type_constraint.is_meta_type) {
-							EditorLanguage::CompletionOption option(member.constant->identifier->name, EditorLanguage::CompletionKind::CLASS, EditorLanguage::CompletionLocation::LOCAL + location_offset);
-							r_result.insert(option.display, option);
-						}
-					} break;
-					default:
-						break;
+						} break;
+						case GDScriptParser::ClassNode::Member::ENUM: {
+							if (!p_inherit_only) {
+								EditorLanguage::CompletionOption option(member.m_enum->identifier->name, EditorLanguage::CompletionKind::ENUM, EditorLanguage::CompletionLocation::LOCAL + location_offset);
+								r_result.insert(option.display, option);
+							}
+						} break;
+						case GDScriptParser::ClassNode::Member::CONSTANT: {
+							if (member.constant->type_constraint.is_meta_type) {
+								EditorLanguage::CompletionOption option(member.constant->identifier->name, EditorLanguage::CompletionKind::CLASS, EditorLanguage::CompletionLocation::LOCAL + location_offset);
+								r_result.insert(option.display, option);
+							}
+						} break;
+						default:
+							break;
+					}
+				}
+				if (base->base_type.kind == GDScriptParser::DataType::CLASS) {
+					base = base->base_type.class_type;
+				} else {
+					base = nullptr;
 				}
 			}
 			location_offset += 1;
