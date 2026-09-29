@@ -351,11 +351,15 @@ static Vector<String> get_files_with_extension(const String &p_root, const Strin
 #endif
 
 void finalize_display() {
-	rendering_server->finish();
+	if (rendering_server) {
+		rendering_server->finish();
+	}
 	memdelete(rendering_server);
-
+	rendering_server = nullptr;
 	memdelete(display_server);
+	display_server = nullptr;
 	memdelete(accessibility_server);
+	accessibility_server = nullptr;
 }
 
 void initialize_theme_db() {
@@ -896,8 +900,11 @@ void Main::test_cleanup() {
 	OS::get_singleton()->finalize();
 
 	memdelete(packed_data);
+	packed_data = nullptr;
 	memdelete(translation_server);
+	translation_server = nullptr;
 	memdelete(tsman);
+	tsman = nullptr;
 #ifndef PHYSICS_3D_DISABLED
 	PhysicsServer3DManager::finalize_server_manager();
 #endif // PHYSICS_3D_DISABLED
@@ -905,12 +912,14 @@ void Main::test_cleanup() {
 	PhysicsServer2DManager::finalize_server_manager();
 #endif // PHYSICS_2D_DISABLED
 	memdelete(globals);
+	globals = nullptr;
 
 	unregister_core_driver_types();
 	unregister_core_extensions();
 	uninitialize_modules(MODULE_INITIALIZATION_LEVEL_CORE);
 
 	memdelete(engine);
+	engine = nullptr;
 
 	unregister_core_types();
 
@@ -3055,15 +3064,21 @@ error:
 	EngineDebugger::deinitialize();
 
 	memdelete(performance);
+	performance = nullptr;
 	memdelete(input_map);
+	input_map = nullptr;
 	memdelete(translation_server);
+	translation_server = nullptr;
 	memdelete(globals);
+	globals = nullptr;
 	memdelete(packed_data);
+	packed_data = nullptr;
 
 	unregister_core_driver_types();
 	unregister_core_extensions();
 
 	memdelete(engine);
+	engine = nullptr;
 
 	unregister_core_types();
 
@@ -3071,11 +3086,13 @@ error:
 	OS::get_singleton()->_user_args.clear();
 
 	memdelete(message_queue);
+	message_queue = nullptr;
 
 	OS::get_singleton()->benchmark_end_measure("Startup", "Main::Setup");
 
 #if defined(STEAMAPI_ENABLED)
 	memdelete(steam_tracker);
+	steam_tracker = nullptr;
 #endif
 
 	OS::get_singleton()->finalize_core();
@@ -3419,13 +3436,16 @@ Error Main::setup2(bool p_show_boot_logo) {
 			ERR_PRINT("Unable to create DisplayServer, all display drivers failed.\nUse \"--headless\" command line argument to run the engine in headless mode if this is desired (e.g. for continuous integration).");
 
 			memdelete(display_server);
+			display_server = nullptr;
 
 			GDExtensionManager::get_singleton()->deinitialize_extensions(GDExtension::INITIALIZATION_LEVEL_SERVERS);
 			uninitialize_modules(MODULE_INITIALIZATION_LEVEL_SERVERS);
 			unregister_server_types();
 
 			memdelete(input);
+			input = nullptr;
 			memdelete(tsman);
+			tsman = nullptr;
 #ifndef PHYSICS_3D_DISABLED
 			PhysicsServer3DManager::finalize_server_manager();
 #endif // PHYSICS_3D_DISABLED
@@ -4474,7 +4494,12 @@ int Main::start() {
 	if (sml) {
 #ifdef DEBUG_ENABLED
 		if (debug_collisions) {
-			sml->set_debug_collisions_hint(true);
+#ifndef PHYSICS_2D_DISABLED
+			PhysicsServer2D::get_singleton()->debug_set_enabled(true);
+#endif
+#ifndef PHYSICS_3D_DISABLED
+			PhysicsServer3D::get_singleton()->debug_set_enabled(true);
+#endif
 		}
 		if (debug_paths) {
 			sml->set_debug_paths_hint(true);
@@ -5270,14 +5295,17 @@ void Main::cleanup(bool p_force) {
 	}
 #endif
 
-	GDExtensionManager::get_singleton()->shutdown();
-
-	for (int i = 0; i < TextServerManager::get_singleton()->get_interface_count(); i++) {
-		TextServerManager::get_singleton()->get_interface(i)->cleanup();
-	}
-
 	if (movie_writer) {
 		movie_writer->end();
+		movie_writer = nullptr;
+	}
+
+	GDExtensionManager::get_singleton()->shutdown();
+
+	if (TextServerManager::get_singleton()) {
+		for (int i = 0; i < TextServerManager::get_singleton()->get_interface_count(); i++) {
+			TextServerManager::get_singleton()->get_interface(i)->cleanup();
+		}
 	}
 
 	ResourceLoader::clear_thread_load_tasks();
@@ -5308,11 +5336,13 @@ void Main::cleanup(bool p_force) {
 
 	ScriptServer::finish_languages();
 
-	// Sync pending commands that may have been queued from a different thread during ScriptServer finalization
-	RenderingServer::get_singleton()->sync();
+	if (rendering_server) {
+		// Sync pending commands that may have been queued from a different thread during ScriptServer finalization
+		RenderingServer::get_singleton()->sync();
 
-	//clear global shader variables before scene and other graphics stuff are deinitialized.
-	rendering_server->global_shader_parameters_clear();
+		//clear global shader variables before scene and other graphics stuff are deinitialized.
+		rendering_server->global_shader_parameters_clear();
+	}
 
 #ifndef XR_DISABLED
 	if (xr_server) {
@@ -5326,7 +5356,6 @@ void Main::cleanup(bool p_force) {
 	GDExtensionManager::get_singleton()->deinitialize_extensions(GDExtension::INITIALIZATION_LEVEL_EDITOR);
 	uninitialize_modules(MODULE_INITIALIZATION_LEVEL_EDITOR);
 	unregister_editor_types();
-
 #endif
 
 	ImageLoader::cleanup();
@@ -5365,26 +5394,35 @@ void Main::cleanup(bool p_force) {
 
 #ifndef XR_DISABLED
 	memdelete(xr_server);
+	xr_server = nullptr;
 #endif // XR_DISABLED
 
 	if (audio_server) {
 		audio_server->finish();
-		memdelete(audio_server);
 	}
+	memdelete(audio_server);
+	audio_server = nullptr;
 
 	memdelete(camera_server);
+	camera_server = nullptr;
 
 	OS::get_singleton()->finalize();
 
 	finalize_display();
 
 	memdelete(input);
+	input = nullptr;
 
 	memdelete(packed_data);
+	packed_data = nullptr;
 	memdelete(performance);
+	performance = nullptr;
 	memdelete(input_map);
+	input_map = nullptr;
 	memdelete(translation_server);
+	translation_server = nullptr;
 	memdelete(tsman);
+	tsman = nullptr;
 #ifndef PHYSICS_2D_DISABLED
 	PhysicsServer2DManager::finalize_server_manager();
 #endif // PHYSICS_2D_DISABLED
@@ -5392,6 +5430,7 @@ void Main::cleanup(bool p_force) {
 	PhysicsServer3DManager::finalize_server_manager();
 #endif // PHYSICS_3D_DISABLED
 	memdelete(globals);
+	globals = nullptr;
 
 	if (OS::get_singleton()->is_restart_on_exit_set()) {
 		//attempt to restart with arguments
@@ -5403,9 +5442,11 @@ void Main::cleanup(bool p_force) {
 	// Now should be safe to delete MessageQueue (famous last words).
 	message_queue->flush();
 	memdelete(message_queue);
+	message_queue = nullptr;
 
 #if defined(STEAMAPI_ENABLED)
 	memdelete(steam_tracker);
+	steam_tracker = nullptr;
 #endif
 
 	unregister_core_driver_types();
@@ -5413,6 +5454,7 @@ void Main::cleanup(bool p_force) {
 	uninitialize_modules(MODULE_INITIALIZATION_LEVEL_CORE);
 
 	memdelete(engine);
+	engine = nullptr;
 
 	unregister_core_types();
 
