@@ -54,16 +54,13 @@ target_sources(godot-module-jolt-physics PRIVATE
         shapes/jolt_concave_polygon_shape_3d.h
         shapes/jolt_convex_polygon_shape_3d.cpp
         shapes/jolt_convex_polygon_shape_3d.h
-        shapes/jolt_custom_decorated_shape.h
-        shapes/jolt_custom_double_sided_shape.cpp
-        shapes/jolt_custom_double_sided_shape.h
+        shapes/jolt_custom_instance_overrides_shape.cpp
+        shapes/jolt_custom_instance_overrides_shape.h
         shapes/jolt_custom_motion_shape.cpp
         shapes/jolt_custom_motion_shape.h
         shapes/jolt_custom_ray_shape.cpp
         shapes/jolt_custom_ray_shape.h
         shapes/jolt_custom_shape_type.h
-        shapes/jolt_custom_user_data_shape.cpp
-        shapes/jolt_custom_user_data_shape.h
         shapes/jolt_cylinder_shape_3d.cpp
         shapes/jolt_cylinder_shape_3d.h
         shapes/jolt_height_map_shape_3d.cpp

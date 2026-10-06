@@ -549,6 +549,8 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         Label.svg
         Label3D.svg
         LabelSettings.svg
+        Light2D.svg
+        Light3D.svg
         LightOccluder2D.svg
         LightmapGI.svg
         LightmapGIData.svg
