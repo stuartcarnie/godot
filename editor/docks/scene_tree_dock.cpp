@@ -962,8 +962,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 
 			undo_redo->commit_action();
 
-			NodePath np = full_selection.front()->get()->get_path();
-			TreeItem *item = scene_tree->get_scene_tree()->get_item_with_metadata(np);
+			TreeItem *item = scene_tree->get_node_item(full_selection.front()->get());
 			callable_mp(scene_tree->get_scene_tree(), &Tree::scroll_to_item).call_deferred(item, false);
 		} break;
 		case TOOL_DUPLICATE: {
@@ -3170,6 +3169,9 @@ Node *SceneTreeDock::_do_create(Node *p_parent) {
 	ERR_FAIL_NULL_V(child, nullptr);
 
 	String new_name = child->get_name();
+	if (new_name.is_empty()) {
+		new_name = child->get_class();
+	}
 	if (GLOBAL_GET("editor/naming/node_name_casing").operator int() != NAME_CASING_PASCAL_CASE) {
 		new_name = adjust_name_casing(new_name);
 	}

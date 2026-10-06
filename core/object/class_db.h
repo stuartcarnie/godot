@@ -71,6 +71,15 @@ struct MethodDefinition {
 			name(p_name) {}
 	MethodDefinition(const StringName &p_name) :
 			name(p_name) {}
+
+	// Need to be declared because ~MethodDefinition is specified.
+	MethodDefinition(const MethodDefinition &) = default;
+	MethodDefinition(MethodDefinition &&) = default;
+	MethodDefinition &operator=(const MethodDefinition &) = default;
+	MethodDefinition &operator=(MethodDefinition &&) = default;
+
+	// This is _NO_INLINE_ to save on binary size.
+	_NO_INLINE_ ~MethodDefinition() = default;
 };
 
 MethodDefinition D_METHODP(const char *p_name, const char *const **p_args, uint32_t p_argcount);
@@ -525,19 +534,19 @@ public:
 };
 
 #define BIND_ENUM_CONSTANT(m_constant) \
-	get_gdtype_static_mutable().bind_integer_constant(__constant_get_enum_name(m_constant), __constant_get_enum_value_name(#m_constant), static_cast<int64_t>(m_constant));
+	get_gdtype_static_mutable().bind_integer_constant_raw(GetTypeInfo<decltype(m_constant)>::enum_qualified_name, #m_constant, static_cast<int64_t>(m_constant), false);
 #define BIND_ENUM_CONSTANT_EXT(m_constant, m_bound_name) \
-	get_gdtype_static_mutable().bind_integer_constant(__constant_get_enum_name(m_constant), #m_bound_name, static_cast<int64_t>(m_constant));
+	get_gdtype_static_mutable().bind_integer_constant_raw(GetTypeInfo<decltype(m_constant)>::enum_qualified_name, #m_bound_name, static_cast<int64_t>(m_constant));
 
 #define BIND_BITFIELD_FLAG(m_constant) \
-	get_gdtype_static_mutable().bind_integer_constant(__constant_get_bitfield_name(m_constant), __constant_get_enum_value_name(#m_constant), static_cast<int64_t>(m_constant), true);
+	get_gdtype_static_mutable().bind_integer_constant_raw(GetTypeInfo<BitField<decltype(m_constant)>>::enum_qualified_name, #m_constant, static_cast<int64_t>(m_constant), true);
 #define BIND_BITFIELD_FLAG_EXT(m_constant, m_bound_name) \
-	get_gdtype_static_mutable().bind_integer_constant(__constant_get_bitfield_name(m_constant), #m_bound_name, static_cast<int64_t>(m_constant), true);
+	get_gdtype_static_mutable().bind_integer_constant_raw(GetTypeInfo<BitField<decltype(m_constant)>>::enum_qualified_name, #m_bound_name, static_cast<int64_t>(m_constant), true);
 
 #define BIND_CONSTANT(m_constant) \
-	get_gdtype_static_mutable().bind_integer_constant(StringName(), __constant_get_enum_value_name(#m_constant), static_cast<int64_t>(m_constant));
+	get_gdtype_static_mutable().bind_integer_constant_raw("", #m_constant, static_cast<int64_t>(m_constant));
 #define BIND_CONSTANT_EXT(m_constant, m_bound_name) \
-	get_gdtype_static_mutable().bind_integer_constant(StringName(), #m_bound_name, static_cast<int64_t>(m_constant));
+	get_gdtype_static_mutable().bind_integer_constant_raw("", #m_bound_name, static_cast<int64_t>(m_constant));
 
 #ifdef DEBUG_ENABLED
 

@@ -702,6 +702,10 @@ File extracted from upstream release tarball:
 - Added 2 headers `godot_mbedtls_config.h` and `godot_psa_config.h` in `thirdparty/mbedtls/godot` for build configuration
 - Added `thirdparty/mbedtls/godot/godot_mbedtls_platform.cpp` to implement some mbedTLS platform functions using Godot-native APIs
 
+Patches:
+
+- `0001-fix-msvc-light.patch` ([GH-124014](https://github.com/godotengine/godot/pull/124014))
+
 
 ## metal-cpp
 
@@ -1037,6 +1041,7 @@ Patches:
 - `0007-ios-accelerometer.patch` ([GH-120373](https://github.com/godotengine/godot/pull/120373))
 - `0008-ios-link.patch` ([GH-123903](https://github.com/godotengine/godot/pull/123903))
 - `0009-ios-iostream-no-prefpath.patch` ([GH-123899](https://github.com/godotengine/godot/pull/123899))
+- `0010-fix-linux-getenv-unsafe.patch` ([GH-124017](https://github.com/godotengine/godot/pull/124017))
 
 
 ## spirv-cross

@@ -2200,6 +2200,10 @@ void DocumentEditorContainer::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_PROCESS: {
+			if (!is_visible()) {
+				break;
+			}
+
 			const int kb_height = DisplayServer::get_singleton()->virtual_keyboard_get_height();
 			if (kb_height == last_kb_height) {
 				break;
@@ -2207,32 +2211,30 @@ void DocumentEditorContainer::_notification(int p_what) {
 
 			last_kb_height = kb_height;
 			float spacer_height = 0.0f;
-			const float status_bar_height = 28 * EDSCALE; // Magic number
-			const bool kb_visible = kb_height > 0;
 
-			if (kb_visible) {
-				if (TextEditorBase *editor = Object::cast_to<TextEditorBase>(_get_current_editor())) {
-					if (CodeTextEditor *code_editor = editor->get_code_editor()) {
-						if (CodeEdit *text_editor = code_editor->get_text_editor()) {
-							if (!text_editor->has_focus()) {
-								break;
-							}
+			if (EditorNode::get_singleton()->is_portrait()) {
+				// Reset virtual_keyboard_spacer and let EditorNode handle resizing in portrait mode.
+				virtual_keyboard_spacer->set_custom_minimum_size(Size2());
+			} else {
+				const float status_bar_height = 28 * EDSCALE;
+				const float control_bottom = get_global_position().y + get_size().y;
+				const float extra_bottom = get_viewport_rect().size.y - control_bottom;
+				spacer_height = float(kb_height) - extra_bottom - status_bar_height;
+				spacer_height = fmax(0, spacer_height);
+				virtual_keyboard_spacer->set_custom_minimum_size(Size2(0, spacer_height));
+				EditorSceneTabs::get_singleton()->set_visible(kb_height == 0);
+			}
+
+			// Make sure caret is visible after resize.
+			if (TextEditorBase *editor = Object::cast_to<TextEditorBase>(_get_current_editor())) {
+				if (CodeTextEditor *code_editor = editor->get_code_editor()) {
+					if (CodeEdit *text_editor = code_editor->get_text_editor()) {
+						if (text_editor->has_focus()) {
 							text_editor->adjust_viewport_to_caret();
 						}
 					}
 				}
-
-				const float control_bottom = get_global_position().y + get_size().y;
-				const float extra_bottom = get_viewport_rect().size.y - control_bottom;
-				spacer_height = float(kb_height) - extra_bottom - status_bar_height;
-
-				if (spacer_height < 0.0f) {
-					spacer_height = 0.0f;
-				}
 			}
-
-			virtual_keyboard_spacer->set_custom_minimum_size(Size2(0, spacer_height));
-			EditorSceneTabs::get_singleton()->set_visible(!kb_visible);
 		} break;
 #endif
 		case NOTIFICATION_APPLICATION_FOCUS_IN: {
@@ -2708,6 +2710,16 @@ Vector<Control *> DocumentEditorContainer::get_all_editors() const {
 		editors.push_back(tab_container->get_tab_control(i));
 	}
 	return editors;
+}
+
+void DocumentEditorContainer::focus_active_editor() {
+	ScriptEditorBase *seb = Object::cast_to<ScriptEditorBase>(get_active_editor());
+	EditorHelp *eh = Object::cast_to<EditorHelp>(get_active_editor());
+	if (seb) {
+		seb->get_base_editor()->grab_focus();
+	} else if (eh) {
+		eh->set_focused();
+	}
 }
 
 PackedStringArray DocumentEditorContainer::get_unsaved_scripts() const {
@@ -3728,7 +3740,7 @@ void DocumentEditorContainer::update_docs_from_script(const Ref<Script> &p_scrip
 
 void ScriptEditor::rename_symbol(const String &p_symbol, const EditorLanguage::LookupResult &p_lookup) {
 	FindInFiles::get_singleton()->get_container()->create_rename_control(p_symbol, p_lookup);
-	FindInFiles::get_singleton()->get_dock()->make_visible();
+	EditorDockManager::get_singleton()->focus_dock(FindInFiles::get_singleton()->get_container());
 
 	LineEdit *name_edit = FindInFiles::get_singleton()->get_container()->get_search_control()->get_rename_line_edit();
 	callable_mp((Control *)name_edit, &Control::grab_focus).call_deferred(false);
@@ -4310,15 +4322,7 @@ bool ScriptEditor::should_use_external_editor(const Ref<Script> &p_for_script) {
 }
 
 void ScriptEditor::focus_editor() {
-	EditorDockManager::get_singleton()->focus_dock(this);
-	Control *active_editor = script_container->get_active_editor();
-	ScriptEditorBase *seb = Object::cast_to<ScriptEditorBase>(active_editor);
-	EditorHelp *eh = Object::cast_to<EditorHelp>(active_editor);
-	if (seb) {
-		seb->get_base_editor()->grab_focus();
-	} else if (eh) {
-		eh->set_focused();
-	}
+	EditorDockManager::get_singleton()->force_focus_dock(this);
 }
 
 void ScriptEditor::focus_script_editor(const Ref<Resource> &p_for_resource) {
@@ -4534,6 +4538,7 @@ ScriptEditor::ScriptEditor() {
 	script_container = memnew(DocumentEditorContainer(true, "ScriptEditor", "script_editor_cache.cfg"));
 	script_container->set_handled_resource_types({ "GDScript", "Script", "JSON" });
 	add_child(script_container);
+	connect("_focused", callable_mp(script_container, &DocumentEditorContainer::focus_active_editor));
 
 	help_search_dialog = memnew(EditorHelpSearch);
 	add_child(help_search_dialog);
