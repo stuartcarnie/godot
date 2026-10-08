@@ -120,6 +120,7 @@ set_abs(RENDERER_RD_SERVER_SHADERS_INC ${CMAKE_CURRENT_SOURCE_DIR}
         shaders/scene_forward_aa_inc.glsl
         shaders/scene_forward_gi_inc.glsl
         shaders/scene_forward_lights_inc.glsl
+        shaders/scene_forward_streaming_inc.glsl
         shaders/scene_forward_vertex_lights_inc.glsl
 )
 # [[[end]]]
