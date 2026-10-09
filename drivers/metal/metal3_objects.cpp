@@ -1010,8 +1010,6 @@ void MDCommandBuffer::render_clear_attachments(VectorView<RDD::AttachmentClear> 
 	enc->pushDebugGroup(MTLSTR("ClearAttachments"));
 	enc->setRenderPipelineState(cache.get_clear_render_pipeline_state(key, nullptr));
 
-	// Start from the encoder mirror so that only the state the clear needs is encoded, and
-	// the mirror keeps describing the encoder afterwards.
 	MDRenderPipeline::RasterState clear_state = render.encoder_raster;
 	clear_state.depth_stencil = cache.get_depth_stencil_state(key.is_depth_enabled(), key.is_stencil_enabled());
 	clear_state.cull_mode = MTL::CullModeNone;
@@ -1071,8 +1069,6 @@ void MDCommandBuffer::_render_set_dirty_state() {
 	}
 
 	if (render.dirty.has_flag(RenderState::DIRTY_RASTER)) {
-		// The dynamic blend constant replaces the pipeline's static color when the pipeline
-		// declares blend constants as dynamic state.
 		if (render.raster_state.blend.enabled && render.blend_constants.has_value()) {
 			render.raster_state.blend.set_color(*render.blend_constants);
 		}
@@ -1875,8 +1871,6 @@ void DirectEncoder::set(MTL::SamplerState **p_samplers, NS::Range p_range) {
 
 GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability-new")
 
-// Binds a set's top-level argument buffer to the stages that declare it. Stages outside
-// the set's mask have no matching entry point argument, so binding there is dead work.
 void MDCommandBuffer::_set_arg_buffer(MTL::RenderCommandEncoder *p_enc, const UniformSet &p_shader_set, MTL::Buffer *p_buffer, uint32_t p_offset, uint32_t p_set_index) {
 	if (p_shader_set.active_stages.has_flag(RDD::SHADER_STAGE_VERTEX_BIT) &&
 			render.arg_buffer_cache[RenderState::ARG_BUFFER_STAGE_VERTEX].update(p_buffer, p_offset, p_set_index)) {

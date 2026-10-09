@@ -407,10 +407,6 @@ public:
 		// Bit mask of the uniform sets that are dirty, to prevent redundant binding.
 		uint64_t uniform_set_mask = 0;
 
-		// Top-level argument buffer bound to each stage for each set, so that re-binding an
-		// unchanged set does not re-encode it. A pipeline change marks every set dirty, because
-		// shader variants differ in which stages declare a set, but the argument buffer index is
-		// always the set index, so a hit here is safe for the lifetime of one encoder.
 		enum ArgBufferStage {
 			ARG_BUFFER_STAGE_VERTEX,
 			ARG_BUFFER_STAGE_FRAGMENT,
@@ -418,14 +414,7 @@ public:
 		};
 		BindingCache arg_buffer_cache[ARG_BUFFER_STAGE_MAX];
 
-		// Mirror of the raster state currently programmed into the active encoder. A freshly
-		// created render command encoder starts at Metal's defaults (fill Fill, clip Clip,
-		// winding Clockwise, cull None, bias 0, stencil ref 0, blend 0), which are exactly the
-		// defaults of RasterState, so no "valid" flag is needed. Reset it whenever a new
-		// encoder is created, and update it anywhere raster state is written directly.
 		MDRenderPipeline::RasterState encoder_raster;
-
-		// Raster state for the next draw: the bound pipeline's, with dynamic state overlaid.
 		MDRenderPipeline::RasterState raster_state;
 
 		_FORCE_INLINE_ void clear_arg_buffer_cache() {

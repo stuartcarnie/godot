@@ -31,6 +31,7 @@
 #include "shader_rd.h"
 
 #include "core/config/engine.h"
+#include "core/io/compression.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/object/worker_thread_pool.h"
@@ -152,6 +153,14 @@ void ShaderRD::_add_stage(const char *p_code, StageType p_stage_type) {
 		stage_templates[p_stage_type].chunks.push_back(text_chunk);
 		text = String();
 	}
+}
+
+CharString ShaderRD::_decompress_code(const uint8_t *p_compressed, int p_compressed_size, int p_size) {
+	CharString code;
+	code.resize_uninitialized(p_size);
+	const int64_t ret = Compression::decompress((uint8_t *)code.ptrw(), p_size, p_compressed, p_compressed_size, Compression::MODE_DEFLATE);
+	ERR_FAIL_COND_V_MSG(ret != p_size, CharString(), "Embedded shader code is corrupt.");
+	return code;
 }
 
 typedef enum {

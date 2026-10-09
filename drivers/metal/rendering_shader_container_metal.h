@@ -86,7 +86,6 @@ struct MetalPushConstantBinding {
 		value = (value & ~BINDING_MASK) | p_index | stage_bit(p_stage);
 	}
 
-	/// Returns `true` if the shader has a push constant block.
 	bool is_valid() const {
 		return value & STAGE_MASK;
 	}

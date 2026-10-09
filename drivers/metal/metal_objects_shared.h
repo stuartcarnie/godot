@@ -990,9 +990,6 @@ public:
 	SampleCount sample_count = SampleCount1;
 
 	struct RasterState {
-		// Not owned: the pipeline holds the reference, and RenderingDevice defers pipeline frees
-		// until the frame using it has completed, so an encoder never outlives it. Keeping a raw
-		// pointer makes the struct trivially copyable, which matters on every pipeline bind.
 		MTL::DepthStencilState *depth_stencil = nullptr;
 		MTL::CullMode cull_mode = MTL::CullModeNone;
 		MTL::TriangleFillMode fill_mode = MTL::TriangleFillModeFill;
@@ -1123,7 +1120,7 @@ public:
 	};
 
 	RasterState raster_state;
-	NS::SharedPtr<MTL::DepthStencilState> depth_stencil; ///< Owns raster_state.depth_stencil.
+	NS::SharedPtr<MTL::DepthStencilState> depth_stencil;
 
 	MDRenderShader *shader = nullptr;
 
