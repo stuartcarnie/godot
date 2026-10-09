@@ -27,6 +27,8 @@ target_sources(core PRIVATE
         file_access_memory.h
         file_access_pack.cpp
         file_access_pack.h
+        file_access_packed_byte_array.cpp
+        file_access_packed_byte_array.h
         file_access_patched.cpp
         file_access_patched.h
         file_access_zip.cpp
