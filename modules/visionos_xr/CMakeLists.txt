@@ -16,6 +16,8 @@ target_sources(godot-module-visionos_xr PRIVATE
         visionos_hand_tracking.h
         visionos_hand_tracking.mm
         visionos_simd_helpers.h
+        visionos_spatial_events.h
+        visionos_spatial_events.mm
         visionos_xr_interface.h
         visionos_xr_interface.mm
 )
