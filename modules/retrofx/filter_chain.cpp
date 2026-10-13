@@ -227,7 +227,9 @@ void FilterChain::init_next_history_texture() {
 }
 
 void FilterChain::prepare_next_frame(RID p_source_texture, TextureSize p_source_size) {
-	frame_count++;
+	if (!paused) {
+		frame_count++;
+	}
 
 	if (render_targets_need_resize) {
 		resize_render_targets();
@@ -322,10 +324,31 @@ void FilterChain::render_final_pass(const RID p_target, const Size2 p_target_siz
 void FilterChain::render(
 		const RID p_source, const Size2 p_source_size,
 		const RID p_target, const Size2 p_target_size) {
+	if (!enabled) {
+		RD *rd = RD::get_singleton();
+		RD::DrawCommandLabel label = rd->draw_command_label("RFX Passthrough");
+		RD::DrawListID dl = rd->draw_list_begin(p_target, RD::DRAW_CLEAR_ALL, Color(0, 0, 0));
+		ERR_FAIL_COND_MSG(dl == RD::INVALID_ID, "Failed to create draw list for passthrough.");
+		rd->draw_list_set_viewport(dl, output_frame.viewport);
+		rd->draw_list_bind_vertex_array(dl, pipeline_state.vertex_array);
+		blit_texture(dl, p_source);
+		rd->draw_list_end();
+		return;
+	}
+
 	if (history_count == 0) {
 		// No need to copy, set the sourceTexture to Original / OriginalHistory0 semantic.
 		history_textures[0].rid = p_source;
 		history_textures[0].size = p_source_size;
+	}
+
+	if (p_source != last_source) {
+		// A render target texture is recreated when its viewport is resized or reconfigured.
+		// Uniform sets that referenced the old texture are invalid, so rebuild them.
+		last_source = p_source;
+		for (uint32_t i = 0; i < passes_count; i++) {
+			passes[i].uniform_set = RID();
+		}
 	}
 
 	prepare_next_frame(p_source, p_source_size);

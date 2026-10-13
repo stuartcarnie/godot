@@ -36,6 +36,8 @@ target_sources(godot-module-retrofx PRIVATE
         filter_chain.h
         register_types.cpp
         register_types.h
+        retro_fx_container.cpp
+        retro_fx_container.h
         retro_fx_rect.cpp
         retro_fx_rect.h
         rfx_shader_graph.cpp
