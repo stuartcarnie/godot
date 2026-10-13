@@ -9,6 +9,7 @@
 #include "editor/gui/editor_spin_slider.h"
 #include "scene/gui/box_container.h"
 
+#include "modules/retrofx/retro_fx_container.h"
 #include "modules/retrofx/retro_fx_rect.h"
 #include "modules/retrofx/shader_chain.h"
 
@@ -172,8 +173,22 @@ void EditorPropertyShaderVector2::_value_changed(double p_value, int p_axis) {
 // RetroFXInspectorPlugin
 // ---------------------------------------------------------------------------
 
+// Returns the shader chain of a RetroFX node, or null. Sets r_grouping to the node's intelligent grouping flag.
+static Ref<ShaderChain> get_retro_fx_chain(Object *p_object, bool &r_grouping) {
+	if (RetroFXRect *rect = Object::cast_to<RetroFXRect>(p_object)) {
+		r_grouping = rect->is_intelligent_grouping_enabled();
+		return rect->get_shader_chain();
+	}
+	if (RetroFXContainer *container = Object::cast_to<RetroFXContainer>(p_object)) {
+		r_grouping = container->is_intelligent_grouping_enabled();
+		return container->get_shader_chain();
+	}
+	r_grouping = false;
+	return Ref<ShaderChain>();
+}
+
 bool RetroFXInspectorPlugin::can_handle(Object *p_object) {
-	return Object::cast_to<RetroFXRect>(p_object) != nullptr;
+	return Object::cast_to<RetroFXRect>(p_object) != nullptr || Object::cast_to<RetroFXContainer>(p_object) != nullptr;
 }
 
 // Returns true if `name` ends with `suffix` (case-sensitive). Writes the stem to `r_stem`.
@@ -219,10 +234,10 @@ static String derive_label(const Vector<Ref<ShaderParameter>> &p_members, const 
 	return prefix.is_empty() ? p_fallback_stem : prefix;
 }
 
-void RetroFXInspectorPlugin::_build_groups(RetroFXRect *p_fx) {
+void RetroFXInspectorPlugin::_build_groups(const Ref<ShaderChain> &p_chain) {
 	groups_by_member.clear();
 
-	Ref<ShaderChain> chain = p_fx->get_shader_chain();
+	const Ref<ShaderChain> &chain = p_chain;
 	if (chain.is_null() || !chain->has_shader_loaded()) {
 		return;
 	}
@@ -328,15 +343,15 @@ void RetroFXInspectorPlugin::_build_groups(RetroFXRect *p_fx) {
 
 void RetroFXInspectorPlugin::parse_begin(Object *p_object) {
 	groups_by_member.clear();
-	RetroFXRect *fx = Object::cast_to<RetroFXRect>(p_object);
-	if (!fx || !fx->is_intelligent_grouping_enabled()) {
+	bool grouping = false;
+	Ref<ShaderChain> chain = get_retro_fx_chain(p_object, grouping);
+	if (chain.is_null() || !grouping) {
 		return;
 	}
-	_build_groups(fx);
+	_build_groups(chain);
 
 	// Register tooltip descriptions for every parameter that has one.
-	Ref<ShaderChain> chain = fx->get_shader_chain();
-	if (chain.is_null() || !chain->has_shader_loaded()) {
+	if (!chain->has_shader_loaded()) {
 		return;
 	}
 	EditorInspector *insp = EditorInterface::get_singleton()->get_inspector();
@@ -347,7 +362,7 @@ void RetroFXInspectorPlugin::parse_begin(Object *p_object) {
 			continue;
 		}
 		insp->add_custom_property_description(
-				"RetroFXRect",
+				p_object->get_class(),
 				vformat("parameters/%s", p->get_name()),
 				p->get_desc());
 	}

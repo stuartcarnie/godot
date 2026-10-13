@@ -106,6 +106,12 @@ public:
 
 	bool has_shader_loaded() const { return filter_chain->has_shader_loaded(); }
 
+	void set_enabled(bool p_enabled) { filter_chain->set_enabled(p_enabled); }
+	bool is_enabled() const { return filter_chain->is_enabled(); }
+
+	void set_paused(bool p_paused) { filter_chain->set_paused(p_paused); }
+	bool is_paused() const { return filter_chain->is_paused(); }
+
 	ShaderChain();
 	~ShaderChain() override;
 };

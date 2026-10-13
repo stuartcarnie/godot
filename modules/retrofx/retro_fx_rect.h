@@ -63,6 +63,7 @@ private:
 	bool hflip = false;
 	bool vflip = false;
 	bool paused = false;
+	bool presenting = false; // A redraw was requested to show the last render; skip re-rendering that frame.
 	bool intelligent_grouping = true;
 	Ref<Texture2D> texture;
 	RID texture_rid;
@@ -81,6 +82,7 @@ private:
 	void _update_process();
 	void _update_shader_chain();
 	void _toggle_pause();
+	void _frame_post_draw();
 	void _internal_process();
 
 protected:
@@ -116,6 +118,9 @@ public:
 
 	void set_intelligent_grouping(bool p_enabled);
 	bool is_intelligent_grouping_enabled() const { return intelligent_grouping; }
+
+	void set_filter_enabled(bool p_enabled);
+	bool is_filter_enabled() const;
 
 	Ref<ShaderChain> get_shader_chain() const { return shader_chain; }
 
