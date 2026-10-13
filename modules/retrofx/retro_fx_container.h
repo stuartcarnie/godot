@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  texture_rect.h                                                        */
+/*  retro_fx_container.h                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -32,60 +32,45 @@
 
 #include "shader_chain.h"
 
-#include "core/object/worker_thread_pool.h"
-#include "scene/gui/control.h"
+#include "scene/gui/subviewport_container.h"
 #include "scene/resources/texture_rd.h"
 
-class RetroFXRect : public Control {
-	GDCLASS(RetroFXRect, Control);
+class SubViewport;
 
-public:
-	enum ExpandMode {
-		EXPAND_KEEP_SIZE,
-		EXPAND_IGNORE_SIZE,
-		EXPAND_FIT_WIDTH,
-		EXPAND_FIT_WIDTH_PROPORTIONAL,
-		EXPAND_FIT_HEIGHT,
-		EXPAND_FIT_HEIGHT_PROPORTIONAL,
-	};
+// A SubViewportContainer that draws its first SubViewport child through a
+// RetroFX shader chain. The SubViewport keeps its own size (for example 320x200)
+// and the chain renders it into an output texture the size of this container.
+class RetroFXContainer : public SubViewportContainer {
+	GDCLASS(RetroFXContainer, SubViewportContainer);
 
-	enum StretchMode {
-		STRETCH_SCALE,
-		STRETCH_TILE,
-		STRETCH_KEEP,
-		STRETCH_KEEP_CENTERED,
-		STRETCH_KEEP_ASPECT,
-		STRETCH_KEEP_ASPECT_CENTERED,
-		STRETCH_KEEP_ASPECT_COVERED,
-	};
-
-private:
-	bool hflip = false;
-	bool vflip = false;
-	bool paused = false;
-	bool intelligent_grouping = true;
-	Ref<Texture2D> texture;
-	RID texture_rid;
-	ExpandMode expand_mode = EXPAND_KEEP_SIZE;
-	StretchMode stretch_mode = STRETCH_SCALE;
 	String shader_path;
+	bool intelligent_grouping = true;
 
 	Ref<ShaderChain> shader_chain;
 	Error shader_chain_error = OK;
-	RD::FramebufferFormatID fb_format;
+	bool paused = false;
+	bool presenting = false; // A redraw was requested to show the last render; skip re-rendering that frame.
+
+	SubViewport *source = nullptr;
+	RID source_texture_rid;
+
 	RID output_texture_rid;
 	Ref<Texture2DRD> output_texture;
 	RID output_fb;
 
-	void _texture_changed();
-	void _update_process();
-	void _update_shader_chain();
+	void _set_source(SubViewport *p_source);
+	void _source_texture_changed();
+	void _update_output();
+	void _render();
 	void _toggle_pause();
-	void _internal_process();
+	void _frame_post_draw();
 
 protected:
-	virtual Size2 get_minimum_size() const override;
 	void _notification(int p_what);
+	void _validate_property(PropertyInfo &p_property) const;
+
+	virtual void add_child_notify(Node *p_child) override;
+	virtual void remove_child_notify(Node *p_child) override;
 
 	bool _set(const StringName &p_name, const Variant &p_value);
 	bool _get(const StringName &p_name, Variant &r_ret) const;
@@ -96,20 +81,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	void set_texture(const Ref<Texture2D> &p_tex);
-	Ref<Texture2D> get_texture() const;
-
-	void set_expand_mode(ExpandMode p_mode);
-	ExpandMode get_expand_mode() const;
-
-	void set_stretch_mode(StretchMode p_mode);
-	StretchMode get_stretch_mode() const;
-
-	void set_flip_h(bool p_flip);
-	bool is_flipped_h() const;
-
-	void set_flip_v(bool p_flip);
-	bool is_flipped_v() const;
+	virtual Transform2D get_child_viewport_transform() const override;
 
 	void set_shader_path(const String &p_path);
 	String get_shader_path() const;
@@ -117,11 +89,13 @@ public:
 	void set_intelligent_grouping(bool p_enabled);
 	bool is_intelligent_grouping_enabled() const { return intelligent_grouping; }
 
+	void set_filter_enabled(bool p_enabled);
+	bool is_filter_enabled() const;
+
 	Ref<ShaderChain> get_shader_chain() const { return shader_chain; }
 
-	RetroFXRect();
-	~RetroFXRect() override;
-};
+	PackedStringArray get_configuration_warnings() const override;
 
-VARIANT_ENUM_CAST(RetroFXRect::ExpandMode);
-VARIANT_ENUM_CAST(RetroFXRect::StretchMode);
+	RetroFXContainer();
+	~RetroFXContainer() override;
+};

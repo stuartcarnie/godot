@@ -30,9 +30,9 @@
 
 #include "register_types.h"
 
-#include "retro_fx_rect.h"
-#include "shader_chain.h"
+#include "retro_fx_container.h"
 #include "rfx_shader_graph.h"
+#include "shader_chain.h"
 #include "slang_shader.h"
 
 #include "core/object/class_db.h"
@@ -56,7 +56,7 @@ void initialize_retrofx_module(ModuleInitializationLevel p_level) {
 	}
 
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_CLASS(RetroFXRect);
+		GDREGISTER_CLASS(RetroFXContainer);
 
 		GDREGISTER_CLASS(SlangShader);
 		GDREGISTER_CLASS(RFXShaderGraph);

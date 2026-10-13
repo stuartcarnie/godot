@@ -166,6 +166,10 @@ class FilterChain {
 
 	bool render_targets_need_resize = true;
 	bool history_needs_init = false;
+	bool enabled = true;
+	bool paused = false;
+	/// Source texture of the previous frame. Pass uniform sets reference it and must be rebuilt when it changes.
+	RID last_source;
 
 	Rect2 source_rect;
 	Size2 aspect_size;
@@ -247,6 +251,14 @@ public:
 	void set_default_filtering_linear(bool p_linear);
 
 	_FORCE_INLINE_ bool has_shader_loaded() const { return has_shader; }
+
+	/// When disabled, render() copies the source to the target and skips every pass.
+	void set_enabled(bool p_enabled) { enabled = p_enabled; }
+	_FORCE_INLINE_ bool is_enabled() const { return enabled; }
+
+	/// When paused, the frame count does not advance, so time-based shaders hold still while the source can still change.
+	void set_paused(bool p_paused) { paused = p_paused; }
+	_FORCE_INLINE_ bool is_paused() const { return paused; }
 
 	FilterChain();
 	~FilterChain();
