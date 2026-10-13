@@ -105,6 +105,7 @@ target_sources(tests PRIVATE
         core/variant/test_variant_utility.cpp
         display_server_mock.cpp
         display_server_mock.h
+        scene/mock_control.h
         scene/test_animation.cpp
         scene/test_animation_blend_tree.cpp
         scene/test_animation_player.cpp
