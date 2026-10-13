@@ -132,7 +132,18 @@ void RetroFXRect::_internal_process() {
 
 	// TODO(sgc): should check if Slang shader uses `time` and only call `redraw_request` if it does
 	//  Potentially feedback and history might require redraw too.
+	presenting = true;
 	RenderingServerDefault::redraw_request();
+}
+
+void RetroFXRect::_frame_post_draw() {
+	if (presenting) {
+		// This frame was requested by _internal_process() to show the output.
+		presenting = false;
+		return;
+	}
+	// Something else redrew the editor, so the source texture may have changed.
+	_internal_process();
 }
 
 void RetroFXRect::_update_process() {
@@ -211,8 +222,18 @@ void RetroFXRect::_update_shader_chain() {
 	queue_redraw();
 }
 
+// Paused: no continuous redraws, but re-render after any frame drawn for other reasons so
+// changes to the source texture still show.
 void RetroFXRect::_toggle_pause() {
-	set_process_internal(!is_processing_internal());
+	paused = !paused;
+	shader_chain->set_paused(paused);
+	set_process_internal(!paused);
+	presenting = false;
+	if (paused) {
+		RS::get_singleton()->connect("frame_post_draw", callable_mp(this, &RetroFXRect::_frame_post_draw));
+	} else {
+		RS::get_singleton()->disconnect("frame_post_draw", callable_mp(this, &RetroFXRect::_frame_post_draw));
+	}
 }
 
 bool RetroFXRect::_get(const StringName &p_name, Variant &r_ret) const {
@@ -359,6 +380,21 @@ void RetroFXRect::_get_property_list(List<PropertyInfo> *p_list) const {
 	}
 }
 
+void RetroFXRect::set_filter_enabled(bool p_enabled) {
+	if (shader_chain->is_enabled() == p_enabled) {
+		return;
+	}
+	shader_chain->set_enabled(p_enabled);
+
+	if (!is_processing_internal()) {
+		_internal_process();
+	}
+}
+
+bool RetroFXRect::is_filter_enabled() const {
+	return shader_chain->is_enabled();
+}
+
 void RetroFXRect::set_intelligent_grouping(bool p_enabled) {
 	if (intelligent_grouping == p_enabled) {
 		return;
@@ -409,6 +445,8 @@ void RetroFXRect::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_stretch_mode"), &RetroFXRect::get_stretch_mode);
 	ClassDB::bind_method(D_METHOD("set_shader_path", "path"), &RetroFXRect::set_shader_path);
 	ClassDB::bind_method(D_METHOD("get_shader_path"), &RetroFXRect::get_shader_path);
+	ClassDB::bind_method(D_METHOD("set_filter_enabled", "enabled"), &RetroFXRect::set_filter_enabled);
+	ClassDB::bind_method(D_METHOD("is_filter_enabled"), &RetroFXRect::is_filter_enabled);
 	ClassDB::bind_method(D_METHOD("set_intelligent_grouping", "enabled"), &RetroFXRect::set_intelligent_grouping);
 	ClassDB::bind_method(D_METHOD("is_intelligent_grouping_enabled"), &RetroFXRect::is_intelligent_grouping_enabled);
 	ClassDB::bind_method(D_METHOD("get_shader_chain"), &RetroFXRect::get_shader_chain);
@@ -419,6 +457,7 @@ void RetroFXRect::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_h"), "set_flip_h", "is_flipped_h");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_v"), "set_flip_v", "is_flipped_v");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "shader_path", PROPERTY_HINT_GLOBAL_FILE, "*.slangp"), "set_shader_path", "get_shader_path");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "filter_enabled"), "set_filter_enabled", "is_filter_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "intelligent_grouping"), "set_intelligent_grouping", "is_intelligent_grouping_enabled");
 
 	BIND_ENUM_CONSTANT(EXPAND_KEEP_SIZE);
@@ -557,6 +596,10 @@ RetroFXRect::RetroFXRect() {
 }
 
 RetroFXRect::~RetroFXRect() {
+	if (paused) {
+		RS::get_singleton()->disconnect("frame_post_draw", callable_mp(this, &RetroFXRect::_frame_post_draw));
+	}
+
 	RD *rd = RD::get_singleton();
 
 	if (output_texture_rid.is_valid()) {
