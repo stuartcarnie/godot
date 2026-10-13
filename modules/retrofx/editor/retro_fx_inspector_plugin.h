@@ -67,7 +67,7 @@ class RetroFXInspectorPlugin : public EditorInspectorPlugin {
 
 	HashMap<String, GroupInfo> groups_by_member;
 
-	void _build_groups(class RetroFXRect *p_fx);
+	void _build_groups(const Ref<class ShaderChain> &p_chain);
 
 public:
 	virtual bool can_handle(Object *p_object) override;

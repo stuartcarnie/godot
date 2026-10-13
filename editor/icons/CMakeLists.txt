@@ -3,7 +3,7 @@ set(GENERATED_EDITOR_ICONS_HEADER ${CMAKE_BINARY_INCLUDE_DIR}/editor/themes/edit
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}')
-#   for file in list_files(cog, ['.', '../../modules/csg/icons', '../../modules/gdscript/icons', '../../modules/gridmap/icons', '../../modules/noise/icons', '../../modules/multiplayer/icons', '../../modules/tilemap/icons'], exts=['svg']):
+#   for file in list_files(cog, ['.', '../../modules/csg/icons', '../../modules/gdscript/icons', '../../modules/gridmap/icons', '../../modules/noise/icons', '../../modules/multiplayer/icons', '../../modules/retrofx/icons', '../../modules/tilemap/icons'], exts=['svg']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
@@ -27,6 +27,7 @@ set_abs(GODOT_EDITOR_ICONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         ../../modules/noise/icons/Noise.svg
         ../../modules/noise/icons/NoiseTexture2D.svg
         ../../modules/noise/icons/NoiseTexture3D.svg
+        ../../modules/retrofx/icons/RetroFXContainer.svg
         ../../modules/tilemap/icons/TileChecked.svg
         ../../modules/tilemap/icons/TileMap.svg
         ../../modules/tilemap/icons/TileMapDock.svg
