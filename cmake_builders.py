@@ -470,7 +470,7 @@ def read_lines(source: str) -> [str]:
 @source_target
 def cmd_make_documentation_header_compressed(source: str, target: str) -> int:
     source_input = read_lines(source)
-    make_doc_header(target=[target], source=source_input, env=None)
+    make_doc_header(target=[target], source=source_input, env=env)
     return 0
 
 
