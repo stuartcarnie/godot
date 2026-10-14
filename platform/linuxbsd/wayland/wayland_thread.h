@@ -1309,13 +1309,14 @@ public:
 	DisplayServerEnums::WindowMode window_get_mode(DisplayServerEnums::WindowID p_window_id) const;
 
 	void window_set_borderless(DisplayServerEnums::WindowID p_window_id, bool p_borderless);
+	void window_set_input_region(DisplayServerEnums::WindowID p_window_id, bool p_empty_region, const Vector<Vector2> &p_region);
 	void window_set_title(DisplayServerEnums::WindowID p_window_id, const String &p_title);
 	void window_set_app_id(DisplayServerEnums::WindowID p_window_id, const String &p_app_id);
 
 	bool window_is_focused(DisplayServerEnums::WindowID p_window_id);
 
 	// Optional - requires xdg_activation_v1
-	void window_request_attention(DisplayServerEnums::WindowID p_window_id);
+	void window_request_attention(DisplayServerEnums::WindowID p_window_id, bool p_hint_strong_focus = false);
 
 	void window_start_drag(DisplayServerEnums::WindowID p_window_id);
 
