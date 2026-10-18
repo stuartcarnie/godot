@@ -2,7 +2,7 @@
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}')
-#   for file in list_files(cog, 'icons', exts=['svg']):
+#   for file in list_files(cog, 'icons', exts=['svg'], recursive=True):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
@@ -25,6 +25,9 @@ set_abs(RESOURCE_DEFAULT_THEME_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         icons/color_picker_cursor_bg.svg
         icons/color_picker_overbright.svg
         icons/color_picker_pipette.svg
+        icons/debug_icons/debug_anchor.svg
+        icons/debug_icons/debug_pivot.svg
+        icons/debug_icons/debug_resize.svg
         icons/error_icon.svg
         icons/favorite.svg
         icons/file.svg
