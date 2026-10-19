@@ -6,6 +6,7 @@ option(ENABLE_GLAD "Enable GLAD OpenGL loader" ON)
 option(ENABLE_COREAUDIO "Enable the CoreAudio driver" ON)
 option(ENABLE_COREMIDI "Enable the CoreMIDI driver" ON)
 option(ENABLE_OPENXR "Enable OpenXR" ON)
+option(ENABLE_METAL_CPP_NEW "Enable the new Metal C++ API" OFF)
 set(GODOT_PLATFORM "macos")
 add_compile_definitions(MACOS_ENABLED)
 

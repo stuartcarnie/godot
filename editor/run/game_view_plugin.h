@@ -187,6 +187,7 @@ class GameView : public VBoxContainer {
 	bool was_feature_disabled_mid_play = false;
 	int active_sessions = 0;
 	int screen_index_before_start = -1;
+	bool local_process_running = false;
 	ScriptEditorDebugger *embedded_script_debugger = nullptr;
 
 	bool embed_on_play = true;
