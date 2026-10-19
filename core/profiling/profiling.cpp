@@ -212,10 +212,57 @@ void godot_cleanup_profiler() {
 
 #elif defined(GODOT_USE_INSTRUMENTS)
 
+#ifdef INSTRUMENTS_SCRIPT_ZONES
+#include "core/os/mutex.h"
+#include "core/string/string_name.h"
+#include "core/templates/hash_map.h"
+#endif
+
 namespace apple::instruments {
 
 os_log_t LOG;
 os_log_t LOG_TRACING;
+thread_local ZoneStack zone_stack;
+
+#ifdef INSTRUMENTS_SCRIPT_ZONES
+static BinaryMutex intern_mutex;
+static HashMap<StringName, CharString> intern_table;
+
+// Caller must hold intern_mutex.
+static const char *_intern(const StringName &p_name) {
+	CharString *s = intern_table.getptr(p_name);
+	if (s == nullptr) {
+		s = &intern_table.insert(p_name, p_name.string().utf8())->value;
+	}
+	return s->get_data();
+}
+
+struct LocationKey {
+	uint32_t hash_value = 0;
+
+	static LocationKey create(const StringName &p_file, const StringName &p_name) {
+		return { hash_fmix32(hash_murmur3_one_32(p_name.hash(), p_file.hash())) };
+	}
+	bool operator==(const LocationKey &p_other) const {
+		return hash_value == p_other.hash_value;
+	}
+	uint32_t hash() const {
+		return hash_value;
+	}
+};
+
+static HashMap<LocationKey, ScriptLocation> location_table;
+
+ScriptLocation intern_script_location(const StringName &p_file, const StringName &p_name) {
+	MutexLock lock(intern_mutex);
+	const LocationKey key = LocationKey::create(p_file, p_name);
+	ScriptLocation *loc = location_table.getptr(key);
+	if (loc == nullptr) {
+		loc = &location_table.insert(key, { _intern(p_name), _intern(p_file) })->value;
+	}
+	return *loc;
+}
+#endif // INSTRUMENTS_SCRIPT_ZONES
 
 } // namespace apple::instruments
 

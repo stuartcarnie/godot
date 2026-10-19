@@ -19,3 +19,5 @@ def profiler_gen_builder(target, source, env):
             file.write("#define GODOT_USE_INSTRUMENTS\n")
             if env["profiler_sample_callstack"]:
                 file.write("#define INSTRUMENTS_SAMPLE_CALLSTACKS\n")
+            if env["profiler_script_zones"]:
+                file.write("#define INSTRUMENTS_SCRIPT_ZONES\n")

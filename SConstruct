@@ -226,6 +226,13 @@ opts.Add(
 )
 opts.Add(
     BoolVariable(
+        "profiler_script_zones",
+        "Profile script function calls and the engine calls they make, if the profiler supports it. In Instruments, this can send enough signposts that some are dropped.",
+        False,
+    )
+)
+opts.Add(
+    BoolVariable(
         "profiler_track_memory",
         "Profile memory allocations, if the profiler supports it.",
         False,
