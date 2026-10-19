@@ -514,6 +514,12 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared(TextureID p_ori
 
 	TextureInfo *tex_info = VersatileResource::allocate<TextureInfo>(resources_allocator);
 	tex_info->texture = NS::TransferPtr(obj);
+	// EXPERIMENT: texture views need their own residency.
+	if (main_residency_set) {
+		MutexLock lock(imported_textures_mutex);
+		main_residency_set->addAllocation(obj);
+		main_residency_set->commit();
+	}
 	return TextureID(tex_info);
 }
 
@@ -574,6 +580,12 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create_shared_from_slice(Text
 
 	TextureInfo *tex_info = VersatileResource::allocate<TextureInfo>(resources_allocator);
 	tex_info->texture = NS::TransferPtr(obj);
+	// EXPERIMENT: texture views need their own residency.
+	if (main_residency_set) {
+		MutexLock lock(imported_textures_mutex);
+		main_residency_set->addAllocation(obj);
+		main_residency_set->commit();
+	}
 	return TextureID(tex_info);
 }
 
@@ -587,6 +599,12 @@ void RenderingDeviceDriverMetal::texture_free(TextureID p_texture) {
 			main_residency_set->removeAllocation(tex_info->texture.get());
 			main_residency_set->commit();
 		}
+	}
+	// EXPERIMENT: texture views need their own residency.
+	if (main_residency_set && !tex_info->imported && !tex_info->rasterization_rate_map && tex_info->texture.get()->parentTexture() != nullptr) {
+		MutexLock lock(imported_textures_mutex);
+		main_residency_set->removeAllocation(tex_info->texture.get());
+		main_residency_set->commit();
 	}
 	allocator->free_texture(*tex_info);
 	allocator->free_buffer(tex_info->linear_backing);
