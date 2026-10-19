@@ -104,7 +104,7 @@ class EditorRunBar : public MarginContainer {
 	void _play_custom_pressed(int p_menu_item = RunXRModeMenuItem::INVALID);
 
 	void _run_scene(const String &p_scene_path = "", const Vector<String> &p_run_args = Vector<String>());
-	void _run_native(const Ref<EditorExportPreset> &p_preset);
+	void _run_native(const Ref<EditorExportPreset> &p_preset, int p_device);
 
 	void _profiler_autostart_indicator_pressed();
 
