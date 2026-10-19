@@ -4,7 +4,7 @@ godot_add_library(clipper2 FOLDER thirdparty STATIC)
 #   import cog
 #   from cmake_builders import list_files
 #   cog.outl('target_sources(clipper2 PRIVATE')
-#   for file in list_files(cog, 'src'):
+#   for file in list_files(cog, 'src', exclude=['src/clipper.triangulation.cpp']):
 #       cog.outl(f'        {file}')
 #   cog.outl(')')
 # ]]]
