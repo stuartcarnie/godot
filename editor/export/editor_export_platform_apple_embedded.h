@@ -50,6 +50,9 @@ const String ENV_APPLE_PLATFORM_PROFILE_UUID_RELEASE = "GODOT_APPLE_PLATFORM_PRO
 const String ENV_APPLE_PLATFORM_PROFILE_SPECIFIER_DEBUG = "GODOT_APPLE_PLATFORM_PROFILE_SPECIFIER_DEBUG";
 const String ENV_APPLE_PLATFORM_PROFILE_SPECIFIER_RELEASE = "GODOT_APPLE_PLATFORM_PROFILE_SPECIFIER_RELEASE";
 
+// Name of the pack sent to the app's Documents directory when only project data changed.
+#define APPLE_EMBEDDED_DEPLOY_PACK_NAME "deploy.pck"
+
 static const String storyboard_image_scale_mode[] = {
 	"center",
 	"scaleAspectFit",
@@ -71,10 +74,14 @@ class EditorExportPlatformAppleEmbedded : public EditorExportPlatform {
 		String id;
 		String name;
 		bool wifi = false;
+		String tunnel_ip; // Device address of the CoreDevice tunnel, when connected.
+		bool available = true; // False once the device goes away; the entry keeps its place in the list.
 	};
 
 	Vector<Device> devices;
-	Mutex device_lock;
+	mutable Mutex device_lock;
+	// Process ID of the app launched on each device, by UDID.
+	HashMap<String, int> running_processes;
 
 	Mutex plugins_lock;
 	mutable Vector<PluginConfigAppleEmbedded> plugins;
@@ -100,6 +107,11 @@ protected:
 	}
 
 	int _execute(const String &p_path, const List<String> &p_arguments, std::function<void(const String &)> p_on_data);
+	static String _get_host_tunnel_address(const String &p_device_tunnel_ip);
+	// Identifies the installed app, so a run can tell whether sending the project data is enough.
+	String _get_deploy_hash(const Ref<EditorExportPreset> &p_preset) const;
+	// Where remote deploy keeps the archive and Xcode's build state, outside the generated project.
+	String oneclick_build_dir;
 
 private:
 #endif
@@ -218,8 +230,12 @@ protected:
 	String launch_screen_image_file_name;
 
 	void _blend_and_rotate(Ref<Image> &p_dst, Ref<Image> &p_src, bool p_rot);
+	static Error _save_png_if_changed(const Ref<Image> &p_image, const String &p_path);
 
 	virtual Error _export_loading_screen_file(const Ref<EditorExportPreset> &p_preset, const String &p_dest_dir) { return OK; }
+	// Template files this platform generates during export, by their path inside the template zip.
+	// They are not extracted, so their modification time only changes when their contents do.
+	virtual void _add_generated_template_files(HashSet<String> &r_files) const {}
 	virtual Error _export_icons(const Ref<EditorExportPreset> &p_preset, const String &p_iconset_dir);
 
 	// Asset-catalog dir name under Images.xcassets. visionOS overrides for layered icons.
@@ -257,8 +273,11 @@ public:
 	virtual String get_options_tooltip() const override;
 	virtual Ref<Texture2D> get_option_icon(int p_index) const override;
 	virtual String get_option_label(int p_index) const override;
+	virtual bool is_option_runnable(int p_index) const override;
 	virtual String get_option_tooltip(int p_index) const override;
 	virtual Error run(const Ref<EditorExportPreset> &p_preset, int p_device, BitField<EditorExportPlatform::DebugFlags> p_debug_flags) override;
+	virtual void stop_run(int p_device) override;
+	virtual String get_device_debug_host(int p_device) override;
 
 	virtual bool poll_export() override {
 		bool dc = devices_changed.is_set();

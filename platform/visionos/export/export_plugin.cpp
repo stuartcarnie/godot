@@ -102,14 +102,9 @@ Error EditorExportPlatformVisionOS::_export_icons(const Ref<EditorExportPreset> 
 	}
 	stack_json += "]}";
 
-	{
-		Ref<FileAccess> f = FileAccess::open(p_iconset_dir + "Contents.json", FileAccess::WRITE);
-		if (f.is_null()) {
-			add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat(TTR("Could not write to a file at path \"%s\"."), p_iconset_dir + "Contents.json"));
-			return ERR_CANT_CREATE;
-		}
-		CharString utf8 = stack_json.utf8();
-		f->store_buffer((const uint8_t *)utf8.get_data(), utf8.length());
+	if (store_string_if_changed(p_iconset_dir + "Contents.json", stack_json) != OK) {
+		add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat(TTR("Could not write to a file at path \"%s\"."), p_iconset_dir + "Contents.json"));
+		return ERR_CANT_CREATE;
 	}
 
 	const String layer_metadata_json = "{\"info\":{\"author\":\"xcode\",\"version\":1}}";
@@ -157,31 +152,21 @@ Error EditorExportPlatformVisionOS::_export_icons(const Ref<EditorExportPreset> 
 			}
 		}
 
-		err = img->save_png(imageset_dir + png_name);
+		err = _save_png_if_changed(img, imageset_dir + png_name);
 		if (err != OK) {
 			add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat("Failed to export icon (%s): '%s'.", layers[i].preset_key, icon_path));
 			return err;
 		}
 
-		{
-			Ref<FileAccess> f = FileAccess::open(layer_dir + "Contents.json", FileAccess::WRITE);
-			if (f.is_null()) {
-				add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat(TTR("Could not write to a file at path \"%s\"."), layer_dir + "Contents.json"));
-				return ERR_CANT_CREATE;
-			}
-			CharString utf8 = layer_metadata_json.utf8();
-			f->store_buffer((const uint8_t *)utf8.get_data(), utf8.length());
+		if (store_string_if_changed(layer_dir + "Contents.json", layer_metadata_json) != OK) {
+			add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat(TTR("Could not write to a file at path \"%s\"."), layer_dir + "Contents.json"));
+			return ERR_CANT_CREATE;
 		}
 
-		{
-			String imageset_json = "{\"images\":[{\"filename\":\"" + png_name + "\",\"idiom\":\"vision\",\"scale\":\"2x\"}],\"info\":{\"author\":\"xcode\",\"version\":1}}";
-			Ref<FileAccess> f = FileAccess::open(imageset_dir + "Contents.json", FileAccess::WRITE);
-			if (f.is_null()) {
-				add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat(TTR("Could not write to a file at path \"%s\"."), imageset_dir + "Contents.json"));
-				return ERR_CANT_CREATE;
-			}
-			CharString utf8 = imageset_json.utf8();
-			f->store_buffer((const uint8_t *)utf8.get_data(), utf8.length());
+		const String imageset_json = "{\"images\":[{\"filename\":\"" + png_name + "\",\"idiom\":\"vision\",\"scale\":\"2x\"}],\"info\":{\"author\":\"xcode\",\"version\":1}}";
+		if (store_string_if_changed(imageset_dir + "Contents.json", imageset_json) != OK) {
+			add_message(EXPORT_MESSAGE_ERROR, TTR("Export Icons"), vformat(TTR("Could not write to a file at path \"%s\"."), imageset_dir + "Contents.json"));
+			return ERR_CANT_CREATE;
 		}
 	}
 

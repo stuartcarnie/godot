@@ -4360,6 +4360,7 @@ void EditorNode::_discard_changes(const String &p_str) {
 			files_to_delete_on_exit = LocalVector<String>{
 				"res://.godot/imported",
 				"res://.godot/exported",
+				"res://.godot/deploy",
 				"res://.godot/mono",
 				"res://.godot/extension_list.cfg",
 				"res://.godot/global_script_class_cache.cfg",
