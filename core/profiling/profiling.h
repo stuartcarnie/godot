@@ -183,23 +183,62 @@ void godot_cleanup_profiler();
 #include <os/log.h>
 #include <os/signpost.h>
 
+class StringName;
+
 namespace apple::instruments {
 
 extern os_log_t LOG;
 extern os_log_t LOG_TRACING;
 
+#ifdef INSTRUMENTS_SCRIPT_ZONES
+struct ScriptLocation {
+	const char *name;
+	const char *file;
+};
+
+// Returns UTF-8 copies of p_name and p_file that stay valid until exit.
+ScriptLocation intern_script_location(const StringName &p_file, const StringName &p_name);
+#endif
+
+// IDs of the zones open on this thread, innermost last.
+struct ZoneStack {
+	static constexpr uint32_t MAX_DEPTH = 256;
+	os_signpost_id_t ids[MAX_DEPTH] = {};
+	uint32_t depth = 0;
+};
+
+// Tells other files that zone_stack needs no setup at run time,
+// so they read it directly instead of calling a TLS wrapper.
+[[clang::require_constant_initialization]] extern thread_local ZoneStack zone_stack;
+
+// Like Tracy, ending a zone ends the innermost open zone on the thread,
+// so a group can switch zones while a nested zone is still open.
 class Zone {
 public:
 	os_signpost_id_t id;
-	Zone() :
-			id(os_signpost_id_generate(LOG_TRACING)) {}
+	Zone() {
+		start();
+	}
 	~Zone() {
 		end();
 	}
+	void start() {
+		// Generate first, so zone_stack is not touched while signposts are disabled.
+		id = os_signpost_id_generate(LOG_TRACING);
+		if (id != OS_SIGNPOST_ID_NULL) {
+			ZoneStack &stack = zone_stack;
+			if (stack.depth < ZoneStack::MAX_DEPTH) {
+				stack.ids[stack.depth++] = id;
+			} else {
+				id = OS_SIGNPOST_ID_NULL;
+			}
+		}
+	}
 	void end() {
 		if (id != OS_SIGNPOST_ID_NULL) {
-			os_signpost_interval_end(LOG_TRACING, id, "Zone");
 			id = OS_SIGNPOST_ID_NULL;
+			ZoneStack &stack = zone_stack;
+			os_signpost_interval_end(LOG_TRACING, stack.ids[--stack.depth], "Zone");
 		}
 	}
 };
@@ -218,14 +257,28 @@ public:
 
 #define GodotProfileZoneGrouped(m_group_name, m_zone_name) \
 	GodotProfileZoneGroupedEndEarly(m_group_name, m_zone_name); \
-	_GD_VARNAME_CONCAT_(__instruments_zone__, _, m_group_name).id = os_signpost_id_generate(apple::instruments::LOG_TRACING); \
+	_GD_VARNAME_CONCAT_(__instruments_zone__, _, m_group_name).start(); \
 	os_signpost_interval_begin(apple::instruments::LOG_TRACING, _GD_VARNAME_CONCAT_(__instruments_zone__, _, m_group_name).id, "Zone", "%{public}s", m_zone_name);
 
 #define GodotProfileZone(m_zone_name) \
 	GodotProfileZoneGroupedFirst(__COUNTER__, m_zone_name)
 
+#ifdef INSTRUMENTS_SCRIPT_ZONES
+#define _GodotProfileZoneScriptNamed(m_var, m_file, m_name, m_line) \
+	apple::instruments::Zone m_var; \
+	if (m_var.id != OS_SIGNPOST_ID_NULL) { \
+		const apple::instruments::ScriptLocation _loc = apple::instruments::intern_script_location(m_file, m_name); \
+		os_signpost_interval_begin(apple::instruments::LOG_TRACING, m_var.id, "Zone", "%{public}s %{public}s:%u", _loc.name, _loc.file, (uint32_t)(m_line)); \
+	}
+
+#define GodotProfileZoneScript(m_ptr, m_file, m_function, m_name, m_line) \
+	_GodotProfileZoneScriptNamed(__instruments_zone_script, m_file, m_name, m_line)
+#define GodotProfileZoneScriptSystemCall(m_ptr, m_file, m_function, m_name, m_line) \
+	_GodotProfileZoneScriptNamed(__instruments_zone_system_call, m_file, m_name, m_line)
+#else
 #define GodotProfileZoneScript(m_ptr, m_file, m_function, m_name, m_line)
 #define GodotProfileZoneScriptSystemCall(m_ptr, m_file, m_function, m_name, m_line)
+#endif
 
 // Instruments has its own memory profiling, so these are no-ops.
 #define GodotProfileAlloc(m_ptr, m_size)
