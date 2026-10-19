@@ -47,6 +47,7 @@ class EditorRunNative : public HBoxContainer {
 	bool first = true;
 
 	int resume_id = -1;
+	int running_id = -1;
 
 	void _confirm_run_native();
 
@@ -56,6 +57,7 @@ protected:
 
 public:
 	Error start_run_native(int p_id);
+	void stop_run_native();
 	void resume_run_native();
 
 	bool is_deploy_debug_remote_enabled() const;

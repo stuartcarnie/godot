@@ -147,6 +147,13 @@ HashMap<String, Variant> EditorExportPlatformIOS::get_custom_project_settings(co
 	return settings;
 }
 
+void EditorExportPlatformIOS::_add_generated_template_files(HashSet<String> &r_files) const {
+	// `_export_loading_screen_file()` writes these, so the template's copies are not extracted.
+	const String imageset_dir = "godot_apple_embedded/Images.xcassets/" + launch_screen_image_file_name + ".imageset/";
+	r_files.insert(imageset_dir + "splash@2x.png");
+	r_files.insert(imageset_dir + "splash@3x.png");
+}
+
 Error EditorExportPlatformIOS::_export_loading_screen_file(const Ref<EditorExportPreset> &p_preset, const String &p_dest_dir) {
 	const String custom_launch_image_2x = p_preset->get("storyboard/custom_image@2x");
 	const String custom_launch_image_3x = p_preset->get("storyboard/custom_image@3x");
@@ -160,7 +167,7 @@ Error EditorExportPlatformIOS::_export_loading_screen_file(const Ref<EditorExpor
 			return err;
 		}
 
-		if (image->save_png(image_path) != OK) {
+		if (_save_png_if_changed(image, image_path) != OK) {
 			return ERR_FILE_CANT_WRITE;
 		}
 
@@ -171,7 +178,7 @@ Error EditorExportPlatformIOS::_export_loading_screen_file(const Ref<EditorExpor
 			return err;
 		}
 
-		if (image->save_png(image_path) != OK) {
+		if (_save_png_if_changed(image, image_path) != OK) {
 			return ERR_FILE_CANT_WRITE;
 		}
 	} else {
@@ -195,11 +202,11 @@ Error EditorExportPlatformIOS::_export_loading_screen_file(const Ref<EditorExpor
 		const String splash_png_path_2x = p_dest_dir.path_join("splash@2x.png");
 		const String splash_png_path_3x = p_dest_dir.path_join("splash@3x.png");
 
-		if (splash->save_png(splash_png_path_2x) != OK) {
+		if (_save_png_if_changed(splash, splash_png_path_2x) != OK) {
 			return ERR_FILE_CANT_WRITE;
 		}
 
-		if (splash->save_png(splash_png_path_3x) != OK) {
+		if (_save_png_if_changed(splash, splash_png_path_3x) != OK) {
 			return ERR_FILE_CANT_WRITE;
 		}
 	}

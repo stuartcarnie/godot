@@ -32,6 +32,7 @@
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
+#include "core/io/ip_address.h"
 #include "core/object/callable_mp.h"
 #include "editor/debugger/editor_debugger_node.h"
 #include "editor/debugger/script_editor_debugger.h"
@@ -374,22 +375,30 @@ void EditorRunBar::_run_scene(const String &p_scene_path, const Vector<String> &
 	emit_signal(SNAME("play_pressed"));
 }
 
-void EditorRunBar::_run_native(const Ref<EditorExportPreset> &p_preset) {
+void EditorRunBar::_run_native(const Ref<EditorExportPreset> &p_preset, int p_device) {
 	EditorNode::get_singleton()->try_autosave();
 
-	if (run_native->is_deploy_debug_remote_enabled()) {
-		stop_playing();
+	stop_playing();
 
-		if (!EditorNode::get_singleton()->call_build()) {
-			return; // Build failed.
-		}
-
-		is_native = true;
-
-		EditorDebuggerNode::get_singleton()->start(p_preset->get_platform()->get_debug_protocol());
-		emit_signal(SNAME("play_pressed"));
-		editor_run.run_native_notify();
+	if (!EditorNode::get_singleton()->call_build()) {
+		return; // Build failed.
 	}
+
+	if (run_native->is_deploy_debug_remote_enabled()) {
+		const Ref<EditorExportPlatform> platform = p_preset->get_platform();
+		String uri = platform->get_debug_protocol();
+		const String device_host = platform->get_device_debug_host(p_device);
+		if (!device_host.is_empty()) {
+			const String host = IPAddress(device_host).is_ipv4() ? device_host : "[" + device_host + "]";
+			uri += host + ":" + itos((int)EDITOR_GET("network/debug/remote_port"));
+		}
+		EditorDebuggerNode::get_singleton()->start(uri);
+	}
+
+	is_native = true;
+	stop_button->set_disabled(false);
+	emit_signal(SNAME("play_pressed"));
+	editor_run.run_native_notify();
 }
 
 void EditorRunBar::_profiler_autostart_indicator_pressed() {
@@ -466,7 +475,10 @@ void EditorRunBar::stop_playing() {
 		return;
 	}
 
-	is_native = false;
+	if (is_native) {
+		run_native->stop_run_native();
+		is_native = false;
+	}
 
 	current_mode = RunMode::STOPPED;
 	editor_run.stop();
