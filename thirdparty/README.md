@@ -604,7 +604,7 @@ Files extracted from upstream source:
 ## libpng
 
 - Upstream: http://libpng.org/pub/png/libpng.html
-- Version: 1.6.58 (3061454d980de7d53608f594194cfac722721d2a, 2026)
+- Version: 1.6.59 (cd952f49f95bb27154ae77dbb103032d95f6e580, 2026)
 - License: libpng/zlib
 
 Files extracted from upstream source:
@@ -864,6 +864,7 @@ Collection of single-file libraries used in Godot components.
   * Modifications: License included in header.
   * Patches:
     - `smaz-0001-write-string-warning.patch` ([GH-8572](https://github.com/godotengine/godot/pull/8572))
+    - `smaz-0002-decompress-input-bounds.patch` ([GH-124701](https://github.com/godotengine/godot/pull/124701))
 - `smolv.{cpp,h}`
   * Upstream: https://github.com/aras-p/smol-v
   * Version: git (9dd54c379ac29fa148cb1b829bb939ba7381d8f4, 2024)
