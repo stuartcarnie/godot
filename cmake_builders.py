@@ -338,7 +338,7 @@ def cmd_controller_mappings(source: [str], target: str) -> int:
 @check_output
 @source_target
 def cmd_gdextension_interface_dumper(source: str, target: str) -> int:
-    core.extension.make_interface_dumper.run(target=[target], source=[source], env=None)
+    core.extension.make_interface_dumper.run(target=[target], source=[source], env=env)
     return 0
 
 
