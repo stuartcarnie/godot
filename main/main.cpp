@@ -480,6 +480,7 @@ static void print_env_vars(const String &p_filter) {
 	List<PropertyInfo> settings;
 	ProjectSettings::get_singleton()->get_property_list(&settings);
 
+	Vector<String> lines;
 	for (const PropertyInfo &setting_info : settings) {
 		const String setting_name = setting_info.name;
 		if (!ProjectSettings::get_singleton()->has_setting(setting_name)) {
@@ -494,7 +495,12 @@ static void print_env_vars(const String &p_filter) {
 			value = PROJECT_SETTING_ENV_NOT_SETTABLE;
 		}
 
-		print_line(get_project_setting_env_var_name(setting_name) + "=" + value);
+		lines.push_back(get_project_setting_env_var_name(setting_name) + "=" + value);
+	}
+
+	lines.sort();
+	for (const String &line : lines) {
+		print_line(line);
 	}
 }
 #endif
