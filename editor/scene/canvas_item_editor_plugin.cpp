@@ -749,7 +749,7 @@ void CanvasItemEditor::_commit_canvas_state_requested(const Array &p_selection, 
 	undo_redo->add_undo_method(viewport, "queue_redraw");
 	undo_redo->commit_action();
 
-	if (!key_auto_insert_button->is_pressed()) {
+	if (!key_auto_insert_button->is_pressed() || !key_auto_insert_button->is_visible_in_tree()) {
 		return;
 	}
 
@@ -2970,6 +2970,9 @@ void CanvasItemEditor::_button_tool_select(int p_index) {
 	}
 
 	ci_manipulator->set_tool((CanvasItemManipulator::Tool)p_index);
+	if (ci_manipulator->get_tool() == CanvasItemManipulator::TOOL_EDIT_PIVOT && Input::get_singleton()->is_key_pressed(Key::SHIFT)) {
+		ci_manipulator->center_temp_pivot_on_selection();
+	}
 
 	viewport->queue_redraw();
 	emit_signal("canvas_item_tool_changed", ci_manipulator->get_tool());

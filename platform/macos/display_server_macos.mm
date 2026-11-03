@@ -1380,8 +1380,6 @@ void DisplayServerMacOS::warp_mouse(const Point2i &p_position) {
 		CGPoint lMouseWarpPos = { pointOnScreen.x, CGDisplayBounds(CGMainDisplayID()).size.height - pointOnScreen.y };
 
 		// Do the warping.
-		CGEventSourceRef lEventRef = CGEventSourceCreate(kCGEventSourceStateCombinedSessionState);
-		CGEventSourceSetLocalEventsSuppressionInterval(lEventRef, 0.0);
 		CGAssociateMouseAndMouseCursorPosition(false);
 		CGWarpMouseCursorPosition(lMouseWarpPos);
 		if (mouse_mode != DisplayServerEnums::MOUSE_MODE_CONFINED && mouse_mode != DisplayServerEnums::MOUSE_MODE_CONFINED_HIDDEN) {
@@ -1648,6 +1646,8 @@ Color DisplayServerMacOS::screen_get_pixel(const Point2i &p_position) const {
 
 	Color color;
 	CGImageRef image = CGWindowListCreateImageFromArray(CGRectMake(position.x, position.y, 1, 1), capture_windows, kCGWindowListOptionAll);
+	CFRelease(capture_windows);
+	CFRelease(on_screen_windows);
 	if (image) {
 		CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
 		if (color_space) {
@@ -1699,6 +1699,8 @@ Ref<Image> DisplayServerMacOS::screen_get_image(int p_screen) const {
 
 	Ref<Image> img;
 	CGImageRef image = CGWindowListCreateImageFromArray(CGRectMake(position.x, position.y, size.width, size.height), capture_windows, kCGWindowListOptionAll);
+	CFRelease(capture_windows);
+	CFRelease(on_screen_windows);
 	if (image) {
 		CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
 		if (color_space) {
@@ -1751,6 +1753,8 @@ Ref<Image> DisplayServerMacOS::screen_get_image_rect(const Rect2i &p_rect) const
 
 	Ref<Image> img;
 	CGImageRef image = CGWindowListCreateImageFromArray(CGRectMake(position.x, position.y, size.width, size.height), capture_windows, kCGWindowListOptionAll);
+	CFRelease(capture_windows);
+	CFRelease(on_screen_windows);
 	if (image) {
 		CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
 		if (color_space) {
@@ -3774,11 +3778,6 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, Display
 	r_error = OK;
 
 	memset(cursors, 0, sizeof(cursors));
-
-	event_source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
-	ERR_FAIL_COND(!event_source);
-
-	CGEventSourceSetLocalEventsSuppressionInterval(event_source, 0.0);
 
 	int screen_count = get_screen_count();
 	for (int i = 0; i < screen_count; i++) {

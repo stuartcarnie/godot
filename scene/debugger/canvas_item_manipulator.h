@@ -184,7 +184,7 @@ private:
 
 	bool grid_snap = false;
 	Point2 grid_step;
-	int grid_step_multiplier = 1;
+	int grid_step_multiplier = 0;
 	Point2 grid_offset;
 
 	bool ruler_tool_active = false;
@@ -278,6 +278,7 @@ public:
 	void commit_drag();
 
 	bool reset_temp_pivot();
+	void center_temp_pivot_on_selection();
 
 	void set_local_space_enabled(bool p_enabled) { local_space = p_enabled; }
 	void set_anchors_mode_enabled(bool p_enabled) { anchors_mode = p_enabled; }
