@@ -140,6 +140,7 @@ target_sources(tests PRIVATE
         scene/test_image_texture.cpp
         scene/test_image_texture_3d.cpp
         scene/test_instance_placeholder.cpp
+        scene/test_item_list.cpp
         scene/test_label.cpp
         scene/test_margin_container.cpp
         scene/test_navigation_agent_2d.cpp

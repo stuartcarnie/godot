@@ -29,6 +29,7 @@ target_sources(freetype PRIVATE
         src/cid/type1cid.c
         src/gxvalid/gxvalid.c
         src/gzip/ftgzip.c
+        src/hvf/hvf.c
         src/lzw/ftlzw.c
         src/otvalid/otvalid.c
         src/pcf/pcf.c

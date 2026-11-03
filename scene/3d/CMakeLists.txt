@@ -70,8 +70,8 @@ target_sources(scene PRIVATE
         lightmapper.h
         limit_angular_velocity_modifier_3d.cpp
         limit_angular_velocity_modifier_3d.h
-        line_3d.cpp
-        line_3d.h
+        line_base_3d.cpp
+        line_base_3d.h
         look_at_modifier_3d.cpp
         look_at_modifier_3d.h
         marker_3d.cpp
