@@ -69,6 +69,11 @@ void OS_MacOS::add_frame_delay(bool p_can_draw, bool p_wake_for_events) {
 			wake_for_events = true;
 		}
 	}
+	DisplayServerMacOS *ds_mac = Object::cast_to<DisplayServerMacOS>(DisplayServer::get_singleton());
+	if (ds_mac && ds_mac->display_link_is_running()) {
+		// The display link paces the loop.
+		return;
+	}
 	if (wake_for_events) {
 		uint64_t delay = get_frame_delay(p_can_draw);
 		if (delay == 0) {
@@ -1109,33 +1114,20 @@ void OS_MacOS_NSApp::start_main() {
 				@autoreleasepool {
 					main_loop->initialize();
 				}
-				DisplayServer *ds = DisplayServer::get_singleton();
-				DisplayServerMacOS *ds_mac = Object::cast_to<DisplayServerMacOS>(ds);
+				DisplayServerMacOS *ds_mac = Object::cast_to<DisplayServerMacOS>(DisplayServer::get_singleton());
 
-				pre_wait_observer = CFRunLoopObserverCreateWithHandler(kCFAllocatorDefault, kCFRunLoopBeforeWaiting, true, 0, ^(CFRunLoopObserverRef observer, CFRunLoopActivity activity) {
-					@autoreleasepool {
-						@try {
-							GodotProfileFrameMark;
-							GodotProfileZone("macOS main loop");
-
-							if (ds_mac) {
-								ds_mac->_process_events(false);
-							} else if (ds) {
-								ds->process_events();
-							}
-#ifdef SDL_ENABLED
-							if (joypad_sdl) {
-								joypad_sdl->process_events();
-							}
+#if defined(METAL_ENABLED)
+				if (ds_mac && ds_mac->display_link_start(&OS_MacOS_NSApp::_display_link_iteration, this)) {
+					print_verbose("Main loop paced by CAMetalDisplayLink.");
+				}
 #endif
 
-							if (Main::iteration() || sig_received) {
-								terminate();
-							}
-						} @catch (NSException *exception) {
-							ERR_PRINT("NSException: " + String::utf8([exception reason].UTF8String));
-						}
+				pre_wait_observer = CFRunLoopObserverCreateWithHandler(kCFAllocatorDefault, kCFRunLoopBeforeWaiting, true, 0, ^(CFRunLoopObserverRef observer, CFRunLoopActivity activity) {
+					if (ds_mac && ds_mac->display_link_is_running()) {
+						// The display link drives iterations while the main window is visible.
+						return;
 					}
+					_iterate();
 					if (wait_timer == nil) {
 						CFRunLoopWakeUp(CFRunLoopGetCurrent()); // Prevent main loop from sleeping.
 					}
@@ -1155,8 +1147,45 @@ void OS_MacOS_NSApp::start_main() {
 	terminate();
 }
 
+void OS_MacOS_NSApp::_iterate() {
+	DisplayServer *ds = DisplayServer::get_singleton();
+	DisplayServerMacOS *ds_mac = Object::cast_to<DisplayServerMacOS>(ds);
+
+	@autoreleasepool {
+		@try {
+			GodotProfileFrameMark;
+			GodotProfileZone("macOS main loop");
+
+			if (ds_mac) {
+				ds_mac->_process_events(false);
+			} else if (ds) {
+				ds->process_events();
+			}
+#ifdef SDL_ENABLED
+			if (joypad_sdl) {
+				joypad_sdl->process_events();
+			}
+#endif
+
+			if (Main::iteration() || sig_received) {
+				terminate();
+			}
+		} @catch (NSException *exception) {
+			ERR_PRINT("NSException: " + String::utf8([exception reason].UTF8String));
+		}
+	}
+}
+
+void OS_MacOS_NSApp::_display_link_iteration(void *p_userdata) {
+	static_cast<OS_MacOS_NSApp *>(p_userdata)->_iterate();
+}
+
 void OS_MacOS_NSApp::terminate() {
 	// Note: This method only sends app termination request. Use `OS_MacOS_NSApp::cleanup()` for cleanup.
+	DisplayServerMacOS *ds_mac = Object::cast_to<DisplayServerMacOS>(DisplayServer::get_singleton());
+	if (ds_mac) {
+		ds_mac->display_link_stop();
+	}
 	if (pre_wait_observer) {
 		CFRunLoopRemoveObserver(CFRunLoopGetCurrent(), pre_wait_observer, kCFRunLoopCommonModes);
 		CFRelease(pre_wait_observer);

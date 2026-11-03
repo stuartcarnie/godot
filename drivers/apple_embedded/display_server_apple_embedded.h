@@ -44,6 +44,7 @@
 #endif // VULKAN_ENABLED
 
 #if defined(METAL_ENABLED)
+#import "drivers/apple/godot_metal_display_link.h"
 #import "drivers/metal/rendering_context_driver_metal.h"
 #endif // METAL_ENABLED
 #endif // RD_ENABLED
@@ -92,6 +93,16 @@ class DisplayServerAppleEmbedded : public DisplayServer {
 	bool edr_requested = false;
 	void _update_hdr_output(bool edr_headroom_changed);
 	float _calculate_current_reference_luminance() const;
+
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	GodotMetalDisplayLink *display_link = nullptr;
+	// Set once the link delivered no frames, so later starts use CADisplayLink.
+	bool display_link_failed = false;
+	void (*display_link_callback)(void *p_userdata) = nullptr;
+	void *display_link_userdata = nullptr;
+	static void _display_link_update(void *p_userdata, CA::MetalDrawable *p_drawable);
+	static void _display_link_stalled(void *p_userdata);
+#endif
 
 protected:
 	virtual bool _screen_hdr_is_supported() const { return false; }
@@ -227,6 +238,14 @@ public:
 
 	virtual void window_set_vsync_mode(DisplayServerEnums::VSyncMode p_vsync_mode, DisplayServerEnums::WindowID p_window = DisplayServerEnums::MAIN_WINDOW_ID) override;
 	virtual DisplayServerEnums::VSyncMode window_get_vsync_mode(DisplayServerEnums::WindowID p_vsync_mode) const override;
+
+	// Paces rendering with a CAMetalDisplayLink on p_layer, calling p_callback once per refresh. Returns false
+	// when the `display/window/frame_pacing/apple/enable_metal_display_link` project setting is off or the link
+	// cannot be used; the caller then paces rendering itself.
+	bool display_link_start(CALayer *p_layer, void (*p_callback)(void *p_userdata), void *p_userdata);
+	void display_link_stop();
+	// True while the link is attached. The caller must not iterate on its own in that state.
+	bool display_link_is_running() const;
 
 	virtual bool is_touchscreen_available() const override;
 

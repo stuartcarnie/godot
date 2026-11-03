@@ -1790,6 +1790,8 @@ ProjectSettings::ProjectSettings() {
 
 	GLOBAL_DEF("display/window/frame_pacing/android/enable_frame_pacing", true);
 	GLOBAL_DEF(PropertyInfo(Variant::INT, "display/window/frame_pacing/android/swappy_mode", PROPERTY_HINT_ENUM, "pipeline_forced_on,auto_fps_pipeline_forced_on,auto_fps_auto_pipeline"), 2);
+	GLOBAL_DEF("display/window/frame_pacing/apple/enable_metal_display_link", true);
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "display/window/frame_pacing/apple/metal_display_link_frame_latency", PROPERTY_HINT_RANGE, "1,2,1"), 1);
 
 #ifdef DISABLE_DEPRECATED
 	custom_prop_info["rendering/driver/threads/thread_model"] = PropertyInfo(Variant::INT, "rendering/driver/threads/thread_model", PROPERTY_HINT_ENUM, "Safe:1,Separate");

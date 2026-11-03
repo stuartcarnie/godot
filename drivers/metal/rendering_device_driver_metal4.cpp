@@ -139,11 +139,12 @@ Error RenderingDeviceDriverMetal::command_queue_execute_and_present(CommandQueue
 			SwapChain *swap_chain = (SwapChain *)(p_swap_chains[i].id);
 			RenderingContextDriverMetal::Surface *metal_surface = (RenderingContextDriverMetal::Surface *)(swap_chain->surface);
 			queue->signalDrawable(drawables[i]);
-			if (metal_surface->vsync_mode != DisplayServerEnums::VSYNC_DISABLED && metal_surface->present_minimum_duration > 0) {
+			if (metal_surface->vsync_mode != DisplayServerEnums::VSYNC_DISABLED && metal_surface->present_minimum_duration > 0 && !metal_surface->display_link) {
 				drawables[i]->presentAfterMinimumDuration(metal_surface->present_minimum_duration);
 			} else {
 				drawables[i]->present();
 			}
+			drawables[i]->release();
 		}
 	}
 

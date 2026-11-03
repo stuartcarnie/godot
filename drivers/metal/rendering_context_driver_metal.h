@@ -81,6 +81,7 @@ public:
 	void surface_set_needs_resize(SurfaceID p_surface, bool p_needs_resize) final override;
 	bool surface_get_needs_resize(SurfaceID p_surface) const final override;
 	void surface_destroy(SurfaceID p_surface) final override;
+	void window_set_pending_drawable(DisplayServerEnums::WindowID p_window, CA::MetalDrawable *p_drawable);
 	bool is_debug_utils_enabled() const final override { return capture_available; }
 
 #pragma mark - Metal-specific methods
@@ -109,6 +110,9 @@ public:
 		float hdr_linear_luminance_scale = 200.0f;
 		bool needs_resize = false;
 		bool hdr_output = false;
+		// True once a drawable has been supplied by a CAMetalDisplayLink. Timed presents are not
+		// allowed while a display link drives the surface.
+		bool display_link = false;
 
 		Surface(MTL::Device *p_device) :
 				device(p_device) {}
@@ -128,7 +132,12 @@ public:
 		virtual Error resize(uint32_t p_desired_framebuffer_count, RDD::DataFormat &r_format, RDD::ColorSpace &r_color_space) = 0;
 		virtual RDD::FramebufferID acquire_next_frame_buffer() = 0;
 		virtual void present(MTL3::MDCommandBuffer *p_cmd_buffer) = 0;
+		// Returns a retained drawable; the caller releases it.
 		virtual MTL::Drawable *next_drawable() = 0;
+		// Supplies the drawable the next acquired frame buffer must use. Called on the main thread
+		// by the display link; consumed on the render thread. Retains the drawable. nullptr clears
+		// the display link state and returns the surface to nextDrawable().
+		virtual void set_pending_drawable(CA::MetalDrawable *p_drawable) {}
 		API_AVAILABLE(macos(26.0), ios(26.0))
 		virtual MTL::ResidencySet *get_residency_set() const = 0;
 		void set_max_fps(int p_max_fps) { present_minimum_duration = p_max_fps ? 1.0 / p_max_fps : 0.0; }

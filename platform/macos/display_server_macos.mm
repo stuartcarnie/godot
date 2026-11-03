@@ -46,6 +46,7 @@
 #import "native_menu_macos.h"
 #import "os_macos.h"
 
+#include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
 #include "core/io/file_access.h"
@@ -3363,6 +3364,134 @@ void DisplayServerMacOS::force_process_and_drop_events() {
 	drop_events = false;
 }
 
+bool DisplayServerMacOS::display_link_start(void (*p_callback)(void *p_userdata), void *p_userdata) {
+#if defined(METAL_ENABLED)
+	if (display_link_enabled) {
+		return false;
+	}
+	// The editor and project manager always use the run loop.
+	if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
+		return false;
+	}
+	if (!GLOBAL_GET("display/window/frame_pacing/apple/enable_metal_display_link")) {
+		return false;
+	}
+	if (rendering_driver != "metal") {
+		print_verbose("Metal display link pacing requires the Metal rendering driver, using run loop.");
+		return false;
+	}
+	if (!GodotMetalDisplayLink::is_supported()) {
+		print_verbose("Metal display link pacing requires macOS 14 or later, using run loop.");
+		return false;
+	}
+	if (OS::get_singleton()->get_environment("GODOT_MTL_OFF_SCREEN") == "1") {
+		print_verbose("Metal display link pacing is not available with off-screen rendering, using run loop.");
+		return false;
+	}
+	if (window_get_vsync_mode(DisplayServerEnums::MAIN_WINDOW_ID) == DisplayServerEnums::VSYNC_DISABLED) {
+		print_verbose("Metal display link pacing requires V-Sync on the main window, using run loop.");
+		return false;
+	}
+	ERR_FAIL_COND_V(!windows.has(DisplayServerEnums::MAIN_WINDOW_ID), false);
+	ERR_FAIL_NULL_V(p_callback, false);
+
+	display_link_enabled = true;
+	display_link_callback = p_callback;
+	display_link_userdata = p_userdata;
+	_display_link_sync();
+	return true;
+#else
+	return false;
+#endif
+}
+
+void DisplayServerMacOS::display_link_stop() {
+#if defined(METAL_ENABLED)
+	_display_link_detach();
+	display_link_enabled = false;
+	display_link_callback = nullptr;
+	display_link_userdata = nullptr;
+#endif
+}
+
+bool DisplayServerMacOS::display_link_is_running() const {
+#if defined(METAL_ENABLED)
+	return display_link != nullptr && display_link->is_running();
+#else
+	return false;
+#endif
+}
+
+void DisplayServerMacOS::display_link_window_visibility_changed(DisplayServerEnums::WindowID p_window) {
+#if defined(METAL_ENABLED)
+	if (display_link_enabled && p_window == DisplayServerEnums::MAIN_WINDOW_ID) {
+		_display_link_sync();
+	}
+#endif
+}
+
+#if defined(METAL_ENABLED)
+void DisplayServerMacOS::_display_link_sync() {
+	if (!display_link_enabled || !windows.has(DisplayServerEnums::MAIN_WINDOW_ID)) {
+		return;
+	}
+	const WindowData &wd = windows[DisplayServerEnums::MAIN_WINDOW_ID];
+	if (!wd.is_visible) {
+		_display_link_detach();
+		return;
+	}
+	if (display_link != nullptr) {
+		return;
+	}
+
+	CALayer *layer = [wd.window_view layer];
+	ERR_FAIL_COND_MSG(![layer isKindOfClass:[CAMetalLayer class]], "Main window has no CAMetalLayer.");
+
+	int frame_latency = GLOBAL_GET("display/window/frame_pacing/apple/metal_display_link_frame_latency");
+
+	display_link = memnew(GodotMetalDisplayLink);
+	// The run loop idles while the link is attached, so a link that never delivers must fall back for good.
+	Error err = display_link->start((__bridge CA::MetalLayer *)layer, frame_latency, _display_link_update, _display_link_stalled, this);
+	if (err != OK) {
+		memdelete(display_link);
+		display_link = nullptr;
+		display_link_enabled = false;
+		WARN_PRINT("Could not attach CAMetalDisplayLink, using run loop pacing.");
+		return;
+	}
+}
+
+void DisplayServerMacOS::_display_link_stalled(void *p_userdata) {
+	DisplayServerMacOS *ds = static_cast<DisplayServerMacOS *>(p_userdata);
+	WARN_PRINT("CAMetalDisplayLink delivered no frames, using run loop pacing.");
+	ds->display_link_stop();
+	CFRunLoopWakeUp(CFRunLoopGetMain());
+}
+
+void DisplayServerMacOS::_display_link_detach() {
+	if (display_link == nullptr) {
+		return;
+	}
+	memdelete(display_link);
+	display_link = nullptr;
+	if (rendering_context) {
+		// Clears the surface's display link state so timed presents and nextDrawable() resume.
+		static_cast<RenderingContextDriverMetal *>(rendering_context)->window_set_pending_drawable(DisplayServerEnums::MAIN_WINDOW_ID, nullptr);
+	}
+	// Resume the run loop driven iterations.
+	CFRunLoopWakeUp(CFRunLoopGetMain());
+}
+
+void DisplayServerMacOS::_display_link_update(void *p_userdata, CA::MetalDrawable *p_drawable) {
+	DisplayServerMacOS *ds = static_cast<DisplayServerMacOS *>(p_userdata);
+	ds->display_link->set_max_fps(Engine::get_singleton()->get_max_fps());
+	if (ds->rendering_context) {
+		static_cast<RenderingContextDriverMetal *>(ds->rendering_context)->window_set_pending_drawable(DisplayServerEnums::MAIN_WINDOW_ID, p_drawable);
+	}
+	ds->display_link_callback(ds->display_link_userdata);
+}
+#endif
+
 void DisplayServerMacOS::release_rendering_thread() {
 #if defined(GLES3_ENABLED)
 #if defined(ANGLE_ENABLED)
@@ -4025,6 +4154,8 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, Display
 }
 
 DisplayServerMacOS::~DisplayServerMacOS() {
+	display_link_stop();
+
 	// Destroy all status indicators.
 	for (HashMap<DisplayServerEnums::IndicatorID, IndicatorData>::Iterator E = indicators.begin(); E; ++E) {
 		[[NSStatusBar systemStatusBar] removeStatusItem:E->value.item];

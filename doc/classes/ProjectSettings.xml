@@ -992,6 +992,14 @@
 			- [code]auto_fps_auto_pipeline[/code]: Same as [code]auto_fps_pipeline_forced_on[/code], but if Swappy detects that rendering is very fast (for example it takes less than 8ms to render on a 60hz screen), Swappy will disable pipelining to minimize input latency. This is the default.
 			[b]Note:[/b] If [member Engine.max_fps] is [code]0[/code], the actual max FPS will be considered to be the screen's refresh rate (often 60hz, 90hz, or 120hz, depending on device model and OS settings).
 		</member>
+		<member name="display/window/frame_pacing/apple/enable_metal_display_link" type="bool" setter="" getter="" default="true">
+			If [code]true[/code], a [code]CAMetalDisplayLink[/code] attached to the main window drives the main loop and delivers the drawable with each callback, giving lower and more consistent input latency. If [code]false[/code], the engine paces the loop itself and honors [member Engine.max_fps] by sleeping.
+			Requires the Metal rendering driver, V-Sync enabled on the main window, and macOS 14 or iOS 17 or later; otherwise the engine paces the loop itself. On iOS, [member display/window/ios/allow_high_refresh_rate] still caps the rate at 60 when disabled. Intended for single-window applications. Ignored by the editor and on the iOS Simulator. Not used on visionOS, which has its own frame pacing.
+			[b]Note:[/b] Use a feature override such as [code]display/window/frame_pacing/apple/enable_metal_display_link.ios[/code] to change the value for one platform.
+		</member>
+		<member name="display/window/frame_pacing/apple/metal_display_link_frame_latency" type="int" setter="" getter="" default="1">
+			Number of frames the GPU may take to render a frame when [member display/window/frame_pacing/apple/enable_metal_display_link] is [code]true[/code]. [code]1[/code] minimizes input latency, [code]2[/code] gives the GPU more time. Only [code]1[/code] and [code]2[/code] are accepted by the system.
+		</member>
 		<member name="display/window/handheld/orientation" type="int" setter="" getter="" default="0" keywords="landscape, portrait, sensor, reverse">
 			The default screen orientation to use on mobile devices. See [enum DisplayServer.ScreenOrientation] for possible values.
 			[b]Note:[/b] When set to a portrait orientation, this project setting does not flip the project resolution's width and height automatically. Instead, you have to set [member display/window/size/viewport_width] and [member display/window/size/viewport_height] accordingly.

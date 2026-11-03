@@ -43,6 +43,8 @@
 #include <os/log.h>
 #include <os/signpost.h>
 
+#include <atomic>
+
 #if defined(VISIONOS_ENABLED) && defined(MODULE_VISIONOS_XR_ENABLED)
 #include "modules/visionos_xr/visionos_xr_interface.h"
 #include "platform/visionos/render_mode_visionos.h"
@@ -168,15 +170,35 @@ public:
 		return drawable != nullptr;
 	}
 
+	// The frame buffer owns one reference to its drawable.
 	CA::MetalDrawable *get_drawable() const {
 		if (drawable == nullptr) {
 			drawable = layer->nextDrawable();
+			if (drawable) {
+				drawable->retain();
+			}
 		}
 		return drawable;
 	}
 
-	void reset() {
+	// Takes ownership of p_drawable; the caller must have retained it.
+	void set_drawable(CA::MetalDrawable *p_drawable) {
+		reset();
+		drawable = p_drawable;
+	}
+
+	// Acquires a drawable if none is held yet, and transfers the owned reference to the caller.
+	CA::MetalDrawable *take_drawable() {
+		CA::MetalDrawable *result = get_drawable();
 		drawable = nullptr;
+		return result;
+	}
+
+	void reset() {
+		if (drawable) {
+			drawable->release();
+			drawable = nullptr;
+		}
 	}
 };
 
@@ -186,6 +208,8 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) SurfaceLayer final : pub
 	uint32_t rear = -1;
 	uint32_t front = 0;
 	uint32_t count = 0;
+	// Retained drawable supplied by the display link, consumed by acquire_next_frame_buffer().
+	std::atomic<CA::MetalDrawable *> pending_drawable = nullptr;
 
 public:
 	SurfaceLayer(CA::MetalLayer *p_layer, MTL::Device *p_device) :
@@ -198,6 +222,13 @@ public:
 	}
 
 	~SurfaceLayer() override {
+		for (MDFrameBufferLayer &fb : frame_buffers) {
+			fb.reset();
+		}
+		CA::MetalDrawable *pending = pending_drawable.exchange(nullptr);
+		if (pending) {
+			pending->release();
+		}
 		layer = nullptr;
 	}
 
@@ -215,7 +246,10 @@ public:
 
 		// Metal supports a maximum of 3 drawables.
 		p_desired_framebuffer_count = MIN(3U, p_desired_framebuffer_count);
-		layer->setMaximumDrawableCount(p_desired_framebuffer_count);
+		// The layer rejects this call while a CAMetalDisplayLink is attached.
+		if (!display_link) {
+			layer->setMaximumDrawableCount(p_desired_framebuffer_count);
+		}
 
 #if TARGET_OS_OSX
 		// Display sync is only supported on macOS.
@@ -230,6 +264,9 @@ public:
 				break;
 		}
 #endif
+		for (MDFrameBufferLayer &fb : frame_buffers) {
+			fb.reset();
+		}
 		frame_buffers.resize(p_desired_framebuffer_count);
 		for (uint32_t i = 0; i < p_desired_framebuffer_count; i++) {
 			frame_buffers[i] = MDFrameBufferLayer(layer);
@@ -278,6 +315,11 @@ public:
 		frame_buffer.size = Size2i(width, height);
 		frame_buffer.reset();
 
+		CA::MetalDrawable *pending = pending_drawable.exchange(nullptr);
+		if (pending) {
+			frame_buffer.set_drawable(pending);
+		}
+
 		return RDD::FramebufferID(&frame_buffer);
 	}
 
@@ -287,18 +329,18 @@ public:
 		}
 
 		MDFrameBufferLayer &frame_buffer = frame_buffers[front];
-		CA::MetalDrawable *drawable = frame_buffer.get_drawable();
-		frame_buffer.reset();
+		CA::MetalDrawable *drawable = frame_buffer.take_drawable();
 
 		count--;
 		front = (front + 1) % frame_buffers.size();
 
 		if (drawable != nullptr) {
-			if (vsync_mode != DisplayServerEnums::VSYNC_DISABLED) {
+			if (vsync_mode != DisplayServerEnums::VSYNC_DISABLED && !display_link) {
 				p_cmd_buffer->get_command_buffer()->presentDrawableAfterMinimumDuration(drawable, present_minimum_duration);
 			} else {
 				p_cmd_buffer->get_command_buffer()->presentDrawable(drawable);
 			}
+			drawable->release();
 		}
 	}
 
@@ -308,13 +350,24 @@ public:
 		}
 
 		MDFrameBufferLayer &frame_buffer = frame_buffers[front];
-		CA::MetalDrawable *drawable = frame_buffer.get_drawable();
-		frame_buffer.reset();
+		CA::MetalDrawable *drawable = frame_buffer.take_drawable();
 
 		count--;
 		front = (front + 1) % frame_buffers.size();
 
 		return drawable;
+	}
+
+	void set_pending_drawable(CA::MetalDrawable *p_drawable) override {
+		display_link = p_drawable != nullptr;
+		if (p_drawable) {
+			p_drawable->retain();
+		}
+		CA::MetalDrawable *previous = pending_drawable.exchange(p_drawable);
+		if (previous) {
+			// The previous frame never consumed its drawable; drop it unpresented.
+			previous->release();
+		}
 	}
 
 	API_AVAILABLE(macos(26.0), ios(26.0))
@@ -472,6 +525,9 @@ public:
 		frame_buffer->unset_texture(0);
 		count--;
 
+		if (next) {
+			next->retain();
+		}
 		return next;
 	}
 
@@ -565,6 +621,15 @@ void RenderingContextDriverMetal::surface_set_size(SurfaceID p_surface, uint32_t
 	surface->width = p_width;
 	surface->height = p_height;
 	surface->needs_resize = true;
+}
+
+void RenderingContextDriverMetal::window_set_pending_drawable(DisplayServerEnums::WindowID p_window, CA::MetalDrawable *p_drawable) {
+	SurfaceID surface_id = surface_get_from_window(p_window);
+	if (surface_id == 0) {
+		return;
+	}
+	Surface *surface = (Surface *)(surface_id);
+	surface->set_pending_drawable(p_drawable);
 }
 
 void RenderingContextDriverMetal::surface_set_vsync_mode(SurfaceID p_surface, DisplayServerEnums::VSyncMode p_vsync_mode) {

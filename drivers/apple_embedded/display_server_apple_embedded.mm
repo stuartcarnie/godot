@@ -30,6 +30,7 @@
 
 #import "display_server_apple_embedded.h"
 
+#include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
 #include "core/io/file_access_pack.h"
@@ -868,6 +869,100 @@ DisplayServerEnums::VSyncMode DisplayServerAppleEmbedded::window_get_vsync_mode(
 #endif
 	return DisplayServerEnums::VSYNC_ENABLED;
 }
+
+// MARK: - Metal display link
+
+bool DisplayServerAppleEmbedded::display_link_start(CALayer *p_layer, void (*p_callback)(void *p_userdata), void *p_userdata) {
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	if (display_link != nullptr) {
+		return true;
+	}
+	if (display_link_failed || !GLOBAL_GET("display/window/frame_pacing/apple/enable_metal_display_link")) {
+		return false;
+	}
+	if (rendering_driver != "metal" || ![p_layer isKindOfClass:[CAMetalLayer class]]) {
+		print_verbose("Metal display link pacing requires the Metal rendering driver, using CADisplayLink.");
+		return false;
+	}
+	if (!GodotMetalDisplayLink::is_supported()) {
+		print_verbose("Metal display link pacing requires iOS 17 or later on a device, using CADisplayLink.");
+		return false;
+	}
+	if (window_get_vsync_mode(DisplayServerEnums::MAIN_WINDOW_ID) == DisplayServerEnums::VSYNC_DISABLED) {
+		print_verbose("Metal display link pacing requires V-Sync, using CADisplayLink.");
+		return false;
+	}
+	ERR_FAIL_NULL_V(p_callback, false);
+
+	int frame_latency = GLOBAL_GET("display/window/frame_pacing/apple/metal_display_link_frame_latency");
+
+	display_link = memnew(GodotMetalDisplayLink);
+	Error err = display_link->start((__bridge CA::MetalLayer *)p_layer, frame_latency, _display_link_update, _display_link_stalled, this);
+	if (err != OK) {
+		memdelete(display_link);
+		display_link = nullptr;
+		display_link_failed = true;
+		WARN_PRINT("Could not attach CAMetalDisplayLink, using CADisplayLink.");
+		return false;
+	}
+	display_link_callback = p_callback;
+	display_link_userdata = p_userdata;
+	return true;
+#else
+	return false;
+#endif
+}
+
+void DisplayServerAppleEmbedded::display_link_stop() {
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	if (display_link == nullptr) {
+		return;
+	}
+	memdelete(display_link);
+	display_link = nullptr;
+	display_link_callback = nullptr;
+	display_link_userdata = nullptr;
+	if (rendering_context) {
+		// Clears the surface's display link state so timed presents and nextDrawable() resume.
+		static_cast<RenderingContextDriverMetal *>(rendering_context)->window_set_pending_drawable(DisplayServerEnums::MAIN_WINDOW_ID, nullptr);
+	}
+#endif
+}
+
+bool DisplayServerAppleEmbedded::display_link_is_running() const {
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	return display_link != nullptr;
+#else
+	return false;
+#endif
+}
+
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+void DisplayServerAppleEmbedded::_display_link_update(void *p_userdata, CA::MetalDrawable *p_drawable) {
+	DisplayServerAppleEmbedded *ds = static_cast<DisplayServerAppleEmbedded *>(p_userdata);
+	int max_fps = Engine::get_singleton()->get_max_fps();
+#if defined(IOS_ENABLED)
+	if (!GLOBAL_GET_CACHED(bool, "display/window/ios/allow_high_refresh_rate")) {
+		max_fps = max_fps > 0 ? MIN(max_fps, 60) : 60;
+	}
+#endif
+	ds->display_link->set_max_fps(max_fps);
+	if (ds->rendering_context) {
+		static_cast<RenderingContextDriverMetal *>(ds->rendering_context)->window_set_pending_drawable(DisplayServerEnums::MAIN_WINDOW_ID, p_drawable);
+	}
+	ds->display_link_callback(ds->display_link_userdata);
+}
+
+void DisplayServerAppleEmbedded::_display_link_stalled(void *p_userdata) {
+	DisplayServerAppleEmbedded *ds = static_cast<DisplayServerAppleEmbedded *>(p_userdata);
+	WARN_PRINT("CAMetalDisplayLink delivered no frames, using CADisplayLink.");
+	ds->display_link_failed = true;
+	// stopRendering releases the link; startRendering then falls back to CADisplayLink.
+	GDTView *view = GDTAppDelegateService.viewController.godotView;
+	[view stopRendering];
+	[view startRendering];
+}
+#endif
 
 // MARK: - HDR / EDR
 

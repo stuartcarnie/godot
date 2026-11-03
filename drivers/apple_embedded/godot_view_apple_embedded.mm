@@ -65,7 +65,15 @@ static const float earth_gravity = 9.80665;
 
 @property(assign, nonatomic) BOOL delegateDidFinishSetUp;
 
+- (void)drawView;
+
 @end
+
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+static void godot_view_display_link_update(void *p_userdata) {
+	[(__bridge GDTView *)p_userdata drawView];
+}
+#endif
 
 @implementation GDTView
 
@@ -194,6 +202,11 @@ static const float earth_gravity = 9.80665;
 
 	print_verbose("Stop rendering");
 
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	if (DisplayServerAppleEmbedded::get_singleton()) {
+		DisplayServerAppleEmbedded::get_singleton()->display_link_stop();
+	}
+#endif
 	if (self.useCADisplayLink) {
 		[self.displayLink invalidate];
 		self.displayLink = nil;
@@ -214,6 +227,13 @@ static const float earth_gravity = 9.80665;
 
 	print_verbose("Start rendering");
 
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	DisplayServerAppleEmbedded *ds = DisplayServerAppleEmbedded::get_singleton();
+	if (ds && ds->display_link_start(self.renderingLayer, &godot_view_display_link_update, (__bridge void *)self)) {
+		print_verbose("Rendering paced by CAMetalDisplayLink.");
+		return;
+	}
+#endif
 	if (self.useCADisplayLink) {
 		self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(drawView)];
 		self.displayLink.preferredFramesPerSecond = self.preferredFrameRate;
@@ -231,7 +251,9 @@ static const float earth_gravity = 9.80665;
 		return;
 	}
 
-	if (self.useCADisplayLink) {
+	// The CAMetalDisplayLink path skips this: its callback already runs from the run loop, and
+	// running the loop here could re-enter drawView.
+	if (self.displayLink) {
 		// Pause the CADisplayLink to avoid recursion
 		[self.displayLink setPaused:YES];
 
@@ -283,6 +305,11 @@ static const float earth_gravity = 9.80665;
 }
 
 - (BOOL)canRender {
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	if (DisplayServerAppleEmbedded::get_singleton() && DisplayServerAppleEmbedded::get_singleton()->display_link_is_running()) {
+		return YES;
+	}
+#endif
 	if (self.useCADisplayLink) {
 		return self.displayLink != nil;
 	} else {
