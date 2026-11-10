@@ -319,6 +319,9 @@ else ()
 
     if (ENABLE_WERROR)
         add_compile_options($<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:-Werror>)
+        # distcc compiles preprocessed output on the volunteer, where include flags
+        # such as -iframework are unused. Keep that warning from becoming an error.
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:-Wno-unused-command-line-argument>)
     endif ()
 
     add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX,OBJC,OBJCXX>:$<JOIN:${COMMON_WARNINGS},$<SEMICOLON>>>")

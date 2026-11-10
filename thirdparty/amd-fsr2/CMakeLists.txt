@@ -33,8 +33,6 @@ target_sources(amd-fsr2 PRIVATE
         shaders/ffx_fsr2_common.h
         shaders/ffx_fsr2_compute_luminance_pyramid.h
         shaders/ffx_fsr2_depth_clip.h
-        shaders/ffx_fsr2_force16_begin.h
-        shaders/ffx_fsr2_force16_end.h
         shaders/ffx_fsr2_lock.h
         shaders/ffx_fsr2_postprocess_lock_status.h
         shaders/ffx_fsr2_rcas.h

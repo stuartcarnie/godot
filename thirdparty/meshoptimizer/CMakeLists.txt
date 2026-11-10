@@ -21,6 +21,7 @@ target_sources(meshoptimizer PRIVATE
         partition.cpp
         quantization.cpp
         rasterizer.cpp
+        remesher.cpp
         simplifier.cpp
         spatialorder.cpp
         stripifier.cpp
