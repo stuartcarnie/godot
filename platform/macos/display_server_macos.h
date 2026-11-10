@@ -31,6 +31,9 @@
 #pragma once
 
 #include "display_server_macos_base.h"
+#if defined(METAL_ENABLED)
+#include "drivers/apple/godot_metal_display_link.h"
+#endif
 
 #include "core/os/process_id.h"
 
@@ -160,6 +163,13 @@ private:
 #endif
 #endif
 	String rendering_driver;
+
+#if defined(METAL_ENABLED)
+	GodotMetalDisplayLink *display_link = nullptr;
+	void (*display_link_callback)(void *p_userdata) = nullptr;
+	void *display_link_userdata = nullptr;
+	static void _display_link_update(void *p_userdata, CA::MetalDrawable *p_drawable);
+#endif
 
 	struct WarpEvent {
 		NSTimeInterval timestamp;
@@ -391,6 +401,15 @@ public:
 
 	virtual void window_set_vsync_mode(DisplayServerEnums::VSyncMode p_vsync_mode, DisplayServerEnums::WindowID p_window = DisplayServerEnums::MAIN_WINDOW_ID) override;
 	virtual DisplayServerEnums::VSyncMode window_get_vsync_mode(DisplayServerEnums::WindowID p_vsync_mode) const override;
+
+	// Paces the main loop with a CAMetalDisplayLink on the main window, calling p_callback once per refresh
+	// while the window is on screen. Returns false when the `display/window/frame_pacing/apple/enable_metal_display_link`
+	// project setting is off or the link cannot be used; the caller then paces the loop itself.
+	bool display_link_start(void (*p_callback)(void *p_userdata), void *p_userdata);
+	void display_link_stop();
+	// True while the link is attached and the main window is on screen. The caller must not iterate
+	// on its own in that state, and must pace the loop itself otherwise.
+	bool display_link_is_pacing() const;
 
 public:
 	void update_screen_parameters();

@@ -52,20 +52,31 @@ static const float earth_gravity = 9.80665;
 
 @property(assign, nonatomic) BOOL isActive;
 
-// CADisplayLink available on 3.1+ synchronizes the animation timer & drawing with the refresh rate of the display, only supports animation intervals of 1/60 1/30 & 1/15
+// The `display/window/frame_pacing/apple/enable_metal_display_link` project setting.
+@property(assign, nonatomic) BOOL displayLinkEnabled;
+
+// Set once godotInitialSetup has run.
+@property(assign, nonatomic) BOOL setupDone;
+
+// Paces drawView when the Metal display link is unavailable.
 @property(strong, nonatomic) CADisplayLink *displayLink;
 
-// An animation timer that, when animation is started, will periodically call -drawView at the given rate.
-// Only used if CADisplayLink is not
+// Paces drawView at preferredFrameRate when display link pacing is disabled.
 @property(strong, nonatomic) NSTimer *animationTimer;
 
 @property(strong, nonatomic) CALayer<GDTDisplayLayer> *renderingLayer;
 
 @property(strong, nonatomic) CMMotionManager *motionManager;
 
-@property(assign, nonatomic) BOOL delegateDidFinishSetUp;
+- (void)drawView;
 
 @end
+
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+static void godot_view_display_link_update(void *p_userdata) {
+	[(__bridge GDTView *)p_userdata drawView];
+}
+#endif
 
 @implementation GDTView
 
@@ -123,7 +134,7 @@ static const float earth_gravity = 9.80665;
 
 - (void)godot_commonInit {
 	self.preferredFrameRate = 60;
-	self.useCADisplayLink = bool(GLOBAL_DEF("display.AppleEmbedded/use_cadisplaylink", true)) ? YES : NO;
+	self.displayLinkEnabled = bool(GLOBAL_GET("display/window/frame_pacing/apple/enable_metal_display_link")) ? YES : NO;
 	self.hingeClosed = YES;
 	last_edr_headroom = 0.0;
 
@@ -194,13 +205,16 @@ static const float earth_gravity = 9.80665;
 
 	print_verbose("Stop rendering");
 
-	if (self.useCADisplayLink) {
-		[self.displayLink invalidate];
-		self.displayLink = nil;
-	} else {
-		[self.animationTimer invalidate];
-		self.animationTimer = nil;
+	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(godotInitialSetup) object:nil];
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	if (DisplayServerAppleEmbedded::get_singleton()) {
+		DisplayServerAppleEmbedded::get_singleton()->display_link_stop();
 	}
+#endif
+	[self.displayLink invalidate];
+	self.displayLink = nil;
+	[self.animationTimer invalidate];
+	self.animationTimer = nil;
 
 	[self clearTouches];
 }
@@ -214,15 +228,48 @@ static const float earth_gravity = 9.80665;
 
 	print_verbose("Start rendering");
 
-	if (self.useCADisplayLink) {
-		self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(drawView)];
-		self.displayLink.preferredFramesPerSecond = self.preferredFrameRate;
-
-		// Setup DisplayLink in main thread
-		[self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
-	} else {
-		self.animationTimer = [NSTimer scheduledTimerWithTimeInterval:(1.0 / self.preferredFrameRate) target:self selector:@selector(drawView) userInfo:nil repeats:YES];
+	if (!self.setupDone) {
+		// The first call comes from viewDidAppear; engine setup runs on the next run loop pass.
+		[self performSelector:@selector(godotInitialSetup) withObject:nil afterDelay:0];
+		return;
 	}
+
+	[self startPacing];
+}
+
+// Runs Main::setup2() and Main::start(), which create the DisplayServer, the rendering layer and
+// the rendering context, then starts pacing.
+- (void)godotInitialSetup {
+	[self.renderer setUp];
+
+	if (self.delegate) {
+		[self layoutRenderingLayer]; // Trigger DisplayServerVisionOS::resize_window after Main::start()
+		[self.delegate godotViewFinishedSetup:self];
+	}
+
+	self.setupDone = YES;
+	[self startPacing];
+}
+
+// Picks what drives drawView: a CAMetalDisplayLink, a CADisplayLink when the link is unavailable,
+// or a timer when display link pacing is disabled.
+- (void)startPacing {
+	if (!self.displayLinkEnabled) {
+		self.animationTimer = [NSTimer scheduledTimerWithTimeInterval:(1.0 / self.preferredFrameRate) target:self selector:@selector(drawView) userInfo:nil repeats:YES];
+		return;
+	}
+
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	DisplayServerAppleEmbedded *ds = DisplayServerAppleEmbedded::get_singleton();
+	if (ds && ds->display_link_start(self.renderingLayer, &godot_view_display_link_update, (__bridge void *)self)) {
+		print_verbose("Rendering paced by CAMetalDisplayLink.");
+		return;
+	}
+#endif
+
+	self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(drawView)];
+	self.displayLink.preferredFramesPerSecond = self.preferredFrameRate;
+	[self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 }
 
 - (void)drawView {
@@ -231,36 +278,7 @@ static const float earth_gravity = 9.80665;
 		return;
 	}
 
-	if (self.useCADisplayLink) {
-		// Pause the CADisplayLink to avoid recursion
-		[self.displayLink setPaused:YES];
-
-		// Process all input events
-		while (CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.0, TRUE) == kCFRunLoopRunHandledSource) {
-			// Continue.
-		}
-
-		// We are good to go, resume the CADisplayLink
-		[self.displayLink setPaused:NO];
-	}
-
 	[self.renderingLayer startRenderDisplayLayer];
-
-	if (!self.renderer) {
-		return;
-	}
-
-	if ([self.renderer setUp]) {
-		return;
-	}
-
-	if (self.delegate && !self.delegateDidFinishSetUp) {
-		[self layoutRenderingLayer]; // Trigger DisplayServerVisionOS::resize_window after Main::start()
-		self.delegateDidFinishSetUp = [self.delegate godotViewFinishedSetup:self];
-		if (!_delegateDidFinishSetUp) {
-			return;
-		}
-	}
 
 	[self handleMotion];
 
@@ -283,11 +301,12 @@ static const float earth_gravity = 9.80665;
 }
 
 - (BOOL)canRender {
-	if (self.useCADisplayLink) {
-		return self.displayLink != nil;
-	} else {
-		return self.animationTimer != nil;
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	if (DisplayServerAppleEmbedded::get_singleton() && DisplayServerAppleEmbedded::get_singleton()->display_link_is_running()) {
+		return YES;
 	}
+#endif
+	return self.displayLink != nil || self.animationTimer != nil;
 }
 
 - (void)setPreferredFrameRate:(float)preferredFrameRate {

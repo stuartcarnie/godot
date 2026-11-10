@@ -81,6 +81,8 @@ public:
 	void surface_set_needs_resize(SurfaceID p_surface, bool p_needs_resize) final override;
 	bool surface_get_needs_resize(SurfaceID p_surface) const final override;
 	void surface_destroy(SurfaceID p_surface) final override;
+	void window_set_display_link(DisplayServerEnums::WindowID p_window, bool p_enabled);
+	void window_set_pending_drawable(DisplayServerEnums::WindowID p_window, CA::MetalDrawable *p_drawable);
 	bool is_debug_utils_enabled() const final override { return capture_available; }
 
 #pragma mark - Metal-specific methods
@@ -128,7 +130,20 @@ public:
 		virtual Error resize(uint32_t p_desired_framebuffer_count, RDD::DataFormat &r_format, RDD::ColorSpace &r_color_space) = 0;
 		virtual RDD::FramebufferID acquire_next_frame_buffer() = 0;
 		virtual void present(MTL3::MDCommandBuffer *p_cmd_buffer) = 0;
+		// Returns the drawable of the oldest unpresented frame, or nullptr when there is none. The
+		// surface keeps its reference until present_next_drawable(), which must be called before
+		// the next call to next_drawable().
 		virtual MTL::Drawable *next_drawable() = 0;
+		// Presents the drawable returned by next_drawable() and releases it. Uses a timed present
+		// when V-Sync and a frame cap are active and the drawable did not come from a display link.
+		virtual void present_next_drawable() = 0;
+		// Called on the main thread before a CAMetalDisplayLink attaches to the layer and after it
+		// detaches. While enabled the surface never calls nextDrawable() and only presents drawables
+		// supplied through set_pending_drawable().
+		virtual void set_display_link(bool p_enabled) {}
+		// Supplies the drawable the next acquired frame buffer must use. Called on the main thread
+		// by the display link; consumed on the render thread. Retains the drawable.
+		virtual void set_pending_drawable(CA::MetalDrawable *p_drawable) {}
 		API_AVAILABLE(macos(26.0), ios(26.0))
 		virtual MTL::ResidencySet *get_residency_set() const = 0;
 		void set_max_fps(int p_max_fps) { present_minimum_duration = p_max_fps ? 1.0 / p_max_fps : 0.0; }

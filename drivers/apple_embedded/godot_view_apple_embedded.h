@@ -52,7 +52,6 @@ class String;
 @property(assign, readonly, nonatomic) BOOL isActive;
 @property(assign, nonatomic) BOOL hingeClosed;
 
-@property(assign, nonatomic) BOOL useCADisplayLink;
 @property(strong, readonly, nonatomic) CALayer<GDTDisplayLayer> *renderingLayer;
 @property(assign, readonly, nonatomic) BOOL canRender;
 
