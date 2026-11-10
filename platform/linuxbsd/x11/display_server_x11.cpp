@@ -3720,6 +3720,9 @@ void DisplayServerX11::cursor_set_custom_image(const Ref<Resource> &p_cursor, Di
 		ERR_FAIL_NULL(cursor_image->pixels);
 
 		// Save it for a further usage
+		if (cursors[p_shape] != None) {
+			XFreeCursor(x11_display, cursors[p_shape]);
+		}
 		cursors[p_shape] = XcursorImageLoadCursor(x11_display, cursor_image);
 
 		Vector<Variant> params;
@@ -3739,6 +3742,11 @@ void DisplayServerX11::cursor_set_custom_image(const Ref<Resource> &p_cursor, Di
 		XcursorImageDestroy(cursor_image);
 	} else {
 		// Reset to default system cursor
+		if (cursors[p_shape] != None) {
+			XFreeCursor(x11_display, cursors[p_shape]);
+		}
+		cursors[p_shape] = None;
+
 		if (cursor_img[p_shape]) {
 			cursors[p_shape] = XcursorImageLoadCursor(x11_display, cursor_img[p_shape]);
 		}
@@ -3749,6 +3757,12 @@ void DisplayServerX11::cursor_set_custom_image(const Ref<Resource> &p_cursor, Di
 		current_cursor = DisplayServerEnums::CURSOR_MAX;
 		cursor_set_shape(c);
 	}
+}
+
+void DisplayServerX11::cursor_clear_custom_image_cache() {
+	_THREAD_SAFE_METHOD_
+
+	cursors_cache.clear();
 }
 
 bool DisplayServerX11::get_swap_cancel_ok() {
