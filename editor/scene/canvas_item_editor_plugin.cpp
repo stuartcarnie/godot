@@ -2639,7 +2639,6 @@ void CanvasItemEditor::_notification(int p_what) {
 					callable_mp(EditorNode::get_singleton(), &EditorNode::get_edited_scene),
 					callable_mp(this, &CanvasItemEditor::_select_click_on_item),
 					callable_mp(this, &CanvasItemEditor::_get_selection_callback),
-					callable_mp(viewport_scrollable, &Control::get_transform),
 					callable_mp((Viewport *)EditorNode::get_singleton()->get_scene_root(), &Viewport::get_global_canvas_transform),
 					callable_mp((CanvasItem *)viewport, &CanvasItem::get_local_mouse_position),
 					callable_mp(EditorNode::get_singleton()->get_editor_plugins_over(), &EditorPluginList::forward_gui_input));
@@ -4078,6 +4077,7 @@ CanvasItemEditor::CanvasItemEditor() {
 
 	ci_manipulator.instantiate();
 	ci_manipulator->set_editor_mode_enabled(true);
+	ci_manipulator->set_local_space_enabled(true);
 	ci_manipulator->set_scale(EDSCALE);
 	// Enable pixel snapping even if pixel snap rendering is disabled in the Project Settings.
 	// This results in crisper visuals by preventing 2D nodes from being placed at subpixel coordinates.
