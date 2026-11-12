@@ -29,7 +29,10 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         editor/it.po
         editor/ja.po
         editor/ka.po
+        editor/km.po
         editor/ko.po
+        editor/lo.po
+        editor/nb.po
         editor/nl.po
         editor/pl.po
         editor/pt.po
@@ -44,6 +47,7 @@ set_abs(GODOT_EDITOR_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         editor/tr.po
         editor/uk.po
         editor/vi.po
+        editor/yue_Hant.po
         editor/zh_Hans.po
         editor/zh_Hant.po
 )
@@ -70,12 +74,16 @@ set_abs(GODOT_PROPERTIES_TRANSLATIONS_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}
         properties/fa.po
         properties/fr.po
         properties/ga.po
+        properties/he.po
         properties/hi.po
         properties/id.po
         properties/it.po
         properties/ja.po
         properties/ka.po
+        properties/km.po
         properties/ko.po
+        properties/lo.po
+        properties/nl.po
         properties/pl.po
         properties/pt.po
         properties/pt_BR.po
