@@ -90,6 +90,7 @@ target_sources(tests PRIVATE
         core/templates/test_paged_array.cpp
         core/templates/test_rid.cpp
         core/templates/test_self_list.cpp
+        core/templates/test_sort_array.cpp
         core/templates/test_span.cpp
         core/templates/test_vector.cpp
         core/templates/test_vset.cpp

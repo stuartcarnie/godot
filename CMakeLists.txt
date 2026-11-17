@@ -404,6 +404,16 @@ add_compile_definitions(
 )
 
 add_compile_options($<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:-fobjc-arc>)
+# Matches SCons (platform/macos/detect.py). Exported weak symbols are resolved by dyld at every launch.
+add_compile_options($<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:-fvisibility=hidden>)
+# Matches SCons: same floating-point results as other builds.
+add_compile_options($<$<COMPILE_LANGUAGE:CXX,C,OBJC,OBJCXX>:-ffp-contract=off>)
+# Matches SCons: ProjectSettings in core reads these.
+add_compile_definitions(OVERRIDE_ENABLED OVERRIDE_PATH_ENABLED)
+if (WANT_DEV_BUILD)
+    # Matches SCons: faster link.
+    add_link_options(LINKER:-no_deduplicate)
+endif ()
 
 message(STATUS "Build architecture: ${OS_ARCH}")
 
