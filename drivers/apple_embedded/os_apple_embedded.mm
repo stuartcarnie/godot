@@ -241,6 +241,17 @@ bool OS_AppleEmbedded::iterate() {
 	return Main::iteration();
 }
 
+void OS_AppleEmbedded::add_frame_delay(bool p_can_draw, bool p_wake_for_events) {
+#if defined(METAL_DISPLAY_LINK_ENABLED)
+	DisplayServerAppleEmbedded *ds = DisplayServerAppleEmbedded::get_singleton();
+	if (ds && ds->display_link_is_running()) {
+		// The display link paces the loop.
+		return;
+	}
+#endif
+	OS_Unix::add_frame_delay(p_can_draw, p_wake_for_events);
+}
+
 void OS_AppleEmbedded::start() {
 	if (Main::start() == EXIT_SUCCESS) {
 		main_loop->initialize();

@@ -192,6 +192,8 @@ class OS_MacOS_NSApp : public OS_MacOS {
 	CFRunLoopObserverRef pre_wait_observer = nil;
 
 	void terminate();
+	void _iterate();
+	static void _display_link_iteration(void *p_userdata);
 
 public:
 	void start_main(); // Initializes and runs Godot main loop.
