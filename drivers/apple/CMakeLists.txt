@@ -11,6 +11,8 @@ target_sources(drivers PRIVATE
         apple_tracing.h
         foundation_helpers.h
         foundation_helpers.mm
+        godot_metal_display_link.h
+        godot_metal_display_link.mm
         os_log_logger.cpp
         os_log_logger.h
         thread_apple.cpp

@@ -108,6 +108,7 @@ namespace Private
 {
     namespace Class
     {
+        _CA_PRIVATE_DEF_CLS(CAMetalDisplayLink);
         _CA_PRIVATE_DEF_CLS(CAMetalLayer);
             _CA_PRIVATE_DEF_CLS(CALayer);
     } // Class
@@ -193,6 +194,36 @@ namespace Private
             "texture");
         _CA_PRIVATE_DEF_SEL(wantsExtendedDynamicRangeContent,
             "wantsExtendedDynamicRangeContent");
+        _CA_PRIVATE_DEF_SEL(addToRunLoop_forMode_,
+            "addToRunLoop:forMode:");
+        _CA_PRIVATE_DEF_SEL(delegate,
+            "delegate");
+        _CA_PRIVATE_DEF_SEL(drawable,
+            "drawable");
+        _CA_PRIVATE_DEF_SEL(initWithMetalLayer_,
+            "initWithMetalLayer:");
+        _CA_PRIVATE_DEF_SEL(invalidate,
+            "invalidate");
+        _CA_PRIVATE_DEF_SEL(isPaused,
+            "isPaused");
+        _CA_PRIVATE_DEF_SEL(preferredFrameLatency,
+            "preferredFrameLatency");
+        _CA_PRIVATE_DEF_SEL(preferredFrameRateRange,
+            "preferredFrameRateRange");
+        _CA_PRIVATE_DEF_SEL(removeFromRunLoop_forMode_,
+            "removeFromRunLoop:forMode:");
+        _CA_PRIVATE_DEF_SEL(setDelegate_,
+            "setDelegate:");
+        _CA_PRIVATE_DEF_SEL(setPaused_,
+            "setPaused:");
+        _CA_PRIVATE_DEF_SEL(setPreferredFrameLatency_,
+            "setPreferredFrameLatency:");
+        _CA_PRIVATE_DEF_SEL(setPreferredFrameRateRange_,
+            "setPreferredFrameRateRange:");
+        _CA_PRIVATE_DEF_SEL(targetPresentationTimestamp,
+            "targetPresentationTimestamp");
+        _CA_PRIVATE_DEF_SEL(targetTimestamp,
+            "targetTimestamp");
 
     } // Class
 } // Private

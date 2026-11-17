@@ -75,6 +75,8 @@ private:
 
 	virtual void finalize() override;
 
+	virtual void add_frame_delay(bool p_can_draw, bool p_wake_for_events) override;
+
 	bool is_focused = false;
 
 	CGFloat _weight_to_ct(int p_weight) const;

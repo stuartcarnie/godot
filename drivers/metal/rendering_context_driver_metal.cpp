@@ -30,7 +30,9 @@
 
 #include "rendering_context_driver_metal.h"
 
+#include "core/os/mutex.h"
 #include "core/os/os.h"
+#include "core/profiling/profiling.h"
 #include "core/templates/sort_array.h"
 #include "drivers/metal/metal3_objects.h"
 #include "drivers/metal/metal_objects_shared.h"
@@ -42,6 +44,8 @@
 #include <objc/message.h>
 #include <os/log.h>
 #include <os/signpost.h>
+
+#include <atomic>
 
 #if defined(VISIONOS_ENABLED) && defined(MODULE_VISIONOS_XR_ENABLED)
 #include "modules/visionos_xr/visionos_xr_interface.h"
@@ -147,20 +151,93 @@ void RenderingContextDriverMetal::driver_free(RenderingDeviceDriver *p_driver) {
 	memdelete(p_driver);
 }
 
-/// A framebuffer that defers drawable acquisition from a CAMetalLayer
-/// until the texture is actually needed (via get_texture).
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDFrameBufferLayer final : public MDFrameBuffer {
+/// Supplies the drawables of a SurfaceLayer. The surface holds its mutex during every call.
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) DrawableSource {
+public:
+	virtual ~DrawableSource() {}
+
+	// Returns a retained drawable for a new frame, or nullptr when the frame must be skipped.
+	virtual CA::MetalDrawable *acquire() = 0;
+	virtual bool allows_timed_present() const = 0;
+	virtual void set_maximum_drawable_count(uint32_t p_count) = 0;
+	virtual void set_pending_drawable(CA::MetalDrawable *p_drawable) {}
+};
+
+/// Asks the layer for a drawable.
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) DrawableSourceLayer final : public DrawableSource {
 	CA::MetalLayer *layer = nullptr;
-	mutable CA::MetalDrawable *drawable = nullptr;
 
 public:
-	MDFrameBufferLayer() {}
-	MDFrameBufferLayer(CA::MetalLayer *p_layer) :
+	DrawableSourceLayer(CA::MetalLayer *p_layer) :
 			layer(p_layer) {}
 
+	// Returns nullptr on timeout.
+	CA::MetalDrawable *acquire() override {
+		GodotProfileZone("nextDrawable");
+		CA::MetalDrawable *drawable = layer->nextDrawable();
+		if (drawable) {
+			drawable->retain();
+		}
+		return drawable;
+	}
+
+	bool allows_timed_present() const override { return true; }
+
+	void set_maximum_drawable_count(uint32_t p_count) override {
+		layer->setMaximumDrawableCount(p_count);
+	}
+};
+
+/// Hands out the drawables a CAMetalDisplayLink delivers. While the link is attached, the layer
+/// refuses nextDrawable() and setMaximumDrawableCount().
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) DrawableSourceDisplayLink final : public DrawableSource {
+	// Retained drawable delivered by the link, consumed by acquire().
+	CA::MetalDrawable *pending_drawable = nullptr;
+
+public:
+	~DrawableSourceDisplayLink() override {
+		release_pending_drawable();
+	}
+
+	// Returns nullptr when the link has not delivered a drawable for this frame, which means
+	// rendering is behind the display.
+	CA::MetalDrawable *acquire() override {
+		CA::MetalDrawable *drawable = pending_drawable;
+		pending_drawable = nullptr;
+		return drawable;
+	}
+
+	// A drawable delivered by a CAMetalDisplayLink rejects timed presents.
+	bool allows_timed_present() const override { return false; }
+
+	void set_maximum_drawable_count(uint32_t p_count) override {}
+
+	void set_pending_drawable(CA::MetalDrawable *p_drawable) override {
+		p_drawable->retain();
+		// A drawable the previous frame never consumed is dropped unpresented.
+		release_pending_drawable();
+		pending_drawable = p_drawable;
+	}
+
+	void release_pending_drawable() {
+		if (pending_drawable) {
+			pending_drawable->release();
+			pending_drawable = nullptr;
+		}
+	}
+};
+
+/// A framebuffer backed by a CAMetalLayer drawable.
+class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MDFrameBufferLayer final : public MDFrameBuffer {
+	// The frame buffer owns one reference to its drawable.
+	CA::MetalDrawable *drawable = nullptr;
+	// Set by the source that supplied the drawable.
+	bool timed_present_allowed = false;
+
+public:
 	MTL::Texture *get_texture(uint32_t p_idx) const override {
 		DEV_ASSERT(p_idx == 0);
-		return get_drawable()->texture();
+		return drawable ? drawable->texture() : nullptr;
 	}
 
 	bool has_texture(uint32_t p_idx) const override {
@@ -168,15 +245,28 @@ public:
 		return drawable != nullptr;
 	}
 
-	CA::MetalDrawable *get_drawable() const {
-		if (drawable == nullptr) {
-			drawable = layer->nextDrawable();
-		}
-		return drawable;
+	bool is_timed_present_allowed() const { return timed_present_allowed; }
+
+	// Takes ownership of p_drawable; the caller must have retained it.
+	void set_drawable(CA::MetalDrawable *p_drawable, bool p_timed_present_allowed) {
+		reset();
+		drawable = p_drawable;
+		timed_present_allowed = p_timed_present_allowed;
+	}
+
+	// Transfers the owned reference to the caller.
+	CA::MetalDrawable *take_drawable() {
+		CA::MetalDrawable *result = drawable;
+		drawable = nullptr;
+		return result;
 	}
 
 	void reset() {
-		drawable = nullptr;
+		if (drawable) {
+			drawable->release();
+			drawable = nullptr;
+		}
+		timed_present_allowed = false;
 	}
 };
 
@@ -186,10 +276,24 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) SurfaceLayer final : pub
 	uint32_t rear = -1;
 	uint32_t front = 0;
 	uint32_t count = 0;
+	// Guards source and the sources. nextDrawable() runs under it, so the display link cannot
+	// attach between the choice of source and the call.
+	BinaryMutex mutex;
+	DrawableSourceLayer layer_source;
+	DrawableSourceDisplayLink display_link_source;
+	// display_link_source while a CAMetalDisplayLink is attached, layer_source otherwise.
+	DrawableSource *source = &layer_source;
+	// Drawable handed out by next_drawable(), owned until present_next_drawable().
+	CA::MetalDrawable *presenting_drawable = nullptr;
+	bool presenting_timed = false;
+
+	bool _is_timed_present(const MDFrameBufferLayer &p_frame_buffer) const {
+		return vsync_mode != DisplayServerEnums::VSYNC_DISABLED && present_minimum_duration > 0 && p_frame_buffer.is_timed_present_allowed();
+	}
 
 public:
 	SurfaceLayer(CA::MetalLayer *p_layer, MTL::Device *p_device) :
-			Surface(p_device), layer(p_layer) {
+			Surface(p_device), layer(p_layer), layer_source(p_layer) {
 		layer->setAllowsNextDrawableTimeout(true);
 		layer->setFramebufferOnly(true);
 		layer->setOpaque(!OS::get_singleton()->is_layered_allowed());
@@ -198,6 +302,13 @@ public:
 	}
 
 	~SurfaceLayer() override {
+		for (MDFrameBufferLayer &fb : frame_buffers) {
+			fb.reset();
+		}
+		if (presenting_drawable) {
+			presenting_drawable->release();
+			presenting_drawable = nullptr;
+		}
 		layer = nullptr;
 	}
 
@@ -215,7 +326,10 @@ public:
 
 		// Metal supports a maximum of 3 drawables.
 		p_desired_framebuffer_count = MIN(3U, p_desired_framebuffer_count);
-		layer->setMaximumDrawableCount(p_desired_framebuffer_count);
+		{
+			MutexLock lock(mutex);
+			source->set_maximum_drawable_count(p_desired_framebuffer_count);
+		}
 
 #if TARGET_OS_OSX
 		// Display sync is only supported on macOS.
@@ -230,10 +344,10 @@ public:
 				break;
 		}
 #endif
-		frame_buffers.resize(p_desired_framebuffer_count);
-		for (uint32_t i = 0; i < p_desired_framebuffer_count; i++) {
-			frame_buffers[i] = MDFrameBufferLayer(layer);
+		for (MDFrameBufferLayer &fb : frame_buffers) {
+			fb.reset();
 		}
+		frame_buffers.resize(p_desired_framebuffer_count);
 
 		if (hdr_output) {
 			if (__builtin_available(macOS 26.0, iOS 26.0, tvOS 26.0, visionOS 26.0, *)) {
@@ -271,12 +385,18 @@ public:
 			return RDD::FramebufferID();
 		}
 
+		MutexLock lock(mutex);
+		CA::MetalDrawable *drawable = source->acquire();
+		if (drawable == nullptr) {
+			return RDD::FramebufferID();
+		}
+
 		rear = (rear + 1) % frame_buffers.size();
 		count++;
 
 		MDFrameBufferLayer &frame_buffer = frame_buffers[rear];
 		frame_buffer.size = Size2i(width, height);
-		frame_buffer.reset();
+		frame_buffer.set_drawable(drawable, source->allows_timed_present());
 
 		return RDD::FramebufferID(&frame_buffer);
 	}
@@ -287,34 +407,64 @@ public:
 		}
 
 		MDFrameBufferLayer &frame_buffer = frame_buffers[front];
-		CA::MetalDrawable *drawable = frame_buffer.get_drawable();
-		frame_buffer.reset();
+		const bool timed_present = _is_timed_present(frame_buffer);
+		CA::MetalDrawable *drawable = frame_buffer.take_drawable();
 
 		count--;
 		front = (front + 1) % frame_buffers.size();
 
 		if (drawable != nullptr) {
-			if (vsync_mode != DisplayServerEnums::VSYNC_DISABLED) {
+			if (timed_present) {
 				p_cmd_buffer->get_command_buffer()->presentDrawableAfterMinimumDuration(drawable, present_minimum_duration);
 			} else {
 				p_cmd_buffer->get_command_buffer()->presentDrawable(drawable);
 			}
+			drawable->release();
 		}
 	}
 
 	MTL::Drawable *next_drawable() override {
+		DEV_ASSERT(presenting_drawable == nullptr);
 		if (count == 0) {
 			return nullptr;
 		}
 
 		MDFrameBufferLayer &frame_buffer = frame_buffers[front];
-		CA::MetalDrawable *drawable = frame_buffer.get_drawable();
-		frame_buffer.reset();
+		presenting_timed = _is_timed_present(frame_buffer);
+		presenting_drawable = frame_buffer.take_drawable();
 
 		count--;
 		front = (front + 1) % frame_buffers.size();
 
-		return drawable;
+		return presenting_drawable;
+	}
+
+	void present_next_drawable() override {
+		if (presenting_drawable == nullptr) {
+			return;
+		}
+		if (presenting_timed) {
+			presenting_drawable->presentAfterMinimumDuration(present_minimum_duration);
+		} else {
+			presenting_drawable->present();
+		}
+		presenting_drawable->release();
+		presenting_drawable = nullptr;
+	}
+
+	void set_display_link(bool p_enabled) override {
+		MutexLock lock(mutex);
+		if (p_enabled) {
+			source = &display_link_source;
+		} else {
+			source = &layer_source;
+			display_link_source.release_pending_drawable();
+		}
+	}
+
+	void set_pending_drawable(CA::MetalDrawable *p_drawable) override {
+		MutexLock lock(mutex);
+		source->set_pending_drawable(p_drawable);
 	}
 
 	API_AVAILABLE(macos(26.0), ios(26.0))
@@ -328,6 +478,8 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) SurfaceOffscreen final :
 	MDFrameBufferTexture frame_buffers[frame_buffer_size];
 	LocalVector<MTL::Texture *> textures;
 	LocalVector<MTL::Drawable *> drawables;
+	// Drawable handed out by next_drawable(), owned until present_next_drawable().
+	MTL::Drawable *presenting_drawable = nullptr;
 
 	int32_t rear = -1;
 	std::atomic_int count;
@@ -460,19 +612,32 @@ public:
 	}
 
 	MTL::Drawable *next_drawable() override {
+		DEV_ASSERT(presenting_drawable == nullptr);
 		if (count == 0) {
 			return nullptr;
 		}
 
 		MDFrameBufferTexture *frame_buffer = &frame_buffers[rear];
 
-		MTL::Drawable *next = drawables[rear];
+		presenting_drawable = drawables[rear];
 		drawables[rear] = nullptr;
 
 		frame_buffer->unset_texture(0);
 		count--;
 
-		return next;
+		if (presenting_drawable) {
+			presenting_drawable->retain();
+		}
+		return presenting_drawable;
+	}
+
+	void present_next_drawable() override {
+		if (presenting_drawable == nullptr) {
+			return;
+		}
+		presenting_drawable->present();
+		presenting_drawable->release();
+		presenting_drawable = nullptr;
 	}
 
 	API_AVAILABLE(macos(26.0), ios(26.0))
@@ -523,6 +688,8 @@ public:
 		return nullptr;
 	}
 
+	void present_next_drawable() override final {}
+
 	API_AVAILABLE(macos(26.0), ios(26.0))
 	MTL::ResidencySet *get_residency_set() const override final {
 		return nullptr;
@@ -565,6 +732,24 @@ void RenderingContextDriverMetal::surface_set_size(SurfaceID p_surface, uint32_t
 	surface->width = p_width;
 	surface->height = p_height;
 	surface->needs_resize = true;
+}
+
+void RenderingContextDriverMetal::window_set_display_link(DisplayServerEnums::WindowID p_window, bool p_enabled) {
+	SurfaceID surface_id = surface_get_from_window(p_window);
+	if (surface_id == 0) {
+		return;
+	}
+	Surface *surface = (Surface *)(surface_id);
+	surface->set_display_link(p_enabled);
+}
+
+void RenderingContextDriverMetal::window_set_pending_drawable(DisplayServerEnums::WindowID p_window, CA::MetalDrawable *p_drawable) {
+	SurfaceID surface_id = surface_get_from_window(p_window);
+	if (surface_id == 0) {
+		return;
+	}
+	Surface *surface = (Surface *)(surface_id);
+	surface->set_pending_drawable(p_drawable);
 }
 
 void RenderingContextDriverMetal::surface_set_vsync_mode(SurfaceID p_surface, DisplayServerEnums::VSyncMode p_vsync_mode) {
