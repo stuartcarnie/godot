@@ -1858,7 +1858,8 @@ DisplayServerEnums::WindowID DisplayServerMacOS::create_sub_window(DisplayServer
 void DisplayServerMacOS::show_window(DisplayServerEnums::WindowID p_id) {
 	WindowData &wd = windows[p_id];
 
-	if (p_id == DisplayServerEnums::MAIN_WINDOW_ID) {
+	const bool suppress_focus = initial_focus_suppressed && p_id == DisplayServerEnums::MAIN_WINDOW_ID;
+	if (p_id == DisplayServerEnums::MAIN_WINDOW_ID && !suppress_focus) {
 		[GodotApp activateApplication];
 	}
 
@@ -1874,9 +1875,20 @@ void DisplayServerMacOS::show_window(DisplayServerEnums::WindowID p_id) {
 		} else {
 			[wd.window_object orderFront:nil];
 		}
+	} else if (suppress_focus) {
+		[wd.window_object orderFront:nil];
 	} else {
 		[wd.window_object makeKeyAndOrderFront:nil];
 	}
+}
+
+void DisplayServerMacOS::end_initial_focus_suppression() {
+	if (!initial_focus_suppressed) {
+		return;
+	}
+	initial_focus_suppressed = false;
+	// Apply the mouse mode requested while suppressed.
+	_mouse_update_mode();
 }
 
 void DisplayServerMacOS::delete_sub_window(DisplayServerEnums::WindowID p_id) {
@@ -3910,6 +3922,8 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, Display
 	Input::get_singleton()->set_event_dispatch_function(_dispatch_input_events);
 
 	r_error = OK;
+
+	initial_focus_suppressed = OS::get_singleton()->get_cmdline_args().find("--start-unfocused") != nullptr;
 
 	memset(cursors, 0, sizeof(cursors));
 

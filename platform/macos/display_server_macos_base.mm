@@ -50,6 +50,9 @@ void DisplayServerMacOSBase::_mouse_update_mode() {
 	DisplayServerEnums::MouseMode wanted_mouse_mode = mouse_mode_override_enabled
 			? mouse_mode_override
 			: mouse_mode_base;
+	if (initial_focus_suppressed) {
+		wanted_mouse_mode = DisplayServerEnums::MOUSE_MODE_VISIBLE;
+	}
 
 	if (wanted_mouse_mode == mouse_mode) {
 		return;

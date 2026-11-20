@@ -79,6 +79,9 @@ protected:
 	DisplayServerEnums::MouseMode mouse_mode_base = DisplayServerEnums::MOUSE_MODE_VISIBLE;
 	DisplayServerEnums::MouseMode mouse_mode_override = DisplayServerEnums::MOUSE_MODE_VISIBLE;
 	bool mouse_mode_override_enabled = false;
+	// Set by `--start-unfocused`. While true, the main window is shown without
+	// activating the application and the applied mouse mode stays visible.
+	bool initial_focus_suppressed = false;
 
 	void _mouse_update_mode();
 	virtual void _mouse_apply_mode(DisplayServerEnums::MouseMode p_prev_mode, DisplayServerEnums::MouseMode p_new_mode) = 0;

@@ -788,6 +788,7 @@ void Main::print_help(const char *p_binary) {
 	print_help_option("--position <X>,<Y>", "Request window position.\n");
 	print_help_option("--screen <N>", "Request window screen.\n");
 	print_help_option("--single-window", "Use a single window (no separate subwindows).\n");
+	print_help_option("--start-unfocused", "Show the main window without activating the application, and delay mouse capture until the window first gets focus (macOS only).\n", CLI_OPTION_AVAILABILITY_DEV);
 #ifndef XR_DISABLED
 	print_help_option("--xr-mode <mode>", "Select XR (Extended Reality) mode [\"default\", \"off\", \"on\"].\n");
 #endif // XR_DISABLED
@@ -1603,6 +1604,14 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		} else if (arg == "--single-window") { // force single window
 
 			single_window = true;
+		} else if (arg == "--start-unfocused") {
+#if DEV_ENABLED
+			// Read by the display server from the command line arguments.
+			main_args.push_back(arg);
+#else
+			OS::get_singleton()->print("--start-unfocused is only available in dev builds, aborting.\n");
+			goto error;
+#endif
 		} else if (arg == "--accessibility") {
 			if (N) {
 				String string = N->get();
