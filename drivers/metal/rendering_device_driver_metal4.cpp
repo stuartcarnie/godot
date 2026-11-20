@@ -211,7 +211,9 @@ void RenderingDeviceDriverMetal::_update_heap_residency() {
 
 RDD::CommandPoolID RenderingDeviceDriverMetal::command_pool_create(CommandQueueFamilyID p_cmd_queue_family, CommandBufferType p_cmd_buffer_type) {
 	DEV_ASSERT(p_cmd_buffer_type == COMMAND_BUFFER_TYPE_PRIMARY);
-	MD4CommandPool *obj = memnew(MD4CommandPool(this));
+	// Transfer workers record concurrently and are ordered by semaphores, so they use no level fences.
+	MDLevelFences *level_fences = p_cmd_queue_family.id == COMMAND_QUEUE_FAMILY_GRAPHICS_BIT ? &main_level_fences : nullptr;
+	MD4CommandPool *obj = memnew(MD4CommandPool(this, level_fences));
 	command_pools.push_back(obj);
 	return CommandPoolID(obj);
 }

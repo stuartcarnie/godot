@@ -63,12 +63,12 @@ using namespace MTL4;
 
 GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability-new")
 
-MDCommandBuffer::MDCommandBuffer(MTL4::CommandAllocator *p_allocator, RenderingDeviceDriverMetal *p_device_driver) :
+MDCommandBuffer::MDCommandBuffer(MTL4::CommandAllocator *p_allocator, RenderingDeviceDriverMetal *p_device_driver, MDLevelFences *p_level_fences) :
 		allocator(NS::TransferPtr(p_allocator)), command_buffer(NS::TransferPtr(p_device_driver->get_device()->newCommandBuffer())), _scratch(p_device_driver->get_allocator(), DEFAULT_SCRATCH_SIZE) {
 	device_driver = p_device_driver;
 	MTL::Device *device = device_driver->get_device();
 
-	_create_level_fences(device);
+	_level_fences = p_level_fences;
 
 	NS::SharedPtr<MTL4::ArgumentTableDescriptor> desc = NS::TransferPtr(MTL4::ArgumentTableDescriptor::alloc()->init());
 	desc->setMaxBufferBindCount(31);
@@ -1535,13 +1535,13 @@ void MDCommandBuffer::_end_inline_render() {
 #pragma mark - Command Pool
 
 MDCommandBuffer *MD4CommandPool::new_command_buffer() {
-	MDCommandBuffer *obj = memnew(MDCommandBuffer(_driver->get_device()->newCommandAllocator(), _driver));
+	MDCommandBuffer *obj = memnew(MDCommandBuffer(_driver->get_device()->newCommandAllocator(), _driver, _level_fences));
 	_command_buffers.push_back(obj);
 	return obj;
 }
 
-MD4CommandPool::MD4CommandPool(RenderingDeviceDriverMetal *p_driver) :
-		_driver(p_driver) {
+MD4CommandPool::MD4CommandPool(RenderingDeviceDriverMetal *p_driver, MDLevelFences *p_level_fences) :
+		_driver(p_driver), _level_fences(p_level_fences) {
 }
 
 MD4CommandPool::~MD4CommandPool() {

@@ -402,7 +402,7 @@ public:
 	void begin_label(const char *p_label_name, const Color &p_color) override;
 	void end_label() override;
 
-	MDCommandBuffer(MTL4::CommandAllocator *p_allocator, RenderingDeviceDriverMetal *p_device_driver);
+	MDCommandBuffer(MTL4::CommandAllocator *p_allocator, RenderingDeviceDriverMetal *p_device_driver, MDLevelFences *p_level_fences = nullptr);
 
 	MDCommandBuffer() = default;
 	~MDCommandBuffer();
@@ -411,11 +411,13 @@ public:
 class API_AVAILABLE(macos(26.0), ios(26.0), tvos(26.0), visionos(26.0)) MD4CommandPool {
 	RenderingDeviceDriverMetal *_driver;
 	LocalVector<MDCommandBuffer *> _command_buffers;
+	// Level fences for the pool's command buffers, or nullptr if they use none.
+	MDLevelFences *_level_fences = nullptr;
 
 public:
 	MDCommandBuffer *new_command_buffer();
 
-	MD4CommandPool(RenderingDeviceDriverMetal *p_driver);
+	MD4CommandPool(RenderingDeviceDriverMetal *p_driver, MDLevelFences *p_level_fences);
 	~MD4CommandPool();
 };
 
