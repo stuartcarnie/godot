@@ -321,6 +321,8 @@ private:
 	LocalVector<MTL::Heap *> _resident_heaps;
 	uint64_t _resident_heaps_generation = 0;
 
+	/// Returns false when the driver has no residency set, and encoders must declare resources.
+	bool _update_residency_set();
 	void _encode_residency(MTL::RenderCommandEncoder *p_enc);
 	void _encode_residency(MTL::ComputeCommandEncoder *p_enc);
 

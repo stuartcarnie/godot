@@ -174,6 +174,10 @@ protected:
 	LocalVector<MTL::Texture *> imported_textures;
 
 public:
+	/// True when a residency set on the command queue makes resources available to shaders,
+	/// so that encoders don't have to declare them.
+	bool has_residency_set() const { return main_residency_set.get() != nullptr; }
+
 	void encode_imported_resources(MTL::RenderCommandEncoder *p_enc);
 	void encode_imported_resources(MTL::ComputeCommandEncoder *p_enc);
 

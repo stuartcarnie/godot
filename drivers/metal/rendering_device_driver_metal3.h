@@ -43,6 +43,10 @@ class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) RenderingDeviceDriverMet
 
 	NS::SharedPtr<MTL::CommandQueue> device_queue;
 
+	/// Heaps in `main_residency_set`, as of `resident_heaps_generation` of the allocator.
+	LocalVector<MTL::Heap *> resident_heaps;
+	uint64_t resident_heaps_generation = 0;
+
 	struct Fence {
 		NS::SharedPtr<MTL::SharedEvent> event;
 		uint64_t value = 0;
@@ -80,6 +84,10 @@ protected:
 
 public:
 	Error initialize(uint32_t p_device_index, uint32_t p_frame_count) override;
+
+	/// Adds the allocator's new heaps to the residency set of the command queue, and removes
+	/// the ones it freed. Only valid when has_residency_set() is true.
+	void update_heap_residency() API_AVAILABLE(macos(15.0), ios(18.0), tvos(18.0), visionos(2.0));
 
 	FenceID fence_create() override;
 	Error fence_wait(FenceID p_fence) override;

@@ -67,9 +67,22 @@ MDCommandBuffer::MDCommandBuffer(MTL::CommandQueue *p_queue, ::RenderingDeviceDr
 	_level_fences = p_level_fences;
 }
 
+bool MDCommandBuffer::_update_residency_set() {
+	if (!device_driver->has_residency_set()) {
+		return false;
+	}
+	GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wunguarded-availability")
+	static_cast<MTL3::RenderingDeviceDriverMetal *>(device_driver)->update_heap_residency();
+	GODOT_CLANG_WARNING_POP
+	return true;
+}
+
 void MDCommandBuffer::_encode_residency(MTL::RenderCommandEncoder *p_enc) {
 	if (sync_mode == RDM::SyncMode::HazardTracking) {
 		return; // ResourceTracker handles residency + hazards.
+	}
+	if (_update_residency_set()) {
+		return;
 	}
 	MetalAllocator *alloc = device_driver->get_allocator();
 	if (alloc->get_heap_generation() != _resident_heaps_generation) {
@@ -82,6 +95,9 @@ void MDCommandBuffer::_encode_residency(MTL::RenderCommandEncoder *p_enc) {
 
 void MDCommandBuffer::_encode_residency(MTL::ComputeCommandEncoder *p_enc) {
 	if (sync_mode == RDM::SyncMode::HazardTracking) {
+		return;
+	}
+	if (_update_residency_set()) {
 		return;
 	}
 	MetalAllocator *alloc = device_driver->get_allocator();
@@ -1083,9 +1099,7 @@ void MDCommandBuffer::_render_set_dirty_state() {
 		}
 	}
 
-	if (sync_mode == RDM::SyncMode::HazardTracking) {
-		render.resource_tracker.encode(render.encoder.get());
-	}
+	render.resource_tracker.encode(render.encoder.get());
 
 	render.dirty.clear();
 }
@@ -1627,9 +1641,7 @@ void MDCommandBuffer::_compute_set_dirty_state() {
 		}
 	}
 
-	if (sync_mode == RDM::SyncMode::HazardTracking) {
-		compute.resource_tracker.encode(compute.encoder.get());
-	}
+	compute.resource_tracker.encode(compute.encoder.get());
 
 	compute.dirty.clear();
 }

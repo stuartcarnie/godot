@@ -112,6 +112,20 @@ void RenderingDeviceDriverMetal::_resolve_sync_mode() {
 		if (timestamp_queries_supported) {
 			timestamp_fence = NS::TransferPtr(device->newFence());
 		}
+		// Shaders reach most resources through argument buffers, so Metal has to be told which
+		// ones a pass uses. A residency set on the queue does that once for all command buffers.
+		// Where it is not available, every encoder declares them (MDCommandBuffer::_encode_residency).
+		if (__builtin_available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, *)) {
+			if (device->supportsFamily(MTL::GPUFamilyApple6)) {
+				NS::SharedPtr<MTL::ResidencySetDescriptor> desc = NS::TransferPtr(MTL::ResidencySetDescriptor::alloc()->init());
+				desc->setLabel(MTLSTR("Main Residency Set"));
+				NS::Error *error = nullptr;
+				main_residency_set = NS::TransferPtr(device->newResidencySet(desc.get(), &error));
+				if (main_residency_set) {
+					device_queue->addResidencySet(main_residency_set.get());
+				}
+			}
+		}
 	} else {
 		print_verbose("Metal 3: Native hazard tracking enabled.");
 	}
@@ -125,6 +139,28 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 }
 
 #pragma mark - Residency
+
+void RenderingDeviceDriverMetal::update_heap_residency() {
+	// Residency sets are not thread-safe. This mutex also guards the textures in the set.
+	MutexLock lock(imported_textures_mutex);
+	if (allocator->get_heap_generation() == resident_heaps_generation) {
+		return;
+	}
+	LocalVector<MTL::Heap *> heaps;
+	resident_heaps_generation = allocator->get_heaps(heaps);
+	for (MTL::Heap *heap : heaps) {
+		if (resident_heaps.find(heap) < 0) {
+			main_residency_set->addAllocation(heap);
+		}
+	}
+	for (MTL::Heap *heap : resident_heaps) {
+		if (heaps.find(heap) < 0) {
+			main_residency_set->removeAllocation(heap);
+		}
+	}
+	main_residency_set->commit();
+	resident_heaps = heaps;
+}
 
 void RenderingDeviceDriverMetal::add_residency_set_to_main_queue(MTL::ResidencySet *p_set) {
 }
