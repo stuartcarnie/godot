@@ -1504,6 +1504,7 @@ void EditorNode::_resources_reimporting(const Vector<String> &p_resources) {
 	scenes_modification_table.clear();
 	scenes_reimported.clear();
 	resources_reimported.clear();
+	uninstanced_scenes_reimported.clear();
 	EditorFileSystem *editor_file_system = EditorFileSystem::get_singleton();
 	for (const String &res_path : p_resources) {
 		// It's faster to use EditorFileSystem::get_file_type than fetching the resource type from disk.
@@ -1559,6 +1560,7 @@ void EditorNode::_resources_reimported(const Vector<String> &p_resources) {
 	}
 
 	reload_instances_with_path_in_edited_scenes();
+	reload_uninstanced_scenes();
 
 	scenes_modification_table.clear();
 	scenes_reimported.clear();
@@ -4907,6 +4909,34 @@ void EditorNode::_set_current_scene_nocheck(int p_idx, bool p_ignore_state) {
 	}
 }
 
+void EditorNode::soft_reload_edited_scene() {
+	int idx = editor_data.get_edited_scene();
+	const String scene_path = editor_data.get_scene_path(idx);
+
+	editor_data.save_edited_scene_state(editor_selection, &editor_history, _get_main_scene_state());
+	editor_selection->clear();
+
+	if (!scene_path.is_empty() && editor_data.get_edited_scene_root(idx)) {
+		editor_folding.save_scene_folding(editor_data.get_edited_scene_root(idx), scene_path);
+	}
+
+	editor_data.reload_scene_from_memory(idx, true);
+	InspectorDock::get_inspector_singleton()->update_tree();
+
+	if (!scene_path.is_empty()) {
+		editor_folding.load_scene_folding(editor_data.get_edited_scene_root(idx), scene_path);
+	}
+
+	const Dictionary state = editor_data.restore_edited_scene_state(editor_selection, &editor_history);
+	_set_main_scene_state(state);
+
+	// Stop the inspector history from thinking there's a previous object.
+	editor_history.cleanup_history();
+	InspectorDock::get_singleton()->update(nullptr);
+
+	SceneTreeDock::get_singleton()->get_tree_editor()->clear_cache();
+}
+
 void EditorNode::setup_built_in_resource(const Ref<Resource> &p_resource, const String &p_owner_path) {
 	String resource_class;
 	const Ref<MissingResource> &missing_resource = p_resource;
@@ -7405,6 +7435,8 @@ void EditorNode::preload_reimporting_with_path_in_edited_scenes(const List<Strin
 
 					// Search the scene to find nodes that references the nodes will be recreated.
 					get_preload_modifications_reference_to_nodes(edited_scene_root, edited_scene_root, instances_to_reimport, instance_list_with_children, scene_modifications.other_instances_modifications);
+				} else {
+					uninstanced_scenes_reimported.push_back(instance_path);
 				}
 			}
 
@@ -7789,6 +7821,20 @@ void EditorNode::reload_instances_with_path_in_edited_scenes() {
 	editor_data.restore_edited_scene_state(editor_selection, &editor_history);
 
 	progress.step(TTR("Reloading done."), editor_data.get_edited_scene_count());
+}
+
+void EditorNode::reload_uninstanced_scenes() {
+	if (uninstanced_scenes_reimported.is_empty()) {
+		return;
+	}
+	// Reloads resources stored in memory (cached in undo history for example).
+	for (String &scene_path : uninstanced_scenes_reimported) {
+		Error err;
+		Ref<PackedScene> instance_scene_packed_scene = ResourceLoader::load(scene_path, "", ResourceFormatLoader::CACHE_MODE_REPLACE, &err);
+
+		ERR_FAIL_COND(err != OK);
+		ERR_FAIL_COND(instance_scene_packed_scene.is_null());
+	}
 }
 
 void EditorNode::_remove_all_not_owned_children(Node *p_node, Node *p_owner) {
